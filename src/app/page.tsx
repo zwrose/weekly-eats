@@ -1,8 +1,10 @@
 import React from 'react';
 import { getMongoClient } from '../lib/mongodb';
 
+type CollectionInfo = { name: string };
+
 // Presentational component for displaying collections
-const CollectionsList = ({ collections }: { collections: { name: string }[] }) => {
+const CollectionsList = ({ collections }: { collections: CollectionInfo[] }) => {
   if (!collections.length) {
     return <div className="text-gray-500">No collections found.</div>;
   }
@@ -12,21 +14,21 @@ const CollectionsList = ({ collections }: { collections: { name: string }[] }) =
       <ul className="list-disc pl-5">
         {collections.map((col) => (
           <li key={col.name}>{col.name}</li>
-      ))}
+        ))}
       </ul>
     </div>
   );
 };
 
 export default async function Home() {
-  let collections: { name: string }[] = [];
+  let collections: CollectionInfo[] = [];
   let error = null;
   try {
     const client = await getMongoClient();
     const db = client.db();
     // Only pass serializable data (collection names)
     const rawCollections = await db.listCollections().toArray();
-    collections = rawCollections.map((col: any) => ({ name: col.name }));
+    collections = rawCollections.map((col: CollectionInfo) => ({ name: col.name }));
   } catch (err) {
     error = err;
   }
