@@ -12,7 +12,6 @@ let clientPromise: Promise<MongoClient>;
 
 // In development, use a global variable to preserve the value across module reloads caused by HMR (Hot Module Replacement)
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
