@@ -10,7 +10,7 @@ const CollectionsList = ({ collections }: { collections: CollectionInfo[] }) => 
   }
   return (
     <div>
-      <h2 className="text-xl text-gray-300 text-center">Collections:</h2>
+      <h2 className="text-xl text-gray-300 text-center">Collections - NonProd:</h2>
       <ul className="list-disc pl-5">
         {collections.map((col) => (
           <li key={col.name}>{col.name}</li>
