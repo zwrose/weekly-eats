@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Operational Concerns: Ensure code is production-ready, addressing:
+- Hosting: Compatibility with Vercel.
+- Management: Use .env.local for configuration.
+- Monitoring: Integrate logging.
+- Maintenance: Write self-documenting code, update status.md, and run npm audit.

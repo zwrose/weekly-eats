@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Prioritize security to prevent vulnerabilities (e.g., XSS, CSRF). For high-risk areas (e.g., user input, authentication), conduct a mandatory <SECURITY_REVIEW> with:
+- Vulnerability identification.
+- Mitigation strategies (e.g., zod for validation).
+- OWASP or Next.js references.
+- Test to verify mitigation.
+- Use secure defaults (e.g., helmet, zod) and avoid unsafe practices (e.g., eval).

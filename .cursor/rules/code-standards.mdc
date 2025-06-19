@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Use early returns for readability.
+- Style with Tailwind CSS, mobile-first. Avoid inline CSS unless justified.
+- Use functional, declarative TypeScript code. Avoid classes. Define types/interfaces.
+- Use descriptive names with auxiliary verbs (e.g., isLoading). Prefix event handlers with handle (e.g., handleClick).
+- Use const arrow functions with types (e.g., const toggle: () => void = () =>).
+- Minimize 'use client', useEffect, and useState. Favor React Server Components.
+- Wrap client components in <Suspense> with lightweight fallbacks.
+- Use next/dynamic for non-critical components (ssr: false for client-only).
+- Optimize images with next/image (WebP, explicit sizes, loading="lazy").
+- Follow Next.js docs for data fetching, rendering, and routing.
+- Include try-catch and fallback UI for errors.
+- Use React.memo and analyze bundle size.

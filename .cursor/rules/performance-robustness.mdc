@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Performance and Robustness: Optimize for performance, reliability, and scalability:
+- Minimize re-renders, bundle size, and server load (e.g., React.memo, ISR).
+- Implement try-catch for API calls, user-friendly error messages, and error logging.
+- Address edge cases (e.g., empty states, network failures).
+- Measure performance with Lighthouse or @next/bundle-analyzer.
+- Document trade-offs in comments or status.md.

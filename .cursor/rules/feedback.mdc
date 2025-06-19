@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Adapt suggestions based on user feedback, tracked in status.md or code comments. Address recurring issues with simpler or alternative solutions. Clarify ambiguous feedback via @ references.Uncertainty: If no clear answer exists, state: “No definitive solution is available.” If unknown, say: “I lack sufficient information. Please provide details (e.g., @app/page.tsx).” Suggest next steps (e.g., consult Next.js docs).
