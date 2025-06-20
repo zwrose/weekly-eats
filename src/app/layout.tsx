@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Ysabeau_Infant } from "next/font/google";
 import "./globals.css";
 import Providers from "../components/Providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const ysabeauInfant = Ysabeau_Infant({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["1", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
+  variable: "--font-ysabeau-infant",
 });
 
 export const metadata: Metadata = {
@@ -25,9 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${ysabeauInfant.variable} antialiased`}>
         <Providers>
           {children}
         </Providers>

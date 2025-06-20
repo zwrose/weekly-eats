@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Container, Typography, Box, CircularProgress } from "@mui/material";
+import { Container, Typography, Box, CircularProgress, Paper } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 
 export default function HomePage() {
@@ -29,17 +29,27 @@ export default function HomePage() {
   return (
     <AuthenticatedLayout>
       <Container maxWidth="md">
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <Typography variant="h3" component="h1" gutterBottom>
-            Welcome to Weekly Eats
-          </Typography>
-          <Typography variant="h6" color="text.secondary" paragraph>
-            Hello, {session?.user?.name || "User"}! Your meal planning journey starts here.
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            More features coming soon...
-          </Typography>
-        </Box>
+        <Paper
+          elevation={2}
+          sx={{
+            p: 6,
+            textAlign: "center",
+            borderRadius: 3,
+            bgcolor: "background.paper",
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Typography variant="h3" component="h1" color="primary.main" gutterBottom>
+              Welcome to Weekly Eats
+            </Typography>
+            <Typography variant="h6" color="text.primary" sx={{ mb: 2 }}>
+              Hello, {session?.user?.name || "User"}! Your meal planning journey starts here.
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              More features coming soon...
+            </Typography>
+          </Box>
+        </Paper>
       </Container>
     </AuthenticatedLayout>
   );
