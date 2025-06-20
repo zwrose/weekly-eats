@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${ysabeauInfant.variable} antialiased`}>
+      <body className={ysabeauInfant.variable}>
         <Providers>
           {children}
         </Providers>
