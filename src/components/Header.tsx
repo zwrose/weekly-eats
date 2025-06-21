@@ -13,6 +13,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Box,
 } from "@mui/material";
 import { 
   AccountCircle, 
@@ -45,25 +46,43 @@ export default function Header() {
     handleClose();
   };
 
+  const handleHomeClick = () => {
+    router.push('/home');
+  };
+
   return (
     <SessionWrapper>
       {session?.user && (
         <AppBar position="sticky" color="default" elevation={1}>
           <Toolbar>
-            <Typography 
-              variant="h4" 
-              component="div" 
+            <Box 
               sx={{ 
-                flexGrow: 1, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 1.5,
+                flexGrow: 1,
                 cursor: "pointer",
-                "&:hover": {
-                  color: "primary.main",
-                },
+                userSelect: "none",
               }}
-              onClick={() => router.push('/home')}
+              onClick={handleHomeClick}
             >
-              Weekly Eats
-            </Typography>
+              <img
+                src="/icon0.svg"
+                alt="Weekly Eats"
+                width={32}
+                height={32}
+                style={{ minWidth: 32 }}
+              />
+              <Typography 
+                variant="h4" 
+                component="div" 
+                sx={{ 
+                  fontWeight: "bold",
+                }}
+              >
+                Weekly Eats
+              </Typography>
+            </Box>
             
             <Button
               onClick={handleMenu}
