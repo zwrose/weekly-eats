@@ -1,7 +1,14 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Weekly Eats",
+  "short_name": "Weekly Eats",
+  "description": "Plan your meals, make your list, and head to the store with confidence.",
   "icons": [
+    {
+      "src": "/icon0.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
@@ -15,7 +22,8 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "theme_color": "#1976d2",
+  "background_color": "#f5f5f5",
+  "display": "standalone",
+  "start_url": "/home"
 }
