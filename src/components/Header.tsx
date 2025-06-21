@@ -48,7 +48,7 @@ export default function Header() {
   return (
     <SessionWrapper>
       {session?.user && (
-        <AppBar position="static" color="default" elevation={1}>
+        <AppBar position="sticky" color="default" elevation={1}>
           <Toolbar>
             <Typography 
               variant="h4" 
