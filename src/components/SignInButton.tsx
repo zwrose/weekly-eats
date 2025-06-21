@@ -9,14 +9,12 @@ export default function SignInButton() {
       variant="outlined"
       onClick={() => signIn("google", { callbackUrl: "/home" })}
       sx={{
-        borderRadius: "24px",
-        textTransform: "none",
-        fontFamily: "Roboto, sans-serif",
+        borderColor: "#dadce0",
+        color: "#3c4043",
+        fontFamily: '"Product Sans", "Roboto", "Arial", sans-serif',
         fontSize: "14px",
         fontWeight: 500,
         letterSpacing: "0.25px",
-        borderColor: "#dadce0",
-        color: "#3c4043",
         "&:hover": {
           borderColor: "#dadce0",
           backgroundColor: "#f8f9fa",

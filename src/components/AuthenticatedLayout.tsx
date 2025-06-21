@@ -7,9 +7,9 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "grey.50" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <Header />
-      <Box component="main" sx={{ pt: 8 }}>
+      <Box component="main" sx={{ pt: { xs: 2, sm: 4, md: 8 } }}>
         {children}
       </Box>
     </Box>
