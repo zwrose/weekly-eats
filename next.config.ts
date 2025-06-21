@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    minimumCacheTTL: 60 * 60 * 24 * 7, // Cache for 7 days
   },
 };
 

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Ysabeau_Infant } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import Providers from "../components/Providers";
 
-const ysabeauInfant = Ysabeau_Infant({
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["1", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
-  variable: "--font-ysabeau-infant",
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-figtree",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={ysabeauInfant.variable}>
+      <body className={figtree.variable}>
         <Providers>
           {children}
         </Providers>
