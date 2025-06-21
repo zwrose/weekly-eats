@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import SessionWrapper from "./SessionWrapper";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -66,7 +67,7 @@ export default function Header() {
               }}
               onClick={handleHomeClick}
             >
-              <img
+              <Image
                 src="/icon0.svg"
                 alt="Weekly Eats"
                 width={32}

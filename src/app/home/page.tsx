@@ -31,28 +31,28 @@ interface FeatureCard {
 const featureCards: FeatureCard[] = [
   {
     title: "Meal Plans",
-    description: "Plan your weekly meals and organize your schedule",
+    description: "Manage your weekly plans",
     icon: <CalendarMonth sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     color: "#1976d2",
     path: "/meal-plans"
   },
   {
     title: "Shopping Lists",
-    description: "Create and manage your grocery shopping lists",
+    description: "Shop with confidence",
     icon: <ShoppingCart sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     color: "#2e7d32",
     path: "/shopping-lists"
   },
   {
     title: "Recipes",
-    description: "Save and organize your favorite recipes",
+    description: "Manage your recipes",
     icon: <Restaurant sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     path: "/recipes",
     color: "#ed6c02"
   },
   {
     title: "Pantry",
-    description: "Track your pantry items and ingredients",
+    description: "Track your pantry items",
     icon: <Kitchen sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     path: "/pantry",
     color: "#9c27b0"
