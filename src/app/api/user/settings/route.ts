@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../lib/mongodb';
 import { DEFAULT_USER_SETTINGS } from '../../../../lib/user-settings';
+import { getUserObjectId } from '../../../../lib/user-utils';
 
 export async function GET() {
   try {
@@ -11,12 +12,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = await getUserObjectId(session.user.email);
+    if (!userId) {
+      return NextResponse.json({ settings: DEFAULT_USER_SETTINGS });
+    }
+
     const client = await getMongoClient();
     const db = client.db();
     const usersCollection = db.collection('users');
 
-    // Find user by email
-    const user = await usersCollection.findOne({ email: session.user.email });
+    // Find user by ObjectId
+    const user = await usersCollection.findOne({ _id: userId });
     
     if (!user) {
       return NextResponse.json({ settings: DEFAULT_USER_SETTINGS });
@@ -40,6 +46,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = await getUserObjectId(session.user.email);
+    if (!userId) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const { settings } = await request.json();
     
     if (!settings || typeof settings.themeMode !== 'string') {
@@ -50,9 +61,9 @@ export async function POST(request: NextRequest) {
     const db = client.db();
     const usersCollection = db.collection('users');
 
-    // Update user settings
+    // Update user settings using ObjectId
     const result = await usersCollection.updateOne(
-      { email: session.user.email },
+      { _id: userId },
       { 
         $set: { 
           settings,

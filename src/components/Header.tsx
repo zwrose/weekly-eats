@@ -1,7 +1,8 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   AppBar,
   Toolbar,
@@ -13,11 +14,13 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Box,
 } from "@mui/material";
 import { 
   AccountCircle, 
   Settings,
-  Logout 
+  Logout,
+  AdminPanelSettings
 } from "@mui/icons-material";
 import SessionWrapper from "./SessionWrapper";
 import { useRouter } from "next/navigation";
@@ -26,6 +29,20 @@ export default function Header() {
   const { data: session } = useSession();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
+  const sessionRef = useRef(session);
+
+  // Update ref when session changes
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    // Redirect unapproved users to pending approval page
+    if (session?.user && !(session.user as { isApproved?: boolean }).isApproved && 
+        !(session.user as { isAdmin?: boolean }).isAdmin) {
+      router.push('/pending-approval');
+    }
+  }, [session, router]);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -45,25 +62,54 @@ export default function Header() {
     handleClose();
   };
 
+  const handleHomeClick = () => {
+    router.push('/home');
+  };
+
+  const handleAdmin = () => {
+    router.push('/admin');
+    handleClose();
+  };
+
+  // Check if we should hide the header for unapproved users
+  const shouldHideHeader = session?.user && 
+    !(session.user as { isApproved?: boolean }).isApproved && 
+    !(session.user as { isAdmin?: boolean }).isAdmin;
+
   return (
     <SessionWrapper>
-      {session?.user && (
+      {session?.user && !shouldHideHeader && (
         <AppBar position="sticky" color="default" elevation={1}>
           <Toolbar>
-            <Typography 
-              variant="h4" 
-              component="div" 
+            <Box 
               sx={{ 
-                flexGrow: 1, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 1.5,
+                flexGrow: 1,
                 cursor: "pointer",
-                "&:hover": {
-                  color: "primary.main",
-                },
+                userSelect: "none",
               }}
-              onClick={() => router.push('/home')}
+              onClick={handleHomeClick}
             >
-              Weekly Eats
-            </Typography>
+              <Image
+                src="/icon0.svg"
+                alt="Weekly Eats"
+                width={32}
+                height={32}
+                style={{ minWidth: 32, display: 'block' }}
+                priority
+              />
+              <Typography 
+                variant="h4" 
+                component="div" 
+                sx={{ 
+                  fontWeight: "bold",
+                }}
+              >
+                Weekly Eats
+              </Typography>
+            </Box>
             
             <Button
               onClick={handleMenu}
@@ -116,6 +162,14 @@ export default function Header() {
                 </ListItemIcon>
                 <ListItemText>Settings</ListItemText>
               </MenuItem>
+              {(session.user as { isAdmin?: boolean }).isAdmin && (
+                <MenuItem onClick={handleAdmin}>
+                  <ListItemIcon>
+                    <AdminPanelSettings fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Admin</ListItemText>
+                </MenuItem>
+              )}
               <Divider />
               <MenuItem onClick={handleSignOut}>
                 <ListItemIcon>

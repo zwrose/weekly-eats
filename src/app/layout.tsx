@@ -12,6 +12,18 @@ const figtree = Figtree({
 export const metadata: Metadata = {
   title: "Weekly Eats",
   description: "Plan your meals, make your list, and head to the store with confidence.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon0.svg", type: "image/svg+xml" },
+      { url: "/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/web-app-manifest-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
+  other: {
+    "theme-color": "#f5f5f5",
+  },
 };
 
 export default function RootLayout({
@@ -21,6 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon0.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+      </head>
       <body className={figtree.variable}>
         <Providers>
           {children}

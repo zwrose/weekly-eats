@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { 
   Container, 
   Typography, 
@@ -19,6 +18,7 @@ import {
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface FeatureCard {
   title: string;
@@ -31,28 +31,28 @@ interface FeatureCard {
 const featureCards: FeatureCard[] = [
   {
     title: "Meal Plans",
-    description: "Plan your weekly meals and organize your schedule",
+    description: "Manage your weekly plans",
     icon: <CalendarMonth sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     color: "#1976d2",
     path: "/meal-plans"
   },
   {
     title: "Shopping Lists",
-    description: "Create and manage your grocery shopping lists",
+    description: "Shop with confidence",
     icon: <ShoppingCart sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     color: "#2e7d32",
     path: "/shopping-lists"
   },
   {
     title: "Recipes",
-    description: "Save and organize your favorite recipes",
+    description: "Manage your recipes",
     icon: <Restaurant sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     path: "/recipes",
     color: "#ed6c02"
   },
   {
     title: "Pantry",
-    description: "Track your pantry items and ingredients",
+    description: "Track your pantry items",
     icon: <Kitchen sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: "white" }} />,
     path: "/pantry",
     color: "#9c27b0"
@@ -60,11 +60,29 @@ const featureCards: FeatureCard[] = [
 ];
 
 export default function HomePage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
+  // Handle redirects based on authentication and approval status
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    } else if (status === "authenticated") {
+      const isApproved = (session?.user as { isApproved?: boolean })?.isApproved;
+      const isAdmin = (session?.user as { isAdmin?: boolean })?.isAdmin;
+      
+      // Redirect unapproved users (except admins)
+      if (!isApproved && !isAdmin) {
+        router.push('/pending-approval');
+      }
+    }
+  }, [status, session, router]);
+
   // Show loading state while session is being fetched
-  if (status === "loading") {
+  if (status === "loading" || 
+      status === "unauthenticated" || 
+      (status === "authenticated" && !(session?.user as { isApproved?: boolean })?.isApproved && 
+       !(session?.user as { isAdmin?: boolean })?.isAdmin)) {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="md">
@@ -74,11 +92,6 @@ export default function HomePage() {
         </Container>
       </AuthenticatedLayout>
     );
-  }
-
-  // Only redirect if session is definitely not available
-  if (status === "unauthenticated") {
-    redirect("/");
   }
 
   const handleCardClick = (path: string) => {
