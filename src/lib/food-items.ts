@@ -42,7 +42,7 @@ export const createFoodItem = async (data: CreateFoodItemData, userId: ObjectId)
 
 export const getFoodItemById = async (id: string): Promise<FoodItem | null> => {
   const collection = await getFoodItemsCollection();
-  return await collection.findOne({ _id: new ObjectId(id) });
+  return await collection.findOne({ _id: ObjectId.createFromHexString(id) });
 };
 
 export const getFoodItemByName = async (name: string, userId?: ObjectId): Promise<FoodItem | null> => {
@@ -111,7 +111,7 @@ export const updateFoodItem = async (id: string, data: Partial<CreateFoodItemDat
   
   // Only allow updates if user owns the item or it's global and they created it
   const query = {
-    _id: new ObjectId(id),
+    _id: ObjectId.createFromHexString(id),
     $or: [
       { userId },
       { isGlobal: true, createdBy: userId }
@@ -137,7 +137,7 @@ export const deleteFoodItem = async (id: string, userId: ObjectId): Promise<bool
   
   // Only allow deletion if user owns the item or it's global and they created it
   const query = {
-    _id: new ObjectId(id),
+    _id: ObjectId.createFromHexString(id),
     $or: [
       { userId },
       { isGlobal: true, createdBy: userId }
