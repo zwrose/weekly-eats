@@ -302,7 +302,7 @@ export default function FoodItemsPage() {
                           <TableHead>
                             <TableRow>
                               <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
                               <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                             </TableRow>
                           </TableHead>
@@ -445,7 +445,7 @@ export default function FoodItemsPage() {
                             <TableHead>
                               <TableRow>
                                 <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
                                 <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                               </TableRow>
                             </TableHead>
@@ -668,7 +668,7 @@ export default function FoodItemsPage() {
                   </Box>
                   <Divider />
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Type</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">Access Level</Typography>
                     <Typography variant="body1">
                       {selectedItem.isGlobal ? 'Global' : 'Personal'}
                     </Typography>

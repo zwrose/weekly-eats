@@ -387,7 +387,7 @@ export default function RecipesPage() {
                             <TableHead>
                               <TableRow>
                                 <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
                                 <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
                               </TableRow>
                             </TableHead>
@@ -543,7 +543,7 @@ export default function RecipesPage() {
                             <TableHead>
                               <TableRow>
                                 <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
                                 <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
                               </TableRow>
                             </TableHead>
