@@ -28,9 +28,13 @@ export async function GET(
     const db = client.db();
     const recipesCollection = db.collection('recipes');
 
+    // Allow viewing global recipes or user's own recipes
     const recipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      $or: [
+        { isGlobal: true },
+        { createdBy: session.user.id }
+      ]
     });
 
     if (!recipe) {
@@ -65,14 +69,14 @@ export async function PUT(
     const db = client.db();
     const recipesCollection = db.collection('recipes');
 
-    // Check if recipe exists and belongs to user
+    // Check if recipe exists and belongs to user (only creators can edit)
     const existingRecipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      createdBy: session.user.id
     });
 
     if (!existingRecipe) {
-      return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Recipe not found or you do not have permission to edit it' }, { status: 404 });
     }
 
     // Validate ingredients if provided
@@ -96,7 +100,7 @@ export async function PUT(
     };
 
     const result = await recipesCollection.updateOne(
-      { _id: ObjectId.createFromHexString(id), userId: session.user.id },
+      { _id: ObjectId.createFromHexString(id), createdBy: session.user.id },
       { $set: updateData }
     );
 
@@ -130,13 +134,14 @@ export async function DELETE(
     const db = client.db();
     const recipesCollection = db.collection('recipes');
 
+    // Only creators can delete their recipes
     const result = await recipesCollection.deleteOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      createdBy: session.user.id
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Recipe not found or you do not have permission to delete it' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Recipe deleted successfully' });

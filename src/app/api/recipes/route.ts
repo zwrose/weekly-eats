@@ -4,20 +4,53 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../lib/mongodb';
 import { CreateRecipeRequest } from '../../../types/recipe';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const userOnly = searchParams.get('userOnly') === 'true';
+    const globalOnly = searchParams.get('globalOnly') === 'true';
+    const excludeUserCreated = searchParams.get('excludeUserCreated') === 'true';
+
     const client = await getMongoClient();
     const db = client.db();
     const recipesCollection = db.collection('recipes');
 
-    // Get user's recipes
+    // Build query based on filter parameters
+    let filter: Record<string, unknown> = {};
+
+    if (userOnly) {
+      // Only user's personal recipes (including global recipes they created)
+      filter = { 
+        $or: [
+          { createdBy: session.user.id },
+          { isGlobal: true, createdBy: session.user.id }
+        ]
+      };
+    } else if (globalOnly) {
+      if (excludeUserCreated) {
+        // Only global recipes NOT created by the current user
+        filter = { isGlobal: true, createdBy: { $ne: session.user.id } };
+      } else {
+        // Only global recipes
+        filter = { isGlobal: true };
+      }
+    } else {
+      // Default: both global and user's personal recipes
+      filter = {
+        $or: [
+          { isGlobal: true },
+          { createdBy: session.user.id }
+        ]
+      };
+    }
+
     const recipes = await recipesCollection
-      .find({ userId: session.user.id })
+      .find(filter)
       .sort({ updatedAt: -1 })
       .toArray();
 
@@ -62,7 +95,7 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const recipe = {
       ...body,
-      userId: session.user.id,
+      createdBy: session.user.id,
       createdAt: now,
       updatedAt: now,
     };
