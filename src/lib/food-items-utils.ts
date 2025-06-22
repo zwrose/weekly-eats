@@ -24,7 +24,6 @@ export const FOOD_UNITS: FoodUnit[] = [
   { singular: 'tablespoon', plural: 'tablespoons', abbreviation: 'tbsp', abbreviationPlural: 'tbsp' },
   { singular: 'teaspoon', plural: 'teaspoons', abbreviation: 'tsp', abbreviationPlural: 'tsp' },
 
-
   // Countable Items
   { singular: 'each', plural: 'each', abbreviation: 'each', abbreviationPlural: 'each' },
   { singular: 'piece', plural: 'pieces', abbreviation: 'pc', abbreviationPlural: 'pcs' },
@@ -47,7 +46,6 @@ export const FOOD_UNITS: FoodUnit[] = [
   { singular: 'drop', plural: 'drops', abbreviation: 'drop', abbreviationPlural: 'drops' },
   { singular: 'scoop', plural: 'scoops', abbreviation: 'scoop', abbreviationPlural: 'scoops' },
   { singular: 'dozen', plural: 'dozen', abbreviation: 'dozen', abbreviationPlural: 'dozen' },
-
 
   // Size modifiers
   { singular: 'large', plural: 'large', abbreviation: 'lg', abbreviationPlural: 'lg' },
