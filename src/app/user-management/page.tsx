@@ -19,7 +19,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions,
   Pagination,
   Alert
 } from '@mui/material';
@@ -464,13 +463,30 @@ export default function UserManagementPage() {
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogContent>
             <DialogContentText>{getDialogContent()}</DialogContentText>
+            
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 },
+              mt: 3,
+              pt: 2
+            }}>
+              <Button 
+                onClick={closeConfirmDialog}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmAction} 
+                color="primary" 
+                variant="contained"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Confirm
+              </Button>
+            </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={closeConfirmDialog}>Cancel</Button>
-            <Button onClick={confirmAction} color="primary" variant="contained">
-              Confirm
-            </Button>
-          </DialogActions>
         </Dialog>
       </Container>
     </AuthenticatedLayout>

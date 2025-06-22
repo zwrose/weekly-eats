@@ -22,7 +22,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   IconButton,
   Tooltip,
   Divider,
@@ -548,35 +547,66 @@ export default function FoodItemsPage() {
               )}
             </Box>
           )}
+          
+          <Box sx={{ 
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 },
+            mt: 3,
+            pt: 2,
+            justifyContent: { xs: 'stretch', sm: 'flex-end' }
+          }}>
+            {editMode ? (
+              <>
+                <Button 
+                  onClick={() => setEditMode(false)}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Cancel
+                </Button>
+                <Tooltip 
+                  title={canDeleteItem(selectedItem!) ? "Delete this food item" : "Only admins can delete global items"}
+                  placement="top"
+                >
+                  <span>
+                    <Button
+                      onClick={() => setDeleteConfirmOpen(true)}
+                      startIcon={<Delete />}
+                      color="error"
+                      disabled={!canDeleteItem(selectedItem!)}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      Delete
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Button 
+                  onClick={handleUpdateItem} 
+                  variant="contained"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  onClick={handleCloseViewDialog}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={handleEditItem} 
+                  startIcon={<Edit />}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Edit
+                </Button>
+              </>
+            )}
+          </Box>
         </DialogContent>
-        <DialogActions>
-          {editMode ? (
-            <>
-              <Button onClick={() => setEditMode(false)}>Cancel</Button>
-              <Tooltip 
-                title={canDeleteItem(selectedItem!) ? "Delete this food item" : "Only admins can delete global items"}
-                placement="top"
-              >
-                <span>
-                  <Button
-                    onClick={() => setDeleteConfirmOpen(true)}
-                    startIcon={<Delete />}
-                    color="error"
-                    disabled={!canDeleteItem(selectedItem!)}
-                  >
-                    Delete
-                  </Button>
-                </span>
-              </Tooltip>
-              <Button onClick={handleUpdateItem} variant="contained">Save</Button>
-            </>
-          ) : (
-            <>
-              <Button onClick={handleCloseViewDialog}>Close</Button>
-              <Button onClick={handleEditItem} startIcon={<Edit />}>Edit</Button>
-            </>
-          )}
-        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
@@ -586,13 +616,30 @@ export default function FoodItemsPage() {
           <Typography>
             Are you sure you want to delete &quot;{selectedItem?.name}&quot;? This action cannot be undone.
           </Typography>
+          
+          <Box sx={{ 
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 },
+            mt: 3,
+            pt: 2
+          }}>
+            <Button 
+              onClick={() => setDeleteConfirmOpen(false)}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteItem} 
+              color="error" 
+              variant="contained"
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Delete
+            </Button>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteItem} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
       </Dialog>
     </AuthenticatedLayout>
   );

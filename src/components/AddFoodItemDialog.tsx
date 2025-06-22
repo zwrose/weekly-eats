@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   TextField,
   Button,
   FormControl,
@@ -131,10 +130,19 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
           <Typography variant="h6" gutterBottom>
             Add New Food Item
           </Typography>
-          <Stepper activeStep={step} sx={{ mt: 2 }}>
+          <Stepper 
+            activeStep={step} 
+            sx={{ mt: 2 }}
+          >
             {steps.map((label) => (
               <Step key={label}>
-                <StepLabel>{label}</StepLabel>
+                <StepLabel sx={{ 
+                  '& .MuiStepLabel-label': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}>
+                  {label}
+                </StepLabel>
               </Step>
             ))}
           </Stepper>
@@ -256,23 +264,49 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
               </Box>
             </Box>
           )}
+
+          <Box sx={{ 
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 },
+            mt: 3,
+            pt: 2,
+            justifyContent: { xs: 'stretch', sm: 'flex-end' }
+          }}>
+            <Button 
+              onClick={handleClose} 
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Cancel
+            </Button>
+            {step === 0 ? (
+              <Button 
+                onClick={handleNext} 
+                variant="contained"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Next
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  onClick={handleBack}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleSubmit} 
+                  variant="contained"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Add Food Item
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
-        {step === 0 ? (
-          <Button onClick={handleNext} variant="contained">
-            Next
-          </Button>
-        ) : (
-          <>
-            <Button onClick={handleBack}>Back</Button>
-            <Button onClick={handleSubmit} variant="contained">
-              Add Food Item
-            </Button>
-          </>
-        )}
-      </DialogActions>
     </Dialog>
   );
 } 

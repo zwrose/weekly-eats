@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   DialogContentText,
   TextField,
   IconButton,
@@ -193,6 +192,13 @@ export default function RecipesPage() {
     setEditMode(false);
   };
 
+  // Helper function to check if all ingredient groups have at least one ingredient
+  const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
+    return ingredients.length > 0 && ingredients.every(group => 
+      group.ingredients && group.ingredients.length > 0
+    );
+  };
+
   // Show loading state while session is being fetched
   if (status === "loading") {
     return (
@@ -328,7 +334,25 @@ export default function RecipesPage() {
           <DialogTitle>Create New Recipe</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 2 }}>
-              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                mb: 3,
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'stretch', sm: 'flex-start' }
+              }}>
+                <IconButton 
+                  onClick={() => setEmojiPickerOpen(true)}
+                  sx={{ 
+                    border: '1px solid #ccc',
+                    width: { xs: 56, sm: 56 },
+                    height: { xs: 56, sm: 56 },
+                    fontSize: '1.5rem',
+                    alignSelf: { xs: 'flex-start', sm: 'flex-start' }
+                  }}
+                >
+                  {newRecipe.emoji || <EmojiEmotions />}
+                </IconButton>
                 <TextField
                   label="Recipe Title"
                   value={newRecipe.title}
@@ -336,17 +360,6 @@ export default function RecipesPage() {
                   fullWidth
                   required
                 />
-                <IconButton 
-                  onClick={() => setEmojiPickerOpen(true)}
-                  sx={{ 
-                    border: '1px solid #ccc',
-                    minWidth: 56,
-                    height: 56,
-                    fontSize: '1.5rem'
-                  }}
-                >
-                  {newRecipe.emoji || <EmojiEmotions />}
-                </IconButton>
               </Box>
 
               <Typography variant="h6" gutterBottom>
@@ -371,18 +384,32 @@ export default function RecipesPage() {
                 fullWidth
                 required
               />
+
+              <Box sx={{ 
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1, sm: 0 },
+                mt: 3,
+                pt: 2,
+                justifyContent: { xs: 'stretch', sm: 'flex-end' }
+              }}>
+                <Button 
+                  onClick={() => setCreateDialogOpen(false)}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateRecipe}
+                  variant="contained"
+                  disabled={!newRecipe.title || !newRecipe.instructions || !hasValidIngredients(newRecipe.ingredients)}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Create Recipe
+                </Button>
+              </Box>
             </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleCreateRecipe}
-              variant="contained"
-              disabled={!newRecipe.title || !newRecipe.instructions || newRecipe.ingredients[0]?.ingredients.length === 0}
-            >
-              Create Recipe
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* View/Edit Recipe Dialog */}
@@ -413,7 +440,25 @@ export default function RecipesPage() {
             {editMode ? (
               // Edit Mode
               <Box sx={{ pt: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2, 
+                  mb: 3,
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { xs: 'stretch', sm: 'flex-start' }
+                }}>
+                  <IconButton 
+                    onClick={() => setEmojiPickerOpen(true)}
+                    sx={{ 
+                      border: '1px solid #ccc',
+                      width: { xs: 56, sm: 56 },
+                      height: { xs: 56, sm: 56 },
+                      fontSize: '1.5rem',
+                      alignSelf: { xs: 'flex-start', sm: 'flex-start' }
+                    }}
+                  >
+                    {editingRecipe.emoji || <EmojiEmotions />}
+                  </IconButton>
                   <TextField
                     label="Recipe Title"
                     value={editingRecipe.title}
@@ -421,17 +466,6 @@ export default function RecipesPage() {
                     fullWidth
                     required
                   />
-                  <IconButton 
-                    onClick={() => setEmojiPickerOpen(true)}
-                    sx={{ 
-                      border: '1px solid #ccc',
-                      minWidth: 56,
-                      height: 56,
-                      fontSize: '1.5rem'
-                    }}
-                  >
-                    {editingRecipe.emoji || <EmojiEmotions />}
-                  </IconButton>
                 </Box>
 
                 <Typography variant="h6" gutterBottom>
@@ -490,30 +524,52 @@ export default function RecipesPage() {
                 </Typography>
               </Box>
             )}
-          </DialogContent>
-          <DialogActions>
-            {editMode ? (
-              <>
-                <IconButton 
-                  onClick={() => setDeleteConfirmOpen(true)} 
-                  color="error"
-                  sx={{ mr: 'auto' }}
-                >
-                  <Delete />
-                </IconButton>
-                <Button onClick={() => setEditMode(false)}>Cancel</Button>
+
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 },
+              mt: 3,
+              pt: 2,
+              justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            }}>
+              {editMode ? (
+                <>
+                  <IconButton 
+                    onClick={() => setDeleteConfirmOpen(true)} 
+                    color="error"
+                    sx={{ 
+                      mr: { xs: 0, sm: 'auto' },
+                      alignSelf: { xs: 'center', sm: 'flex-start' }
+                    }}
+                  >
+                    <Delete />
+                  </IconButton>
+                  <Button 
+                    onClick={() => setEditMode(false)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpdateRecipe}
+                    variant="contained"
+                    disabled={!editingRecipe.title || !editingRecipe.instructions || !hasValidIngredients(editingRecipe.ingredients || [])}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    Update Recipe
+                  </Button>
+                </>
+              ) : (
                 <Button 
-                  onClick={handleUpdateRecipe}
-                  variant="contained"
-                  disabled={!editingRecipe.title || !editingRecipe.instructions || editingRecipe.ingredients?.[0]?.ingredients.length === 0}
+                  onClick={handleCloseViewDialog}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
-                  Update Recipe
+                  Close
                 </Button>
-              </>
-            ) : (
-              <Button onClick={handleCloseViewDialog}>Close</Button>
-            )}
-          </DialogActions>
+              )}
+            </Box>
+          </DialogContent>
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
@@ -526,13 +582,31 @@ export default function RecipesPage() {
             <DialogContentText>
               Are you sure you want to delete &quot;{selectedRecipe?.title}&quot;? This action cannot be undone.
             </DialogContentText>
+            
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 },
+              mt: 3,
+              pt: 2,
+              justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            }}>
+              <Button 
+                onClick={() => setDeleteConfirmOpen(false)}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDeleteRecipe} 
+                color="error" 
+                variant="contained"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Delete
+              </Button>
+            </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button onClick={handleDeleteRecipe} color="error" variant="contained">
-              Delete
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Emoji Picker */}
