@@ -67,7 +67,7 @@ export default function Header() {
   };
 
   const handleAdmin = () => {
-    router.push('/admin');
+    router.push('/user-management');
     handleClose();
   };
 
@@ -167,7 +167,7 @@ export default function Header() {
                   <ListItemIcon>
                     <AdminPanelSettings fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Admin</ListItemText>
+                  <ListItemText>User Management</ListItemText>
                 </MenuItem>
               )}
               <Divider />
