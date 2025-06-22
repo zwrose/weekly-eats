@@ -20,7 +20,8 @@ import {
   AccountCircle, 
   Settings,
   Logout,
-  AdminPanelSettings
+  Person,
+  FormatListBulleted
 } from "@mui/icons-material";
 import SessionWrapper from "./SessionWrapper";
 import { useRouter } from "next/navigation";
@@ -68,6 +69,11 @@ export default function Header() {
 
   const handleAdmin = () => {
     router.push('/user-management');
+    handleClose();
+  };
+
+  const handleFoodItems = () => {
+    router.push('/food-items');
     handleClose();
   };
 
@@ -156,20 +162,26 @@ export default function Header() {
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
+              <MenuItem onClick={handleFoodItems}>
+                <ListItemIcon>
+                  <FormatListBulleted fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Food Items</ListItemText>
+              </MenuItem>
+              {(session.user as { isAdmin?: boolean }).isAdmin && (
+                <MenuItem onClick={handleAdmin}>
+                  <ListItemIcon>
+                    <Person fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Users</ListItemText>
+                </MenuItem>
+              )}
               <MenuItem onClick={handleSettings}>
                 <ListItemIcon>
                   <Settings fontSize="small" />
                 </ListItemIcon>
                 <ListItemText>Settings</ListItemText>
               </MenuItem>
-              {(session.user as { isAdmin?: boolean }).isAdmin && (
-                <MenuItem onClick={handleAdmin}>
-                  <ListItemIcon>
-                    <AdminPanelSettings fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>User Management</ListItemText>
-                </MenuItem>
-              )}
               <Divider />
               <MenuItem onClick={handleSignOut}>
                 <ListItemIcon>

@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { VALID_UNITS } from '@/lib/food-items-utils';
-import pluralize from '@wei/pluralize';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,23 +14,42 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') || '';
     const limit = parseInt(searchParams.get('limit') || '10');
+    const userOnly = searchParams.get('userOnly') === 'true';
+    const globalOnly = searchParams.get('globalOnly') === 'true';
+    const excludeUserCreated = searchParams.get('excludeUserCreated') === 'true';
 
     const client = await getMongoClient();
     const db = client.db();
     const foodItemsCollection = db.collection('foodItems');
 
-    // Build query to find food items that are either:
-    // 1. Global items (visible to all users)
-    // 2. Personal items (created by the current user)
-    const filter: {
-      $or: Array<{ isGlobal: boolean; createdBy?: string }>;
-      name?: { $regex: string; $options: string };
-    } = {
-      $or: [
-        { isGlobal: true },
-        { isGlobal: false, createdBy: session.user.id }
-      ]
-    };
+    // Build query based on filter parameters
+    let filter: Record<string, unknown> = {};
+
+    if (userOnly) {
+      // Only user's personal items (including global items they created)
+      filter = { 
+        $or: [
+          { createdBy: session.user.id },
+          { isGlobal: true, createdBy: session.user.id }
+        ]
+      };
+    } else if (globalOnly) {
+      if (excludeUserCreated) {
+        // Only global items NOT created by the current user
+        filter = { isGlobal: true, createdBy: { $ne: session.user.id } };
+      } else {
+        // Only global items
+        filter = { isGlobal: true };
+      }
+    } else {
+      // Default: both global and user's personal items
+      filter = {
+        $or: [
+          { isGlobal: true },
+          { userId: session.user.id }
+        ]
+      };
+    }
 
     // Add search filter if query is provided
     if (query.trim()) {
@@ -59,11 +77,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, unit, isGlobal } = body;
+    const { name, singularName, pluralName, unit, isGlobal } = body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    if (!singularName || typeof singularName !== 'string' || singularName.trim().length === 0) {
+      return NextResponse.json({ error: 'Singular name is required' }, { status: 400 });
+    }
+
+    if (!pluralName || typeof pluralName !== 'string' || pluralName.trim().length === 0) {
+      return NextResponse.json({ error: 'Plural name is required' }, { status: 400 });
     }
 
     if (!unit || typeof unit !== 'string' || !VALID_UNITS.includes(unit)) {
@@ -79,21 +105,18 @@ export async function POST(request: NextRequest) {
     const foodItemsCollection = db.collection('foodItems');
 
     const trimmedName = name.trim();
-
-    // Determine if the input is singular or plural and generate both forms
-    const isInputSingular = pluralize.isSingular(trimmedName);
-    const singularName = isInputSingular ? trimmedName : pluralize.singular(trimmedName);
-    const pluralName = isInputSingular ? pluralize.plural(trimmedName) : trimmedName;
+    const trimmedSingularName = singularName.trim();
+    const trimmedPluralName = pluralName.trim();
 
     // Check if food item already exists (case-insensitive, check both singular and plural forms)
     const existingItem = await foodItemsCollection.findOne({
       $and: [
         {
           $or: [
-            { singularName: { $regex: `^${singularName}$`, $options: 'i' } },
-            { pluralName: { $regex: `^${pluralName}$`, $options: 'i' } },
-            { singularName: { $regex: `^${pluralName}$`, $options: 'i' } },
-            { pluralName: { $regex: `^${singularName}$`, $options: 'i' } }
+            { singularName: { $regex: `^${trimmedSingularName}$`, $options: 'i' } },
+            { pluralName: { $regex: `^${trimmedPluralName}$`, $options: 'i' } },
+            { singularName: { $regex: `^${trimmedPluralName}$`, $options: 'i' } },
+            { pluralName: { $regex: `^${trimmedSingularName}$`, $options: 'i' } }
           ]
         },
         {
@@ -110,9 +133,9 @@ export async function POST(request: NextRequest) {
     }
 
     const newFoodItem = {
-      name: singularName, // Use singular form as the primary name
-      singularName,
-      pluralName,
+      name: trimmedName,
+      singularName: trimmedSingularName,
+      pluralName: trimmedPluralName,
       unit,
       isGlobal,
       isApproved: true, // All items are auto-approved since there's no admin approval

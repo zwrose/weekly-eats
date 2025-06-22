@@ -244,18 +244,14 @@ export default function UserManagementPage() {
     <AuthenticatedLayout>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          User Management
+          Manage Users
         </Typography>
         
         <Paper sx={{ p: 3, mt: 3 }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Filter Users
-            </Typography>
             <TextField
               fullWidth
-              label="Start typing to filter users by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Start typing to filter users by name or email..."
@@ -286,10 +282,10 @@ export default function UserManagementPage() {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>Registration Date</TableCell>
-                        <TableCell align="center">Actions</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Registration Date</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -372,10 +368,10 @@ export default function UserManagementPage() {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>User Type</TableCell>
-                        <TableCell align="center">Actions</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>User Type</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>

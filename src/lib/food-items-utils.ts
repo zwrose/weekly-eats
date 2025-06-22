@@ -143,7 +143,9 @@ export const getUnitAbbreviationForm = (unit: string, quantity: number): string 
 export const getUnitOptions = (): { value: ValidUnit; label: string }[] => {
   return FOOD_UNITS.map(unit => ({
     value: unit.singular,
-    label: `${unit.singular} (${unit.abbreviation || unit.plural})`
+    label: unit.abbreviation && unit.abbreviation !== unit.singular 
+      ? `${unit.singular} (${unit.abbreviation})`
+      : unit.singular
   }));
 };
 

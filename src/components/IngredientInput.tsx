@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Delete, Add, AddCircle } from '@mui/icons-material';
 import { RecipeIngredient, RecipeIngredientList } from '../types/recipe';
-import { fetchFoodItems, VALID_UNITS, getUnitForm } from '../lib/food-items-utils';
+import { fetchFoodItems, getUnitOptions } from '../lib/food-items-utils';
 import AddFoodItemDialog from './AddFoodItemDialog';
 
 interface IngredientInputProps {
@@ -160,7 +160,7 @@ export default function IngredientInput({ ingredients, onChange }: IngredientInp
     setAddDialogOpen(true);
   };
 
-  const handleAddFoodItem = async (foodItemData: { name: string; unit: string; isGlobal: boolean }) => {
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
     try {
       const response = await fetch('/api/food-items', {
         method: 'POST',
@@ -204,14 +204,6 @@ export default function IngredientInput({ ingredients, onChange }: IngredientInp
       .filter(id => id !== null && id !== '');
     
     return foodItems.filter(item => !selectedFoodItemIds.includes(item._id));
-  };
-
-  // Get unit options with proper singular/plural forms for display
-  const getUnitOptions = () => {
-    return VALID_UNITS.map(unit => ({
-      value: unit,
-      label: getUnitForm(unit, 1) // Always show singular form in dropdown
-    }));
   };
 
   return (
