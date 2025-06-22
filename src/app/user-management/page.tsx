@@ -265,7 +265,14 @@ export default function UserManagementPage() {
 
           {/* Pending Users Section */}
           <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              gap: { xs: 1, sm: 0 },
+              mb: 2 
+            }}>
               <Typography variant="h6" gutterBottom>
                 <HourglassEmpty sx={{ mr: 1, verticalAlign: 'middle' }} />
                 Users Pending Approval ({filteredPendingUsers.length})
@@ -344,7 +351,14 @@ export default function UserManagementPage() {
 
           {/* Approved Users Section */}
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              gap: { xs: 1, sm: 0 },
+              mb: 2 
+            }}>
               <Typography variant="h6" gutterBottom>
                 <AdminPanelSettings sx={{ mr: 1, verticalAlign: 'middle' }} />
                 Active Users ({filteredApprovedUsers.length})

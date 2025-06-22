@@ -11,11 +11,11 @@ import {
   Button,
   Card,
   CardContent,
-  CardActions,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
   TextField,
   IconButton,
   Divider,
@@ -25,23 +25,35 @@ import {
   Add, 
   Edit, 
   Delete, 
-  Visibility,
-  EmojiEmotions
+  EmojiEmotions,
+  RestaurantMenu
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
-import { Recipe, CreateRecipeRequest } from "../../types/recipe";
-import { fetchRecipes, createRecipe, deleteRecipe } from "../../lib/recipe-utils";
+import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";
+import { fetchRecipes, createRecipe, deleteRecipe, updateRecipe, fetchRecipe } from "../../lib/recipe-utils";
 import EmojiPicker from "../../components/EmojiPicker";
 import IngredientInput from "../../components/IngredientInput";
 import { RecipeIngredientList } from "../../types/recipe";
+import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 
 export default function RecipesPage() {
   const { status } = useSession();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [foodItems, setFoodItems] = useState<{[key: string]: {singularName: string, pluralName: string}}>({});
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
+    title: '',
+    emoji: '',
+    ingredients: [{ ingredients: [] }],
+    instructions: '',
+  });
+  const [editingRecipe, setEditingRecipe] = useState<UpdateRecipeRequest>({
     title: '',
     emoji: '',
     ingredients: [{ ingredients: [] }],
@@ -51,6 +63,7 @@ export default function RecipesPage() {
   useEffect(() => {
     if (status === 'authenticated') {
       loadRecipes();
+      loadFoodItems();
     }
   }, [status]);
 
@@ -63,6 +76,30 @@ export default function RecipesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadFoodItems = async () => {
+    try {
+      const items = await fetchFoodItems();
+      const itemsMap: {[key: string]: {singularName: string, pluralName: string}} = {};
+      items.forEach(item => {
+        itemsMap[item._id] = {
+          singularName: item.singularName,
+          pluralName: item.pluralName
+        };
+      });
+      setFoodItems(itemsMap);
+    } catch (error) {
+      console.error('Error loading food items:', error);
+    }
+  };
+
+  const getFoodItemName = (foodItemId: string, quantity: number): string => {
+    const foodItem = foodItems[foodItemId];
+    if (!foodItem) {
+      return 'Unknown item';
+    }
+    return quantity === 1 ? foodItem.singularName : foodItem.pluralName;
   };
 
   const handleCreateRecipe = async () => {
@@ -81,23 +118,79 @@ export default function RecipesPage() {
     }
   };
 
-  const handleDeleteRecipe = async (id: string) => {
-    if (confirm('Are you sure you want to delete this recipe?')) {
-      try {
-        await deleteRecipe(id);
-        loadRecipes();
-      } catch (error) {
-        console.error('Error deleting recipe:', error);
-      }
+  const handleViewRecipe = async (recipe: Recipe) => {
+    try {
+      // Fetch the full recipe data
+      const fullRecipe = await fetchRecipe(recipe._id!);
+      setSelectedRecipe(fullRecipe);
+      setViewDialogOpen(true);
+      setEditMode(false);
+    } catch (error) {
+      console.error('Error loading recipe details:', error);
+    }
+  };
+
+  const handleEditRecipe = () => {
+    if (selectedRecipe) {
+      setEditingRecipe({
+        title: selectedRecipe.title,
+        emoji: selectedRecipe.emoji || '',
+        ingredients: selectedRecipe.ingredients,
+        instructions: selectedRecipe.instructions,
+      });
+      setEditMode(true);
+    }
+  };
+
+  const handleUpdateRecipe = async () => {
+    if (!selectedRecipe?._id) return;
+    
+    try {
+      await updateRecipe(selectedRecipe._id, editingRecipe);
+      setEditMode(false);
+      // Refresh the recipe data
+      const updatedRecipe = await fetchRecipe(selectedRecipe._id);
+      setSelectedRecipe(updatedRecipe);
+      loadRecipes(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+    }
+  };
+
+  const handleDeleteRecipe = async () => {
+    if (!selectedRecipe?._id) return;
+    
+    try {
+      await deleteRecipe(selectedRecipe._id);
+      setDeleteConfirmOpen(false);
+      setViewDialogOpen(false);
+      setSelectedRecipe(null);
+      loadRecipes();
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
     }
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    setNewRecipe({ ...newRecipe, emoji });
+    if (editMode) {
+      setEditingRecipe({ ...editingRecipe, emoji });
+    } else {
+      setNewRecipe({ ...newRecipe, emoji });
+    }
   };
 
   const handleIngredientsChange = (ingredients: RecipeIngredientList[]) => {
-    setNewRecipe({ ...newRecipe, ingredients });
+    if (editMode) {
+      setEditingRecipe({ ...editingRecipe, ingredients });
+    } else {
+      setNewRecipe({ ...newRecipe, ingredients });
+    }
+  };
+
+  const handleCloseViewDialog = () => {
+    setViewDialogOpen(false);
+    setSelectedRecipe(null);
+    setEditMode(false);
   };
 
   // Show loading state while session is being fetched
@@ -129,7 +222,14 @@ export default function RecipesPage() {
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
+          <Box sx={{ 
+            display: "flex", 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: "space-between", 
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            gap: { xs: 2, sm: 0 },
+            mb: 4 
+          }}>
             <Typography variant="h5" gutterBottom>
               Your Recipe Collection
             </Typography>
@@ -159,58 +259,60 @@ export default function RecipesPage() {
           ) : (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               {recipes.map((recipe) => (
-                <Box key={recipe._id} sx={{ width: 'calc(33.33% - 10px)', flexGrow: 1 }}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        {recipe.emoji && (
-                          <Typography variant="h4">{recipe.emoji}</Typography>
-                        )}
-                        <Typography variant="h6" component="h2" noWrap>
-                          {recipe.title}
+                <Card 
+                  key={recipe._id} 
+                  sx={{ 
+                    width: '100%', 
+                    flexGrow: 1,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 4,
+                    }
+                  }}
+                  onClick={() => handleViewRecipe(recipe)}
+                >
+                  <CardContent sx={{ 
+                    py: { xs: 2, sm: 2.5, md: 3 },
+                    px: { xs: 2, sm: 2.5, md: 3 }
+                  }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      gap: { xs: 1, sm: 1.5, md: 2 }
+                    }}>
+                      {recipe.emoji ? (
+                        <Typography variant="h2" sx={{ 
+                          fontSize: { xs: '2rem', sm: '2.5rem', md: '2.5rem' },
+                          flexShrink: 0,
+                          lineHeight: 1
+                        }}>
+                          {recipe.emoji}
                         </Typography>
-                      </Box>
-                      
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {recipe.ingredients.reduce((total, list) => 
-                          total + list.ingredients.length, 0
-                        )} ingredients
-                      </Typography>
-                      
+                      ) : (
+                        <RestaurantMenu sx={{ 
+                          fontSize: { xs: 32, sm: 40, md: 40 }, 
+                          color: 'text.secondary',
+                          flexShrink: 0
+                        }} />
+                      )}
                       <Typography 
-                        variant="body2" 
-                        color="text.secondary"
+                        variant="h2" 
+                        component="h2" 
                         sx={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
+                          fontSize: { xs: '1.5rem', sm: '2rem', md: '2rem' },
+                          lineHeight: 1.2,
+                          wordBreak: 'break-word',
+                          flex: 1,
+                          minWidth: 0
                         }}
                       >
-                        {recipe.instructions}
+                        {recipe.title}
                       </Typography>
-                    </CardContent>
-                    
-                    <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
-                      <Box>
-                        <IconButton size="small" color="primary">
-                          <Visibility />
-                        </IconButton>
-                        <IconButton size="small" color="primary">
-                          <Edit />
-                        </IconButton>
-                      </Box>
-                      <IconButton 
-                        size="small" 
-                        color="error"
-                        onClick={() => handleDeleteRecipe(recipe._id!)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </CardActions>
-                  </Card>
-                </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
               ))}
             </Box>
           )}
@@ -283,12 +385,162 @@ export default function RecipesPage() {
           </DialogActions>
         </Dialog>
 
+        {/* View/Edit Recipe Dialog */}
+        <Dialog 
+          open={viewDialogOpen} 
+          onClose={handleCloseViewDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {selectedRecipe?.emoji && (
+                  <Typography variant="h4">{selectedRecipe.emoji}</Typography>
+                )}
+                <Typography variant="h5">
+                  {editMode ? 'Edit Recipe' : selectedRecipe?.title}
+                </Typography>
+              </Box>
+              {!editMode && (
+                <IconButton onClick={handleEditRecipe} color="primary">
+                  <Edit />
+                </IconButton>
+              )}
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {editMode ? (
+              // Edit Mode
+              <Box sx={{ pt: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <TextField
+                    label="Recipe Title"
+                    value={editingRecipe.title}
+                    onChange={(e) => setEditingRecipe({ ...editingRecipe, title: e.target.value })}
+                    fullWidth
+                    required
+                  />
+                  <IconButton 
+                    onClick={() => setEmojiPickerOpen(true)}
+                    sx={{ 
+                      border: '1px solid #ccc',
+                      minWidth: 56,
+                      height: 56,
+                      fontSize: '1.5rem'
+                    }}
+                  >
+                    {editingRecipe.emoji || <EmojiEmotions />}
+                  </IconButton>
+                </Box>
+
+                <Typography variant="h6" gutterBottom>
+                  Ingredients
+                </Typography>
+                <IngredientInput
+                  ingredients={editingRecipe.ingredients || []}
+                  onChange={handleIngredientsChange}
+                />
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" gutterBottom>
+                  Instructions
+                </Typography>
+                <TextField
+                  label="Cooking Instructions"
+                  value={editingRecipe.instructions}
+                  onChange={(e) => setEditingRecipe({ ...editingRecipe, instructions: e.target.value })}
+                  multiline
+                  rows={6}
+                  fullWidth
+                  required
+                />
+              </Box>
+            ) : (
+              // View Mode
+              <Box sx={{ pt: 2 }}>
+                <Typography variant="h4" gutterBottom>
+                  Ingredients
+                </Typography>
+                {selectedRecipe?.ingredients.map((list, index) => (
+                  <Box key={index} sx={{ mb: 2 }}>
+                    {list.title && (
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        {list.title}
+                      </Typography>
+                    )}
+                    <Box component="ul" sx={{ pl: 2 }}>
+                      {list.ingredients.map((ingredient, ingIndex) => (
+                        <Typography key={ingIndex} component="li" variant="body1">
+                          {ingredient.quantity} {ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{getFoodItemName(ingredient.foodItemId, ingredient.quantity)}
+                        </Typography>
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h4" gutterBottom>
+                  Instructions
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {selectedRecipe?.instructions}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            {editMode ? (
+              <>
+                <IconButton 
+                  onClick={() => setDeleteConfirmOpen(true)} 
+                  color="error"
+                  sx={{ mr: 'auto' }}
+                >
+                  <Delete />
+                </IconButton>
+                <Button onClick={() => setEditMode(false)}>Cancel</Button>
+                <Button 
+                  onClick={handleUpdateRecipe}
+                  variant="contained"
+                  disabled={!editingRecipe.title || !editingRecipe.instructions || editingRecipe.ingredients?.[0]?.ingredients.length === 0}
+                >
+                  Update Recipe
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleCloseViewDialog}>Close</Button>
+            )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteConfirmOpen}
+          onClose={() => setDeleteConfirmOpen(false)}
+        >
+          <DialogTitle>Delete Recipe</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete &quot;{selectedRecipe?.title}&quot;? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+            <Button onClick={handleDeleteRecipe} color="error" variant="contained">
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Emoji Picker */}
         <EmojiPicker
           open={emojiPickerOpen}
           onClose={() => setEmojiPickerOpen(false)}
           onSelect={handleEmojiSelect}
-          currentEmoji={newRecipe.emoji}
+          currentEmoji={editMode ? editingRecipe.emoji : newRecipe.emoji}
         />
       </Container>
     </AuthenticatedLayout>
