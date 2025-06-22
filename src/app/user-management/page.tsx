@@ -241,12 +241,12 @@ export default function UserManagementPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Users
         </Typography>
         
-        <Paper sx={{ p: 3, mt: 3 }}>
+        <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
             <TextField
@@ -277,54 +277,113 @@ export default function UserManagementPage() {
             
             {filteredPendingUsers.length > 0 ? (
               <>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Registration Date</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {paginatedPendingUsers.map((user) => (
-                        <TableRow key={user._id}>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Person color="action" fontSize="small" />
-                              {user.name}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>Recent</TableCell>
-                          <TableCell align="center">
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                color="success"
-                                startIcon={<CheckCircle />}
-                                onClick={() => openConfirmDialog(user, 'approve')}
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                color="error"
-                                startIcon={<Cancel />}
-                                onClick={() => openConfirmDialog(user, 'deny')}
-                              >
-                                Deny
-                              </Button>
-                            </Box>
-                          </TableCell>
+                {/* Desktop Table View */}
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Registration Date</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {paginatedPendingUsers.map((user) => (
+                          <TableRow key={user._id}>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Person color="action" fontSize="small" />
+                                {user.name}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>Recent</TableCell>
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  color="success"
+                                  startIcon={<CheckCircle />}
+                                  onClick={() => openConfirmDialog(user, 'approve')}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  color="error"
+                                  startIcon={<Cancel />}
+                                  onClick={() => openConfirmDialog(user, 'deny')}
+                                >
+                                  Deny
+                                </Button>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  {paginatedPendingUsers.map((user) => (
+                    <Paper
+                      key={user._id}
+                      sx={{
+                        p: 3,
+                        mb: 2,
+                        boxShadow: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Person color="action" fontSize="small" />
+                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                            {user.name}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.email}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Registration Date: Recent
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="success"
+                          startIcon={<CheckCircle />}
+                          onClick={() => openConfirmDialog(user, 'approve')}
+                          fullWidth={false}
+                          sx={{ flex: 1 }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<Cancel />}
+                          onClick={() => openConfirmDialog(user, 'deny')}
+                          fullWidth={false}
+                          sx={{ flex: 1 }}
+                        >
+                          Deny
+                        </Button>
+                      </Box>
+                    </Paper>
+                  ))}
+                </Box>
                 
                 {filteredPendingUsers.length > pendingUsersPerPage && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -363,81 +422,167 @@ export default function UserManagementPage() {
             
             {filteredApprovedUsers.length > 0 ? (
               <>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>User Type</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {paginatedApprovedUsers.map((user) => (
-                        <TableRow key={user._id}>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Person color="action" fontSize="small" />
-                              {user.name}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {user.isAdmin ? (
-                                <>
-                                  <AdminPanelSettings color="primary" fontSize="small" />
-                                  Admin
-                                </>
-                              ) : (
-                                'User'
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                              {!isCurrentUser(user._id) && (
-                                <>
-                                  {user.isAdmin ? (
-                                    <Button
-                                      variant="outlined"
-                                      size="small"
-                                      color="warning"
-                                      startIcon={<Cancel />}
-                                      onClick={() => openConfirmDialog(user, 'revoke')}
-                                    >
-                                      Revoke Admin
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="outlined"
-                                      size="small"
-                                      color="primary"
-                                      startIcon={<AdminPanelSettings />}
-                                      onClick={() => openConfirmDialog(user, 'grant')}
-                                    >
-                                      Grant Admin
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    color="error"
-                                    startIcon={<Cancel />}
-                                    onClick={() => openConfirmDialog(user, 'revoke-access')}
-                                  >
-                                    Revoke Access
-                                  </Button>
-                                </>
-                              )}
-                            </Box>
-                          </TableCell>
+                {/* Desktop Table View */}
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>User Type</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {paginatedApprovedUsers.map((user) => (
+                          <TableRow key={user._id}>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Person color="action" fontSize="small" />
+                                {user.name}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {user.isAdmin ? (
+                                  <>
+                                    <AdminPanelSettings color="primary" fontSize="small" />
+                                    Admin
+                                  </>
+                                ) : (
+                                  'User'
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                {!isCurrentUser(user._id) && (
+                                  <>
+                                    {user.isAdmin ? (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        color="warning"
+                                        startIcon={<Cancel />}
+                                        onClick={() => openConfirmDialog(user, 'revoke')}
+                                      >
+                                        Revoke Admin
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        color="primary"
+                                        startIcon={<AdminPanelSettings />}
+                                        onClick={() => openConfirmDialog(user, 'grant')}
+                                      >
+                                        Grant Admin
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      color="error"
+                                      startIcon={<Cancel />}
+                                      onClick={() => openConfirmDialog(user, 'revoke-access')}
+                                    >
+                                      Revoke Access
+                                    </Button>
+                                  </>
+                                )}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  {paginatedApprovedUsers.map((user) => (
+                    <Paper
+                      key={user._id}
+                      sx={{
+                        p: 3,
+                        mb: 2,
+                        boxShadow: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Person color="action" fontSize="small" />
+                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                            {user.name}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.email}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {user.isAdmin ? (
+                            <>
+                              <AdminPanelSettings color="primary" fontSize="small" />
+                              <Typography variant="body2" color="primary">
+                                Admin
+                              </Typography>
+                            </>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              User
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                      {!isCurrentUser(user._id) && (
+                        <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+                          {user.isAdmin ? (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="warning"
+                              startIcon={<Cancel />}
+                              onClick={() => openConfirmDialog(user, 'revoke')}
+                              fullWidth={false}
+                              sx={{ flex: 1 }}
+                            >
+                              Revoke Admin
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="primary"
+                              startIcon={<AdminPanelSettings />}
+                              onClick={() => openConfirmDialog(user, 'grant')}
+                              fullWidth={false}
+                              sx={{ flex: 1 }}
+                            >
+                              Grant Admin
+                            </Button>
+                          )}
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            startIcon={<Cancel />}
+                            onClick={() => openConfirmDialog(user, 'revoke-access')}
+                            fullWidth={false}
+                            sx={{ flex: 1 }}
+                          >
+                            Revoke Access
+                          </Button>
+                        </Box>
+                      )}
+                    </Paper>
+                  ))}
+                </Box>
                 
                 {filteredApprovedUsers.length > approvedUsersPerPage && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>

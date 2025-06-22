@@ -35,7 +35,6 @@ import {
   EmojiEmotions,
   Public,
   Person,
-  Visibility,
   RestaurantMenu
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -315,8 +314,8 @@ export default function RecipesPage() {
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl">
-        <Box sx={{ py: 4 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
+        <Box sx={{ py: { xs: 2, md: 4 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: { xs: 2, md: 4 } }}>
             <Restaurant sx={{ fontSize: 40, color: "#ed6c02" }} />
             <Typography variant="h3" component="h1" sx={{ color: "#ed6c02" }}>
               Recipes
@@ -329,7 +328,7 @@ export default function RecipesPage() {
             justifyContent: "space-between", 
             alignItems: { xs: 'flex-start', sm: 'center' }, 
             gap: { xs: 2, sm: 0 },
-            mb: 4 
+            mb: { xs: 2, md: 4 } 
           }}>
             <Typography variant="h5" gutterBottom>
               Recipe Collection
@@ -381,65 +380,124 @@ export default function RecipesPage() {
                   
                   {filteredUserRecipes.length > 0 ? (
                     <>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Recipe</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
-                              <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {paginatedUserRecipes.map((recipe) => (
-                              <TableRow key={recipe._id}>
-                                <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {recipe.emoji ? (
-                                      <Typography variant="h6">{recipe.emoji}</Typography>
-                                    ) : (
-                                      <RestaurantMenu sx={{ fontSize: 24, color: 'text.secondary' }} />
-                                    )}
-                                    <Typography variant="body1">{recipe.title}</Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  {recipe.isGlobal ? (
-                                    <Chip 
-                                      label="Global" 
-                                      size="small" 
-                                      color="primary" 
-                                      variant="outlined"
-                                      icon={<Public fontSize="small" />}
-                                    />
-                                  ) : (
-                                    <Chip 
-                                      label="Personal" 
-                                      size="small" 
-                                      color="default" 
-                                      variant="outlined"
-                                      icon={<Person fontSize="small" />}
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(recipe.updatedAt).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => handleViewRecipe(recipe)}
-                                    color="primary"
-                                  >
-                                    <Visibility />
-                                  </IconButton>
-                                </TableCell>
+                      {/* Desktop Table View */}
+                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                              {paginatedUserRecipes.map((recipe) => (
+                                <TableRow 
+                                  key={recipe._id}
+                                  onClick={() => handleViewRecipe(recipe)}
+                                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                                >
+                                  <TableCell>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      {recipe.emoji ? (
+                                        <Typography variant="h6">{recipe.emoji}</Typography>
+                                      ) : (
+                                        <RestaurantMenu sx={{ fontSize: 24, color: 'text.secondary' }} />
+                                      )}
+                                      <Typography variant="body1">{recipe.title}</Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    {recipe.isGlobal ? (
+                                      <Chip 
+                                        label="Global" 
+                                        size="small" 
+                                        color="primary" 
+                                        variant="outlined"
+                                        icon={<Public fontSize="small" />}
+                                      />
+                                    ) : (
+                                      <Chip 
+                                        label="Personal" 
+                                        size="small" 
+                                        color="default" 
+                                        variant="outlined"
+                                        icon={<Person fontSize="small" />}
+                                      />
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {new Date(recipe.updatedAt).toLocaleDateString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+
+                      {/* Mobile Card View */}
+                      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        {paginatedUserRecipes.map((recipe) => (
+                          <Paper
+                            key={recipe._id}
+                            onClick={() => handleViewRecipe(recipe)}
+                            sx={{
+                              p: 3,
+                              mb: 2,
+                              cursor: 'pointer',
+                              '&:hover': { 
+                                backgroundColor: 'action.hover',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 4
+                              },
+                              transition: 'all 0.2s ease-in-out',
+                              boxShadow: 2,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 2
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                              <Box sx={{ mb: 1 }}>
+                                {recipe.emoji ? (
+                                  <Typography variant="h4">{recipe.emoji}</Typography>
+                                ) : (
+                                  <RestaurantMenu sx={{ fontSize: 32, color: 'text.secondary' }} />
+                                )}
+                              </Box>
+                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                                {recipe.title}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                {recipe.isGlobal ? (
+                                  <Chip 
+                                    label="Global" 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined"
+                                    icon={<Public fontSize="small" />}
+                                  />
+                                ) : (
+                                  <Chip 
+                                    label="Personal" 
+                                    size="small" 
+                                    color="default" 
+                                    variant="outlined"
+                                    icon={<Person fontSize="small" />}
+                                  />
+                                )}
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Updated: {new Date(recipe.updatedAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Box>
                       
                       {filteredUserRecipes.length > itemsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -478,55 +536,104 @@ export default function RecipesPage() {
                   
                   {filteredGlobalRecipes.length > 0 ? (
                     <>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Recipe</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
-                              <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {paginatedGlobalRecipes.map((recipe) => (
-                              <TableRow key={recipe._id}>
-                                <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {recipe.emoji ? (
-                                      <Typography variant="h6">{recipe.emoji}</Typography>
-                                    ) : (
-                                      <RestaurantMenu sx={{ fontSize: 24, color: 'text.secondary' }} />
-                                    )}
-                                    <Typography variant="body1">{recipe.title}</Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <Chip 
-                                    label="Global" 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                    icon={<Public fontSize="small" />}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(recipe.updatedAt).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => handleViewRecipe(recipe)}
-                                    color="primary"
-                                  >
-                                    <Visibility />
-                                  </IconButton>
-                                </TableCell>
+                      {/* Desktop Table View */}
+                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                              {paginatedGlobalRecipes.map((recipe) => (
+                                <TableRow 
+                                  key={recipe._id}
+                                  onClick={() => handleViewRecipe(recipe)}
+                                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                                >
+                                  <TableCell>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      {recipe.emoji ? (
+                                        <Typography variant="h6">{recipe.emoji}</Typography>
+                                      ) : (
+                                        <RestaurantMenu sx={{ fontSize: 24, color: 'text.secondary' }} />
+                                      )}
+                                      <Typography variant="body1">{recipe.title}</Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip 
+                                      label="Global" 
+                                      size="small" 
+                                      color="primary" 
+                                      variant="outlined"
+                                      icon={<Public fontSize="small" />}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    {new Date(recipe.updatedAt).toLocaleDateString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+
+                      {/* Mobile Card View */}
+                      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        {paginatedGlobalRecipes.map((recipe) => (
+                          <Paper
+                            key={recipe._id}
+                            onClick={() => handleViewRecipe(recipe)}
+                            sx={{
+                              p: 3,
+                              mb: 2,
+                              cursor: 'pointer',
+                              '&:hover': { 
+                                backgroundColor: 'action.hover',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 4
+                              },
+                              transition: 'all 0.2s ease-in-out',
+                              boxShadow: 2,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 2
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                              <Box sx={{ mb: 1 }}>
+                                {recipe.emoji ? (
+                                  <Typography variant="h4">{recipe.emoji}</Typography>
+                                ) : (
+                                  <RestaurantMenu sx={{ fontSize: 32, color: 'text.secondary' }} />
+                                )}
+                              </Box>
+                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                                {recipe.title}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                <Chip 
+                                  label="Global" 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined"
+                                  icon={<Public fontSize="small" />}
+                                />
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Updated: {new Date(recipe.updatedAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Box>
                       
                       {filteredGlobalRecipes.length > itemsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -768,34 +875,70 @@ export default function RecipesPage() {
             ) : (
               // View Mode
               <Box sx={{ pt: 2 }}>
-                <Typography variant="h4" gutterBottom>
-                  Ingredients
-                </Typography>
-                {selectedRecipe?.ingredients.map((list, index) => (
-                  <Box key={index} sx={{ mb: 2 }}>
-                    {list.title && (
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                        {list.title}
-                      </Typography>
-                    )}
-                    <Box component="ul" sx={{ pl: 2 }}>
-                      {list.ingredients.map((ingredient, ingIndex) => (
-                        <Typography key={ingIndex} component="li" variant="body1">
-                          {ingredient.quantity} {ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{getFoodItemName(ingredient.foodItemId, ingredient.quantity)}
-                        </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 3,
+                  flexDirection: { xs: 'column', md: 'row' },
+                  minHeight: { xs: 'auto', md: '40vh' },
+                  maxHeight: { xs: 'none', md: '60vh' }
+                }}>
+                  {/* Ingredients Section */}
+                  <Box sx={{ 
+                    flex: { xs: 'none', md: '0 0 35%' },
+                    maxHeight: { xs: 'none', md: '100%' },
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    <Typography variant="h5" gutterBottom>
+                      Ingredients
+                    </Typography>
+                    <Box sx={{ 
+                      flex: 1,
+                      overflow: 'auto',
+                      pr: 1
+                    }}>
+                      {selectedRecipe?.ingredients.map((list, index) => (
+                        <Box key={index} sx={{ mb: 2 }}>
+                          {list.title && (
+                            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                              {list.title}
+                            </Typography>
+                          )}
+                          <Box component="ul" sx={{ pl: 2 }}>
+                            {list.ingredients.map((ingredient, ingIndex) => (
+                              <Typography key={ingIndex} component="li" variant="body1">
+                                {ingredient.quantity} {ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{getFoodItemName(ingredient.foodItemId, ingredient.quantity)}
+                              </Typography>
+                            ))}
+                          </Box>
+                        </Box>
                       ))}
                     </Box>
                   </Box>
-                ))}
 
-                <Divider sx={{ my: 3 }} />
-
-                <Typography variant="h4" gutterBottom>
-                  Instructions
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {selectedRecipe?.instructions}
-                </Typography>
+                  {/* Instructions Section */}
+                  <Box sx={{ 
+                    flex: { xs: 'none', md: '0 0 65%' },
+                    maxHeight: { xs: 'none', md: '100%' },
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    <Typography variant="h5" gutterBottom>
+                      Instructions
+                    </Typography>
+                    <Box sx={{ 
+                      flex: 1,
+                      overflow: 'auto',
+                      pr: 1
+                    }}>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedRecipe?.instructions}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
             )}
 

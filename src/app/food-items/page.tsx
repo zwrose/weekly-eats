@@ -22,7 +22,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  IconButton,
   Tooltip,
   Divider,
   Select,
@@ -35,7 +34,6 @@ import {
 import { 
   Public,
   Person,
-  Visibility,
   Edit,
   Delete
 } from "@mui/icons-material";
@@ -255,12 +253,12 @@ export default function FoodItemsPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Food Items
         </Typography>
         
-        <Paper sx={{ p: 3, mt: 3 }}>
+        <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
             <TextField
@@ -297,58 +295,110 @@ export default function FoodItemsPage() {
                 
                 {filteredUserFoodItems.length > 0 ? (
                   <>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Name</TableCell>
-                            <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                            <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                            <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {paginatedUserFoodItems.map((item) => (
-                            <TableRow key={item._id}>
-                              <TableCell>
-                                {item.name}
-                              </TableCell>
-                              <TableCell>
-                                {item.isGlobal ? (
-                                  <Chip 
-                                    label="Global" 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                    icon={<Public fontSize="small" />}
-                                  />
-                                ) : (
-                                  <Chip 
-                                    label="Personal" 
-                                    size="small" 
-                                    color="default" 
-                                    variant="outlined"
-                                    icon={<Person fontSize="small" />}
-                                  />
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(item.createdAt).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleViewItem(item)}
-                                  color="primary"
-                                >
-                                  <Visibility />
-                                </IconButton>
-                              </TableCell>
+                    {/* Desktop Table View */}
+                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
+                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                          </TableHead>
+                          <TableBody>
+                            {paginatedUserFoodItems.map((item) => (
+                              <TableRow 
+                                key={item._id}
+                                onClick={() => handleViewItem(item)}
+                                sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                              >
+                                <TableCell>
+                                  {item.name}
+                                </TableCell>
+                                <TableCell>
+                                  {item.isGlobal ? (
+                                    <Chip 
+                                      label="Global" 
+                                      size="small" 
+                                      color="primary" 
+                                      variant="outlined"
+                                      icon={<Public fontSize="small" />}
+                                    />
+                                  ) : (
+                                    <Chip 
+                                      label="Personal" 
+                                      size="small" 
+                                      color="default" 
+                                      variant="outlined"
+                                      icon={<Person fontSize="small" />}
+                                    />
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(item.createdAt).toLocaleDateString()}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+
+                    {/* Mobile Card View */}
+                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                      {paginatedUserFoodItems.map((item) => (
+                        <Paper
+                          key={item._id}
+                          onClick={() => handleViewItem(item)}
+                          sx={{
+                            p: 3,
+                            mb: 2,
+                            cursor: 'pointer',
+                            '&:hover': { 
+                              backgroundColor: 'action.hover',
+                              transform: 'translateY(-2px)',
+                              boxShadow: 4
+                            },
+                            transition: 'all 0.2s ease-in-out',
+                            boxShadow: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                              {item.name}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              {item.isGlobal ? (
+                                <Chip 
+                                  label="Global" 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined"
+                                  icon={<Public fontSize="small" />}
+                                />
+                              ) : (
+                                <Chip 
+                                  label="Personal" 
+                                  size="small" 
+                                  color="default" 
+                                  variant="outlined"
+                                  icon={<Person fontSize="small" />}
+                                />
+                              )}
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Created: {new Date(item.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      ))}
+                    </Box>
                     
                     {filteredUserFoodItems.length > itemsPerPage && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -388,58 +438,110 @@ export default function FoodItemsPage() {
                   
                   {filteredGlobalFoodItems.length > 0 ? (
                     <>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Name</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                              <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {paginatedGlobalFoodItems.map((item) => (
-                              <TableRow key={item._id}>
-                                <TableCell>
-                                  {item.name}
-                                </TableCell>
-                                <TableCell>
-                                  {item.isGlobal ? (
-                                    <Chip 
-                                      label="Global" 
-                                      size="small" 
-                                      color="primary" 
-                                      variant="outlined"
-                                      icon={<Public fontSize="small" />}
-                                    />
-                                  ) : (
-                                    <Chip 
-                                      label="Personal" 
-                                      size="small" 
-                                      color="default" 
-                                      variant="outlined"
-                                      icon={<Person fontSize="small" />}
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(item.createdAt).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => handleViewItem(item)}
-                                    color="primary"
-                                  >
-                                    <Visibility />
-                                  </IconButton>
-                                </TableCell>
+                      {/* Desktop Table View */}
+                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                              {paginatedGlobalFoodItems.map((item) => (
+                                <TableRow 
+                                  key={item._id}
+                                  onClick={() => handleViewItem(item)}
+                                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                                >
+                                  <TableCell>
+                                    {item.name}
+                                  </TableCell>
+                                  <TableCell>
+                                    {item.isGlobal ? (
+                                      <Chip 
+                                        label="Global" 
+                                        size="small" 
+                                        color="primary" 
+                                        variant="outlined"
+                                        icon={<Public fontSize="small" />}
+                                      />
+                                    ) : (
+                                      <Chip 
+                                        label="Personal" 
+                                        size="small" 
+                                        color="default" 
+                                        variant="outlined"
+                                        icon={<Person fontSize="small" />}
+                                      />
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {new Date(item.createdAt).toLocaleDateString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+
+                      {/* Mobile Card View */}
+                      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        {paginatedGlobalFoodItems.map((item) => (
+                          <Paper
+                            key={item._id}
+                            onClick={() => handleViewItem(item)}
+                            sx={{
+                              p: 3,
+                              mb: 2,
+                              cursor: 'pointer',
+                              '&:hover': { 
+                                backgroundColor: 'action.hover',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 4
+                              },
+                              transition: 'all 0.2s ease-in-out',
+                              boxShadow: 2,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 2
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                                {item.name}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                {item.isGlobal ? (
+                                  <Chip 
+                                    label="Global" 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined"
+                                    icon={<Public fontSize="small" />}
+                                  />
+                                ) : (
+                                  <Chip 
+                                    label="Personal" 
+                                    size="small" 
+                                    color="default" 
+                                    variant="outlined"
+                                    icon={<Person fontSize="small" />}
+                                  />
+                                )}
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Created: {new Date(item.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Box>
                       
                       {filteredGlobalFoodItems.length > itemsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
