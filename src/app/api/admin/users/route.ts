@@ -25,22 +25,26 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const searchTerm = searchParams.get('search');
 
-    if (!searchTerm) {
-      return NextResponse.json({ error: 'Search term is required' }, { status: 400 });
+    // Build query for approved users
+    let query: { isApproved: boolean } | { $and: Array<{ $or?: Array<{ name?: { $regex: string; $options: string }; email?: { $regex: string; $options: string } }>; isApproved?: boolean }> } = { isApproved: true };
+
+    // Add search filter if search term is provided
+    if (searchTerm && searchTerm.trim()) {
+      query = {
+        $and: [
+          {
+            $or: [
+              { name: { $regex: searchTerm, $options: 'i' } },
+              { email: { $regex: searchTerm, $options: 'i' } }
+            ]
+          },
+          { isApproved: true }
+        ]
+      };
     }
 
     // Search users by name or email (case-insensitive) - only approved users
-    const users = await usersCollection.find({
-      $and: [
-        {
-          $or: [
-            { name: { $regex: searchTerm, $options: 'i' } },
-            { email: { $regex: searchTerm, $options: 'i' } }
-          ]
-        },
-        { isApproved: true } // Only search approved users
-      ]
-    }, {
+    const users = await usersCollection.find(query, {
       projection: {
         _id: 1,
         name: 1,

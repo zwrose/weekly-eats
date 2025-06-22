@@ -16,6 +16,7 @@
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
     "@types/mongodb": "^4.0.6",
+    "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",
     "mongodb": "^6.17.0",
     "next": "15.3.4",
     "next-auth": "^4.24.11",

@@ -30,14 +30,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the user to approve/deny
-    const targetUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    const targetUser = await usersCollection.findOne({ _id: ObjectId.createFromHexString(userId) });
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Update user's approval status
     await usersCollection.updateOne(
-      { _id: new ObjectId(userId) },
+      { _id: ObjectId.createFromHexString(userId) },
       { $set: { isApproved: approved } }
     );
 

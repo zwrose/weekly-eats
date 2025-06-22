@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prevent user from revoking their own admin status
-    const targetUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    const targetUser = await usersCollection.findOne({ _id: ObjectId.createFromHexString(userId) });
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Update user's admin status
     await usersCollection.updateOne(
-      { _id: new ObjectId(userId) },
+      { _id: ObjectId.createFromHexString(userId) },
       { $set: { isAdmin } }
     );
 

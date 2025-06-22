@@ -143,6 +143,23 @@ export const getUnitAbbreviationForm = (unit: string, quantity: number): string 
 export const getUnitOptions = (): { value: ValidUnit; label: string }[] => {
   return FOOD_UNITS.map(unit => ({
     value: unit.singular,
-    label: `${unit.singular} (${unit.abbreviation || unit.plural})`
+    label: unit.abbreviation && unit.abbreviation !== unit.singular 
+      ? `${unit.singular} (${unit.abbreviation})`
+      : unit.singular
   }));
+};
+
+// Fetch food items from the API
+export const fetchFoodItems = async (query?: string): Promise<Array<{ _id: string; name: string; singularName: string; pluralName: string; unit: string }>> => {
+  const params = new URLSearchParams();
+  if (query) {
+    params.append('query', query);
+  }
+  
+  const url = `/api/food-items${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch food items');
+  }
+  return response.json();
 }; 
