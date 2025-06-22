@@ -20,7 +20,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, singularName, pluralName, unit } = body;
+    const { name, singularName, pluralName, unit, isGlobal } = body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -50,13 +50,38 @@ export async function PUT(
       return NextResponse.json({ error: 'Only admins can edit global items' }, { status: 403 });
     }
 
-    const updateData = {
+    // Validate isGlobal changes
+    if (isGlobal !== undefined && typeof isGlobal === 'boolean') {
+      // Prevent making global items personal
+      if (existingItem.isGlobal && !isGlobal) {
+        return NextResponse.json({ error: 'Cannot make global items personal' }, { status: 400 });
+      }
+      
+      // Only admins can make items global
+      if (!existingItem.isGlobal && isGlobal && !isAdmin) {
+        return NextResponse.json({ error: 'Only admins can make items global' }, { status: 403 });
+      }
+    }
+
+    const updateData: {
+      name: string;
+      singularName: string;
+      pluralName: string;
+      unit: string | null;
+      updatedAt: Date;
+      isGlobal?: boolean;
+    } = {
       name: name.trim(),
       singularName: singularName?.trim() || name.trim(),
       pluralName: pluralName?.trim() || name.trim(),
       unit: unit?.trim() || null,
       updatedAt: new Date()
     };
+
+    // Only include isGlobal in update if it's being changed and the change is valid
+    if (isGlobal !== undefined && typeof isGlobal === 'boolean' && isGlobal !== existingItem.isGlobal) {
+      updateData.isGlobal = isGlobal;
+    }
 
     const result = await foodItemsCollection.updateOne(
       { _id: new ObjectId(id) },

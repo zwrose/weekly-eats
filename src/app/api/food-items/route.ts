@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       filter = {
         $or: [
           { isGlobal: true },
-          { userId: session.user.id }
+          { createdBy: session.user.id }
         ]
       };
     }

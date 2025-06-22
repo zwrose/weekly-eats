@@ -46,6 +46,7 @@ export default function RecipesPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [foodItems, setFoodItems] = useState<{[key: string]: {singularName: string, pluralName: string}}>({});
+  const [foodItemsList, setFoodItemsList] = useState<Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>>([]);
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: '',
     emoji: '',
@@ -88,9 +89,22 @@ export default function RecipesPage() {
         };
       });
       setFoodItems(itemsMap);
+      setFoodItemsList(items);
     } catch (error) {
       console.error('Error loading food items:', error);
     }
+  };
+
+  const handleFoodItemAdded = (newFoodItem: {_id: string, name: string, singularName: string, pluralName: string, unit: string}) => {
+    // Update both the map and the list
+    setFoodItems(prev => ({
+      ...prev,
+      [newFoodItem._id]: {
+        singularName: newFoodItem.singularName,
+        pluralName: newFoodItem.pluralName
+      }
+    }));
+    setFoodItemsList(prev => [...prev, newFoodItem]);
   };
 
   const getFoodItemName = (foodItemId: string, quantity: number): string => {
@@ -368,6 +382,8 @@ export default function RecipesPage() {
               <IngredientInput
                 ingredients={newRecipe.ingredients}
                 onChange={handleIngredientsChange}
+                foodItems={foodItemsList}
+                onFoodItemAdded={handleFoodItemAdded}
               />
 
               <Divider sx={{ my: 3 }} />
@@ -474,6 +490,8 @@ export default function RecipesPage() {
                 <IngredientInput
                   ingredients={editingRecipe.ingredients || []}
                   onChange={handleIngredientsChange}
+                  foodItems={foodItemsList}
+                  onFoodItemAdded={handleFoodItemAdded}
                 />
 
                 <Divider sx={{ my: 3 }} />

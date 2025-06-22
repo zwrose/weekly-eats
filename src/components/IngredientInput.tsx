@@ -19,6 +19,8 @@ import AddFoodItemDialog from './AddFoodItemDialog';
 interface IngredientInputProps {
   ingredients: RecipeIngredientList[];
   onChange: (ingredients: RecipeIngredientList[]) => void;
+  foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
+  onFoodItemAdded?: (newFoodItem: {_id: string, name: string, singularName: string, pluralName: string, unit: string}) => void;
 }
 
 interface FoodItem {
@@ -29,7 +31,7 @@ interface FoodItem {
   unit: string;
 }
 
-export default function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
+export default function IngredientInput({ ingredients, onChange, foodItems: propFoodItems, onFoodItemAdded }: IngredientInputProps) {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -52,8 +54,15 @@ export default function IngredientInput({ ingredients, onChange }: IngredientInp
   };
 
   useEffect(() => {
-    loadFoodItems();
-  }, []);
+    if (propFoodItems) {
+      // Use props if provided
+      setFoodItems(propFoodItems);
+      setLoading(false);
+    } else {
+      // Fall back to loading from API
+      loadFoodItems();
+    }
+  }, [propFoodItems]);
 
   // Initialize input texts array when ingredients change
   useEffect(() => {
@@ -177,9 +186,6 @@ export default function IngredientInput({ ingredients, onChange }: IngredientInp
 
       const newFoodItem = await response.json();
       
-      // Add the new food item to the list
-      setFoodItems(prev => [...prev, newFoodItem]);
-      
       // Close the dialog
       setAddDialogOpen(false);
       
@@ -187,6 +193,11 @@ export default function IngredientInput({ ingredients, onChange }: IngredientInp
       if (pendingSelection) {
         handleFoodItemSelect(pendingSelection.listIndex, pendingSelection.ingredientIndex, newFoodItem);
         setPendingSelection(null);
+      }
+      
+      // Notify parent component about the new food item
+      if (onFoodItemAdded) {
+        onFoodItemAdded(newFoodItem);
       }
       
       // Show success message (you could add a toast notification here)

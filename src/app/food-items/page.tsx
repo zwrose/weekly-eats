@@ -28,7 +28,9 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  FormControlLabel,
+  Switch
 } from "@mui/material";
 import { 
   Public,
@@ -67,6 +69,7 @@ export default function FoodItemsPage() {
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<FoodItem>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [confirmGlobalDialogOpen, setConfirmGlobalDialogOpen] = useState(false);
 
   const itemsPerPage = 25;
   const isAdmin = (session?.user as { isAdmin?: boolean })?.isAdmin;
@@ -177,7 +180,13 @@ export default function FoodItemsPage() {
       const response = await fetch(`/api/food-items/${selectedItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingItem)
+        body: JSON.stringify({
+          name: editingItem.name,
+          singularName: editingItem.singularName,
+          pluralName: editingItem.pluralName,
+          unit: editingItem.unit,
+          isGlobal: editingItem.isGlobal
+        })
       });
       
       if (response.ok) {
@@ -185,6 +194,10 @@ export default function FoodItemsPage() {
         setViewDialogOpen(false);
         setSelectedItem(null);
         loadFoodItems(); // Refresh the lists
+      } else {
+        const errorData = await response.json();
+        console.error('Error updating food item:', errorData.error);
+        // You could add a toast notification here to show the error to the user
       }
     } catch (error) {
       console.error('Error updating food item:', error);
@@ -500,6 +513,35 @@ export default function FoodItemsPage() {
                       ))}
                     </Select>
                   </FormControl>
+                  
+                  {/* Global/Personal Toggle - Only show for admins and personal items */}
+                  {isAdmin && selectedItem && !selectedItem.isGlobal && (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={editingItem.isGlobal || false}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setConfirmGlobalDialogOpen(true);
+                            } else {
+                              setEditingItem({ ...editingItem, isGlobal: false });
+                            }
+                          }}
+                          color="primary"
+                        />
+                      }
+                      label="Make this item global (available to all users)"
+                    />
+                  )}
+                  
+                  {/* Show current status for global items */}
+                  {selectedItem && selectedItem.isGlobal && (
+                    <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+                      <Typography variant="body2" color="primary.contrastText">
+                        This is a global item and cannot be made personal.
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -637,6 +679,30 @@ export default function FoodItemsPage() {
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Delete
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for making global */}
+      <Dialog open={confirmGlobalDialogOpen} onClose={() => { setConfirmGlobalDialogOpen(false); }}>
+        <DialogTitle>Confirm Make Global</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Making this item global will make it available to all users. <b>This action cannot be undone</b>—once global, the item cannot be made personal again. Are you sure you want to proceed?
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 }, mt: 3 }}>
+            <Button onClick={() => { setConfirmGlobalDialogOpen(false); }} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
+            <Button 
+              onClick={() => {
+                setEditingItem((prev) => ({ ...prev, isGlobal: true }));
+                setConfirmGlobalDialogOpen(false);
+              }} 
+              color="primary" 
+              variant="contained"
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Yes, Make Global
             </Button>
           </Box>
         </DialogContent>
