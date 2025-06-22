@@ -81,7 +81,7 @@ export default function SettingsPage() {
   if (status === "loading") {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="md">
+        <Container maxWidth="xl" sx={{ py: 4 }}>
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="md">
+        <Container maxWidth="xl" sx={{ py: 4 }}>
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
@@ -109,7 +109,7 @@ export default function SettingsPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="md">
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         <Paper
           elevation={2}
           sx={{

@@ -325,13 +325,14 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
                   
                   <Autocomplete
                     options={getUnitOptions()}
-                    value={getUnitOptions().find(option => option.value === ingredient.unit) || null}
+                    value={getUnitOptions().find(option => option.value === ingredient.unit) ?? undefined}
                     onChange={(_, value) => handleIngredientChange(0, ingredientIndex, 'unit', value?.value || 'cup')}
                     getOptionLabel={(option) => option.label}
                     isOptionEqualToValue={(option, value) => option.value === value.value}
+                    disableClearable={true}
                     sx={{ 
-                      width: { xs: '100%', sm: 120 },
-                      minWidth: { xs: 'auto', sm: 120 }
+                      width: { xs: '100%', sm: 220 },
+                      minWidth: { xs: 'auto', sm: 220 }
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -532,13 +533,14 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
                       
                       <Autocomplete
                         options={getUnitOptions()}
-                        value={getUnitOptions().find(option => option.value === ingredient.unit) || null}
+                        value={getUnitOptions().find(option => option.value === ingredient.unit) ?? undefined}
                         onChange={(_, value) => handleIngredientChange(listIndex, ingredientIndex, 'unit', value?.value || 'cup')}
                         getOptionLabel={(option) => option.label}
                         isOptionEqualToValue={(option, value) => option.value === value.value}
+                        disableClearable={true}
                         sx={{ 
-                          width: { xs: '100%', sm: 120 },
-                          minWidth: { xs: 'auto', sm: 120 }
+                          width: { xs: '100%', sm: 220 },
+                          minWidth: { xs: 'auto', sm: 220 }
                         }}
                         renderInput={(params) => (
                           <TextField

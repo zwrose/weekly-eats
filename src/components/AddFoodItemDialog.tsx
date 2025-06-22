@@ -124,7 +124,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
   const steps = ['Basic Information', 'Confirm Names'];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box sx={{ mb: 2 }}>
           <Typography variant="h6" gutterBottom>

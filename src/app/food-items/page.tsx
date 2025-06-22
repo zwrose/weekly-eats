@@ -255,7 +255,7 @@ export default function FoodItemsPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Food Items
         </Typography>
@@ -468,7 +468,7 @@ export default function FoodItemsPage() {
       <Dialog 
         open={viewDialogOpen} 
         onClose={handleCloseViewDialog}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
         <DialogTitle>

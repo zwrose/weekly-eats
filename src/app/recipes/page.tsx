@@ -233,7 +233,7 @@ export default function RecipesPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="lg">
+      <Container maxWidth="xl">
         <Box sx={{ py: 4 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
             <Restaurant sx={{ fontSize: 40, color: "#ed6c02" }} />
@@ -342,7 +342,7 @@ export default function RecipesPage() {
         <Dialog 
           open={createDialogOpen} 
           onClose={() => setCreateDialogOpen(false)}
-          maxWidth="md"
+          maxWidth="lg"
           fullWidth
         >
           <DialogTitle>Create New Recipe</DialogTitle>
@@ -432,7 +432,7 @@ export default function RecipesPage() {
         <Dialog 
           open={viewDialogOpen} 
           onClose={handleCloseViewDialog}
-          maxWidth="md"
+          maxWidth="lg"
           fullWidth
         >
           <DialogTitle>
