@@ -1,7 +1,7 @@
 import { getMongoClient } from './mongodb';
 import { ObjectId } from 'mongodb';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../app/api/auth/[...nextauth]/route";
+import { authOptions } from "./auth";
 
 export const getUserObjectId = async (email: string): Promise<ObjectId | null> => {
   const client = await getMongoClient();

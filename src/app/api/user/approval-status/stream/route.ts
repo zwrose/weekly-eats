@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '../../../../../lib/auth';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../auth/[...nextauth]/route';
 import { getMongoClient } from '../../../../../lib/mongodb';
 
 export async function GET(request: NextRequest) {
