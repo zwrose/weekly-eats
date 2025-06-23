@@ -185,7 +185,7 @@ export default function EmojiPicker({ open, onClose, onSelect, currentEmoji }: E
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">Choose an Emoji</Typography>

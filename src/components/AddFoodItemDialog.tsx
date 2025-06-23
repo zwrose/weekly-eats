@@ -124,7 +124,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
   const steps = ['Basic Information', 'Confirm Names'];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box sx={{ mb: 2 }}>
           <Typography variant="h6" gutterBottom>
@@ -187,7 +187,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
 
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Scope
+                  Access Level
                 </Typography>
                 <RadioGroup
                   value={isGlobal}
@@ -259,7 +259,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                   <strong>Typical Selling Unit:</strong> {unit}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Scope:</strong> {isGlobal ? 'Global' : 'Personal'}
+                  <strong>Access Level:</strong> {isGlobal ? 'Global' : 'Personal'}
                 </Typography>
               </Box>
             </Box>

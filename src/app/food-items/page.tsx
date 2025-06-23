@@ -22,18 +22,18 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  IconButton,
   Tooltip,
   Divider,
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  FormControlLabel,
+  Switch
 } from "@mui/material";
 import { 
   Public,
   Person,
-  Visibility,
   Edit,
   Delete
 } from "@mui/icons-material";
@@ -67,6 +67,7 @@ export default function FoodItemsPage() {
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<FoodItem>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [confirmGlobalDialogOpen, setConfirmGlobalDialogOpen] = useState(false);
 
   const itemsPerPage = 25;
   const isAdmin = (session?.user as { isAdmin?: boolean })?.isAdmin;
@@ -177,7 +178,13 @@ export default function FoodItemsPage() {
       const response = await fetch(`/api/food-items/${selectedItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingItem)
+        body: JSON.stringify({
+          name: editingItem.name,
+          singularName: editingItem.singularName,
+          pluralName: editingItem.pluralName,
+          unit: editingItem.unit,
+          isGlobal: editingItem.isGlobal
+        })
       });
       
       if (response.ok) {
@@ -185,6 +192,10 @@ export default function FoodItemsPage() {
         setViewDialogOpen(false);
         setSelectedItem(null);
         loadFoodItems(); // Refresh the lists
+      } else {
+        const errorData = await response.json();
+        console.error('Error updating food item:', errorData.error);
+        // You could add a toast notification here to show the error to the user
       }
     } catch (error) {
       console.error('Error updating food item:', error);
@@ -242,12 +253,12 @@ export default function FoodItemsPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Food Items
         </Typography>
         
-        <Paper sx={{ p: 3, mt: 3 }}>
+        <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
             <TextField
@@ -284,58 +295,110 @@ export default function FoodItemsPage() {
                 
                 {filteredUserFoodItems.length > 0 ? (
                   <>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Name</TableCell>
-                            <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                            <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                            <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {paginatedUserFoodItems.map((item) => (
-                            <TableRow key={item._id}>
-                              <TableCell>
-                                {item.name}
-                              </TableCell>
-                              <TableCell>
-                                {item.isGlobal ? (
-                                  <Chip 
-                                    label="Global" 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                    icon={<Public fontSize="small" />}
-                                  />
-                                ) : (
-                                  <Chip 
-                                    label="Personal" 
-                                    size="small" 
-                                    color="default" 
-                                    variant="outlined"
-                                    icon={<Person fontSize="small" />}
-                                  />
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(item.createdAt).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleViewItem(item)}
-                                  color="primary"
-                                >
-                                  <Visibility />
-                                </IconButton>
-                              </TableCell>
+                    {/* Desktop Table View */}
+                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
+                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
+                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                          </TableHead>
+                          <TableBody>
+                            {paginatedUserFoodItems.map((item) => (
+                              <TableRow 
+                                key={item._id}
+                                onClick={() => handleViewItem(item)}
+                                sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                              >
+                                <TableCell>
+                                  {item.name}
+                                </TableCell>
+                                <TableCell>
+                                  {item.isGlobal ? (
+                                    <Chip 
+                                      label="Global" 
+                                      size="small" 
+                                      color="primary" 
+                                      variant="outlined"
+                                      icon={<Public fontSize="small" />}
+                                    />
+                                  ) : (
+                                    <Chip 
+                                      label="Personal" 
+                                      size="small" 
+                                      color="default" 
+                                      variant="outlined"
+                                      icon={<Person fontSize="small" />}
+                                    />
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(item.createdAt).toLocaleDateString()}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+
+                    {/* Mobile Card View */}
+                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                      {paginatedUserFoodItems.map((item) => (
+                        <Paper
+                          key={item._id}
+                          onClick={() => handleViewItem(item)}
+                          sx={{
+                            p: 3,
+                            mb: 2,
+                            cursor: 'pointer',
+                            '&:hover': { 
+                              backgroundColor: 'action.hover',
+                              transform: 'translateY(-2px)',
+                              boxShadow: 4
+                            },
+                            transition: 'all 0.2s ease-in-out',
+                            boxShadow: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                              {item.name}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              {item.isGlobal ? (
+                                <Chip 
+                                  label="Global" 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined"
+                                  icon={<Public fontSize="small" />}
+                                />
+                              ) : (
+                                <Chip 
+                                  label="Personal" 
+                                  size="small" 
+                                  color="default" 
+                                  variant="outlined"
+                                  icon={<Person fontSize="small" />}
+                                />
+                              )}
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Created: {new Date(item.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      ))}
+                    </Box>
                     
                     {filteredUserFoodItems.length > itemsPerPage && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -375,58 +438,110 @@ export default function FoodItemsPage() {
                   
                   {filteredGlobalFoodItems.length > 0 ? (
                     <>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '60%', fontWeight: 'bold' }}>Name</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Type</TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                              <TableCell sx={{ width: '5%', fontWeight: 'bold' }}>View</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {paginatedGlobalFoodItems.map((item) => (
-                              <TableRow key={item._id}>
-                                <TableCell>
-                                  {item.name}
-                                </TableCell>
-                                <TableCell>
-                                  {item.isGlobal ? (
-                                    <Chip 
-                                      label="Global" 
-                                      size="small" 
-                                      color="primary" 
-                                      variant="outlined"
-                                      icon={<Public fontSize="small" />}
-                                    />
-                                  ) : (
-                                    <Chip 
-                                      label="Personal" 
-                                      size="small" 
-                                      color="default" 
-                                      variant="outlined"
-                                      icon={<Person fontSize="small" />}
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(item.createdAt).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => handleViewItem(item)}
-                                    color="primary"
-                                  >
-                                    <Visibility />
-                                  </IconButton>
-                                </TableCell>
+                      {/* Desktop Table View */}
+                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
+                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
+                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                              {paginatedGlobalFoodItems.map((item) => (
+                                <TableRow 
+                                  key={item._id}
+                                  onClick={() => handleViewItem(item)}
+                                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                                >
+                                  <TableCell>
+                                    {item.name}
+                                  </TableCell>
+                                  <TableCell>
+                                    {item.isGlobal ? (
+                                      <Chip 
+                                        label="Global" 
+                                        size="small" 
+                                        color="primary" 
+                                        variant="outlined"
+                                        icon={<Public fontSize="small" />}
+                                      />
+                                    ) : (
+                                      <Chip 
+                                        label="Personal" 
+                                        size="small" 
+                                        color="default" 
+                                        variant="outlined"
+                                        icon={<Person fontSize="small" />}
+                                      />
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {new Date(item.createdAt).toLocaleDateString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+
+                      {/* Mobile Card View */}
+                      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        {paginatedGlobalFoodItems.map((item) => (
+                          <Paper
+                            key={item._id}
+                            onClick={() => handleViewItem(item)}
+                            sx={{
+                              p: 3,
+                              mb: 2,
+                              cursor: 'pointer',
+                              '&:hover': { 
+                                backgroundColor: 'action.hover',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 4
+                              },
+                              transition: 'all 0.2s ease-in-out',
+                              boxShadow: 2,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 2
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                                {item.name}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                {item.isGlobal ? (
+                                  <Chip 
+                                    label="Global" 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined"
+                                    icon={<Public fontSize="small" />}
+                                  />
+                                ) : (
+                                  <Chip 
+                                    label="Personal" 
+                                    size="small" 
+                                    color="default" 
+                                    variant="outlined"
+                                    icon={<Person fontSize="small" />}
+                                  />
+                                )}
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Created: {new Date(item.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Box>
                       
                       {filteredGlobalFoodItems.length > itemsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -455,7 +570,7 @@ export default function FoodItemsPage() {
       <Dialog 
         open={viewDialogOpen} 
         onClose={handleCloseViewDialog}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
         <DialogTitle>
@@ -500,6 +615,35 @@ export default function FoodItemsPage() {
                       ))}
                     </Select>
                   </FormControl>
+                  
+                  {/* Global/Personal Toggle - Only show for admins and personal items */}
+                  {isAdmin && selectedItem && !selectedItem.isGlobal && (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={editingItem.isGlobal || false}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setConfirmGlobalDialogOpen(true);
+                            } else {
+                              setEditingItem({ ...editingItem, isGlobal: false });
+                            }
+                          }}
+                          color="primary"
+                        />
+                      }
+                      label="Make this item global (available to all users)"
+                    />
+                  )}
+                  
+                  {/* Show current status for global items */}
+                  {selectedItem && selectedItem.isGlobal && (
+                    <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+                      <Typography variant="body2" color="primary.contrastText">
+                        This is a global item and cannot be made personal.
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -524,7 +668,7 @@ export default function FoodItemsPage() {
                   </Box>
                   <Divider />
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Type</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">Access Level</Typography>
                     <Typography variant="body1">
                       {selectedItem.isGlobal ? 'Global' : 'Personal'}
                     </Typography>
@@ -637,6 +781,30 @@ export default function FoodItemsPage() {
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Delete
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for making global */}
+      <Dialog open={confirmGlobalDialogOpen} onClose={() => { setConfirmGlobalDialogOpen(false); }}>
+        <DialogTitle>Confirm Make Global</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Making this item global will make it available to all users. <b>This action cannot be undone</b>—once global, the item cannot be made personal again. Are you sure you want to proceed?
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 }, mt: 3 }}>
+            <Button onClick={() => { setConfirmGlobalDialogOpen(false); }} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
+            <Button 
+              onClick={() => {
+                setEditingItem((prev) => ({ ...prev, isGlobal: true }));
+                setConfirmGlobalDialogOpen(false);
+              }} 
+              color="primary" 
+              variant="contained"
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Yes, Make Global
             </Button>
           </Box>
         </DialogContent>

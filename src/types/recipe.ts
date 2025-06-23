@@ -15,7 +15,8 @@ export interface Recipe {
   emoji?: string;
   ingredients: RecipeIngredientList[]; // Array of ingredient lists (single list or multiple sub-lists)
   instructions: string;
-  userId: string;
+  isGlobal: boolean;
+  createdBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ export interface CreateRecipeRequest {
   emoji?: string;
   ingredients: RecipeIngredientList[];
   instructions: string;
+  isGlobal: boolean;
 }
 
 export interface UpdateRecipeRequest {
@@ -32,4 +34,5 @@ export interface UpdateRecipeRequest {
   emoji?: string;
   ingredients?: RecipeIngredientList[];
   instructions?: string;
+  isGlobal?: boolean;
 } 

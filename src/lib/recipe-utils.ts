@@ -8,6 +8,25 @@ export const fetchRecipes = async (): Promise<Recipe[]> => {
   return response.json();
 };
 
+export const fetchUserRecipes = async (): Promise<Recipe[]> => {
+  const response = await fetch('/api/recipes?userOnly=true');
+  if (!response.ok) {
+    throw new Error('Failed to fetch user recipes');
+  }
+  return response.json();
+};
+
+export const fetchGlobalRecipes = async (excludeUserCreated: boolean = false): Promise<Recipe[]> => {
+  const url = excludeUserCreated 
+    ? '/api/recipes?globalOnly=true&excludeUserCreated=true'
+    : '/api/recipes?globalOnly=true';
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch global recipes');
+  }
+  return response.json();
+};
+
 export const fetchRecipe = async (id: string): Promise<Recipe> => {
   const response = await fetch(`/api/recipes/${id}`);
   if (!response.ok) {

@@ -166,14 +166,14 @@ export default function Header() {
                 <ListItemIcon>
                   <FormatListBulleted fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>Food Items</ListItemText>
+                <ListItemText>Manage Food Items</ListItemText>
               </MenuItem>
               {(session.user as { isAdmin?: boolean }).isAdmin && (
                 <MenuItem onClick={handleAdmin}>
                   <ListItemIcon>
                     <Person fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Users</ListItemText>
+                  <ListItemText>Manage Users</ListItemText>
                 </MenuItem>
               )}
               <MenuItem onClick={handleSettings}>

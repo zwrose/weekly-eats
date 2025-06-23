@@ -100,7 +100,7 @@ export default function HomePage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="lg">
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box sx={{ py: { xs: 0, sm: 2, md: 4 } }}>
 
           <Box 
