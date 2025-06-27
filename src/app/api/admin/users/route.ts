@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../../lib/auth';
 import { getMongoClient } from '../../../../lib/mongodb';
+import { 
+  AUTH_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
     // Check if user is admin
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const client = await getMongoClient();
@@ -18,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Get current user to check admin status
     const currentUser = await usersCollection.findOne({ email: session.user.email });
     if (!currentUser?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
     }
 
     // Get search term from query params
@@ -54,9 +59,9 @@ export async function GET(request: NextRequest) {
       }
     }).limit(50).toArray();
 
-    return NextResponse.json({ users });
+    return NextResponse.json(users);
   } catch (error) {
-    console.error('Error searching users:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('Admin Users GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

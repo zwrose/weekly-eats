@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { VALID_UNITS } from '@/lib/food-items-utils';
+import { 
+  AUTH_ERRORS, 
+  FOOD_ITEM_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,7 +79,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const body = await request.json();
@@ -81,23 +87,23 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.NAME_REQUIRED }, { status: 400 });
     }
 
     if (!singularName || typeof singularName !== 'string' || singularName.trim().length === 0) {
-      return NextResponse.json({ error: 'Singular name is required' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.SINGULAR_NAME_REQUIRED }, { status: 400 });
     }
 
     if (!pluralName || typeof pluralName !== 'string' || pluralName.trim().length === 0) {
-      return NextResponse.json({ error: 'Plural name is required' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.PLURAL_NAME_REQUIRED }, { status: 400 });
     }
 
     if (!unit || typeof unit !== 'string' || !VALID_UNITS.includes(unit)) {
-      return NextResponse.json({ error: 'Valid unit is required' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.UNIT_REQUIRED }, { status: 400 });
     }
 
     if (typeof isGlobal !== 'boolean') {
-      return NextResponse.json({ error: 'isGlobal must be a boolean' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.IS_GLOBAL_REQUIRED }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -129,7 +135,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingItem) {
-      return NextResponse.json({ error: 'Food item already exists' }, { status: 409 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_ALREADY_EXISTS }, { status: 409 });
     }
 
     const newFoodItem = {
@@ -149,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(createdItem, { status: 201 });
   } catch (error) {
-    console.error('Error creating food item:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('FoodItems POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

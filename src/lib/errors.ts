@@ -54,6 +54,59 @@ export const USER_ERRORS = {
   USER_NOT_FOUND: 'User not found',
   USER_ALREADY_EXISTS: 'User already exists',
   INVALID_USER_ID: 'Invalid user ID',
+  APPROVAL_UPDATE_FAILED: 'Failed to update approval status',
+  ADMIN_TOGGLE_FAILED: 'Failed to toggle admin status',
+} as const;
+
+// Food Items
+export const FOOD_ITEM_ERRORS = {
+  NAME_REQUIRED: 'Name is required',
+  SINGULAR_NAME_REQUIRED: 'Singular name is required',
+  PLURAL_NAME_REQUIRED: 'Plural name is required',
+  UNIT_REQUIRED: 'Valid unit is required',
+  INVALID_UNIT: 'Invalid unit specified',
+  IS_GLOBAL_REQUIRED: 'isGlobal must be a boolean',
+  FOOD_ITEM_NOT_FOUND: 'Food item not found',
+  FOOD_ITEM_ALREADY_EXISTS: 'Food item already exists',
+  FOOD_ITEM_CREATION_FAILED: 'Failed to create food item',
+  FOOD_ITEM_UPDATE_FAILED: 'Failed to update food item',
+  FOOD_ITEM_DELETION_FAILED: 'Failed to delete food item',
+  INVALID_FOOD_ITEM_ID: 'Invalid food item ID',
+  PERMISSION_DENIED: 'You do not have permission to perform this action',
+  CANNOT_MAKE_GLOBAL_PERSONAL: 'Cannot make global items personal',
+  ONLY_ADMINS_CAN_MAKE_GLOBAL: 'Only admins can make items global',
+  ONLY_ADMINS_CAN_EDIT_GLOBAL: 'Only admins can edit global items',
+} as const;
+
+// Recipes
+export const RECIPE_ERRORS = {
+  TITLE_REQUIRED: 'Recipe title is required',
+  INSTRUCTIONS_REQUIRED: 'Cooking instructions are required',
+  INGREDIENTS_REQUIRED: 'At least one ingredient is required',
+  INVALID_INGREDIENT_DATA: 'Invalid ingredient data',
+  INGREDIENT_LIST_REQUIRED: 'Each ingredient list must have at least one ingredient',
+  RECIPE_NOT_FOUND: 'Recipe not found',
+  RECIPE_CREATION_FAILED: 'Failed to create recipe',
+  RECIPE_UPDATE_FAILED: 'Failed to update recipe',
+  RECIPE_DELETION_FAILED: 'Failed to delete recipe',
+  INVALID_RECIPE_ID: 'Invalid recipe ID',
+  NO_PERMISSION_TO_EDIT: 'Recipe not found or you do not have permission to edit it',
+} as const;
+
+// Pantry
+export const PANTRY_ERRORS = {
+  FOOD_ITEM_ID_REQUIRED: 'Food item ID is required',
+  FOOD_ITEM_NOT_FOUND: 'Food item not found',
+  ITEM_ALREADY_EXISTS: 'Item already exists in pantry',
+  PANTRY_ITEM_CREATION_FAILED: 'Failed to create pantry item',
+  PANTRY_ITEM_DELETION_FAILED: 'Failed to delete pantry item',
+  PANTRY_ITEM_NOT_FOUND: 'Pantry item not found',
+} as const;
+
+// Settings
+export const SETTINGS_ERRORS = {
+  SETTINGS_FETCH_FAILED: 'Failed to fetch user settings',
+  SETTINGS_UPDATE_FAILED: 'Failed to update user settings',
 } as const;
 
 // Helper function to create consistent error responses

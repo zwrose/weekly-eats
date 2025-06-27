@@ -3,12 +3,18 @@ import { authOptions } from '../../../lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../lib/mongodb';
 import { CreateRecipeRequest } from '../../../types/recipe';
+import { 
+  AUTH_ERRORS, 
+  RECIPE_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -56,8 +62,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(recipes);
   } catch (error) {
-    console.error('Error fetching recipes:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('Recipes GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 
@@ -65,25 +71,25 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const body: CreateRecipeRequest = await request.json();
     
     // Validate required fields
     if (!body.title || !body.instructions || !body.ingredients || body.ingredients.length === 0) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: RECIPE_ERRORS.TITLE_REQUIRED }, { status: 400 });
     }
 
     // Validate ingredients structure
     for (const ingredientList of body.ingredients) {
       if (!ingredientList.ingredients || ingredientList.ingredients.length === 0) {
-        return NextResponse.json({ error: 'Each ingredient list must have at least one ingredient' }, { status: 400 });
+        return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
       }
       
       for (const ingredient of ingredientList.ingredients) {
         if (!ingredient.foodItemId || ingredient.quantity <= 0 || !ingredient.unit) {
-          return NextResponse.json({ error: 'Invalid ingredient data' }, { status: 400 });
+          return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
         }
       }
     }
@@ -107,7 +113,7 @@ export async function POST(request: NextRequest) {
       _id: result.insertedId 
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating recipe:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('Recipes POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

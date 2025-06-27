@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { 
+  AUTH_ERRORS, 
+  FOOD_ITEM_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,7 +21,7 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
@@ -24,7 +30,7 @@ export async function PUT(
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.NAME_REQUIRED }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -34,7 +40,7 @@ export async function PUT(
     // Check if food item exists and user has permission to edit
     const existingItem = await foodItemsCollection.findOne({ _id: new ObjectId(id) });
     if (!existingItem) {
-      return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     const isAdmin = (session.user as { isAdmin?: boolean })?.isAdmin;
@@ -42,24 +48,24 @@ export async function PUT(
 
     // Check permissions
     if (!isAdmin && !isOwner) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
     }
 
     // Non-admins can only edit their own personal items
     if (!isAdmin && existingItem.isGlobal) {
-      return NextResponse.json({ error: 'Only admins can edit global items' }, { status: 403 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_EDIT_GLOBAL }, { status: 403 });
     }
 
     // Validate isGlobal changes
     if (isGlobal !== undefined && typeof isGlobal === 'boolean') {
       // Prevent making global items personal
       if (existingItem.isGlobal && !isGlobal) {
-        return NextResponse.json({ error: 'Cannot make global items personal' }, { status: 400 });
+        return NextResponse.json({ error: FOOD_ITEM_ERRORS.CANNOT_MAKE_GLOBAL_PERSONAL }, { status: 400 });
       }
       
       // Only admins can make items global
       if (!existingItem.isGlobal && isGlobal && !isAdmin) {
-        return NextResponse.json({ error: 'Only admins can make items global' }, { status: 403 });
+        return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_MAKE_GLOBAL }, { status: 403 });
       }
     }
 
@@ -89,14 +95,14 @@ export async function PUT(
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     const updatedItem = await foodItemsCollection.findOne({ _id: new ObjectId(id) });
     return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Error updating food item:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('FoodItems PUT', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 

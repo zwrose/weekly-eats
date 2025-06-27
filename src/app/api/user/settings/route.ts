@@ -3,13 +3,18 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../lib/mongodb';
 import { DEFAULT_USER_SETTINGS } from '../../../../lib/user-settings';
 import { getUserObjectId } from '../../../../lib/user-utils';
+import { 
+  AUTH_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 export async function GET() {
   try {
     const session = await getServerSession();
     
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const userId = await getUserObjectId(session.user.email);
@@ -33,8 +38,8 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Error fetching user settings:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('User Settings GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 
