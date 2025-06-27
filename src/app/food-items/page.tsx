@@ -43,6 +43,7 @@ import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import type { FoodItem } from '@/lib/hooks/use-food-items';
+import { DialogActions } from '@/components/ui/DialogActions';
 
 export default function FoodItemsPage() {
   const { data: session, status } = useSession();
@@ -608,14 +609,7 @@ export default function FoodItemsPage() {
             </Box>
           )}
           
-          <Box sx={{ 
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
-            mt: 3,
-            pt: 2,
-            justifyContent: { xs: 'stretch', sm: 'flex-end' }
-          }}>
+          <DialogActions>
             {editDialog.open ? (
               <>
                 <Button 
@@ -668,7 +662,7 @@ export default function FoodItemsPage() {
                 </Button>
               </>
             )}
-          </Box>
+          </DialogActions>
         </DialogContent>
       </Dialog>
 
@@ -680,13 +674,7 @@ export default function FoodItemsPage() {
             Are you sure you want to delete &quot;{selectedItem?.name}&quot;? This action cannot be undone.
           </Typography>
           
-          <Box sx={{ 
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
-            mt: 3,
-            pt: 2
-          }}>
+          <DialogActions>
             <Button 
               onClick={deleteConfirmDialog.closeDialog}
               sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -704,7 +692,7 @@ export default function FoodItemsPage() {
             >
               Delete
             </Button>
-          </Box>
+          </DialogActions>
         </DialogContent>
       </Dialog>
 
@@ -715,7 +703,7 @@ export default function FoodItemsPage() {
           <Typography>
             Making this item global will make it available to all users. <b>This action cannot be undone</b>—once global, the item cannot be made personal again. Are you sure you want to proceed?
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 }, mt: 3 }}>
+          <DialogActions>
             <Button onClick={confirmGlobalDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
             <Button 
               onClick={() => {
@@ -728,7 +716,7 @@ export default function FoodItemsPage() {
             >
               Yes, Make Global
             </Button>
-          </Box>
+          </DialogActions>
         </DialogContent>
       </Dialog>
     </AuthenticatedLayout>

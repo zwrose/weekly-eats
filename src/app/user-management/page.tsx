@@ -32,6 +32,7 @@ import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import { useSearchPagination, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
+import { DialogActions } from '@/components/ui/DialogActions';
 
 interface User {
   _id: string;
@@ -585,14 +586,7 @@ export default function UserManagementPage() {
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogContent>
             <DialogContentText>{getDialogContent()}</DialogContentText>
-            <Box sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: { xs: 1, sm: 0 },
-              mt: 3,
-              pt: 2,
-              justifyContent: { xs: 'flex-end', sm: 'flex-end' }
-            }}>
+            <DialogActions>
               <Button 
                 onClick={closeConfirmDialog}
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -607,7 +601,7 @@ export default function UserManagementPage() {
               >
                 Confirm
               </Button>
-            </Box>
+            </DialogActions>
           </DialogContent>
         </Dialog>
       </Container>

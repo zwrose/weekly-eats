@@ -13,7 +13,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
 } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { PantryItemWithFoodItem, CreatePantryItemRequest } from "../../types/pantry";
@@ -26,6 +25,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Kitchen from '@mui/icons-material/Kitchen';
 import Add from '@mui/icons-material/Add';
+import { DialogActions } from '@/components/ui/DialogActions';
 
 export default function PantryPage() {
   const { status } = useSession();

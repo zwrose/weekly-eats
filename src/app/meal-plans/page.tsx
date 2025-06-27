@@ -50,6 +50,7 @@ import {
 import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
+import { DialogActions } from '@/components/ui/DialogActions';
 
 export default function MealPlansPage() {
   const { status } = useSession();
@@ -501,14 +502,7 @@ export default function MealPlansPage() {
                 Are you sure you want to delete &quot;{selectedMealPlan?.name}&quot;? This action cannot be undone.
               </Typography>
               
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
-                mt: 3,
-                pt: 2,
-                justifyContent: { xs: 'stretch', sm: 'flex-end' }
-              }}>
+              <DialogActions>
                 <Button 
                   onClick={deleteConfirmDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -523,7 +517,7 @@ export default function MealPlansPage() {
                 >
                   Delete
                 </Button>
-              </Box>
+              </DialogActions>
             </DialogContent>
           </Dialog>
         </Box>
