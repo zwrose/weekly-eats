@@ -5,7 +5,6 @@ import {
   Container,
   Typography,
   Paper,
-  TextField,
   Button,
   Table,
   TableBody,
@@ -19,7 +18,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  Pagination,
   Alert
 } from '@mui/material';
 import {
@@ -31,6 +29,9 @@ import {
 } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
+import { useSearchPagination, useConfirmDialog } from '@/lib/hooks';
+import SearchBar from '@/components/optimized/SearchBar';
+import Pagination from '@/components/optimized/Pagination';
 
 interface User {
   _id: string;
@@ -40,50 +41,31 @@ interface User {
   isApproved: boolean;
 }
 
-interface ConfirmDialog {
-  open: boolean;
-  user: User | null;
+// Add interface for confirm dialog data
+interface ConfirmDialogData {
+  user: User;
   action: 'grant' | 'revoke' | 'approve' | 'deny' | 'revoke-access';
 }
 
 export default function UserManagementPage() {
   const { data: session } = useSession();
-  const [searchTerm, setSearchTerm] = useState('');
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [approvedUsers, setApprovedUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingLoading, setPendingLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
-    open: false,
-    user: null,
-    action: 'approve'
+  // Dialogs
+  const confirmDialog = useConfirmDialog<ConfirmDialogData>();
+  // Search and pagination
+  const pendingPagination = useSearchPagination({
+    data: pendingUsers,
+    itemsPerPage: 5,
+    searchFields: ['name', 'email']
   });
-
-  // Pagination state
-  const [pendingPage, setPendingPage] = useState(1);
-  const [approvedPage, setApprovedPage] = useState(1);
-  const pendingUsersPerPage = 5;
-  const approvedUsersPerPage = 25;
-
-  // Filter users based on search term
-  const filteredPendingUsers = pendingUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredApprovedUsers = approvedUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Paginate users
-  const pendingUsersStartIndex = (pendingPage - 1) * pendingUsersPerPage;
-  const pendingUsersEndIndex = pendingUsersStartIndex + pendingUsersPerPage;
-  const paginatedPendingUsers = filteredPendingUsers.slice(pendingUsersStartIndex, pendingUsersEndIndex);
-
-  const approvedUsersStartIndex = (approvedPage - 1) * approvedUsersPerPage;
-  const approvedUsersEndIndex = approvedUsersStartIndex + approvedUsersPerPage;
-  const paginatedApprovedUsers = filteredApprovedUsers.slice(approvedUsersStartIndex, approvedUsersEndIndex);
+  const approvedPagination = useSearchPagination({
+    data: approvedUsers,
+    itemsPerPage: 25,
+    searchFields: ['name', 'email']
+  });
 
   const fetchPendingUsers = async () => {
     try {
@@ -119,12 +101,6 @@ export default function UserManagementPage() {
     fetchPendingUsers();
     fetchApprovedUsers();
   }, []);
-
-  // Reset pagination when search term changes
-  useEffect(() => {
-    setPendingPage(1);
-    setApprovedPage(1);
-  }, [searchTerm]);
 
   const handleToggleAdmin = async (userId: string, currentAdminStatus: boolean) => {
     try {
@@ -181,24 +157,26 @@ export default function UserManagementPage() {
   };
 
   const openConfirmDialog = (user: User, action: 'grant' | 'revoke' | 'approve' | 'deny' | 'revoke-access') => {
-    setConfirmDialog({ open: true, user, action });
+    confirmDialog.openDialog({ user, action });
   };
 
   const closeConfirmDialog = () => {
-    setConfirmDialog({ open: false, user: null, action: 'approve' });
+    confirmDialog.closeDialog();
   };
 
   const confirmAction = async () => {
-    if (!confirmDialog.user) return;
+    const data = confirmDialog.data;
+    if (!data) return;
+    const { user, action } = data;
 
-    if (confirmDialog.action === 'approve') {
-      await handleApproval(confirmDialog.user._id, true);
-    } else if (confirmDialog.action === 'deny') {
-      await handleApproval(confirmDialog.user._id, false);
-    } else if (confirmDialog.action === 'revoke-access') {
-      await handleApproval(confirmDialog.user._id, false);
+    if (action === 'approve') {
+      await handleApproval(user._id, true);
+    } else if (action === 'deny') {
+      await handleApproval(user._id, false);
+    } else if (action === 'revoke-access') {
+      await handleApproval(user._id, false);
     } else {
-      await handleToggleAdmin(confirmDialog.user._id, confirmDialog.user.isAdmin);
+      await handleToggleAdmin(user._id, user.isAdmin);
     }
     
     closeConfirmDialog();
@@ -209,7 +187,7 @@ export default function UserManagementPage() {
   };
 
   const getDialogTitle = () => {
-    switch (confirmDialog.action) {
+    switch (confirmDialog.data?.action) {
       case 'grant': return 'Grant Admin Access';
       case 'revoke': return 'Revoke Admin Access';
       case 'approve': return 'Approve User';
@@ -220,10 +198,13 @@ export default function UserManagementPage() {
   };
 
   const getDialogContent = () => {
-    const user = confirmDialog.user;
+    const data = confirmDialog.data;
+    if (!data) return '';
+    
+    const user = data.user;
     if (!user) return '';
 
-    switch (confirmDialog.action) {
+    switch (data.action) {
       case 'grant':
         return `Are you sure you want to grant admin access for ${user.name} (${user.email})?`;
       case 'revoke':
@@ -249,12 +230,10 @@ export default function UserManagementPage() {
         <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
-            <TextField
-              fullWidth
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <SearchBar
+              value={pendingPagination.searchTerm}
+              onChange={(value) => pendingPagination.setSearchTerm(value)}
               placeholder="Start typing to filter users by name or email..."
-              autoComplete="off"
             />
           </Box>
 
@@ -270,12 +249,12 @@ export default function UserManagementPage() {
             }}>
               <Typography variant="h6" gutterBottom>
                 <HourglassEmpty sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Users Pending Approval ({filteredPendingUsers.length})
+                Users Pending Approval ({pendingPagination.filteredData.length})
               </Typography>
               {pendingLoading && <CircularProgress size={20} />}
             </Box>
             
-            {filteredPendingUsers.length > 0 ? (
+            {pendingPagination.filteredData.length > 0 ? (
               <>
                 {/* Desktop Table View */}
                 <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -290,7 +269,7 @@ export default function UserManagementPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {paginatedPendingUsers.map((user) => (
+                        {pendingPagination.paginatedData.map((user) => (
                           <TableRow key={user._id}>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -331,7 +310,7 @@ export default function UserManagementPage() {
 
                 {/* Mobile Card View */}
                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {paginatedPendingUsers.map((user) => (
+                  {pendingPagination.paginatedData.map((user) => (
                     <Paper
                       key={user._id}
                       sx={{
@@ -385,20 +364,19 @@ export default function UserManagementPage() {
                   ))}
                 </Box>
                 
-                {filteredPendingUsers.length > pendingUsersPerPage && (
+                {pendingPagination.filteredData.length > 5 && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <Pagination
-                      count={Math.ceil(filteredPendingUsers.length / pendingUsersPerPage)}
-                      page={pendingPage}
-                      onChange={(_, page) => setPendingPage(page)}
-                      color="primary"
+                      count={pendingPagination.totalPages}
+                      page={pendingPagination.currentPage}
+                      onChange={pendingPagination.setCurrentPage}
                     />
                   </Box>
                 )}
               </>
             ) : (
               <Alert severity="info">
-                {searchTerm ? 'No pending users match your search criteria' : 'No users pending approval'}
+                {pendingPagination.searchTerm ? 'No pending users match your search criteria' : 'No users pending approval'}
               </Alert>
             )}
           </Box>
@@ -415,12 +393,12 @@ export default function UserManagementPage() {
             }}>
               <Typography variant="h6" gutterBottom>
                 <AdminPanelSettings sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Active Users ({filteredApprovedUsers.length})
+                Active Users ({approvedPagination.filteredData.length})
               </Typography>
               {loading && <CircularProgress size={20} />}
             </Box>
             
-            {filteredApprovedUsers.length > 0 ? (
+            {approvedPagination.filteredData.length > 0 ? (
               <>
                 {/* Desktop Table View */}
                 <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -435,7 +413,7 @@ export default function UserManagementPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {paginatedApprovedUsers.map((user) => (
+                        {approvedPagination.paginatedData.map((user) => (
                           <TableRow key={user._id}>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -503,7 +481,7 @@ export default function UserManagementPage() {
 
                 {/* Mobile Card View */}
                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {paginatedApprovedUsers.map((user) => (
+                  {approvedPagination.paginatedData.map((user) => (
                     <Paper
                       key={user._id}
                       sx={{
@@ -584,20 +562,19 @@ export default function UserManagementPage() {
                   ))}
                 </Box>
                 
-                {filteredApprovedUsers.length > approvedUsersPerPage && (
+                {approvedPagination.filteredData.length > 25 && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <Pagination
-                      count={Math.ceil(filteredApprovedUsers.length / approvedUsersPerPage)}
-                      page={approvedPage}
-                      onChange={(_, page) => setApprovedPage(page)}
-                      color="primary"
+                      count={approvedPagination.totalPages}
+                      page={approvedPagination.currentPage}
+                      onChange={approvedPagination.setCurrentPage}
                     />
                   </Box>
                 )}
               </>
             ) : (
               <Alert severity="info">
-                {searchTerm ? 'No approved users match your search criteria' : 'No approved users found'}
+                {approvedPagination.searchTerm ? 'No approved users match your search criteria' : 'No approved users found'}
               </Alert>
             )}
           </Box>
@@ -608,13 +585,13 @@ export default function UserManagementPage() {
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogContent>
             <DialogContentText>{getDialogContent()}</DialogContentText>
-            
-            <Box sx={{ 
+            <Box sx={{
               display: 'flex',
               flexDirection: { xs: 'column', sm: 'row' },
               gap: { xs: 1, sm: 0 },
               mt: 3,
-              pt: 2
+              pt: 2,
+              justifyContent: { xs: 'flex-end', sm: 'flex-end' }
             }}>
               <Button 
                 onClick={closeConfirmDialog}
