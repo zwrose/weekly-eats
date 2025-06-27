@@ -15,7 +15,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Pagination,
   Alert,
   Chip,
   Button,
@@ -39,120 +38,64 @@ import {
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { getUnitOptions } from "@/lib/food-items-utils";
-
-interface FoodItem {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit?: string;
-  isGlobal: boolean;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { useFoodItems } from '@/lib/hooks';
+import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import SearchBar from '@/components/optimized/SearchBar';
+import Pagination from '@/components/optimized/Pagination';
+import type { FoodItem } from '@/lib/hooks/use-food-items';
 
 export default function FoodItemsPage() {
   const { data: session, status } = useSession();
-  const [loading, setLoading] = useState(true);
-  const [userFoodItems, setUserFoodItems] = useState<FoodItem[]>([]);
-  const [globalFoodItems, setGlobalFoodItems] = useState<FoodItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [userPage, setUserPage] = useState(1);
-  const [globalPage, setGlobalPage] = useState(1);
-  const [userLoading, setUserLoading] = useState(false);
-  const [globalLoading, setGlobalLoading] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const user = session?.user as { id: string; isAdmin?: boolean } | undefined;
+  const isAdmin = user?.isAdmin;
+  const { foodItems, loading, addFoodItem, refetch } = useFoodItems();
+
+  // User's food items: personal items + global items created by the user
+  const userFoodItems = foodItems.filter(
+    item => !item.isGlobal || (item.isGlobal && item.createdBy === user?.id)
+  );
+  // Global food items: global items NOT created by the user
+  const globalFoodItems = foodItems.filter(
+    item => item.isGlobal && item.createdBy !== user?.id
+  );
+
+  // Search and pagination
+  const userPagination = useSearchPagination({
+    data: userFoodItems,
+    itemsPerPage: 25,
+    searchFields: ['name', 'singularName', 'pluralName']
+  });
+  const globalPagination = useSearchPagination({
+    data: globalFoodItems,
+    itemsPerPage: 25,
+    searchFields: ['name', 'singularName', 'pluralName']
+  });
+
+  // Dialogs
+  const viewDialog = useDialog();
+  const editDialog = useDialog();
+  const deleteConfirmDialog = useConfirmDialog();
+  const confirmGlobalDialog = useDialog();
+
+  // Selected item state
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<FoodItem>>({});
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [confirmGlobalDialogOpen, setConfirmGlobalDialogOpen] = useState(false);
 
   const itemsPerPage = 25;
-  const isAdmin = (session?.user as { isAdmin?: boolean })?.isAdmin;
 
   const loadFoodItems = useCallback(async () => {
     try {
-      setLoading(true);
-      await Promise.all([
-        loadUserFoodItems(),
-        isAdmin ? loadGlobalFoodItems() : Promise.resolve()
-      ]);
+      await refetch();
     } catch (error) {
       console.error('Error loading food items:', error);
-    } finally {
-      setLoading(false);
     }
-  }, [isAdmin]);
+  }, [refetch]);
 
   useEffect(() => {
     if (status === 'authenticated') {
       loadFoodItems();
     }
   }, [status, loadFoodItems]);
-
-  const loadUserFoodItems = async () => {
-    try {
-      setUserLoading(true);
-      const response = await fetch('/api/food-items?userOnly=true');
-      if (!response.ok) {
-        throw new Error('Failed to fetch user food items');
-      }
-      const items = await response.json();
-      setUserFoodItems(items);
-    } catch (error) {
-      console.error('Error loading user food items:', error);
-    } finally {
-      setUserLoading(false);
-    }
-  };
-
-  const loadGlobalFoodItems = async () => {
-    try {
-      setGlobalLoading(true);
-      const response = await fetch('/api/food-items?globalOnly=true&excludeUserCreated=true');
-      if (!response.ok) {
-        throw new Error('Failed to fetch global food items');
-      }
-      const items = await response.json();
-      setGlobalFoodItems(items);
-    } catch (error) {
-      console.error('Error loading global food items:', error);
-    } finally {
-      setGlobalLoading(false);
-    }
-  };
-
-  // Filter food items based on search term
-  const filteredUserFoodItems = userFoodItems.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.singularName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.pluralName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredGlobalFoodItems = globalFoodItems.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.singularName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.pluralName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Pagination
-  const paginatedUserFoodItems = filteredUserFoodItems.slice(
-    (userPage - 1) * itemsPerPage,
-    userPage * itemsPerPage
-  );
-
-  const paginatedGlobalFoodItems = filteredGlobalFoodItems.slice(
-    (globalPage - 1) * itemsPerPage,
-    globalPage * itemsPerPage
-  );
-
-  // Reset pagination when search term changes
-  useEffect(() => {
-    setUserPage(1);
-    setGlobalPage(1);
-  }, [searchTerm]);
 
   const handleViewItem = (item: FoodItem) => {
     setSelectedItem(item);
@@ -163,40 +106,28 @@ export default function FoodItemsPage() {
       unit: item.unit,
       isGlobal: item.isGlobal
     });
-    setViewDialogOpen(true);
-    setEditMode(false);
+    viewDialog.openDialog();
+    editDialog.closeDialog();
   };
 
   const handleEditItem = () => {
-    setEditMode(true);
+    editDialog.openDialog();
   };
 
   const handleUpdateItem = async () => {
     if (!selectedItem?._id) return;
     
     try {
-      const response = await fetch(`/api/food-items/${selectedItem._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editingItem.name,
-          singularName: editingItem.singularName,
-          pluralName: editingItem.pluralName,
-          unit: editingItem.unit,
-          isGlobal: editingItem.isGlobal
-        })
+      await addFoodItem({
+        _id: selectedItem._id,
+        name: editingItem.name || '',
+        singularName: editingItem.singularName || '',
+        pluralName: editingItem.pluralName || '',
+        unit: editingItem.unit || '',
       });
-      
-      if (response.ok) {
-        setEditMode(false);
-        setViewDialogOpen(false);
-        setSelectedItem(null);
-        loadFoodItems(); // Refresh the lists
-      } else {
-        const errorData = await response.json();
-        console.error('Error updating food item:', errorData.error);
-        // You could add a toast notification here to show the error to the user
-      }
+      viewDialog.closeDialog();
+      setSelectedItem(null);
+      loadFoodItems(); // Refresh the lists
     } catch (error) {
       console.error('Error updating food item:', error);
     }
@@ -206,31 +137,22 @@ export default function FoodItemsPage() {
     if (!selectedItem?._id) return;
     
     try {
-      const response = await fetch(`/api/food-items/${selectedItem._id}`, {
-        method: 'DELETE'
-      });
-      
-      if (response.ok) {
-        setDeleteConfirmOpen(false);
-        setViewDialogOpen(false);
-        setSelectedItem(null);
-        loadFoodItems(); // Refresh the lists
-      }
+      await deleteConfirmDialog.openDialog();
     } catch (error) {
       console.error('Error deleting food item:', error);
     }
   };
 
   const handleCloseViewDialog = () => {
-    setViewDialogOpen(false);
+    viewDialog.closeDialog();
     setSelectedItem(null);
-    setEditMode(false);
+    editDialog.closeDialog();
   };
 
   const canDeleteItem = (item: FoodItem) => {
-    if (isAdmin) return true; // Admins can delete anything
-    if (!item.isGlobal) return true; // Non-admins can delete their personal items
-    return false; // Non-admins cannot delete global items
+    if (isAdmin) return true;
+    if (!item.isGlobal) return true;
+    return false;
   };
 
   // Show loading state while session is being fetched
@@ -261,12 +183,10 @@ export default function FoodItemsPage() {
         <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
-            <TextField
-              fullWidth
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <SearchBar
+              value={userPagination.searchTerm}
+              onChange={(value) => userPagination.setSearchTerm(value)}
               placeholder="Start typing to filter food items by name..."
-              autoComplete="off"
             />
           </Box>
 
@@ -288,12 +208,11 @@ export default function FoodItemsPage() {
                 }}>
                   <Typography variant="h6" gutterBottom>
                     <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Your Food Items ({filteredUserFoodItems.length})
+                    Your Food Items ({userFoodItems.length})
                   </Typography>
-                  {userLoading && <CircularProgress size={20} />}
                 </Box>
                 
-                {filteredUserFoodItems.length > 0 ? (
+                {userFoodItems.length > 0 ? (
                   <>
                     {/* Desktop Table View */}
                     <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -307,7 +226,7 @@ export default function FoodItemsPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {paginatedUserFoodItems.map((item) => (
+                            {userPagination.paginatedData.map((item) => (
                               <TableRow 
                                 key={item._id}
                                 onClick={() => handleViewItem(item)}
@@ -336,7 +255,7 @@ export default function FoodItemsPage() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  {new Date(item.createdAt).toLocaleDateString()}
+                                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -347,7 +266,7 @@ export default function FoodItemsPage() {
 
                     {/* Mobile Card View */}
                     <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                      {paginatedUserFoodItems.map((item) => (
+                      {userPagination.paginatedData.map((item) => (
                         <Paper
                           key={item._id}
                           onClick={() => handleViewItem(item)}
@@ -393,27 +312,26 @@ export default function FoodItemsPage() {
                               )}
                             </Box>
                             <Typography variant="body2" color="text.secondary">
-                              Created: {new Date(item.createdAt).toLocaleDateString()}
+                              Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                             </Typography>
                           </Box>
                         </Paper>
                       ))}
                     </Box>
                     
-                    {filteredUserFoodItems.length > itemsPerPage && (
+                    {userFoodItems.length > itemsPerPage && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                         <Pagination
-                          count={Math.ceil(filteredUserFoodItems.length / itemsPerPage)}
-                          page={userPage}
-                          onChange={(_, page) => setUserPage(page)}
-                          color="primary"
+                          count={userPagination.totalPages}
+                          page={userPagination.currentPage}
+                          onChange={userPagination.setCurrentPage}
                         />
                       </Box>
                     )}
                   </>
                 ) : (
                   <Alert severity="info">
-                    {searchTerm ? 'No user food items match your search criteria' : 'No user food items found'}
+                    {userPagination.searchTerm ? 'No user food items match your search criteria' : 'No user food items found'}
                   </Alert>
                 )}
               </Box>
@@ -431,12 +349,11 @@ export default function FoodItemsPage() {
                   }}>
                     <Typography variant="h6" gutterBottom>
                       <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Global Food Items Owned By Others ({filteredGlobalFoodItems.length})
+                      Global Food Items Owned By Others ({globalFoodItems.length})
                     </Typography>
-                    {globalLoading && <CircularProgress size={20} />}
                   </Box>
                   
-                  {filteredGlobalFoodItems.length > 0 ? (
+                  {globalFoodItems.length > 0 ? (
                     <>
                       {/* Desktop Table View */}
                       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -450,7 +367,7 @@ export default function FoodItemsPage() {
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {paginatedGlobalFoodItems.map((item) => (
+                              {globalPagination.paginatedData.map((item) => (
                                 <TableRow 
                                   key={item._id}
                                   onClick={() => handleViewItem(item)}
@@ -479,7 +396,7 @@ export default function FoodItemsPage() {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    {new Date(item.createdAt).toLocaleDateString()}
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -490,7 +407,7 @@ export default function FoodItemsPage() {
 
                       {/* Mobile Card View */}
                       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                        {paginatedGlobalFoodItems.map((item) => (
+                        {globalPagination.paginatedData.map((item) => (
                           <Paper
                             key={item._id}
                             onClick={() => handleViewItem(item)}
@@ -536,27 +453,26 @@ export default function FoodItemsPage() {
                                 )}
                               </Box>
                               <Typography variant="body2" color="text.secondary">
-                                Created: {new Date(item.createdAt).toLocaleDateString()}
+                                Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                               </Typography>
                             </Box>
                           </Paper>
                         ))}
                       </Box>
                       
-                      {filteredGlobalFoodItems.length > itemsPerPage && (
+                      {globalFoodItems.length > itemsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                           <Pagination
-                            count={Math.ceil(filteredGlobalFoodItems.length / itemsPerPage)}
-                            page={globalPage}
-                            onChange={(_, page) => setGlobalPage(page)}
-                            color="primary"
+                            count={globalPagination.totalPages}
+                            page={globalPagination.currentPage}
+                            onChange={globalPagination.setCurrentPage}
                           />
                         </Box>
                       )}
                     </>
                   ) : (
                     <Alert severity="info">
-                      {searchTerm ? 'No global food items match your search criteria' : 'No global food items found not owned by you'}
+                      {globalPagination.searchTerm ? 'No global food items match your search criteria' : 'No global food items found not owned by you'}
                     </Alert>
                   )}
                 </Box>
@@ -568,18 +484,18 @@ export default function FoodItemsPage() {
 
       {/* View/Edit Dialog */}
       <Dialog 
-        open={viewDialogOpen} 
+        open={viewDialog.open} 
         onClose={handleCloseViewDialog}
         maxWidth="lg"
         fullWidth
       >
         <DialogTitle>
-          {editMode ? 'Edit Food Item' : 'View Food Item'}
+          {editDialog.open ? 'Edit Food Item' : 'View Food Item'}
         </DialogTitle>
         <DialogContent>
           {selectedItem && (
             <Box sx={{ mt: 2 }}>
-              {editMode ? (
+              {editDialog.open ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <TextField
                     label="Default Name"
@@ -624,7 +540,7 @@ export default function FoodItemsPage() {
                           checked={editingItem.isGlobal || false}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setConfirmGlobalDialogOpen(true);
+                              confirmGlobalDialog.openDialog();
                             } else {
                               setEditingItem({ ...editingItem, isGlobal: false });
                             }
@@ -677,14 +593,14 @@ export default function FoodItemsPage() {
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Created</Typography>
                     <Typography variant="body1">
-                      {new Date(selectedItem.createdAt).toLocaleString()}
+                      {selectedItem.createdAt ? new Date(selectedItem.createdAt).toLocaleString() : ''}
                     </Typography>
                   </Box>
                   <Divider />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Last Updated</Typography>
                     <Typography variant="body1">
-                      {new Date(selectedItem.updatedAt).toLocaleString()}
+                      {selectedItem.updatedAt ? new Date(selectedItem.updatedAt).toLocaleString() : ''}
                     </Typography>
                   </Box>
                 </Box>
@@ -700,10 +616,13 @@ export default function FoodItemsPage() {
             pt: 2,
             justifyContent: { xs: 'stretch', sm: 'flex-end' }
           }}>
-            {editMode ? (
+            {editDialog.open ? (
               <>
                 <Button 
-                  onClick={() => setEditMode(false)}
+                  onClick={() => {
+                    editDialog.closeDialog();
+                    setEditingItem({});
+                  }}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
@@ -714,7 +633,7 @@ export default function FoodItemsPage() {
                 >
                   <span>
                     <Button
-                      onClick={() => setDeleteConfirmOpen(true)}
+                      onClick={() => deleteConfirmDialog.openDialog()}
                       startIcon={<Delete />}
                       color="error"
                       disabled={!canDeleteItem(selectedItem!)}
@@ -754,7 +673,7 @@ export default function FoodItemsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+      <Dialog open={deleteConfirmDialog.open} onClose={deleteConfirmDialog.closeDialog}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
@@ -769,13 +688,16 @@ export default function FoodItemsPage() {
             pt: 2
           }}>
             <Button 
-              onClick={() => setDeleteConfirmOpen(false)}
+              onClick={deleteConfirmDialog.closeDialog}
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleDeleteItem} 
+              onClick={() => {
+                deleteConfirmDialog.closeDialog();
+                handleDeleteItem();
+              }} 
               color="error" 
               variant="contained"
               sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -787,18 +709,18 @@ export default function FoodItemsPage() {
       </Dialog>
 
       {/* Confirmation Dialog for making global */}
-      <Dialog open={confirmGlobalDialogOpen} onClose={() => { setConfirmGlobalDialogOpen(false); }}>
+      <Dialog open={confirmGlobalDialog.open} onClose={confirmGlobalDialog.closeDialog}>
         <DialogTitle>Confirm Make Global</DialogTitle>
         <DialogContent>
           <Typography>
             Making this item global will make it available to all users. <b>This action cannot be undone</b>—once global, the item cannot be made personal again. Are you sure you want to proceed?
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 }, mt: 3 }}>
-            <Button onClick={() => { setConfirmGlobalDialogOpen(false); }} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
+            <Button onClick={confirmGlobalDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
             <Button 
               onClick={() => {
                 setEditingItem((prev) => ({ ...prev, isGlobal: true }));
-                setConfirmGlobalDialogOpen(false);
+                confirmGlobalDialog.closeDialog();
               }} 
               color="primary" 
               variant="contained"

@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchFoodItems } from '../food-items-utils';
 
-interface FoodItem {
+export interface FoodItem {
   _id: string;
   name: string;
   singularName: string;
   pluralName: string;
   unit: string;
+  isGlobal?: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface UseFoodItemsReturn {
