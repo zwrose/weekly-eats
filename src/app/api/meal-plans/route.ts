@@ -3,11 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { CreateMealPlanRequest } from '@/types/meal-plan';
+import { CreateMealPlanRequest, MealPlan } from '@/types/meal-plan';
 import { 
   generateMealPlanNameFromString, 
   calculateEndDateAsString
 } from '@/lib/date-utils';
+import { checkMealPlanOverlap } from '@/lib/meal-plan-utils';
 import { isValidDateString } from '@/lib/validation';
 import { 
   AUTH_ERRORS, 
@@ -74,6 +75,16 @@ export async function POST(request: NextRequest) {
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
     const templatesCollection = db.collection('mealPlanTemplates');
+
+    // --- Overlap validation ---
+    const existingPlans = (await mealPlansCollection.find({ userId: session.user.id }).toArray()) as unknown as MealPlan[];
+    const overlapResult = checkMealPlanOverlap(startDate, existingPlans);
+    if (overlapResult.isOverlapping) {
+      return NextResponse.json({
+        error: `Meal plan dates overlap with "${overlapResult.conflict!.planName}" (${overlapResult.conflict!.startDate} to ${overlapResult.conflict!.endDate})`
+      }, { status: 409 });
+    }
+    // --- End overlap validation ---
 
     // Get or create user's template
     let template = await templatesCollection.findOne({
