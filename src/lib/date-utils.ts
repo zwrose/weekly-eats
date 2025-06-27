@@ -1,19 +1,27 @@
 import { DayOfWeek } from '../types/meal-plan';
+import { parseISO, format, addDays, startOfDay, getDay } from 'date-fns';
 
 /**
  * Parse a date string (YYYY-MM-DD) into a Date object in local timezone
- * Avoids timezone conversion issues that occur with new Date(dateString)
+ * Uses date-fns parseISO for consistent parsing
  */
 export const parseLocalDate = (dateString: string): Date => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  return parseISO(dateString);
 };
 
 /**
  * Format a Date object to YYYY-MM-DD string for API calls
+ * Uses date-fns format for consistent formatting
  */
 export const formatDateForAPI = (date: Date): string => {
-  return date.toISOString().slice(0, 10);
+  return format(date, 'yyyy-MM-dd');
+};
+
+/**
+ * Get today's date as YYYY-MM-DD string
+ */
+export const getTodayAsString = (): string => {
+  return formatDateForAPI(new Date());
 };
 
 /**
@@ -33,17 +41,40 @@ export const dayOfWeekToIndex = (day: DayOfWeek): number => {
 };
 
 /**
+ * Get the next occurrence of a given day of the week as YYYY-MM-DD string
+ * If today is the target day, returns today
+ * Otherwise returns the next occurrence
+ */
+export const getNextDayOfWeekAsString = (dayOfWeek: number): string => {
+  const today = startOfDay(new Date());
+  
+  // If today is the target day, use today
+  if (getDay(today) === dayOfWeek) {
+    return formatDateForAPI(today);
+  }
+  
+  // Calculate days to add
+  let daysToAdd = dayOfWeek - getDay(today);
+  if (daysToAdd <= 0) {
+    daysToAdd += 7; // Move to next week
+  }
+  
+  const nextDate = addDays(today, daysToAdd);
+  return formatDateForAPI(nextDate);
+};
+
+/**
  * Get the next occurrence of a given day of the week
  * If today is the target day, returns today
  * Otherwise returns the next occurrence
  */
 export const getNextDayOfWeek = (date: Date, dayOfWeek: number): Date => {
-  const result = new Date(date);
-  const currentDay = result.getDay();
+  const startDate = startOfDay(date);
+  const currentDay = getDay(startDate);
   
   // If today is the target day, use today
   if (currentDay === dayOfWeek) {
-    return result;
+    return startDate;
   }
   
   // Calculate days to add
@@ -52,26 +83,29 @@ export const getNextDayOfWeek = (date: Date, dayOfWeek: number): Date => {
     daysToAdd += 7; // Move to next week
   }
   
-  result.setDate(result.getDate() + daysToAdd);
-  return result;
+  return addDays(startDate, daysToAdd);
 };
 
 /**
- * Generate a meal plan name based on start date
+ * Generate a meal plan name based on start date string
  */
-export const generateMealPlanName = (startDate: Date): string => {
-  return `Week of ${startDate.toLocaleDateString('en-US', { 
-    month: 'long', 
-    day: 'numeric',
-    year: 'numeric'
-  })}`;
+export const generateMealPlanNameFromString = (startDateString: string): string => {
+  const date = parseLocalDate(startDateString);
+  return `Week of ${format(date, 'MMMM d, yyyy')}`;
+};
+
+/**
+ * Calculate end date (7 days from start date) as YYYY-MM-DD string
+ */
+export const calculateEndDateAsString = (startDateString: string): string => {
+  const startDate = parseLocalDate(startDateString);
+  const endDate = addDays(startDate, 6); // 7 days total
+  return formatDateForAPI(endDate);
 };
 
 /**
  * Calculate end date (7 days from start date)
  */
 export const calculateEndDate = (startDate: Date): Date => {
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6); // 7 days total
-  return endDate;
+  return addDays(startDate, 6); // 7 days total
 }; 
