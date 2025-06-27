@@ -28,6 +28,9 @@ export const useSearchPagination = <T>({
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+
   // Reset pagination when search term changes
   useEffect(() => {
     setCurrentPage(1);
@@ -35,16 +38,16 @@ export const useSearchPagination = <T>({
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return data;
+    if (!searchTerm.trim()) return safeData;
 
     const term = searchTerm.toLowerCase();
     
     if (searchFunction) {
-      return data.filter(item => searchFunction(item, term));
+      return safeData.filter(item => searchFunction(item, term));
     }
 
     if (searchFields) {
-      return data.filter(item =>
+      return safeData.filter(item =>
         searchFields.some(field => {
           const value = item[field];
           if (typeof value === 'string') {
@@ -56,12 +59,12 @@ export const useSearchPagination = <T>({
     }
 
     // Default search behavior - search all string fields
-    return data.filter(item =>
+    return safeData.filter(item =>
       Object.values(item as Record<string, unknown>).some(value => 
         typeof value === 'string' && value.toLowerCase().includes(term)
       )
     );
-  }, [data, searchTerm, searchFields, searchFunction]);
+  }, [safeData, searchTerm, searchFields, searchFunction]);
 
   // Paginate filtered data
   const paginatedData = useMemo(() => {
