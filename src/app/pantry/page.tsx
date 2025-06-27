@@ -192,7 +192,7 @@ export default function PantryPage() {
           <DialogContent>
             <Autocomplete
               options={foodItems}
-              getOptionLabel={(option) => option.name}
+              getOptionLabel={(option) => option.pluralName || option.name}
               loading={foodItemsLoading}
               value={foodItems.find(item => item._id === newItem.foodItemId) || null}
               onChange={(_, value) => {
