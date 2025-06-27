@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { UpdateMealPlanRequest, MealPlanItem } from '@/types/meal-plan';
+import { 
+  AUTH_ERRORS, 
+  MEAL_PLAN_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,7 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!mealPlan) {
-      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
     // Get template data
@@ -44,8 +50,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(mealPlanWithTemplate);
   } catch (error) {
-    console.error('Error fetching meal plan:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('MealPlans GET [id]', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 
@@ -53,7 +59,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
@@ -71,7 +77,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!existingMealPlan) {
-      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
     // Build update object
@@ -83,14 +89,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length === 0) {
-        return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+        return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
       }
       updateData.name = name.trim();
     }
 
     if (items !== undefined) {
       if (!Array.isArray(items)) {
-        return NextResponse.json({ error: 'Items must be an array' }, { status: 400 });
+        return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
       }
       updateData.items = items;
     }
@@ -101,13 +107,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
     const updatedMealPlan = await mealPlansCollection.findOne({ _id: new ObjectId(id) });
     
     if (!updatedMealPlan) {
-      return NextResponse.json({ error: 'Failed to update meal plan' }, { status: 500 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_UPDATE_FAILED }, { status: 500 });
     }
     
     // Get template data
@@ -123,8 +129,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(mealPlanWithTemplate);
   } catch (error) {
-    console.error('Error updating meal plan:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('MealPlans PUT [id]', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 

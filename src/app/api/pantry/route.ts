@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { 
+  AUTH_ERRORS, 
+  PANTRY_ERRORS, 
+  API_ERRORS,
+  logError 
+} from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -82,7 +88,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const body = await request.json();
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!foodItemId || typeof foodItemId !== 'string') {
-      return NextResponse.json({ error: 'Food item ID is required' }, { status: 400 });
+      return NextResponse.json({ error: PANTRY_ERRORS.FOOD_ITEM_ID_REQUIRED }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
     // Verify food item exists
     const foodItem = await foodItemsCollection.findOne({ _id: new ObjectId(foodItemId) });
     if (!foodItem) {
-      return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
+      return NextResponse.json({ error: PANTRY_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     // Check if item already exists in user's pantry
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingItem) {
-      return NextResponse.json({ error: 'Item already exists in pantry' }, { status: 409 });
+      return NextResponse.json({ error: PANTRY_ERRORS.ITEM_ALREADY_EXISTS }, { status: 409 });
     }
 
     const newPantryItem = {
@@ -124,7 +130,7 @@ export async function POST(request: NextRequest) {
     const createdItem = await pantryCollection.findOne({ _id: result.insertedId });
 
     if (!createdItem) {
-      return NextResponse.json({ error: 'Failed to create pantry item' }, { status: 500 });
+      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_CREATION_FAILED }, { status: 500 });
     }
 
     // Transform the data to include food item details
@@ -141,8 +147,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(transformedItem, { status: 201 });
   } catch (error) {
-    console.error('Error adding pantry item:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('Pantry POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 
