@@ -45,6 +45,7 @@ import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from '@/lib/hooks';
 import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import Pagination from '@/components/optimized/Pagination';
+import { DialogActions } from '@/components/ui/DialogActions';
 
 export default function RecipesPage() {
   const { data: session, status } = useSession();
@@ -248,9 +249,9 @@ export default function RecipesPage() {
       await deleteRecipe(selectedRecipe._id);
       deleteConfirmDialog.closeDialog();
       setSelectedRecipe(null);
-      loadRecipes();
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
+        loadRecipes();
+      } catch (error) {
+        console.error('Error deleting recipe:', error);
     }
   };
 
@@ -258,7 +259,7 @@ export default function RecipesPage() {
     if (editingRecipe.emoji) {
       setEditingRecipe({ ...editingRecipe, emoji });
     } else {
-      setNewRecipe({ ...newRecipe, emoji });
+    setNewRecipe({ ...newRecipe, emoji });
     }
   };
 
@@ -266,7 +267,7 @@ export default function RecipesPage() {
     if (editingRecipe.ingredients) {
       setEditingRecipe({ ...editingRecipe, ingredients });
     } else {
-      setNewRecipe({ ...newRecipe, ingredients });
+    setNewRecipe({ ...newRecipe, ingredients });
     }
   };
 
@@ -348,12 +349,12 @@ export default function RecipesPage() {
                 placeholder="Start typing to filter recipes by title..."
                 autoComplete="off"
               />
-            </Box>
+          </Box>
 
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                <CircularProgress />
-              </Box>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
             ) : (
               <>
                 {/* User Recipes Section */}
@@ -369,7 +370,7 @@ export default function RecipesPage() {
                     <Typography variant="h6" gutterBottom>
                       <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Your Recipes ({filteredUserRecipes.length})
-                    </Typography>
+              </Typography>
                     {userLoading && <CircularProgress size={20} />}
                   </Box>
                   
@@ -457,14 +458,14 @@ export default function RecipesPage() {
                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
                               <Box sx={{ mb: 1 }}>
                                 {recipe.emoji ? (
-                                  <Typography variant="h4">{recipe.emoji}</Typography>
+                          <Typography variant="h4">{recipe.emoji}</Typography>
                                 ) : (
                                   <RestaurantMenu sx={{ fontSize: 32, color: 'text.secondary' }} />
-                                )}
+                        )}
                               </Box>
                               <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                                {recipe.title}
-                              </Typography>
+                          {recipe.title}
+                        </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Box>
@@ -524,7 +525,7 @@ export default function RecipesPage() {
                     <Typography variant="h6" gutterBottom>
                       <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Global Recipes ({filteredGlobalRecipes.length})
-                    </Typography>
+                      </Typography>
                     {globalLoading && <CircularProgress size={20} />}
                   </Box>
                   
@@ -583,7 +584,7 @@ export default function RecipesPage() {
                           <Paper
                             key={recipe._id}
                             onClick={() => handleViewRecipe(recipe)}
-                            sx={{
+                        sx={{
                               p: 3,
                               mb: 2,
                               cursor: 'pointer',
@@ -609,10 +610,10 @@ export default function RecipesPage() {
                               </Box>
                               <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
                                 {recipe.title}
-                              </Typography>
+                      </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box>
+                      <Box>
                                 <Chip 
                                   label="Global" 
                                   size="small" 
@@ -646,7 +647,7 @@ export default function RecipesPage() {
                   )}
                 </Box>
               </>
-            )}
+          )}
           </Paper>
         </Box>
 
@@ -735,29 +736,22 @@ export default function RecipesPage() {
                 required
               />
 
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
-                mt: 3,
-                pt: 2,
-                justifyContent: { xs: 'stretch', sm: 'flex-end' }
-              }}>
+          <DialogActions>
                 <Button 
                   onClick={() => createDialog.closeDialog()}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleCreateRecipe}
-                  variant="contained"
+            <Button 
+              onClick={handleCreateRecipe}
+              variant="contained"
                   disabled={!newRecipe.title || !newRecipe.instructions || !hasValidIngredients(newRecipe.ingredients)}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Create Recipe
-                </Button>
-              </Box>
+            >
+              Create Recipe
+            </Button>
+          </DialogActions>
             </Box>
           </DialogContent>
         </Dialog>
@@ -864,14 +858,7 @@ export default function RecipesPage() {
                   required
                 />
 
-                <Box sx={{ 
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  gap: { xs: 1, sm: 0 },
-                  mt: 3,
-                  pt: 2,
-                  justifyContent: { xs: 'stretch', sm: 'flex-end' }
-                }}>
+                <DialogActions>
                   <Button 
                     onClick={() => setEditMode(false)}
                     sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -886,7 +873,7 @@ export default function RecipesPage() {
                   >
                     Update Recipe
                   </Button>
-                </Box>
+                </DialogActions>
               </Box>
             ) : (
               <Box sx={{ pt: 2 }}>
@@ -970,14 +957,7 @@ export default function RecipesPage() {
               Are you sure you want to delete &quot;{selectedRecipe?.title}&quot;? This action cannot be undone.
             </DialogContentText>
             
-            <Box sx={{ 
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: { xs: 1, sm: 0 },
-              mt: 3,
-              pt: 2,
-              justifyContent: { xs: 'stretch', sm: 'flex-end' }
-            }}>
+            <DialogActions>
               <Button 
                 onClick={() => deleteConfirmDialog.closeDialog()}
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -992,7 +972,7 @@ export default function RecipesPage() {
               >
                 Delete
               </Button>
-            </Box>
+            </DialogActions>
           </DialogContent>
         </Dialog>
 

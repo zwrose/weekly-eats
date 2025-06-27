@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import { getUnitOptions } from '../lib/food-items-utils';
 import pluralize from '@wei/pluralize';
+import { DialogActions } from './ui/DialogActions';
 
 interface AddFoodItemDialogProps {
   open: boolean;
@@ -265,14 +266,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
             </Box>
           )}
 
-          <Box sx={{ 
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
-            mt: 3,
-            pt: 2,
-            justifyContent: { xs: 'stretch', sm: 'flex-end' }
-          }}>
+          <DialogActions>
             <Button 
               onClick={handleClose} 
               sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -304,7 +298,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                 </Button>
               </>
             )}
-          </Box>
+          </DialogActions>
         </Box>
       </DialogContent>
     </Dialog>
