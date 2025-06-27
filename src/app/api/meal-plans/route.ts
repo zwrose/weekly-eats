@@ -4,7 +4,10 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { CreateMealPlanRequest } from '@/types/meal-plan';
-import { parseLocalDate, generateMealPlanName, calculateEndDate } from '@/lib/date-utils';
+import { 
+  generateMealPlanNameFromString, 
+  calculateEndDateAsString
+} from '@/lib/date-utils';
 import { isValidDateString } from '@/lib/validation';
 import { 
   AUTH_ERRORS, 
@@ -99,18 +102,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Parse start date in local time to avoid timezone issues
-    const startDateObj = parseLocalDate(startDate);
-    const endDateObj = calculateEndDate(startDateObj);
+    // Calculate end date and generate meal plan name using date strings
+    const endDateString = calculateEndDateAsString(startDate);
 
     // Generate meal plan name based on start date
-    const mealPlanName = generateMealPlanName(startDateObj);
+    const mealPlanName = generateMealPlanNameFromString(startDate);
 
     const now = new Date();
     const mealPlan = {
       name: mealPlanName,
-      startDate: startDateObj,
-      endDate: endDateObj,
+      startDate: startDate,
+      endDate: endDateString,
       templateId: template._id.toString(),
       userId: session.user.id,
       items: [], // Will be populated based on template

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { CreateMealPlanTemplateRequest, UpdateMealPlanTemplateRequest } from '@/types/meal-plan';
 import { isValidDayOfWeek, isValidMealsConfig } from '@/lib/validation';
+import { DEFAULT_TEMPLATE } from '@/lib/meal-plan-utils';
 import { 
   AUTH_ERRORS, 
   TEMPLATE_ERRORS, 
@@ -102,12 +103,8 @@ export async function PUT(request: NextRequest) {
       const now = new Date();
       const newTemplate = {
         userId: session.user.id,
-        startDay: startDay || 'saturday',
-        meals: meals || {
-          breakfast: true,
-          lunch: true,
-          dinner: true
-        },
+        startDay: startDay || DEFAULT_TEMPLATE.startDay,
+        meals: meals || DEFAULT_TEMPLATE.meals,
         createdAt: now,
         updatedAt: now
       };

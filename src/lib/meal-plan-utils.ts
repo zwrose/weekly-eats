@@ -8,6 +8,16 @@ import {
   DayOfWeek
 } from '../types/meal-plan';
 
+// Default template values - centralized for DRY principle
+export const DEFAULT_TEMPLATE: CreateMealPlanTemplateRequest = {
+  startDay: 'saturday',
+  meals: {
+    breakfast: true,
+    lunch: true,
+    dinner: true
+  }
+};
+
 // Meal Plan Templates
 export const fetchMealPlanTemplate = async (): Promise<MealPlanTemplate | null> => {
   const response = await fetch('/api/meal-plans/template');
@@ -160,15 +170,6 @@ export const getOrCreateDefaultTemplate = async (): Promise<MealPlanTemplate> =>
     // Template doesn't exist, create default
   }
   
-  // Create default template
-  const defaultTemplate: CreateMealPlanTemplateRequest = {
-    startDay: 'saturday',
-    meals: {
-      breakfast: true,
-      lunch: true,
-      dinner: true
-    }
-  };
-  
-  return await createMealPlanTemplate(defaultTemplate);
+  // Create default template using centralized constant
+  return await createMealPlanTemplate(DEFAULT_TEMPLATE);
 }; 

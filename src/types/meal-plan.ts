@@ -33,8 +33,8 @@ export interface MealPlan {
   _id: string;
   userId: string;
   name: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string; // YYYY-MM-DD format
+  endDate: string; // YYYY-MM-DD format
   templateId: string;
   items: MealPlanItem[];
   createdAt: Date;

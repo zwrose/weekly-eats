@@ -38,19 +38,20 @@ import {
   createMealPlan, 
   deleteMealPlan,
   fetchMealPlanTemplate,
-  updateMealPlanTemplate
+  updateMealPlanTemplate,
+  DEFAULT_TEMPLATE
 } from "../../lib/meal-plan-utils";
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { 
   dayOfWeekToIndex, 
-  getNextDayOfWeek, 
-  formatDateForAPI 
+  getNextDayOfWeekAsString
 } from "../../lib/date-utils";
 import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions } from '@/components/ui/DialogActions';
+import { formatDateForAPI } from '@/lib/date-utils';
 
 export default function MealPlansPage() {
   const { status } = useSession();
@@ -74,12 +75,8 @@ export default function MealPlansPage() {
       [key in MealType]: boolean;
     };
   }>({
-    startDay: 'saturday',
-    meals: {
-      breakfast: true,
-      lunch: true,
-      dinner: true
-    }
+    startDay: DEFAULT_TEMPLATE.startDay,
+    meals: DEFAULT_TEMPLATE.meals
   });
 
   // Search and pagination
@@ -126,16 +123,16 @@ export default function MealPlansPage() {
   // Open create dialog and set default start date
   const handleOpenCreateDialog = () => {
     if (template) {
-      const today = new Date();
       const dayIndex = dayOfWeekToIndex(template.startDay);
-      const nextStart = getNextDayOfWeek(today, dayIndex);
+      const nextStart = getNextDayOfWeekAsString(dayIndex);
       
-      // Format date as YYYY-MM-DD in local timezone
-      const formattedDate = formatDateForAPI(nextStart);
-      
-      setNewMealPlan({ startDate: formattedDate });
+      setNewMealPlan({ startDate: nextStart });
     } else {
-      setNewMealPlan({ startDate: '' });
+      // Use default template values when no template exists
+      const dayIndex = dayOfWeekToIndex(DEFAULT_TEMPLATE.startDay);
+      const nextStart = getNextDayOfWeekAsString(dayIndex);
+      
+      setNewMealPlan({ startDate: nextStart });
     }
     createDialog.openDialog();
   };
@@ -355,7 +352,7 @@ export default function MealPlansPage() {
                       return new Date(year, month - 1, day);
                     })() : null}
                     onChange={(date) => {
-                      const formattedDate = date ? date.toISOString().slice(0, 10) : '';
+                      const formattedDate = date ? formatDateForAPI(date) : '';
                       setNewMealPlan({ startDate: formattedDate });
                     }}
                     slotProps={{
@@ -389,6 +386,30 @@ export default function MealPlansPage() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       • Includes: {Object.entries(template.meals).filter(([, enabled]) => enabled).map(([meal]) => meal).join(', ')}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {!template && (
+                  <Box sx={{ 
+                    mb: 3, 
+                    p: 2, 
+                    bgcolor: 'background.paper', 
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1 
+                  }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Using default template settings:
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      • Starts on {DEFAULT_TEMPLATE.startDay.charAt(0).toUpperCase() + DEFAULT_TEMPLATE.startDay.slice(1)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      • Includes: {Object.entries(DEFAULT_TEMPLATE.meals).filter(([, enabled]) => enabled).map(([meal]) => meal).join(', ')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                      You can customize these defaults in Template Settings
                     </Typography>
                   </Box>
                 )}
