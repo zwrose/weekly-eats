@@ -2,11 +2,14 @@
   "name": "weekly-eats",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
+    "dev": "npm run setup-db && next dev --turbopack",
+    "build": "npm run setup-db && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup-db": "npx ts-node --esm scripts/setup-database.ts",
+    "postinstall": "npm run setup-db"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.9.1",
