@@ -8,7 +8,7 @@
     "build": "npm run setup-db && next build",
     "start": "next start",
     "lint": "next lint",
-    "setup-db": "npx ts-node --esm scripts/setup-database.ts",
+    "setup-db": "node scripts/setup-database.js",
     "postinstall": "npm run setup-db"
   },
   "dependencies": {

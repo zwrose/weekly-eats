@@ -1,11 +1,11 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
 
 /**
  * Database setup script
  * Run this script to initialize database indexes and perform setup tasks
  * 
  * Usage:
- *   npx ts-node scripts/setup-database.ts
+ *   node scripts/setup-database.js
  *   npm run setup-db
  */
 
