@@ -23,7 +23,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Pagination,
   Alert,
   Chip,
 } from "@mui/material";
@@ -31,7 +30,6 @@ import {
   Restaurant, 
   Add, 
   Edit, 
-  Delete, 
   EmojiEmotions,
   Public,
   Person,
@@ -39,30 +37,26 @@ import {
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";
-import { createRecipe, deleteRecipe, updateRecipe, fetchRecipe, fetchUserRecipes, fetchGlobalRecipes } from "../../lib/recipe-utils";
+import { fetchRecipe } from "../../lib/recipe-utils";
 import EmojiPicker from "../../components/EmojiPicker";
 import IngredientInput from "../../components/IngredientInput";
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
+import { useRecipes } from '@/lib/hooks';
+import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import Pagination from '@/components/optimized/Pagination';
 
 export default function RecipesPage() {
   const { data: session, status } = useSession();
-  const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
-  const [globalRecipes, setGlobalRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userLoading, setUserLoading] = useState(false);
-  const [globalLoading, setGlobalLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [userPage, setUserPage] = useState(1);
-  const [globalPage, setGlobalPage] = useState(1);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const { userRecipes, globalRecipes, loading, userLoading, globalLoading, createRecipe, updateRecipe, deleteRecipe } = useRecipes();
+  // Dialogs
+  const createDialog = useDialog();
+  const viewDialog = useDialog();
+  const deleteConfirmDialog = useConfirmDialog();
+  const emojiPickerDialog = useDialog();
+  // Selected recipe state
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [foodItems, setFoodItems] = useState<{[key: string]: {singularName: string, pluralName: string}}>({});
-  const [foodItemsList, setFoodItemsList] = useState<Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>>([]);
+  // New/edit recipe state (keep as local state)
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: '',
     emoji: '',
@@ -77,22 +71,50 @@ export default function RecipesPage() {
     instructions: '',
     isGlobal: false,
   });
+  // Food items state (keep as local state)
+  const [foodItems, setFoodItems] = useState<{[key: string]: {singularName: string, pluralName: string}}>({});
+  const [foodItemsList, setFoodItemsList] = useState<Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>>([]);
+  // Search and pagination
+  const userPagination = useSearchPagination({
+    data: userRecipes,
+    itemsPerPage: 25,
+    searchFields: ['title']
+  });
+  const globalPagination = useSearchPagination({
+    data: globalRecipes,
+    itemsPerPage: 25,
+    searchFields: ['title']
+  });
+  const [editMode, setEditMode] = useState(false);
 
   const itemsPerPage = 25;
 
+  const loadUserRecipes = useCallback(async () => {
+    try {
+      // ... your user recipe loading logic ...
+    } catch (error) {
+      console.error('Error loading user recipes:', error);
+    }
+  }, []);
+
+  const loadGlobalRecipes = useCallback(async () => {
+    try {
+      // ... your global recipe loading logic ...
+    } catch (error) {
+      console.error('Error loading global recipes:', error);
+    }
+  }, []);
+
   const loadRecipes = useCallback(async () => {
     try {
-      setLoading(true);
       await Promise.all([
         loadUserRecipes(),
         loadGlobalRecipes()
       ]);
     } catch (error) {
       console.error('Error loading recipes:', error);
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [loadUserRecipes, loadGlobalRecipes]);
 
   const loadFoodItems = async () => {
     try {
@@ -130,55 +152,31 @@ export default function RecipesPage() {
     }
   }, [status, loadRecipes]);
 
-  const loadUserRecipes = async () => {
-    try {
-      setUserLoading(true);
-      const recipes = await fetchUserRecipes();
-      setUserRecipes(recipes);
-    } catch (error) {
-      console.error('Error loading user recipes:', error);
-    } finally {
-      setUserLoading(false);
-    }
-  };
-
-  const loadGlobalRecipes = async () => {
-    try {
-      setGlobalLoading(true);
-      const recipes = await fetchGlobalRecipes(true); // Exclude user created
-      setGlobalRecipes(recipes);
-    } catch (error) {
-      console.error('Error loading global recipes:', error);
-    } finally {
-      setGlobalLoading(false);
-    }
-  };
-
   // Filter recipes based on search term
   const filteredUserRecipes = userRecipes.filter(recipe =>
-    recipe.title.toLowerCase().includes(searchTerm.toLowerCase())
+    recipe.title.toLowerCase().includes(userPagination.searchTerm.toLowerCase())
   );
 
   const filteredGlobalRecipes = globalRecipes.filter(recipe =>
-    recipe.title.toLowerCase().includes(searchTerm.toLowerCase())
+    recipe.title.toLowerCase().includes(globalPagination.searchTerm.toLowerCase())
   );
 
   // Pagination
   const paginatedUserRecipes = filteredUserRecipes.slice(
-    (userPage - 1) * itemsPerPage,
-    userPage * itemsPerPage
+    (userPagination.currentPage - 1) * itemsPerPage,
+    userPagination.currentPage * itemsPerPage
   );
 
   const paginatedGlobalRecipes = filteredGlobalRecipes.slice(
-    (globalPage - 1) * itemsPerPage,
-    globalPage * itemsPerPage
+    (globalPagination.currentPage - 1) * itemsPerPage,
+    globalPagination.currentPage * itemsPerPage
   );
 
   // Reset pagination when search term changes
   useEffect(() => {
-    setUserPage(1);
-    setGlobalPage(1);
-  }, [searchTerm]);
+    userPagination.setCurrentPage(1);
+    globalPagination.setCurrentPage(1);
+  }, [userPagination, globalPagination]);
 
   const getFoodItemName = (foodItemId: string, quantity: number): string => {
     const foodItem = foodItems[foodItemId];
@@ -191,7 +189,7 @@ export default function RecipesPage() {
   const handleCreateRecipe = async () => {
     try {
       await createRecipe(newRecipe);
-      setCreateDialogOpen(false);
+      createDialog.closeDialog();
       setNewRecipe({
         title: '',
         emoji: '',
@@ -210,8 +208,7 @@ export default function RecipesPage() {
       // Fetch the full recipe data
       const fullRecipe = await fetchRecipe(recipe._id!);
       setSelectedRecipe(fullRecipe);
-      setViewDialogOpen(true);
-      setEditMode(false);
+      viewDialog.openDialog();
     } catch (error) {
       console.error('Error loading recipe details:', error);
     }
@@ -235,7 +232,6 @@ export default function RecipesPage() {
     
     try {
       await updateRecipe(selectedRecipe._id, editingRecipe);
-      setEditMode(false);
       // Refresh the recipe data
       const updatedRecipe = await fetchRecipe(selectedRecipe._id);
       setSelectedRecipe(updatedRecipe);
@@ -250,8 +246,7 @@ export default function RecipesPage() {
     
     try {
       await deleteRecipe(selectedRecipe._id);
-      setDeleteConfirmOpen(false);
-      setViewDialogOpen(false);
+      deleteConfirmDialog.closeDialog();
       setSelectedRecipe(null);
       loadRecipes();
     } catch (error) {
@@ -260,7 +255,7 @@ export default function RecipesPage() {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (editMode) {
+    if (editingRecipe.emoji) {
       setEditingRecipe({ ...editingRecipe, emoji });
     } else {
       setNewRecipe({ ...newRecipe, emoji });
@@ -268,7 +263,7 @@ export default function RecipesPage() {
   };
 
   const handleIngredientsChange = (ingredients: RecipeIngredientList[]) => {
-    if (editMode) {
+    if (editingRecipe.ingredients) {
       setEditingRecipe({ ...editingRecipe, ingredients });
     } else {
       setNewRecipe({ ...newRecipe, ingredients });
@@ -276,7 +271,7 @@ export default function RecipesPage() {
   };
 
   const handleCloseViewDialog = () => {
-    setViewDialogOpen(false);
+    viewDialog.closeDialog();
     setSelectedRecipe(null);
     setEditMode(false);
   };
@@ -336,7 +331,7 @@ export default function RecipesPage() {
             <Button 
               variant="contained" 
               startIcon={<Add />}
-              onClick={() => setCreateDialogOpen(true)}
+              onClick={() => createDialog.openDialog()}
               sx={{ bgcolor: "#ed6c02", "&:hover": { bgcolor: "#e65100" } }}
             >
               Add New Recipe
@@ -348,8 +343,8 @@ export default function RecipesPage() {
             <Box sx={{ mb: 4 }}>
               <TextField
                 fullWidth
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={userPagination.searchTerm}
+                onChange={(e) => userPagination.setSearchTerm(e.target.value)}
                 placeholder="Start typing to filter recipes by title..."
                 autoComplete="off"
               />
@@ -503,16 +498,15 @@ export default function RecipesPage() {
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                           <Pagination
                             count={Math.ceil(filteredUserRecipes.length / itemsPerPage)}
-                            page={userPage}
-                            onChange={(_, page) => setUserPage(page)}
-                            color="primary"
+                            page={userPagination.currentPage}
+                            onChange={userPagination.setCurrentPage}
                           />
                         </Box>
                       )}
                     </>
                   ) : (
                     <Alert severity="info">
-                      {searchTerm ? 'No user recipes match your search criteria' : 'No user recipes found'}
+                      {userPagination.searchTerm ? 'No user recipes match your search criteria' : 'No user recipes found'}
                     </Alert>
                   )}
                 </Box>
@@ -639,16 +633,15 @@ export default function RecipesPage() {
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                           <Pagination
                             count={Math.ceil(filteredGlobalRecipes.length / itemsPerPage)}
-                            page={globalPage}
-                            onChange={(_, page) => setGlobalPage(page)}
-                            color="primary"
+                            page={globalPagination.currentPage}
+                            onChange={globalPagination.setCurrentPage}
                           />
                         </Box>
                       )}
                     </>
                   ) : (
                     <Alert severity="info">
-                      {searchTerm ? 'No global recipes match your search criteria' : 'No global recipes found'}
+                      {globalPagination.searchTerm ? 'No global recipes match your search criteria' : 'No global recipes found'}
                     </Alert>
                   )}
                 </Box>
@@ -659,8 +652,8 @@ export default function RecipesPage() {
 
         {/* Create Recipe Dialog */}
         <Dialog 
-          open={createDialogOpen} 
-          onClose={() => setCreateDialogOpen(false)}
+          open={createDialog.open} 
+          onClose={() => createDialog.closeDialog()}
           maxWidth="lg"
           fullWidth
         >
@@ -675,7 +668,7 @@ export default function RecipesPage() {
                 alignItems: { xs: 'stretch', sm: 'flex-start' }
               }}>
                 <IconButton 
-                  onClick={() => setEmojiPickerOpen(true)}
+                  onClick={() => emojiPickerDialog.openDialog()}
                   sx={{ 
                     border: '1px solid #ccc',
                     width: { xs: 56, sm: 56 },
@@ -751,7 +744,7 @@ export default function RecipesPage() {
                 justifyContent: { xs: 'stretch', sm: 'flex-end' }
               }}>
                 <Button 
-                  onClick={() => setCreateDialogOpen(false)}
+                  onClick={() => createDialog.closeDialog()}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
@@ -771,7 +764,7 @@ export default function RecipesPage() {
 
         {/* View/Edit Recipe Dialog */}
         <Dialog 
-          open={viewDialogOpen} 
+          open={viewDialog.open} 
           onClose={handleCloseViewDialog}
           maxWidth="lg"
           fullWidth
@@ -783,10 +776,10 @@ export default function RecipesPage() {
                   <Typography variant="h4">{selectedRecipe.emoji}</Typography>
                 )}
                 <Typography variant="h5">
-                  {editMode ? 'Edit Recipe' : selectedRecipe?.title}
+                  {selectedRecipe?.title}
                 </Typography>
               </Box>
-              {!editMode && selectedRecipe && canEditRecipe(selectedRecipe) && (
+              {selectedRecipe && canEditRecipe(selectedRecipe) && !editMode && (
                 <IconButton onClick={handleEditRecipe} color="primary">
                   <Edit />
                 </IconButton>
@@ -795,7 +788,6 @@ export default function RecipesPage() {
           </DialogTitle>
           <DialogContent>
             {editMode ? (
-              // Edit Mode
               <Box sx={{ pt: 2 }}>
                 <Box sx={{ 
                   display: 'flex', 
@@ -805,7 +797,7 @@ export default function RecipesPage() {
                   alignItems: { xs: 'stretch', sm: 'flex-start' }
                 }}>
                   <IconButton 
-                    onClick={() => setEmojiPickerOpen(true)}
+                    onClick={() => emojiPickerDialog.openDialog()}
                     sx={{ 
                       border: '1px solid #ccc',
                       width: { xs: 56, sm: 56 },
@@ -871,9 +863,32 @@ export default function RecipesPage() {
                   fullWidth
                   required
                 />
+
+                <Box sx={{ 
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: { xs: 1, sm: 0 },
+                  mt: 3,
+                  pt: 2,
+                  justifyContent: { xs: 'stretch', sm: 'flex-end' }
+                }}>
+                  <Button 
+                    onClick={() => setEditMode(false)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpdateRecipe}
+                    variant="contained"
+                    disabled={!editingRecipe.title || !editingRecipe.instructions || !hasValidIngredients(editingRecipe.ingredients || [])}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    Update Recipe
+                  </Button>
+                </Box>
               </Box>
             ) : (
-              // View Mode
               <Box sx={{ pt: 2 }}>
                 <Box sx={{ 
                   display: 'flex', 
@@ -941,58 +956,13 @@ export default function RecipesPage() {
                 </Box>
               </Box>
             )}
-
-            <Box sx={{ 
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: { xs: 1, sm: 0 },
-              mt: 3,
-              pt: 2,
-              justifyContent: { xs: 'stretch', sm: 'flex-end' }
-            }}>
-              {editMode ? (
-                <>
-                  <IconButton 
-                    onClick={() => setDeleteConfirmOpen(true)} 
-                    color="error"
-                    sx={{ 
-                      mr: { xs: 0, sm: 'auto' },
-                      alignSelf: { xs: 'center', sm: 'flex-start' }
-                    }}
-                  >
-                    <Delete />
-                  </IconButton>
-                  <Button 
-                    onClick={() => setEditMode(false)}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleUpdateRecipe}
-                    variant="contained"
-                    disabled={!editingRecipe.title || !editingRecipe.instructions || !hasValidIngredients(editingRecipe.ingredients || [])}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Update Recipe
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  onClick={handleCloseViewDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Close
-                </Button>
-              )}
-            </Box>
           </DialogContent>
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
         <Dialog
-          open={deleteConfirmOpen}
-          onClose={() => setDeleteConfirmOpen(false)}
+          open={deleteConfirmDialog.open}
+          onClose={() => deleteConfirmDialog.closeDialog()}
         >
           <DialogTitle>Delete Recipe</DialogTitle>
           <DialogContent>
@@ -1009,7 +979,7 @@ export default function RecipesPage() {
               justifyContent: { xs: 'stretch', sm: 'flex-end' }
             }}>
               <Button 
-                onClick={() => setDeleteConfirmOpen(false)}
+                onClick={() => deleteConfirmDialog.closeDialog()}
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Cancel
@@ -1028,10 +998,10 @@ export default function RecipesPage() {
 
         {/* Emoji Picker */}
         <EmojiPicker
-          open={emojiPickerOpen}
-          onClose={() => setEmojiPickerOpen(false)}
+          open={emojiPickerDialog.open}
+          onClose={() => emojiPickerDialog.closeDialog()}
           onSelect={handleEmojiSelect}
-          currentEmoji={editMode ? editingRecipe.emoji : newRecipe.emoji}
+          currentEmoji={selectedRecipe?.emoji || newRecipe.emoji}
         />
       </Container>
     </AuthenticatedLayout>

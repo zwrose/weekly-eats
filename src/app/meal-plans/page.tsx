@@ -15,14 +15,12 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  TextField,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Pagination,
 } from "@mui/material";
 import { Add, CalendarMonth, Settings } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
@@ -49,15 +47,18 @@ import {
   getNextDayOfWeek, 
   formatDateForAPI 
 } from "../../lib/date-utils";
+import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import SearchBar from '@/components/optimized/SearchBar';
+import Pagination from '@/components/optimized/Pagination';
 
 export default function MealPlansPage() {
   const { status } = useSession();
   const [loading, setLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlanWithTemplate[]>([]);
   const [template, setTemplate] = useState<MealPlanTemplate | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const createDialog = useDialog();
+  const templateDialog = useDialog();
+  const deleteConfirmDialog = useConfirmDialog();
   const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlanWithTemplate | null>(null);
   
   // Create meal plan form state
@@ -81,9 +82,11 @@ export default function MealPlansPage() {
   });
 
   // Search and pagination
-  const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
+  const mealPlanPagination = useSearchPagination({
+    data: mealPlans,
+    itemsPerPage: 10,
+    searchFields: ['name']
+  });
 
   const loadData = useCallback(async () => {
     try {
@@ -133,13 +136,13 @@ export default function MealPlansPage() {
     } else {
       setNewMealPlan({ startDate: '' });
     }
-    setCreateDialogOpen(true);
+    createDialog.openDialog();
   };
 
   const handleCreateMealPlan = async () => {
     try {
       await createMealPlan(newMealPlan);
-      setCreateDialogOpen(false);
+      createDialog.closeDialog();
       setNewMealPlan({ startDate: '' });
       loadData();
     } catch (error) {
@@ -151,7 +154,7 @@ export default function MealPlansPage() {
   const handleUpdateTemplate = async () => {
     try {
       await updateMealPlanTemplate(templateForm);
-      setTemplateDialogOpen(false);
+      templateDialog.closeDialog();
       loadData();
     } catch (error) {
       console.error('Error updating template:', error);
@@ -164,7 +167,7 @@ export default function MealPlansPage() {
     
     try {
       await deleteMealPlan(selectedMealPlan._id);
-      setDeleteConfirmOpen(false);
+      deleteConfirmDialog.closeDialog();
       setSelectedMealPlan(null);
       loadData();
     } catch (error) {
@@ -178,17 +181,6 @@ export default function MealPlansPage() {
     // TODO: Implement edit functionality
     console.log('Edit meal plan:', mealPlan);
   };
-
-  // Filter meal plans based on search term
-  const filteredMealPlans = mealPlans.filter(mealPlan =>
-    mealPlan.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Paginate meal plans
-  const paginatedMealPlans = filteredMealPlans.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
-  );
 
   // Show loading state while session is being fetched
   if (status === "loading") {
@@ -234,7 +226,7 @@ export default function MealPlansPage() {
               <Button 
                 variant="outlined"
                 startIcon={<Settings />}
-                onClick={() => setTemplateDialogOpen(true)}
+                onClick={() => templateDialog.openDialog()}
                 sx={{ borderColor: "#1976d2", color: "#1976d2", "&:hover": { borderColor: "#1565c0" } }}
               >
                 Template Settings
@@ -251,16 +243,10 @@ export default function MealPlansPage() {
           </Box>
 
           <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            {/* Search Bar */}
-            <Box sx={{ mb: 4 }}>
-              <TextField
-                fullWidth
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Start typing to filter meal plans by name..."
-                autoComplete="off"
-              />
-            </Box>
+            <SearchBar
+              value={mealPlanPagination.searchTerm}
+              onChange={mealPlanPagination.setSearchTerm}
+            />
 
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -268,7 +254,7 @@ export default function MealPlansPage() {
               </Box>
             ) : (
               <>
-                {filteredMealPlans.length > 0 ? (
+                {mealPlans.length > 0 ? (
                   <>
                     {/* Desktop Table View */}
                     <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -280,7 +266,7 @@ export default function MealPlansPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {paginatedMealPlans.map((mealPlan) => (
+                            {mealPlanPagination.paginatedData.map((mealPlan) => (
                               <TableRow 
                                 key={mealPlan._id}
                                 onClick={() => handleEditMealPlan(mealPlan)}
@@ -301,7 +287,7 @@ export default function MealPlansPage() {
 
                     {/* Mobile Card View */}
                     <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                      {paginatedMealPlans.map((mealPlan) => (
+                      {mealPlanPagination.paginatedData.map((mealPlan) => (
                         <Paper
                           key={mealPlan._id}
                           onClick={() => handleEditMealPlan(mealPlan)}
@@ -331,20 +317,19 @@ export default function MealPlansPage() {
                       ))}
                     </Box>
                     
-                    {filteredMealPlans.length > itemsPerPage && (
+                    {mealPlans.length > 10 && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                         <Pagination
-                          count={Math.ceil(filteredMealPlans.length / itemsPerPage)}
-                          page={page}
-                          onChange={(_, newPage) => setPage(newPage)}
-                          color="primary"
+                          count={mealPlanPagination.totalPages}
+                          page={mealPlanPagination.currentPage}
+                          onChange={mealPlanPagination.setCurrentPage}
                         />
                       </Box>
                     )}
                   </>
                 ) : (
                   <Alert severity="info">
-                    {searchTerm ? 'No meal plans match your search criteria' : 'No meal plans found. Create your first meal plan to get started!'}
+                    {mealPlanPagination.searchTerm ? 'No meal plans match your search criteria' : 'No meal plans found. Create your first meal plan to get started!'}
                   </Alert>
                 )}
               </>
@@ -353,8 +338,8 @@ export default function MealPlansPage() {
 
           {/* Create Meal Plan Dialog */}
           <Dialog 
-            open={createDialogOpen} 
-            onClose={() => setCreateDialogOpen(false)}
+            open={createDialog.open} 
+            onClose={createDialog.closeDialog}
             maxWidth="sm"
             fullWidth
           >
@@ -415,7 +400,7 @@ export default function MealPlansPage() {
                 justifyContent: { xs: 'stretch', sm: 'flex-end' }
               }}>
                 <Button 
-                  onClick={() => setCreateDialogOpen(false)}
+                  onClick={createDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
@@ -434,8 +419,8 @@ export default function MealPlansPage() {
 
           {/* Template Settings Dialog */}
           <Dialog 
-            open={templateDialogOpen} 
-            onClose={() => setTemplateDialogOpen(false)}
+            open={templateDialog.open} 
+            onClose={templateDialog.closeDialog}
             maxWidth="sm"
             fullWidth
           >
@@ -489,7 +474,7 @@ export default function MealPlansPage() {
                 justifyContent: { xs: 'stretch', sm: 'flex-end' }
               }}>
                 <Button 
-                  onClick={() => setTemplateDialogOpen(false)}
+                  onClick={templateDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
@@ -507,8 +492,8 @@ export default function MealPlansPage() {
 
           {/* Delete Confirmation Dialog */}
           <Dialog
-            open={deleteConfirmOpen}
-            onClose={() => setDeleteConfirmOpen(false)}
+            open={deleteConfirmDialog.open}
+            onClose={deleteConfirmDialog.closeDialog}
           >
             <DialogTitle>Delete Meal Plan</DialogTitle>
             <DialogContent>
@@ -525,7 +510,7 @@ export default function MealPlansPage() {
                 justifyContent: { xs: 'stretch', sm: 'flex-end' }
               }}>
                 <Button 
-                  onClick={() => setDeleteConfirmOpen(false)}
+                  onClick={deleteConfirmDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
