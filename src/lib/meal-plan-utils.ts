@@ -5,8 +5,11 @@ import {
   UpdateMealPlanRequest,
   UpdateMealPlanTemplateRequest,
   MealPlanWithTemplate,
-  DayOfWeek
+  DayOfWeek,
+  MealPlan
 } from '../types/meal-plan';
+import { parseLocalDate, calculateEndDateAsString, formatDateForAPI, dayOfWeekToIndex } from './date-utils';
+import { isBefore, isEqual, addDays } from 'date-fns';
 
 // Default template values - centralized for DRY principle
 export const DEFAULT_TEMPLATE: CreateMealPlanTemplateRequest = {
@@ -16,6 +19,57 @@ export const DEFAULT_TEMPLATE: CreateMealPlanTemplateRequest = {
     lunch: true,
     dinner: true
   }
+};
+
+/**
+ * Check if a meal plan date range overlaps with any existing meal plans
+ * @param startDate - Start date of the new meal plan (YYYY-MM-DD)
+ * @param existingPlans - Array of existing meal plans to check against
+ * @param excludePlanId - Optional plan ID to exclude from checking (for updates)
+ * @returns Object with isOverlapping boolean and conflict details if found
+ */
+export const checkMealPlanOverlap = (
+  startDate: string,
+  existingPlans: MealPlan[],
+  excludePlanId?: string
+): { isOverlapping: boolean; conflict?: { planName: string; startDate: string; endDate: string } } => {
+  if (!startDate) {
+    return { isOverlapping: false };
+  }
+
+  const newStart = parseLocalDate(startDate);
+  const newEnd = parseLocalDate(calculateEndDateAsString(startDate));
+
+  for (const plan of existingPlans) {
+    // Skip the plan being updated (if provided)
+    if (excludePlanId && plan._id === excludePlanId) {
+      continue;
+    }
+
+    // Enforce string-only logic
+    if (typeof plan.startDate !== 'string' || typeof plan.endDate !== 'string') {
+      throw new Error('MealPlan startDate/endDate must be strings in YYYY-MM-DD format.');
+    }
+    const planStart = parseLocalDate(plan.startDate);
+    const planEnd = parseLocalDate(plan.endDate);
+
+    // If ranges overlap: (A <= D && C <= B)
+    if (
+      (isBefore(newStart, planEnd) || isEqual(newStart, planEnd)) &&
+      (isBefore(planStart, newEnd) || isEqual(planStart, newEnd))
+    ) {
+      return {
+        isOverlapping: true,
+        conflict: {
+          planName: plan.name,
+          startDate: plan.startDate,
+          endDate: plan.endDate
+        }
+      };
+    }
+  }
+
+  return { isOverlapping: false };
 };
 
 // Meal Plan Templates
@@ -172,4 +226,51 @@ export const getOrCreateDefaultTemplate = async (): Promise<MealPlanTemplate> =>
   
   // Create default template using centralized constant
   return await createMealPlanTemplate(DEFAULT_TEMPLATE);
-}; 
+};
+
+/**
+ * Find the next available non-overlapping start date for a meal plan
+ * @param startDay - DayOfWeek string (e.g., 'saturday')
+ * @param existingPlans - Array of existing meal plans
+ * @returns { startDate: string, skipped: boolean, skippedFrom?: string }
+ */
+export function findNextAvailableMealPlanStartDate(
+  startDay: DayOfWeek,
+  existingPlans: MealPlan[]
+): { startDate: string; skipped: boolean; skippedFrom?: string } {
+  let candidate = new Date();
+  const targetDayIndex = dayOfWeekToIndex(startDay);
+  // Find the next occurrence of the template start day
+  while (candidate.getDay() !== targetDayIndex) {
+    candidate = addDays(candidate, 1);
+  }
+  let candidateStr = formatDateForAPI(candidate);
+  let skipped = false;
+  let skippedFrom: string | undefined = undefined;
+  
+  // If the first candidate overlaps, keep advancing until we find a free slot
+  while (checkMealPlanOverlap(candidateStr, existingPlans).isOverlapping) {
+    if (!skipped) {
+      skipped = true;
+      skippedFrom = candidateStr;
+    }
+    
+    // Find the conflicting plan and advance to the day after it ends
+    const overlapResult = checkMealPlanOverlap(candidateStr, existingPlans);
+    if (overlapResult.conflict) {
+      const conflictEndDate = parseLocalDate(overlapResult.conflict.endDate);
+      // Advance to the day after the conflict ends, then find the next occurrence of the target day
+      candidate = addDays(conflictEndDate, 1);
+      while (candidate.getDay() !== targetDayIndex) {
+        candidate = addDays(candidate, 1);
+      }
+      candidateStr = formatDateForAPI(candidate);
+    } else {
+      // Fallback: advance by 7 days
+      candidate = addDays(candidate, 7);
+      candidateStr = formatDateForAPI(candidate);
+    }
+  }
+  
+  return { startDate: candidateStr, skipped, skippedFrom };
+} 

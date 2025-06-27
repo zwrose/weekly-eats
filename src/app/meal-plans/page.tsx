@@ -43,10 +43,8 @@ import {
 } from "../../lib/meal-plan-utils";
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { 
-  dayOfWeekToIndex, 
-  getNextDayOfWeekAsString
-} from "../../lib/date-utils";
+import { calculateEndDateAsString } from "../../lib/date-utils";
+import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
 import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
@@ -68,6 +66,9 @@ export default function MealPlansPage() {
     startDate: ''
   });
 
+  // Validation state
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   // Template form state
   const [templateForm, setTemplateForm] = useState<{
     startDay: DayOfWeek;
@@ -85,6 +86,9 @@ export default function MealPlansPage() {
     itemsPerPage: 10,
     searchFields: ['name']
   });
+
+  // State to track if we skipped a default due to overlap
+  const [skippedDefault, setSkippedDefault] = useState<{ skipped: boolean; skippedFrom?: string; earliestAvailable: string | null } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -122,18 +126,10 @@ export default function MealPlansPage() {
 
   // Open create dialog and set default start date
   const handleOpenCreateDialog = () => {
-    if (template) {
-      const dayIndex = dayOfWeekToIndex(template.startDay);
-      const nextStart = getNextDayOfWeekAsString(dayIndex);
-      
-      setNewMealPlan({ startDate: nextStart });
-    } else {
-      // Use default template values when no template exists
-      const dayIndex = dayOfWeekToIndex(DEFAULT_TEMPLATE.startDay);
-      const nextStart = getNextDayOfWeekAsString(dayIndex);
-      
-      setNewMealPlan({ startDate: nextStart });
-    }
+    const startDay = template ? template.startDay : DEFAULT_TEMPLATE.startDay;
+    const { startDate, skipped, skippedFrom } = findNextAvailableMealPlanStartDate(startDay, mealPlans);
+    setNewMealPlan({ startDate });
+    setSkippedDefault(skipped ? { skipped, skippedFrom, earliestAvailable: startDate } : null);
     createDialog.openDialog();
   };
 
@@ -142,11 +138,19 @@ export default function MealPlansPage() {
       await createMealPlan(newMealPlan);
       createDialog.closeDialog();
       setNewMealPlan({ startDate: '' });
+      setValidationError(null);
       loadData();
     } catch (error) {
       console.error('Error creating meal plan:', error);
       alert('Failed to create meal plan');
     }
+  };
+
+  const handleCloseCreateDialog = () => {
+    createDialog.closeDialog();
+    setNewMealPlan({ startDate: '' });
+    setValidationError(null);
+    setSkippedDefault(null);
   };
 
   const handleUpdateTemplate = async () => {
@@ -179,6 +183,50 @@ export default function MealPlansPage() {
     // TODO: Implement edit functionality
     console.log('Edit meal plan:', mealPlan);
   };
+
+  // Check for overlapping meal plans
+  const checkForOverlaps = useCallback((startDate: string): string | null => {
+    if (!startDate) return null;
+    
+    const overlapResult = checkMealPlanOverlap(startDate, mealPlans);
+    if (overlapResult.isOverlapping && overlapResult.conflict) {
+      return `This meal plan (${startDate} to ${calculateEndDateAsString(startDate)}) would overlap with "${overlapResult.conflict.planName}" (${overlapResult.conflict.startDate} to ${overlapResult.conflict.endDate})`;
+    }
+    
+    return null;
+  }, [mealPlans]);
+
+  // Update validation when start date changes
+  useEffect(() => {
+    const error = checkForOverlaps(newMealPlan.startDate);
+    setValidationError(error);
+    
+    // Recalculate if this date was skipped due to overlap
+    if (newMealPlan.startDate) {
+      const startDay = template ? template.startDay : DEFAULT_TEMPLATE.startDay;
+      const { startDate, skippedFrom } = findNextAvailableMealPlanStartDate(startDay, mealPlans);
+      
+      // If the current date is not the earliest available, update the skipped info
+      if (startDate !== newMealPlan.startDate) {
+        setSkippedDefault({ 
+          skipped: true, 
+          skippedFrom: skippedFrom || newMealPlan.startDate,
+          earliestAvailable: startDate
+        });
+      } else if (skippedFrom) {
+        // If dates match but there was a skipped date, keep the skipped info
+        setSkippedDefault({ 
+          skipped: true, 
+          skippedFrom: skippedFrom,
+          earliestAvailable: startDate
+        });
+      } else {
+        setSkippedDefault(null);
+      }
+    } else {
+      setSkippedDefault(null);
+    }
+  }, [newMealPlan.startDate, checkForOverlaps, template, mealPlans]);
 
   // Show loading state while session is being fetched
   if (status === "loading") {
@@ -337,7 +385,7 @@ export default function MealPlansPage() {
           {/* Create Meal Plan Dialog */}
           <Dialog 
             open={createDialog.open} 
-            onClose={createDialog.closeDialog}
+            onClose={handleCloseCreateDialog}
             maxWidth="sm"
             fullWidth
           >
@@ -352,14 +400,22 @@ export default function MealPlansPage() {
                       return new Date(year, month - 1, day);
                     })() : null}
                     onChange={(date) => {
-                      const formattedDate = date ? formatDateForAPI(date) : '';
-                      setNewMealPlan({ startDate: formattedDate });
+                      // Only set the date if it's a valid Date object
+                      if (date && date instanceof Date && !isNaN(date.getTime())) {
+                        const formattedDate = formatDateForAPI(date);
+                        setNewMealPlan({ startDate: formattedDate });
+                      } else {
+                        // Clear the date if invalid
+                        setNewMealPlan({ startDate: '' });
+                      }
                     }}
                     slotProps={{
                       textField: {
                         fullWidth: true,
                         sx: { mb: 3 },
                         required: true,
+                        error: !!validationError,
+                        helperText: validationError || '',
                         inputProps: {
                           readOnly: true,
                           inputMode: 'none',
@@ -368,6 +424,18 @@ export default function MealPlansPage() {
                     }}
                   />
                 </LocalizationProvider>
+                
+                {validationError && (
+                  <Alert severity="error" sx={{ mb: 3 }}>
+                    {validationError}
+                  </Alert>
+                )}
+                
+                {skippedDefault?.skipped && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    The earliest available start date that does not overlap with your existing meal plans is <b>{skippedDefault.earliestAvailable}</b>.
+                  </Alert>
+                )}
                 
                 {template && (
                   <Box sx={{ 
@@ -422,7 +490,7 @@ export default function MealPlansPage() {
                 justifyContent: { xs: 'stretch', sm: 'flex-end' }
               }}>
                 <Button 
-                  onClick={createDialog.closeDialog}
+                  onClick={handleCloseCreateDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
@@ -430,7 +498,7 @@ export default function MealPlansPage() {
                 <Button 
                   onClick={handleCreateMealPlan}
                   variant="contained"
-                  disabled={!newMealPlan.startDate}
+                  disabled={!newMealPlan.startDate || !!validationError}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Create Plan
