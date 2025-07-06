@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "setup-db": "node scripts/setup-database.js",
+    "migrate-meal-plans": "node scripts/migrate-meal-plans.js",
     "postinstall": "npm run setup-db"
   },
   "dependencies": {

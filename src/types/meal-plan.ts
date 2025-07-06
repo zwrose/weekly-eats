@@ -36,6 +36,12 @@ export interface MealPlan {
   startDate: string; // YYYY-MM-DD format
   endDate: string; // YYYY-MM-DD format
   templateId: string;
+  templateSnapshot: {
+    startDay: DayOfWeek;
+    meals: {
+      [key in MealType]: boolean;
+    };
+  };
   items: MealPlanItem[];
   createdAt: Date;
   updatedAt: Date;

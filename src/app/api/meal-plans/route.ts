@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
 import { CreateMealPlanRequest, MealPlan } from '@/types/meal-plan';
 import { 
   generateMealPlanNameFromString, 
@@ -28,25 +27,22 @@ export async function GET() {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
-    const templatesCollection = db.collection('mealPlanTemplates');
 
     const mealPlans = await mealPlansCollection
       .find({ userId: session.user.id })
       .sort({ startDate: -1 })
       .toArray();
 
-    // Get templates for each meal plan
-    const templateIds = [...new Set(mealPlans.map(plan => plan.templateId))];
-    const templates = await templatesCollection
-      .find({ _id: { $in: templateIds.map(id => new ObjectId(id)) } })
-      .toArray();
-    
-    const templatesMap = new Map(templates.map(template => [template._id.toString(), template]));
-
-    // Transform meal plans to include template data
+    // Transform meal plans to use template snapshot instead of fetching current template
     const mealPlansWithTemplates = mealPlans.map(plan => ({
       ...plan,
-      template: templatesMap.get(plan.templateId)
+      template: {
+        _id: plan.templateId,
+        userId: session.user.id,
+        ...plan.templateSnapshot,
+        createdAt: plan.createdAt,
+        updatedAt: plan.createdAt // Use creation time as template was snapshot at creation
+      }
     }));
 
     return NextResponse.json(mealPlansWithTemplates);
@@ -125,6 +121,10 @@ export async function POST(request: NextRequest) {
       startDate: startDate,
       endDate: endDateString,
       templateId: template._id.toString(),
+      templateSnapshot: {
+        startDay: template.startDay,
+        meals: template.meals
+      },
       userId: session.user.id,
       items: [], // Will be populated based on template
       createdAt: now,
@@ -138,10 +138,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_CREATION_FAILED }, { status: 500 });
     }
 
-    // Return with template data
+    // Return with template snapshot data
     const mealPlanWithTemplate = {
       ...createdMealPlan,
-      template
+      template: {
+        _id: template._id.toString(),
+        userId: session.user.id,
+        ...createdMealPlan.templateSnapshot,
+        createdAt: now,
+        updatedAt: now
+      }
     };
 
     return NextResponse.json(mealPlanWithTemplate, { status: 201 });
