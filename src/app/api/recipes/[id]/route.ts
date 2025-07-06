@@ -93,7 +93,7 @@ export async function PUT(
         }
         
         for (const ingredient of ingredientList.ingredients) {
-          if (!ingredient.foodItemId || ingredient.quantity <= 0 || !ingredient.unit) {
+          if (!ingredient.id || ingredient.quantity <= 0 || (ingredient.type === 'foodItem' && !ingredient.unit)) {
             return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
           }
         }

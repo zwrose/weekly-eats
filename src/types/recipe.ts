@@ -1,7 +1,8 @@
 export interface RecipeIngredient {
-  foodItemId: string;
+  type: 'foodItem' | 'recipe';
+  id: string; // foodItemId or recipeId
   quantity: number;
-  unit: string;
+  unit?: string; // Only for food items, not for recipes
 }
 
 export interface RecipeIngredientList {
