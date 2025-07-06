@@ -866,6 +866,7 @@ export default function RecipesPage() {
                   onChange={handleIngredientsChange}
                   foodItems={foodItemsList}
                   onFoodItemAdded={handleFoodItemAdded}
+                  currentRecipeId={selectedRecipe?._id}
                 />
 
                 <Divider sx={{ my: 3 }} />
