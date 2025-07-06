@@ -179,17 +179,27 @@ export default function RecipesPage() {
     globalPagination.setCurrentPage(1);
   }, [userPagination, globalPagination]);
 
-  const getFoodItemName = (foodItemId: string, quantity: number): string => {
-    const foodItem = foodItems[foodItemId];
-    if (!foodItem) {
-      return 'Unknown item';
+  const getIngredientName = (ingredient: { type: 'foodItem' | 'recipe'; id: string; quantity: number }): string => {
+    if (ingredient.type === 'foodItem') {
+      const foodItem = foodItems[ingredient.id];
+      if (!foodItem) {
+        return 'Unknown food item';
+      }
+      return ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
+    } else {
+      // For recipes, we need to find the recipe in our lists
+      const recipe = [...userRecipes, ...globalRecipes].find(r => r._id === ingredient.id);
+      return recipe ? recipe.title : 'Unknown recipe';
     }
-    return quantity === 1 ? foodItem.singularName : foodItem.pluralName;
   };
 
   const handleCreateRecipe = async () => {
     try {
-      await createRecipe(newRecipe);
+      const filteredRecipe = {
+        ...newRecipe,
+        ingredients: filterBlankIngredients(newRecipe.ingredients)
+      };
+      await createRecipe(filteredRecipe);
       createDialog.closeDialog();
       setNewRecipe({
         title: '',
@@ -232,11 +242,18 @@ export default function RecipesPage() {
     if (!selectedRecipe?._id) return;
     
     try {
-      await updateRecipe(selectedRecipe._id, editingRecipe);
+      const filteredRecipe = {
+        ...editingRecipe,
+        ingredients: filterBlankIngredients(editingRecipe.ingredients || [])
+      };
+      await updateRecipe(selectedRecipe._id, filteredRecipe);
       // Refresh the recipe data
       const updatedRecipe = await fetchRecipe(selectedRecipe._id);
       setSelectedRecipe(updatedRecipe);
       loadRecipes(); // Refresh the lists
+      // Close the dialog and exit edit mode
+      setEditMode(false);
+      viewDialog.closeDialog();
     } catch (error) {
       console.error('Error updating recipe:', error);
     }
@@ -256,18 +273,26 @@ export default function RecipesPage() {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (editingRecipe.emoji) {
+    if (editMode) {
       setEditingRecipe({ ...editingRecipe, emoji });
     } else {
-    setNewRecipe({ ...newRecipe, emoji });
+      setNewRecipe({ ...newRecipe, emoji });
     }
   };
 
+  // Filter out blank ingredients before saving
+  const filterBlankIngredients = (ingredients: RecipeIngredientList[]) => {
+    return ingredients.map(list => ({
+      ...list,
+      ingredients: list.ingredients.filter(ingredient => ingredient.id && ingredient.id.trim() !== '')
+    }));
+  };
+
   const handleIngredientsChange = (ingredients: RecipeIngredientList[]) => {
-    if (editingRecipe.ingredients) {
+    if (editMode) {
       setEditingRecipe({ ...editingRecipe, ingredients });
     } else {
-    setNewRecipe({ ...newRecipe, ingredients });
+      setNewRecipe({ ...newRecipe, ingredients });
     }
   };
 
@@ -910,7 +935,7 @@ export default function RecipesPage() {
                           <Box component="ul" sx={{ pl: 2 }}>
                             {list.ingredients.map((ingredient, ingIndex) => (
                               <Typography key={ingIndex} component="li" variant="body1">
-                                {ingredient.quantity} {ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{getFoodItemName(ingredient.foodItemId, ingredient.quantity)}
+                                {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{getIngredientName(ingredient)}
                               </Typography>
                             ))}
                           </Box>

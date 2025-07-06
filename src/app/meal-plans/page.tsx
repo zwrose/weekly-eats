@@ -21,7 +21,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Divider,
 } from "@mui/material";
 import { Add, CalendarMonth, Settings, Edit } from "@mui/icons-material";
@@ -41,8 +40,11 @@ import {
   deleteMealPlan,
   fetchMealPlanTemplate,
   updateMealPlanTemplate,
+  updateMealPlan,
   DEFAULT_TEMPLATE
 } from "../../lib/meal-plan-utils";
+import AddFoodItemDialog from "../../components/AddFoodItemDialog";
+import IngredientInput from "../../components/IngredientInput";
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
@@ -67,6 +69,10 @@ export default function MealPlansPage() {
   const editDialog = useDialog();
   const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlanWithTemplate | null>(null);
   const [editMode, setEditMode] = useState(false);
+  
+  // State for meal plan editing
+  const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
+  const [prefillFoodItemName] = useState('');
   
   // Create meal plan form state
   const [newMealPlan, setNewMealPlan] = useState<CreateMealPlanRequest>({
@@ -97,6 +103,8 @@ export default function MealPlansPage() {
   // State to track if we skipped a default due to overlap
   const [skippedDefault, setSkippedDefault] = useState<{ skipped: boolean; skippedFrom?: string; earliestAvailable: string | null } | null>(null);
 
+
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -125,11 +133,15 @@ export default function MealPlansPage() {
     }
   }, []);
 
+
+
   useEffect(() => {
     if (status === 'authenticated') {
       loadData();
     }
   }, [status, loadData]);
+
+
 
   // Open create dialog and set default start date
   const handleOpenCreateDialog = () => {
@@ -201,14 +213,50 @@ export default function MealPlansPage() {
     if (!selectedMealPlan?._id) return;
     
     try {
-      // TODO: Implement update meal plan API call
-      console.log('Updating meal plan:', selectedMealPlan);
+      // Update the meal plan with the current items
+      await updateMealPlan(selectedMealPlan._id, {
+        items: selectedMealPlan.items
+      });
+      
       viewDialog.closeDialog();
       setSelectedMealPlan(null);
       setEditMode(false);
       loadData(); // Refresh the lists
     } catch (error) {
       console.error('Error updating meal plan:', error);
+      alert('Failed to update meal plan');
+    }
+  };
+
+
+
+
+
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+    try {
+      const response = await fetch('/api/food-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(foodItemData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add food item');
+      }
+
+      const newFoodItem = await response.json();
+      
+      // Close the dialog
+      setAddFoodItemDialogOpen(false);
+      
+      // Show success feedback
+      console.log('Food item added successfully:', newFoodItem);
+    } catch (error) {
+      console.error('Error adding food item:', error);
+      alert('Failed to add food item');
     }
   };
 
@@ -665,16 +713,93 @@ export default function MealPlansPage() {
                 <Box sx={{ mt: 2 }}>
                   {editMode ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <TextField
-                        label="Meal Plan Name"
-                        value={selectedMealPlan.name || ''}
-                        onChange={(e) => setSelectedMealPlan({ ...selectedMealPlan, name: e.target.value })}
-                        fullWidth
-                      />
-                      {/* TODO: Add meal plan items editing interface */}
-                      <Typography variant="body2" color="text.secondary">
-                        Meal plan items editing will be implemented in the next iteration.
+                      <Typography variant="h6" gutterBottom>
+                        Edit Meal Plan Items
                       </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Use the ingredient input below to add food items or recipes to your meal plan. 
+                        Each item can have a quantity and unit (for food items).
+                      </Typography>
+                      
+                      {/* Convert meal plan items to ingredient format for editing */}
+                      {(() => {
+                        // Convert meal plan items to ingredient lists
+                        const ingredientLists = getDaysInOrder().map((dayOfWeek) => {
+                          const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek);
+                          const meals = ['breakfast', 'lunch', 'dinner'] as MealType[];
+                          
+                          return meals.map((mealType) => {
+                            const isMealIncluded = selectedMealPlan.template.meals[mealType];
+                            const mealItems = dayItems.filter(item => item.mealType === mealType);
+                            
+                            if (!isMealIncluded) return null;
+                            
+                            // Convert meal items to ingredient format
+                            const ingredients = mealItems.flatMap(item => 
+                              item.items.map(mealItem => ({
+                                type: mealItem.type as 'foodItem' | 'recipe',
+                                id: mealItem.id,
+                                quantity: mealItem.quantity,
+                                unit: mealItem.unit
+                              }))
+                            );
+                            
+                            return {
+                              title: `${getDateForDay(dayOfWeek)} - ${getMealTypeName(mealType)}`,
+                              ingredients,
+                              dayOfWeek,
+                              mealType
+                            };
+                          }).filter(Boolean);
+                        }).flat();
+                        
+                        return ingredientLists.map((list, index) => {
+                          if (!list) return null;
+                          return (
+                            <Box key={index} sx={{ mb: 3 }}>
+                              <Typography variant="subtitle1" sx={{ mb: 1, color: 'primary.main' }}>
+                                {list.title}
+                              </Typography>
+                              <IngredientInput
+                                ingredients={[{ title: '', ingredients: list.ingredients.map(ingredient => ({
+                                  ...ingredient,
+                                  quantity: ingredient.quantity || 1
+                                })) }]}
+                                onChange={(newIngredients) => {
+                                  // Convert back to meal plan format
+                                  const newMealItems = newIngredients[0].ingredients.map(ingredient => ({
+                                    type: ingredient.type,
+                                    id: ingredient.id,
+                                    name: ingredient.type === 'foodItem' ? 'Food Item' : 'Recipe', // This will be resolved when saved
+                                    quantity: ingredient.quantity,
+                                    unit: ingredient.unit
+                                  }));
+                                  
+                                  // Update the meal plan
+                                  const updatedMealPlan = { ...selectedMealPlan };
+                                  const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
+                                    item => item.dayOfWeek === list.dayOfWeek && item.mealType === list.mealType
+                                  );
+                                  
+                                  if (existingMealPlanItemIndex !== -1) {
+                                    updatedMealPlan.items[existingMealPlanItemIndex].items = newMealItems;
+                                  } else if (newMealItems.length > 0) {
+                                    updatedMealPlan.items.push({
+                                      _id: `temp-${Date.now()}`,
+                                      mealPlanId: selectedMealPlan._id,
+                                      dayOfWeek: list.dayOfWeek as DayOfWeek,
+                                      mealType: list.mealType as MealType,
+                                      items: newMealItems
+                                    });
+                                  }
+                                  
+                                  setSelectedMealPlan(updatedMealPlan);
+                                }}
+                              />
+                            </Box>
+                          );
+                        });
+                      })()}
                     </Box>
                   ) : (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -818,6 +943,15 @@ export default function MealPlansPage() {
               </DialogActions>
             </DialogContent>
           </Dialog>
+
+          {/* Add Food Item Dialog */}
+          <AddFoodItemDialog
+            open={addFoodItemDialogOpen}
+            onClose={() => setAddFoodItemDialogOpen(false)}
+            onAdd={handleAddFoodItem}
+            prefillName={prefillFoodItemName}
+          />
+
         </Box>
       </Container>
     </AuthenticatedLayout>

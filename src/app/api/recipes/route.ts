@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     const userOnly = searchParams.get('userOnly') === 'true';
     const globalOnly = searchParams.get('globalOnly') === 'true';
     const excludeUserCreated = searchParams.get('excludeUserCreated') === 'true';
+    const query = searchParams.get('query');
+    const limit = parseInt(searchParams.get('limit') || '100');
 
     const client = await getMongoClient();
     const db = client.db();
@@ -55,9 +57,27 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Add search filter if query is provided
+    if (query && query.trim()) {
+      const searchFilter = {
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { emoji: { $regex: query, $options: 'i' } }
+        ]
+      };
+      
+      // Combine with existing filter
+      if (Object.keys(filter).length > 0) {
+        filter = { $and: [filter, searchFilter] };
+      } else {
+        filter = searchFilter;
+      }
+    }
+
     const recipes = await recipesCollection
       .find(filter)
       .sort({ updatedAt: -1 })
+      .limit(limit)
       .toArray();
 
     return NextResponse.json(recipes);
@@ -88,7 +108,7 @@ export async function POST(request: NextRequest) {
       }
       
       for (const ingredient of ingredientList.ingredients) {
-        if (!ingredient.foodItemId || ingredient.quantity <= 0 || !ingredient.unit) {
+        if (!ingredient.id || ingredient.quantity <= 0 || (ingredient.type === 'foodItem' && !ingredient.unit)) {
           return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
         }
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Delete, Add, AddCircle } from '@mui/icons-material';
 import { RecipeIngredient, RecipeIngredientList } from '../types/recipe';
-import { fetchFoodItems, getUnitOptions } from '../lib/food-items-utils';
+import { getUnitOptions } from '../lib/food-items-utils';
 import AddFoodItemDialog from './AddFoodItemDialog';
 
 interface IngredientInputProps {
@@ -31,38 +31,94 @@ interface FoodItem {
   unit: string;
 }
 
-export default function IngredientInput({ ingredients, onChange, foodItems: propFoodItems, onFoodItemAdded }: IngredientInputProps) {
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Recipe {
+  _id?: string;
+  title: string;
+  emoji?: string;
+}
+
+type SearchOption = 
+  | (FoodItem & { type: 'foodItem' })
+  | (Recipe & { type: 'recipe' });
+
+export default function IngredientInput({ ingredients, onChange, onFoodItemAdded }: IngredientInputProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [prefillName, setPrefillName] = useState('');
   const [inputTexts, setInputTexts] = useState<string[][]>([]);
   const [pendingSelection, setPendingSelection] = useState<{ listIndex: number; ingredientIndex: number } | null>(null);
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  
+  // Per-slot search state for real-time search
+  const [slotSearch, setSlotSearch] = useState<{ [slot: string]: { input: string; options: SearchOption[]; loading: boolean; selectedIndex: number } }>({});
+  const searchTimeouts = useRef<{ [slot: string]: NodeJS.Timeout }>({});
+  const autocompleteRefs = useRef<{ [slot: string]: HTMLInputElement | null }>({});
 
-  const loadFoodItems = async () => {
-    try {
-      setLoading(true);
-      const items = await fetchFoodItems();
-      setFoodItems(items);
-    } catch (error) {
-      console.error('Error loading food items:', error);
-      setError('Failed to load food items');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load food items and recipes on mount
   useEffect(() => {
-    if (propFoodItems) {
-      // Use props if provided
-      setFoodItems(propFoodItems);
-      setLoading(false);
-    } else {
-      // Fall back to loading from API
-      loadFoodItems();
-    }
-  }, [propFoodItems]);
+    const loadData = async () => {
+      try {
+        const [foodRes, recipeRes] = await Promise.all([
+          fetch('/api/food-items?limit=1000'),
+          fetch('/api/recipes?limit=1000')
+        ]);
+        const foodItemsData = foodRes.ok ? await foodRes.json() : [];
+        const recipesData = recipeRes.ok ? await recipeRes.json() : [];
+        setFoodItems(foodItemsData);
+        setRecipes(recipesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    
+    loadData();
+  }, []);
+
+  // Real-time search for a slot
+  const searchSlot = useCallback((slot: string, input: string) => {
+    setSlotSearch(prev => ({
+      ...prev,
+      [slot]: { ...prev[slot], loading: true, input, selectedIndex: 0 }
+    }));
+    // Debounce
+    if (searchTimeouts.current[slot]) clearTimeout(searchTimeouts.current[slot]);
+    searchTimeouts.current[slot] = setTimeout(async () => {
+      if (!input.trim()) {
+        setSlotSearch(prev => ({ ...prev, [slot]: { input, options: [], loading: false, selectedIndex: 0 } }));
+        return;
+      }
+      try {
+        const [foodRes, recipeRes] = await Promise.all([
+          fetch(`/api/food-items?query=${encodeURIComponent(input)}&limit=20`),
+          fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=20`)
+        ]);
+        const foodItems = foodRes.ok ? await foodRes.json() : [];
+        const recipes = recipeRes.ok ? await recipeRes.json() : [];
+        
+        // Filter out items that don't actually match the search term
+        const filteredFoodItems = foodItems.filter((item: FoodItem) => 
+          item.name.toLowerCase().includes(input.toLowerCase()) ||
+          item.singularName.toLowerCase().includes(input.toLowerCase()) ||
+          item.pluralName.toLowerCase().includes(input.toLowerCase())
+        );
+        
+        const filteredRecipes = recipes.filter((item: Recipe) => 
+          item.title.toLowerCase().includes(input.toLowerCase())
+        );
+        
+        const options = [
+          ...filteredFoodItems.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
+          ...filteredRecipes.map((item: Recipe) => ({ ...item, type: 'recipe' as const }))
+        ];
+        setSlotSearch(prev => ({ ...prev, [slot]: { input, options, loading: false, selectedIndex: 0 } }));
+      } catch {
+        setSlotSearch(prev => ({ ...prev, [slot]: { input, options: [], loading: false, selectedIndex: 0 } }));
+      }
+    }, 300);
+  }, []);
+
+
 
   // Initialize input texts array when ingredients change
   useEffect(() => {
@@ -96,15 +152,28 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
     setInputTexts(prev => prev.filter((_, i) => i !== listIndex));
   };
 
+
+
   const handleAddIngredient = (listIndex: number) => {
     const newIngredient: RecipeIngredient = {
-      foodItemId: '',
+      type: 'foodItem',
+      id: '',
       quantity: 1,
       unit: 'cup',
     };
     const newIngredients = [...ingredients];
     newIngredients[listIndex].ingredients.push(newIngredient);
     onChange(newIngredients);
+    
+    // Focus the new autocomplete after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const newIngredientIndex = newIngredients[listIndex].ingredients.length - 1;
+      const slot = `${listIndex}-${newIngredientIndex}`;
+      const autocompleteRef = autocompleteRefs.current[slot];
+      if (autocompleteRef && autocompleteRef.focus) {
+        autocompleteRef.focus();
+      }
+    }, 100);
   };
 
   const handleRemoveIngredient = (listIndex: number, ingredientIndex: number) => {
@@ -135,21 +204,62 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
     onChange(newIngredients);
   };
 
-  const handleFoodItemSelect = (listIndex: number, ingredientIndex: number, foodItem: FoodItem | null) => {
-    if (foodItem) {
-      handleIngredientChange(listIndex, ingredientIndex, 'foodItemId', foodItem._id);
-      // Auto-set the unit to match the food item's unit
-      handleIngredientChange(listIndex, ingredientIndex, 'unit', foodItem.unit);
-      // Clear the input text when a food item is selected
+  const handleItemSelect = (listIndex: number, ingredientIndex: number, item: SearchOption | null) => {
+    if (item) {
+      const newIngredient: RecipeIngredient = {
+        type: item.type,
+        id: item._id || '',
+        quantity: 1,
+        unit: item.type === 'foodItem' ? item.unit : undefined
+      };
+      
+      const newIngredients = [...ingredients];
+      newIngredients[listIndex].ingredients[ingredientIndex] = newIngredient;
+      onChange(newIngredients);
+      
+      // Clear the input text and search results when an item is selected
       setInputTexts(prev => {
         const newTexts = [...prev];
         if (!newTexts[listIndex]) newTexts[listIndex] = [];
         newTexts[listIndex][ingredientIndex] = '';
         return newTexts;
       });
+      
+      const slot = `${listIndex}-${ingredientIndex}`;
+      setSlotSearch(prev => ({ ...prev, [slot]: { input: '', options: [], loading: false, selectedIndex: 0 } }));
+      
+      // Auto-add a new ingredient and focus it
+      setTimeout(() => {
+        const newIngredientIndex = newIngredients[listIndex].ingredients.length;
+        const autoNewIngredient: RecipeIngredient = {
+          type: 'foodItem',
+          id: '',
+          quantity: 1,
+          unit: 'cup',
+        };
+        const updatedIngredients = [...newIngredients];
+        updatedIngredients[listIndex].ingredients.push(autoNewIngredient);
+        onChange(updatedIngredients);
+        
+        // Focus the new autocomplete
+        setTimeout(() => {
+          const newSlot = `${listIndex}-${newIngredientIndex}`;
+          const autocompleteRef = autocompleteRefs.current[newSlot];
+          if (autocompleteRef && autocompleteRef.focus) {
+            autocompleteRef.focus();
+          }
+        }, 100);
+      }, 100);
     } else {
-      // Clear the food item ID when selection is cleared
-      handleIngredientChange(listIndex, ingredientIndex, 'foodItemId', '');
+      // Clear the ingredient when selection is cleared
+      const newIngredients = [...ingredients];
+      newIngredients[listIndex].ingredients[ingredientIndex] = {
+        type: 'foodItem',
+        id: '',
+        quantity: 1,
+        unit: 'cup'
+      };
+      onChange(newIngredients);
     }
   };
 
@@ -160,6 +270,62 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
       newTexts[listIndex][ingredientIndex] = value;
       return newTexts;
     });
+    
+    // Perform real-time search
+    const slot = `${listIndex}-${ingredientIndex}`;
+    searchSlot(slot, value);
+  };
+
+  const handleKeyDown = (listIndex: number, ingredientIndex: number, event: React.KeyboardEvent) => {
+    const slot = `${listIndex}-${ingredientIndex}`;
+    const slotData = slotSearch[slot];
+    
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      
+      // Check if we're in the middle of a search
+      if (isInSearch(listIndex, ingredientIndex)) {
+              // Get the actual filtered options (which excludes already selected items)
+      const filteredOptions = getFilteredOptions(listIndex, ingredientIndex);
+      
+      if (filteredOptions.length === 0) {
+        // No options available, start create food item flow
+        openAddDialog(listIndex, ingredientIndex);
+      } else {
+        // Select the currently highlighted option
+        const selectedOption = filteredOptions[slotData?.selectedIndex || 0];
+        if (selectedOption) {
+          handleItemSelect(listIndex, ingredientIndex, selectedOption);
+        }
+      }
+      } else {
+        // Not in search mode, don't do anything on Enter
+      }
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (isInSearch(listIndex, ingredientIndex)) {
+        const filteredOptions = getFilteredOptions(listIndex, ingredientIndex);
+        if (filteredOptions.length > 0) {
+          const newIndex = Math.min((slotData?.selectedIndex || 0) + 1, filteredOptions.length - 1);
+          setSlotSearch(prev => ({
+            ...prev,
+            [slot]: { ...slotData, selectedIndex: newIndex }
+          }));
+        }
+      }
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (isInSearch(listIndex, ingredientIndex)) {
+        const filteredOptions = getFilteredOptions(listIndex, ingredientIndex);
+        if (filteredOptions.length > 0) {
+          const newIndex = Math.max((slotData?.selectedIndex || 0) - 1, 0);
+          setSlotSearch(prev => ({
+            ...prev,
+            [slot]: { ...slotData, selectedIndex: newIndex }
+          }));
+        }
+      }
+    }
   };
 
   const openAddDialog = (listIndex: number, ingredientIndex: number) => {
@@ -186,12 +352,15 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
 
       const newFoodItem = await response.json();
       
+      // Add the new food item to the local state
+      setFoodItems(prev => [...prev, newFoodItem]);
+      
       // Close the dialog
       setAddDialogOpen(false);
       
       // Automatically select the newly created food item for the pending selection
       if (pendingSelection) {
-        handleFoodItemSelect(pendingSelection.listIndex, pendingSelection.ingredientIndex, newFoodItem);
+        handleItemSelect(pendingSelection.listIndex, pendingSelection.ingredientIndex, { ...newFoodItem, type: 'foodItem' as const });
         setPendingSelection(null);
       }
       
@@ -208,25 +377,230 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
     }
   };
 
-  // Get filtered food items for a specific ingredient group (exclude already selected items)
-  const getFilteredFoodItems = (listIndex: number, currentIngredientIndex: number) => {
-    const selectedFoodItemIds = ingredients[listIndex].ingredients
-      .map((ingredient, index) => index !== currentIngredientIndex ? ingredient.foodItemId : null)
+  // Get filtered options for a specific ingredient (exclude already selected items)
+  const getFilteredOptions = (listIndex: number, currentIngredientIndex: number) => {
+    const selectedIds = ingredients[listIndex].ingredients
+      .map((ingredient, index) => index !== currentIngredientIndex ? ingredient.id : null)
       .filter(id => id !== null && id !== '');
     
-    return foodItems.filter(item => !selectedFoodItemIds.includes(item._id));
-  };
+    const slot = `${listIndex}-${currentIngredientIndex}`;
+    const slotData = slotSearch[slot];
+    
 
-  // Custom filter function that returns empty array when no matches found
-  const filterOptions = (options: FoodItem[], { inputValue }: { inputValue: string }) => {
-    if (!inputValue) return options;
-    const filtered = options.filter(option => 
-      option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-      option.singularName.toLowerCase().includes(inputValue.toLowerCase()) ||
-      option.pluralName.toLowerCase().includes(inputValue.toLowerCase())
-    );
+    
+    // If there's no search input, load all available items
+    if (!slotData?.input || slotData.input.trim() === '') {
+      const allOptions = [
+        ...foodItems.map(item => ({ ...item, type: 'foodItem' as const })),
+        ...recipes.map(item => ({ ...item, type: 'recipe' as const }))
+      ];
+      const filtered = allOptions.filter(option => !selectedIds.includes(option._id || ''));
+      return filtered;
+    }
+    
+    // If there's search input but no results, return empty array
+    if (slotData?.input && (!slotData.options || slotData.options.length === 0)) {
+      return [];
+    }
+    
+    // Otherwise use search results
+    const options = slotData?.options || [];
+    const filtered = options.filter(option => !selectedIds.includes(option._id || ''));
     return filtered;
   };
+
+  // Check if we're in the middle of a search (to prevent fallback to all items)
+  const isInSearch = (listIndex: number, ingredientIndex: number) => {
+    const slot = `${listIndex}-${ingredientIndex}`;
+    const slotData = slotSearch[slot];
+    return slotData?.input && slotData.input.trim() !== '';
+  };
+
+  // Get the currently selected option for a specific ingredient
+  const getSelectedOption = (listIndex: number, ingredientIndex: number): SearchOption | null => {
+    const ingredient = ingredients[listIndex]?.ingredients[ingredientIndex];
+    if (!ingredient || !ingredient.id) return null;
+    
+    if (ingredient.type === 'foodItem') {
+      const foodItem = foodItems.find(item => item._id === ingredient.id);
+      return foodItem ? { ...foodItem, type: 'foodItem' as const } : null;
+    } else {
+      const recipe = recipes.find(item => item._id === ingredient.id);
+      return recipe ? { ...recipe, type: 'recipe' as const } : null;
+    }
+  };
+
+  // Render a single ingredient input (DRY helper)
+  const renderIngredientInput = (listIndex: number, ingredientIndex: number) => {
+    const slot = `${listIndex}-${ingredientIndex}`;
+    const slotData = slotSearch[slot];
+    
+    return (
+      <Paper key={ingredientIndex} sx={{ p: 2, mb: 2 }}>
+        <Box 
+          display="flex" 
+          gap={2} 
+          alignItems="flex-start"
+          flexDirection={{ xs: 'column', sm: 'row' }}
+        >
+          <Box flex={1} width="100%">
+            <Autocomplete
+              options={getFilteredOptions(listIndex, ingredientIndex)}
+              getOptionLabel={(option) => {
+                if (option.type === 'foodItem') {
+                  return option.name || '[Unknown Food Item]';
+                } else {
+                  return option.title || '[Unknown Recipe]';
+                }
+              }}
+              loading={slotData?.loading || false}
+              inputValue={slotData?.input || ''}
+              value={getSelectedOption(listIndex, ingredientIndex)}
+              onChange={(_, value) => handleItemSelect(listIndex, ingredientIndex, value)}
+              onInputChange={(_, value) => handleInputChange(listIndex, ingredientIndex, value)}
+              filterOptions={(options) => options}
+              onKeyDown={(e) => handleKeyDown(listIndex, ingredientIndex, e)}
+              renderOption={(props, option, { index }) => {
+                const { key, ...otherProps } = props;
+                const isSelected = slotData?.selectedIndex === index;
+                
+                return (
+                  <Box 
+                    component="li" 
+                    key={key} 
+                    {...otherProps}
+                    sx={{
+                      backgroundColor: isSelected ? 'action.selected' : 'transparent',
+                      '&:hover': {
+                        backgroundColor: isSelected ? 'action.selected' : 'action.hover'
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {option.type === 'recipe' && (option as Recipe).emoji && (
+                        <Typography variant="h6">{(option as Recipe).emoji}</Typography>
+                      )}
+                      <Typography>
+                        {option.type === 'foodItem' ? (option as FoodItem).name : (option as Recipe).title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        ({option.type === 'foodItem' ? 'Food Item' : 'Recipe'})
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Food Item or Recipe"
+                  required
+                  fullWidth
+                  size="small"
+                  inputRef={(input) => {
+                    autocompleteRefs.current[slot] = input;
+                  }}
+                />
+              )}
+              noOptionsText={
+                <Box>
+                  <Typography variant="body2" color="text.secondary" mb={1}>
+                    No food items or recipes found
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => openAddDialog(listIndex, ingredientIndex)}
+                  >
+                    {slotData?.input
+                      ? `Add "${slotData.input}" as a Food Item`
+                      : 'Add New Food Item'}
+                  </Button>
+                </Box>
+              }
+            />
+          </Box>
+          
+          <Box 
+            display="flex" 
+            gap={2} 
+            alignItems="flex-start"
+            width={{ xs: '100%', sm: 'auto' }}
+            flexDirection={{ xs: 'column', sm: 'row' }}
+          >
+            <TextField
+              label="Quantity"
+              type="number"
+              value={ingredients[listIndex].ingredients[ingredientIndex].quantity}
+              onChange={(e) => handleIngredientChange(listIndex, ingredientIndex, 'quantity', parseFloat(e.target.value) || 0)}
+              sx={{ 
+                width: { xs: '100%', sm: 100 },
+                minWidth: { xs: 'auto', sm: 100 }
+              }}
+              size="small"
+              slotProps={{
+                htmlInput: {
+                    min: 0
+                }
+              }}
+            />
+            
+            {ingredients[listIndex].ingredients[ingredientIndex].type === 'foodItem' && (
+              <Autocomplete
+                options={getUnitOptions()}
+                value={getUnitOptions().find(option => option.value === ingredients[listIndex].ingredients[ingredientIndex].unit) ?? undefined}
+                onChange={(_, value) => handleIngredientChange(listIndex, ingredientIndex, 'unit', value?.value || 'cup')}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                disableClearable={true}
+                sx={{ 
+                  width: { xs: '100%', sm: 220 },
+                  minWidth: { xs: 'auto', sm: 220 }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Unit"
+                    size="small"
+                  />
+                )}
+              />
+            )}
+            
+            <IconButton
+              onClick={() => handleRemoveIngredient(listIndex, ingredientIndex)}
+              color="error"
+              size="small"
+              sx={{ 
+                alignSelf: { xs: 'flex-start', sm: 'flex-start' },
+                mt: { xs: 0, sm: 0 },
+                display: { xs: 'none', sm: 'flex' }
+              }}
+            >
+              <Delete />
+            </IconButton>
+            
+            <Button
+              onClick={() => handleRemoveIngredient(listIndex, ingredientIndex)}
+              color="error"
+              variant="outlined"
+              size="small"
+              startIcon={<Delete />}
+              sx={{ 
+                display: { xs: 'flex', sm: 'none' },
+                width: '100%',
+                mt: 1
+              }}
+            >
+              Remove Ingredient
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+    );
+  };
+
+
 
   return (
     <Box>
@@ -239,141 +613,9 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
       {ingredients.length === 1 ? (
         // Simplified UI for single ingredient group
         <Box>
-          {ingredients[0].ingredients.map((ingredient, ingredientIndex) => (
-            <Paper key={ingredientIndex} sx={{ p: 2, mb: 2 }}>
-              <Box 
-                display="flex" 
-                gap={2} 
-                alignItems="flex-start"
-                flexDirection={{ xs: 'column', sm: 'row' }}
-              >
-                <Box flex={1} width="100%">
-                  <Autocomplete
-                    options={getFilteredFoodItems(0, ingredientIndex)}
-                    getOptionLabel={(option) => option.name}
-                    loading={loading}
-                    value={foodItems.find(item => item._id === ingredient.foodItemId) || null}
-                    onChange={(_, value) => handleFoodItemSelect(0, ingredientIndex, value)}
-                    onInputChange={(_, value) => handleInputChange(0, ingredientIndex, value)}
-                    filterOptions={filterOptions}
-                    onKeyUp={(e) => {
-                      if (e.key === 'Enter') {
-                        const currentInput = inputTexts[0]?.[ingredientIndex] || '';
-                        if (currentInput) {
-                          // Use setTimeout to ensure the filtering has completed
-                          setTimeout(() => {
-                            const filteredOptions = filterOptions(getFilteredFoodItems(0, ingredientIndex), { inputValue: currentInput });
-                            if (filteredOptions.length === 0) {
-                              openAddDialog(0, ingredientIndex);
-                            }
-                          }, 0);
-                        }
-                      }
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Food Item"
-                        required
-                        fullWidth
-                        size="small"
-                      />
-                    )}
-                    noOptionsText={
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" mb={1}>
-                          No food items found
-                        </Typography>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => openAddDialog(0, ingredientIndex)}
-                        >
-                          {inputTexts[0]?.[ingredientIndex] 
-                            ? `Add "${inputTexts[0][ingredientIndex]}" as a Food Item` 
-                            : 'Add New Food Item'
-                          }
-                        </Button>
-                      </Box>
-                    }
-                  />
-                </Box>
-                
-                <Box 
-                  display="flex" 
-                  gap={2} 
-                  alignItems="flex-start"
-                  width={{ xs: '100%', sm: 'auto' }}
-                  flexDirection={{ xs: 'column', sm: 'row' }}
-                >
-                  <TextField
-                    label="Quantity"
-                    type="number"
-                    value={ingredient.quantity}
-                    onChange={(e) => handleIngredientChange(0, ingredientIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                    sx={{ 
-                      width: { xs: '100%', sm: 100 },
-                      minWidth: { xs: 'auto', sm: 100 }
-                    }}
-                    size="small"
-                    slotProps={{
-                      htmlInput: {
-                          min: 0
-                      }
-                    }}
-                  />
-                  
-                  <Autocomplete
-                    options={getUnitOptions()}
-                    value={getUnitOptions().find(option => option.value === ingredient.unit) ?? undefined}
-                    onChange={(_, value) => handleIngredientChange(0, ingredientIndex, 'unit', value?.value || 'cup')}
-                    getOptionLabel={(option) => option.label}
-                    isOptionEqualToValue={(option, value) => option.value === value.value}
-                    disableClearable={true}
-                    sx={{ 
-                      width: { xs: '100%', sm: 220 },
-                      minWidth: { xs: 'auto', sm: 220 }
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Unit"
-                        size="small"
-                      />
-                    )}
-                  />
-                  
-                  <IconButton
-                    onClick={() => handleRemoveIngredient(0, ingredientIndex)}
-                    color="error"
-                    size="small"
-                    sx={{ 
-                      alignSelf: { xs: 'flex-start', sm: 'flex-start' },
-                      mt: { xs: 0, sm: 0 },
-                      display: { xs: 'none', sm: 'flex' }
-                    }}
-                  >
-                    <Delete />
-                  </IconButton>
-                  
-                  <Button
-                    onClick={() => handleRemoveIngredient(0, ingredientIndex)}
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Delete />}
-                    sx={{ 
-                      display: { xs: 'flex', sm: 'none' },
-                      width: '100%',
-                      mt: 1
-                    }}
-                  >
-                    Remove Ingredient
-                  </Button>
-                </Box>
-              </Box>
-            </Paper>
-          ))}
+          {ingredients[0].ingredients.map((ingredient, ingredientIndex) => 
+            renderIngredientInput(0, ingredientIndex)
+          )}
 
           <Button
             startIcon={<Add />}
@@ -447,141 +689,9 @@ export default function IngredientInput({ ingredients, onChange, foodItems: prop
             </Box>
 
             <Box>
-              {list.ingredients.map((ingredient, ingredientIndex) => (
-                <Box key={ingredientIndex} sx={{ mb: 2 }}>
-                  <Box 
-                    display="flex" 
-                    gap={2} 
-                    alignItems="flex-start"
-                    flexDirection={{ xs: 'column', sm: 'row' }}
-                  >
-                    <Box flex={1} width="100%">
-                      <Autocomplete
-                        options={getFilteredFoodItems(listIndex, ingredientIndex)}
-                        getOptionLabel={(option) => option.name}
-                        loading={loading}
-                        value={foodItems.find(item => item._id === ingredient.foodItemId) || null}
-                        onChange={(_, value) => handleFoodItemSelect(listIndex, ingredientIndex, value)}
-                        onInputChange={(_, value) => handleInputChange(listIndex, ingredientIndex, value)}
-                        filterOptions={filterOptions}
-                        onKeyUp={(e) => {
-                          if (e.key === 'Enter') {
-                            const currentInput = inputTexts[listIndex]?.[ingredientIndex] || '';
-                            if (currentInput) {
-                              // Use setTimeout to ensure the filtering has completed
-                              setTimeout(() => {
-                                const filteredOptions = filterOptions(getFilteredFoodItems(listIndex, ingredientIndex), { inputValue: currentInput });
-                                if (filteredOptions.length === 0) {
-                                  openAddDialog(listIndex, ingredientIndex);
-                                }
-                              }, 0);
-                            }
-                          }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Food Item"
-                            required
-                            fullWidth
-                            size="small"
-                          />
-                        )}
-                        noOptionsText={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary" mb={1}>
-                              No food items found
-                            </Typography>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => openAddDialog(listIndex, ingredientIndex)}
-                            >
-                              {inputTexts[listIndex]?.[ingredientIndex] 
-                                ? `Add "${inputTexts[listIndex][ingredientIndex]}" as a Food Item` 
-                                : 'Add New Food Item'
-                              }
-                            </Button>
-                          </Box>
-                        }
-                      />
-                    </Box>
-                    
-                    <Box 
-                      display="flex" 
-                      gap={2} 
-                      alignItems="flex-start"
-                      width={{ xs: '100%', sm: 'auto' }}
-                      flexDirection={{ xs: 'column', sm: 'row' }}
-                    >
-                      <TextField
-                        label="Quantity"
-                        type="number"
-                        value={ingredient.quantity}
-                        onChange={(e) => handleIngredientChange(listIndex, ingredientIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                        sx={{ 
-                          width: { xs: '100%', sm: 100 },
-                          minWidth: { xs: 'auto', sm: 100 }
-                        }}
-                        size="small"
-                        slotProps={{
-                          htmlInput: {
-                              min: 0
-                          }
-                        }}
-                      />
-                      
-                      <Autocomplete
-                        options={getUnitOptions()}
-                        value={getUnitOptions().find(option => option.value === ingredient.unit) ?? undefined}
-                        onChange={(_, value) => handleIngredientChange(listIndex, ingredientIndex, 'unit', value?.value || 'cup')}
-                        getOptionLabel={(option) => option.label}
-                        isOptionEqualToValue={(option, value) => option.value === value.value}
-                        disableClearable={true}
-                        sx={{ 
-                          width: { xs: '100%', sm: 220 },
-                          minWidth: { xs: 'auto', sm: 220 }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Unit"
-                            size="small"
-                          />
-                        )}
-                      />
-                      
-                      <IconButton
-                        onClick={() => handleRemoveIngredient(listIndex, ingredientIndex)}
-                        color="error"
-                        size="small"
-                        sx={{ 
-                          alignSelf: { xs: 'flex-start', sm: 'flex-start' },
-                          mt: { xs: 0, sm: 0 },
-                          display: { xs: 'none', sm: 'flex' }
-                        }}
-                      >
-                        <Delete />
-                      </IconButton>
-                      
-                      <Button
-                        onClick={() => handleRemoveIngredient(listIndex, ingredientIndex)}
-                        color="error"
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Delete />}
-                        sx={{ 
-                          display: { xs: 'flex', sm: 'none' },
-                          width: '100%',
-                          mt: 1
-                        }}
-                      >
-                        Remove Ingredient
-                      </Button>
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
+              {list.ingredients.map((ingredient, ingredientIndex) => 
+                renderIngredientInput(listIndex, ingredientIndex)
+              )}
 
               <Button
                 startIcon={<Add />}

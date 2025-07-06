@@ -155,6 +155,8 @@ export const fetchFoodItems = async (query?: string): Promise<Array<{ _id: strin
   if (query) {
     params.append('query', query);
   }
+  // Request a high limit to get all food items
+  params.append('limit', '1000');
   
   const url = `/api/food-items${params.toString() ? `?${params.toString()}` : ''}`;
   const response = await fetch(url);
