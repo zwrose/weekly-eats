@@ -21,6 +21,7 @@ interface IngredientInputProps {
   onChange: (ingredients: RecipeIngredientList[]) => void;
   foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
   onFoodItemAdded?: (newFoodItem: {_id: string, name: string, singularName: string, pluralName: string, unit: string}) => void;
+  currentRecipeId?: string; // ID of the current recipe being edited (to prevent self-reference)
 }
 
 interface FoodItem {
@@ -41,7 +42,7 @@ type SearchOption =
   | (FoodItem & { type: 'foodItem' })
   | (Recipe & { type: 'recipe' });
 
-export default function IngredientInput({ ingredients, onChange, onFoodItemAdded }: IngredientInputProps) {
+export default function IngredientInput({ ingredients, onChange, onFoodItemAdded, currentRecipeId }: IngredientInputProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [prefillName, setPrefillName] = useState('');
@@ -394,7 +395,10 @@ export default function IngredientInput({ ingredients, onChange, onFoodItemAdded
         ...foodItems.map(item => ({ ...item, type: 'foodItem' as const })),
         ...recipes.map(item => ({ ...item, type: 'recipe' as const }))
       ];
-      const filtered = allOptions.filter(option => !selectedIds.includes(option._id || ''));
+      const filtered = allOptions.filter(option => 
+        !selectedIds.includes(option._id || '') && 
+        !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+      );
       return filtered;
     }
     
@@ -405,7 +409,10 @@ export default function IngredientInput({ ingredients, onChange, onFoodItemAdded
     
     // Otherwise use search results
     const options = slotData?.options || [];
-    const filtered = options.filter(option => !selectedIds.includes(option._id || ''));
+    const filtered = options.filter(option => 
+      !selectedIds.includes(option._id || '') && 
+      !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+    );
     return filtered;
   };
 
