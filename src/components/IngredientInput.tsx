@@ -538,8 +538,17 @@ export default function IngredientInput({ ingredients, onChange, onFoodItemAdded
             <TextField
               label="Quantity"
               type="number"
-              value={ingredients[listIndex].ingredients[ingredientIndex].quantity}
-              onChange={(e) => handleIngredientChange(listIndex, ingredientIndex, 'quantity', parseFloat(e.target.value) || 0)}
+              value={ingredients[listIndex].ingredients[ingredientIndex].quantity > 0 ? ingredients[listIndex].ingredients[ingredientIndex].quantity : ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                // Allow any non-negative value during editing (including 0 and NaN for empty field)
+                if (!isNaN(value) && value >= 0) {
+                  handleIngredientChange(listIndex, ingredientIndex, 'quantity', value);
+                } else if (e.target.value === '') {
+                  // Allow empty field for editing
+                  handleIngredientChange(listIndex, ingredientIndex, 'quantity', 0);
+                }
+              }}
               sx={{ 
                 width: { xs: '100%', sm: 100 },
                 minWidth: { xs: 'auto', sm: 100 }
@@ -547,9 +556,12 @@ export default function IngredientInput({ ingredients, onChange, onFoodItemAdded
               size="small"
               slotProps={{
                 htmlInput: {
-                    min: 0
+                    min: 0,
+                    step: 0.01
                 }
               }}
+              error={ingredients[listIndex].ingredients[ingredientIndex].quantity <= 0}
+              helperText={ingredients[listIndex].ingredients[ingredientIndex].quantity <= 0 ? 'Quantity must be greater than 0' : ''}
             />
             
             {ingredients[listIndex].ingredients[ingredientIndex].type === 'foodItem' && (
