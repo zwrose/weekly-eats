@@ -27,7 +27,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
-    const templatesCollection = db.collection('mealPlanTemplates');
 
     const mealPlan = await mealPlansCollection.findOne({
       _id: new ObjectId(id),
@@ -38,14 +37,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
-    // Get template data
-    const template = await templatesCollection.findOne({
-      _id: new ObjectId(mealPlan.templateId)
-    });
-
+    // Use template snapshot instead of fetching current template
     const mealPlanWithTemplate = {
       ...mealPlan,
-      template
+      template: {
+        _id: mealPlan.templateId,
+        userId: session.user.id,
+        ...mealPlan.templateSnapshot,
+        createdAt: mealPlan.createdAt,
+        updatedAt: mealPlan.createdAt // Use creation time as template was snapshot at creation
+      }
     };
 
     return NextResponse.json(mealPlanWithTemplate);
@@ -116,15 +117,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_UPDATE_FAILED }, { status: 500 });
     }
     
-    // Get template data
-    const templatesCollection = db.collection('mealPlanTemplates');
-    const template = await templatesCollection.findOne({
-      _id: new ObjectId(updatedMealPlan.templateId)
-    });
-
+    // Use template snapshot instead of fetching current template
     const mealPlanWithTemplate = {
       ...updatedMealPlan,
-      template
+      template: {
+        _id: updatedMealPlan.templateId,
+        userId: session.user.id,
+        ...updatedMealPlan.templateSnapshot,
+        createdAt: updatedMealPlan.createdAt,
+        updatedAt: updatedMealPlan.createdAt // Use creation time as template was snapshot at creation
+      }
     };
 
     return NextResponse.json(mealPlanWithTemplate);

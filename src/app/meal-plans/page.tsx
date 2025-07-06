@@ -21,8 +21,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  Divider,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Edit } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -43,13 +45,15 @@ import {
 } from "../../lib/meal-plan-utils";
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { calculateEndDateAsString } from "../../lib/date-utils";
+import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
+import { addDays } from 'date-fns';
 import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
 import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions } from '@/components/ui/DialogActions';
 import { formatDateForAPI } from '@/lib/date-utils';
+import { dayOfWeekToIndex } from "../../lib/date-utils";
 
 export default function MealPlansPage() {
   const { status } = useSession();
@@ -59,7 +63,10 @@ export default function MealPlansPage() {
   const createDialog = useDialog();
   const templateDialog = useDialog();
   const deleteConfirmDialog = useConfirmDialog();
+  const viewDialog = useDialog();
+  const editDialog = useDialog();
   const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlanWithTemplate | null>(null);
+  const [editMode, setEditMode] = useState(false);
   
   // Create meal plan form state
   const [newMealPlan, setNewMealPlan] = useState<CreateMealPlanRequest>({
@@ -180,8 +187,74 @@ export default function MealPlansPage() {
 
   // Handle edit meal plan (placeholder for now)
   const handleEditMealPlan = (mealPlan: MealPlanWithTemplate) => {
-    // TODO: Implement edit functionality
-    console.log('Edit meal plan:', mealPlan);
+    setSelectedMealPlan(mealPlan);
+    setEditMode(false);
+    viewDialog.openDialog();
+  };
+
+  const handleEditMealPlanMode = () => {
+    setEditMode(true);
+    editDialog.openDialog();
+  };
+
+  const handleUpdateMealPlan = async () => {
+    if (!selectedMealPlan?._id) return;
+    
+    try {
+      // TODO: Implement update meal plan API call
+      console.log('Updating meal plan:', selectedMealPlan);
+      viewDialog.closeDialog();
+      setSelectedMealPlan(null);
+      setEditMode(false);
+      loadData(); // Refresh the lists
+    } catch (error) {
+      console.error('Error updating meal plan:', error);
+    }
+  };
+
+  const handleCloseViewDialog = () => {
+    viewDialog.closeDialog();
+    editDialog.closeDialog();
+    setSelectedMealPlan(null);
+    setEditMode(false);
+  };
+
+
+
+  // Helper function to get meal type display name
+  const getMealTypeName = (mealType: string): string => {
+    return mealType.charAt(0).toUpperCase() + mealType.slice(1);
+  };
+
+  // Helper function to get the date for a specific day of week in the meal plan
+  const getDateForDay = (dayOfWeek: string): string => {
+    const startDate = parseLocalDate(selectedMealPlan?.startDate || '');
+    const targetDayIndex = dayOfWeekToIndex(dayOfWeek as DayOfWeek);
+    const startDayIndex = dayOfWeekToIndex(selectedMealPlan?.template.startDay || 'saturday');
+    
+    // Calculate days to add to get to the target day
+    let daysToAdd = targetDayIndex - startDayIndex;
+    if (daysToAdd < 0) daysToAdd += 7;
+    
+    const targetDate = addDays(startDate, daysToAdd);
+    
+    return targetDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  // Helper function to get days in order of the meal plan
+  const getDaysInOrder = (): string[] => {
+    if (!selectedMealPlan) return [];
+    
+    const startDay = selectedMealPlan.template.startDay;
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const startIndex = days.indexOf(startDay);
+    
+    // Reorder days starting from the meal plan's start day
+    return [...days.slice(startIndex), ...days.slice(0, startIndex)];
   };
 
   // Check for overlapping meal plans
@@ -395,10 +468,7 @@ export default function MealPlansPage() {
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
                     label="Start Date"
-                    value={newMealPlan.startDate ? (() => {
-                      const [year, month, day] = newMealPlan.startDate.split('-').map(Number);
-                      return new Date(year, month - 1, day);
-                    })() : null}
+                    value={newMealPlan.startDate ? parseLocalDate(newMealPlan.startDate) : null}
                     onChange={(date) => {
                       // Only set the date if it's a valid Date object
                       if (date && date instanceof Date && !isNaN(date.getTime())) {
@@ -577,6 +647,145 @@ export default function MealPlansPage() {
                   Save Settings
                 </Button>
               </Box>
+            </DialogContent>
+          </Dialog>
+
+          {/* View/Edit Meal Plan Dialog */}
+          <Dialog 
+            open={viewDialog.open} 
+            onClose={handleCloseViewDialog}
+            maxWidth="lg"
+            fullWidth
+          >
+            <DialogTitle>
+              {selectedMealPlan?.name || 'This Meal Plan'}
+            </DialogTitle>
+            <DialogContent>
+              {selectedMealPlan && (
+                <Box sx={{ mt: 2 }}>
+                  {editMode ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <TextField
+                        label="Meal Plan Name"
+                        value={selectedMealPlan.name || ''}
+                        onChange={(e) => setSelectedMealPlan({ ...selectedMealPlan, name: e.target.value })}
+                        fullWidth
+                      />
+                      {/* TODO: Add meal plan items editing interface */}
+                      <Typography variant="body2" color="text.secondary">
+                        Meal plan items editing will be implemented in the next iteration.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {/* <Box>
+                        <Typography variant="h6" gutterBottom>{selectedMealPlan.name}</Typography>
+                      </Box> */}
+                      <Divider />
+                      
+                      {/* Show meals by day */}
+                      {getDaysInOrder().map((dayOfWeek) => {
+                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek);
+                        
+                        return (
+                          <Box key={dayOfWeek} sx={{ mb: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                              {getDateForDay(dayOfWeek)}
+                            </Typography>
+                            
+                            <Box sx={{ pl: 2 }}>
+                              {(['breakfast', 'lunch', 'dinner'] as MealType[]).map((mealType) => {
+                                const isMealIncluded = selectedMealPlan.template.meals[mealType];
+                                const mealItems = dayItems.filter(item => item.mealType === mealType);
+                                
+                                return (
+                                  <Box key={mealType} sx={{ mb: 2 }}>
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                      {getMealTypeName(mealType)}
+                                    </Typography>
+                                    {isMealIncluded ? (
+                                      mealItems.length > 0 ? (
+                                        <Box sx={{ pl: 2 }}>
+                                          {mealItems.map((item, index) => (
+                                            <Box key={index}>
+                                              {item.items.map((mealItem, mealIndex) => (
+                                                <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
+                                                  • {mealItem.name}
+                                                  {mealItem.quantity && mealItem.unit && (
+                                                    <span style={{ color: 'text.secondary' }}>
+                                                      {' '}({mealItem.quantity} {mealItem.unit})
+                                                    </span>
+                                                  )}
+                                                </Typography>
+                                              ))}
+                                              {item.notes && (
+                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 2 }}>
+                                                  Note: {item.notes}
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          ))}
+                                        </Box>
+                                      ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', pl: 2 }}>
+                                          No items planned yet
+                                        </Typography>
+                                      )
+                                    ) : (
+                                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', pl: 2 }}>
+                                        Not included in this meal plan
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Box>
+              )}
+              
+              <DialogActions>
+                {editMode ? (
+                  <>
+                    <Button 
+                      onClick={() => {
+                        setEditMode(false);
+                        editDialog.closeDialog();
+                      }}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleUpdateMealPlan} 
+                      variant="contained"
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      Save
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      onClick={handleCloseViewDialog}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      Close
+                    </Button>
+                    <Button 
+                      onClick={handleEditMealPlanMode} 
+                      startIcon={<Edit />}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                      Edit
+                    </Button>
+                  </>
+                )}
+              </DialogActions>
             </DialogContent>
           </Dialog>
 
