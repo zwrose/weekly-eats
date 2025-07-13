@@ -302,10 +302,11 @@ export default function RecipesPage() {
     setEditMode(false);
   };
 
-  // Helper function to check if all ingredient groups have at least one ingredient
+  // Helper function to check if all ingredient groups have at least one ingredient and valid titles
   const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
     return ingredients.length > 0 && ingredients.every(group => 
-      group.ingredients && group.ingredients.length > 0
+      group.ingredients && group.ingredients.length > 0 && 
+      group.title && group.title.trim() !== ''
     );
   };
 
@@ -744,6 +745,7 @@ export default function RecipesPage() {
                 onChange={handleIngredientsChange}
                 foodItems={foodItemsList}
                 onFoodItemAdded={handleFoodItemAdded}
+                mode="recipe"
               />
 
               <Divider sx={{ my: 3 }} />
@@ -867,6 +869,7 @@ export default function RecipesPage() {
                   foodItems={foodItemsList}
                   onFoodItemAdded={handleFoodItemAdded}
                   currentRecipeId={selectedRecipe?._id}
+                  mode="recipe"
                 />
 
                 <Divider sx={{ my: 3 }} />
