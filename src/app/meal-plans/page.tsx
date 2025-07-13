@@ -34,6 +34,7 @@ import {
   DayOfWeek,
   MealType
 } from "../../types/meal-plan";
+import { RecipeIngredientList } from "../../types/recipe";
 import { 
   fetchMealPlans, 
   createMealPlan, 
@@ -102,6 +103,25 @@ export default function MealPlansPage() {
 
   // State to track if we skipped a default due to overlap
   const [skippedDefault, setSkippedDefault] = useState<{ skipped: boolean; skippedFrom?: string; earliestAvailable: string | null } | null>(null);
+  
+  // State to track ingredient groups for each meal type
+  const [ingredientGroups, setIngredientGroups] = useState<{[key: string]: RecipeIngredientList[]}>({});
+  
+  // Validation function to check if all groups have titles
+  const validateIngredientGroups = () => {
+    for (const groups of Object.values(ingredientGroups)) {
+      for (const group of groups) {
+        // Skip standalone groups (they don't need titles)
+        if ((group as RecipeIngredientList & { isStandalone?: boolean }).isStandalone) continue;
+        
+        // Check if group has a title
+        if (!group.title || group.title.trim() === '') {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
 
 
 
@@ -761,19 +781,29 @@ export default function MealPlansPage() {
                                 {list.title}
                               </Typography>
                               <IngredientInput
-                                ingredients={[{ title: '', ingredients: list.ingredients.map(ingredient => ({
+                                ingredients={ingredientGroups[`${list.dayOfWeek}-${list.mealType}`] || (list.ingredients.length > 0 ? [{ title: '', ingredients: list.ingredients.map(ingredient => ({
                                   ...ingredient,
                                   quantity: ingredient.quantity || 1
-                                })) }]}
+                                })) }] : [])}
                                 onChange={(newIngredients) => {
-                                  // Convert back to meal plan format
-                                  const newMealItems = newIngredients[0].ingredients.map(ingredient => ({
-                                    type: ingredient.type,
-                                    id: ingredient.id,
-                                    name: ingredient.type === 'foodItem' ? 'Food Item' : 'Recipe', // This will be resolved when saved
-                                    quantity: ingredient.quantity,
-                                    unit: ingredient.unit
+                                  // Update the ingredient groups state
+                                  setIngredientGroups(prev => ({
+                                    ...prev,
+                                    [`${list.dayOfWeek}-${list.mealType}`]: newIngredients
                                   }));
+                                  
+                                  // Convert back to meal plan format - process all groups
+                                  const newMealItems = newIngredients.flatMap(group => 
+                                    group.ingredients
+                                      .filter(ingredient => ingredient.id && ingredient.id.trim() !== '') // Only include ingredients with valid IDs
+                                      .map(ingredient => ({
+                                        type: ingredient.type,
+                                        id: ingredient.id,
+                                        name: ingredient.type === 'foodItem' ? 'Food Item' : 'Recipe', // This will be resolved when saved
+                                        quantity: ingredient.quantity,
+                                        unit: ingredient.unit
+                                      }))
+                                  );
                                   
                                   // Update the meal plan
                                   const updatedMealPlan = { ...selectedMealPlan };
@@ -781,9 +811,11 @@ export default function MealPlansPage() {
                                     item => item.dayOfWeek === list.dayOfWeek && item.mealType === list.mealType
                                   );
                                   
+                                  // Always update the meal plan item, even if it's empty
                                   if (existingMealPlanItemIndex !== -1) {
                                     updatedMealPlan.items[existingMealPlanItemIndex].items = newMealItems;
-                                  } else if (newMealItems.length > 0) {
+                                  } else {
+                                    // Create a new meal plan item even if it's empty (to allow adding ingredients)
                                     updatedMealPlan.items.push({
                                       _id: `temp-${Date.now()}`,
                                       mealPlanId: selectedMealPlan._id,
@@ -795,6 +827,11 @@ export default function MealPlansPage() {
                                   
                                   setSelectedMealPlan(updatedMealPlan);
                                 }}
+                                mode="mealPlan"
+                                addIngredientButtonText="Add Meal Item"
+                                addIngredientGroupButtonText="Add Ingredient Group"
+                                emptyMultipleGroupsText="No items in this category. Click 'Add Meal Item' to begin."
+                                emptyNoGroupsText="No categories added yet. Click the + button to add a category."
                               />
                             </Box>
                           );
@@ -888,6 +925,7 @@ export default function MealPlansPage() {
                     <Button 
                       onClick={handleUpdateMealPlan} 
                       variant="contained"
+                      disabled={!validateIngredientGroups()}
                       sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       Save
