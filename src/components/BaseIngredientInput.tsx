@@ -25,6 +25,7 @@ interface BaseIngredientInputProps {
   currentRecipeId?: string; // ID of the current recipe being edited (to prevent self-reference)
   selectedIds?: string[]; // IDs of other selected ingredients to exclude from options
   slotId: string; // Unique identifier for this ingredient slot
+  autoFocus?: boolean; // Whether to auto-focus the input when component mounts
   // Custom text overrides
   removeButtonText?: string;
 }
@@ -54,6 +55,7 @@ export default function BaseIngredientInput({
   onFoodItemAdded, 
   currentRecipeId,
   selectedIds = [],
+  autoFocus = false,
   removeButtonText = "Remove Ingredient"
 }: BaseIngredientInputProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -72,6 +74,7 @@ export default function BaseIngredientInput({
   });
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const autocompleteRef = useRef<HTMLInputElement | null>(null);
+  const quantityRef = useRef<HTMLInputElement | null>(null);
 
   // Load food items and recipes on mount
   useEffect(() => {
@@ -92,6 +95,13 @@ export default function BaseIngredientInput({
     
     loadData();
   }, []);
+
+  // Auto-focus the input if autoFocus prop is true
+  useEffect(() => {
+    if (autoFocus && autocompleteRef.current) {
+      autocompleteRef.current.focus();
+    }
+  }, [autoFocus]);
 
   // Real-time search
   const performSearch = useCallback((input: string) => {
@@ -147,6 +157,15 @@ export default function BaseIngredientInput({
       
       // Clear the search results when an item is selected
       setSearchData(prev => ({ ...prev, input: '', options: [], loading: false, selectedIndex: 0 }));
+      
+      // Auto-advance to quantity field after a short delay to ensure component updates
+      setTimeout(() => {
+        if (quantityRef.current) {
+          quantityRef.current.focus();
+          // Select all text in the quantity field for easy editing
+          quantityRef.current.select();
+        }
+      }, 100);
     } else {
       // Clear the ingredient when selection is cleared
       onIngredientChange({
@@ -410,6 +429,7 @@ export default function BaseIngredientInput({
             }}
             error={ingredient.quantity <= 0}
             helperText={ingredient.quantity <= 0 ? 'Must be > 0' : ''}
+            inputRef={quantityRef}
           />
           
           {ingredient.type === 'foodItem' && (

@@ -8,6 +8,7 @@ export interface RecipeIngredient {
 export interface RecipeIngredientList {
   title?: string; // Optional title for sub-lists
   ingredients: RecipeIngredient[];
+  isStandalone?: boolean; // Indicates if this is a standalone group (no title required)
 }
 
 export interface Recipe {
