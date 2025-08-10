@@ -61,14 +61,14 @@ export default function RecipesPage() {
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: '',
     emoji: '',
-    ingredients: [{ ingredients: [] }],
+    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
     instructions: '',
     isGlobal: false,
   });
   const [editingRecipe, setEditingRecipe] = useState<UpdateRecipeRequest>({
     title: '',
     emoji: '',
-    ingredients: [{ ingredients: [] }],
+    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
     instructions: '',
     isGlobal: false,
   });
@@ -204,7 +204,7 @@ export default function RecipesPage() {
       setNewRecipe({
         title: '',
         emoji: '',
-        ingredients: [{ ingredients: [] }],
+        ingredients: [{ title: '', ingredients: [], isStandalone: true }],
         instructions: '',
         isGlobal: false,
       });
@@ -304,9 +304,16 @@ export default function RecipesPage() {
 
   // Helper function to check if all ingredient groups have at least one ingredient and valid titles
   const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
-    return ingredients.length > 0 && ingredients.every(group => 
-      group.ingredients && group.ingredients.length > 0 && 
-      group.title && group.title.trim() !== ''
+    // Check if there's at least one ingredient across all groups
+    const totalIngredients = ingredients.reduce((total, group) => 
+      total + (group.ingredients?.length || 0), 0
+    );
+    
+    if (totalIngredients === 0) return false;
+    
+    // Check that each group is valid (standalone groups don't need titles, but regular groups do)
+    return ingredients.every(group => 
+      group.isStandalone || (group.title && group.title.trim() !== '')
     );
   };
 

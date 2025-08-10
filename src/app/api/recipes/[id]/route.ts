@@ -87,9 +87,17 @@ export async function PUT(
 
     // Validate ingredients if provided
     if (body.ingredients) {
+      let totalIngredients = 0;
       for (const ingredientList of body.ingredients) {
-        if (!ingredientList.ingredients || ingredientList.ingredients.length === 0) {
+        if (!ingredientList.ingredients) {
           return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
+        }
+        
+        totalIngredients += ingredientList.ingredients.length;
+        
+        // Check that non-standalone groups have titles
+        if (!ingredientList.isStandalone && (!ingredientList.title || ingredientList.title.trim() === '')) {
+          return NextResponse.json({ error: 'Group titles are required for non-standalone ingredient groups' }, { status: 400 });
         }
         
         for (const ingredient of ingredientList.ingredients) {
@@ -97,6 +105,11 @@ export async function PUT(
             return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
           }
         }
+      }
+      
+      // Ensure there's at least one ingredient across all groups
+      if (totalIngredients === 0) {
+        return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
       }
     }
 

@@ -35,35 +35,61 @@ export default function RecipeIngredientGroups({
   currentRecipeId,
   addIngredientButtonText = "Add Ingredient",
   addIngredientGroupButtonText = "Add Ingredient Group",
-  emptyGroupText = "No ingredients in this group. Click \"Add Ingredient\" to get started."
+  emptyGroupText = "No ingredients in this group. Click \"Add Ingredient\" to get started.",
+  emptyNoGroupsText = "No ingredients added yet. Click \"Add Ingredient\" to get started."
 }: RecipeIngredientGroupsProps) {
   const [error, setError] = useState('');
+  const [lastAddedIngredient, setLastAddedIngredient] = useState<{ groupIndex: number; ingredientIndex: number } | null>(null);
 
-  // Ensure we always have at least one group
+  // Ensure we always have at least one group or standalone ingredients
   useEffect(() => {
     if (ingredients.length === 0) {
-      onChange([{ title: '', ingredients: [] }]);
+      // Create a standalone group by default
+      const newStandaloneGroup: RecipeIngredientList & { isStandalone?: boolean } = {
+        title: '', // Empty title indicates standalone
+        ingredients: [],
+        isStandalone: true
+      };
+      onChange([newStandaloneGroup]);
     }
   }, [ingredients.length, onChange]);
 
+  // Check if we're in standalone mode (first group is standalone)
+  const isStandaloneMode = ingredients.length > 0 && (ingredients[0] as RecipeIngredientList & { isStandalone?: boolean }).isStandalone === true;
+
   const handleAddIngredientList = () => {
-    const newList: RecipeIngredientList = {
-      title: '',
-      ingredients: []
-    };
-    onChange([...ingredients, newList]);
+    if (isStandaloneMode) {
+      // If we're in standalone mode, move all standalone ingredients to the new group
+      const standaloneIngredients = ingredients[0].ingredients;
+      const newGroup: RecipeIngredientList = {
+        title: '',
+        ingredients: [...standaloneIngredients]
+      };
+      onChange([newGroup]);
+    } else {
+      // Add a new group to existing groups
+      const newList: RecipeIngredientList = {
+        title: '',
+        ingredients: []
+      };
+      onChange([...ingredients, newList]);
+    }
   };
 
   const handleRemoveIngredientList = (listIndex: number) => {
-    // Don't allow removing the last group
-    if (ingredients.length <= 1) {
-      setError('At least one ingredient group is required');
-      return;
-    }
-    
     const newIngredients = ingredients.filter((_, i) => i !== listIndex);
-    onChange(newIngredients);
-    setError('');
+    
+    // If we're removing the last group, convert to standalone mode
+    if (newIngredients.length === 0) {
+      const standaloneGroup: RecipeIngredientList & { isStandalone?: boolean } = {
+        title: '',
+        ingredients: [],
+        isStandalone: true
+      };
+      onChange([standaloneGroup]);
+    } else {
+      onChange(newIngredients);
+    }
   };
 
   const handleAddIngredient = (listIndex: number) => {
@@ -76,18 +102,27 @@ export default function RecipeIngredientGroups({
     const newIngredients = [...ingredients];
     newIngredients[listIndex].ingredients.push(newIngredient);
     onChange(newIngredients);
+    
+    // Track the newly added ingredient for auto-focus
+    setLastAddedIngredient({ groupIndex: listIndex, ingredientIndex: newIngredients[listIndex].ingredients.length - 1 });
   };
 
   const handleRemoveIngredient = (listIndex: number, ingredientIndex: number) => {
     const newIngredients = [...ingredients];
     newIngredients[listIndex].ingredients = newIngredients[listIndex].ingredients.filter((_, i) => i !== ingredientIndex);
     onChange(newIngredients);
+    
+    // Clear auto-focus tracking when ingredient is removed
+    setLastAddedIngredient(null);
   };
 
   const handleIngredientChange = (listIndex: number, ingredientIndex: number, updatedIngredient: RecipeIngredient) => {
     const newIngredients = [...ingredients];
     newIngredients[listIndex].ingredients[ingredientIndex] = updatedIngredient;
     onChange(newIngredients);
+    
+    // Clear auto-focus tracking when ingredient is modified
+    setLastAddedIngredient(null);
   };
 
   const handleListTitleChange = (listIndex: number, title: string) => {
@@ -105,6 +140,11 @@ export default function RecipeIngredientGroups({
     );
   };
 
+  // Helper function to check if an ingredient should be auto-focused
+  const shouldAutoFocus = (groupIndex: number, ingredientIndex: number) => {
+    return lastAddedIngredient?.groupIndex === groupIndex && lastAddedIngredient?.ingredientIndex === ingredientIndex;
+  };
+
   return (
     <Box>
       {error && (
@@ -113,49 +153,86 @@ export default function RecipeIngredientGroups({
         </Alert>
       )}
 
-      {ingredients.map((list, listIndex) => (
-        <Paper key={listIndex} sx={{ 
-          p: 2, 
-          mb: 2,
-          border: !list.title || list.title.trim() === '' ? '2px solid #f44336' : '1px solid',
-          borderColor: !list.title || list.title.trim() === '' ? '#f44336' : 'divider'
-        }}>
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            mb={2}
-            flexDirection={{ xs: 'column', sm: 'row' }}
-            gap={{ xs: 1, sm: 0 }}
-          >
-            <TextField
-              placeholder="Group title (required)"
-              value={list.title || ''}
-              onChange={(e) => handleListTitleChange(listIndex, e.target.value)}
-              size="small"
-              required
-              error={!list.title || list.title.trim() === ''}
-              helperText={!list.title || list.title.trim() === '' ? 'Group title is required' : ''}
-              sx={{ 
-                flex: 1, 
-                width: { xs: '100%', sm: 'auto' },
-                mr: { xs: 0, sm: 2 }
-              }}
+      {isStandaloneMode ? (
+        // Standalone mode - show ingredients without groups
+        <Box>
+          {ingredients[0].ingredients.map((ingredient, ingredientIndex) => (
+            <BaseIngredientInput
+              key={`standalone-${ingredientIndex}`}
+              ingredient={ingredient}
+              onIngredientChange={(updatedIngredient) => handleIngredientChange(0, ingredientIndex, updatedIngredient)}
+              onRemove={() => handleRemoveIngredient(0, ingredientIndex)}
+              foodItems={foodItems}
+              onFoodItemAdded={onFoodItemAdded}
+              currentRecipeId={currentRecipeId}
+              selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
+              slotId={`standalone-${ingredientIndex}`}
+              autoFocus={shouldAutoFocus(0, ingredientIndex)}
+              removeButtonText="Remove Ingredient"
             />
-            
-            {ingredients.length > 1 && (
-              <>
-                <IconButton
-                  onClick={() => handleRemoveIngredientList(listIndex)}
-                  color="error"
-                  size="small"
-                  title="Remove ingredient group"
-                  sx={{ 
-                    alignSelf: { xs: 'flex-end', sm: 'center' },
-                    display: { xs: 'none', sm: 'flex' }
-                  }}
-                >
-                  <Delete />
-                </IconButton>
+          ))}
+
+          <Button
+            startIcon={<Add />}
+            onClick={() => handleAddIngredient(0)}
+            variant="outlined"
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            {addIngredientButtonText}
+          </Button>
+
+          {ingredients[0].ingredients.length === 0 && (
+            <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+              {emptyNoGroupsText}
+            </Typography>
+          )}
+        </Box>
+      ) : (
+        // Group mode - show ingredients in groups
+        <Box>
+          {ingredients.map((list, listIndex) => (
+            <Paper key={listIndex} sx={{ 
+              p: 2, 
+              mb: 2,
+              border: !list.title || list.title.trim() === '' ? '2px solid #f44336' : '1px solid',
+              borderColor: !list.title || list.title.trim() === '' ? '#f44336' : 'divider'
+            }}>
+              <Box 
+                display="flex" 
+                mb={2}
+                flexDirection={{ xs: 'column', sm: 'row' }}
+                gap={{ xs: 1, sm: 0 }}
+                alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+              >
+                <Box sx={{ flex: 1 }}>
+                  <TextField
+                    placeholder="Group title (required)"
+                    value={list.title || ''}
+                    onChange={(e) => handleListTitleChange(listIndex, e.target.value)}
+                    size="small"
+                    required
+                    error={!list.title || list.title.trim() === ''}
+                    helperText={!list.title || list.title.trim() === '' ? 'Group title is required' : ''}
+                    sx={{ 
+                      width: '100%'
+                    }}
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'fit-content', ml: { sm: 2 } }}>
+                  <IconButton
+                    onClick={() => handleRemoveIngredientList(listIndex)}
+                    color="error"
+                    size="small"
+                    title="Remove ingredient group"
+                    sx={{ 
+                      display: { xs: 'none', sm: 'flex' }
+                    }}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
                 
                 <Button
                   onClick={() => handleRemoveIngredientList(listIndex)}
@@ -171,44 +248,45 @@ export default function RecipeIngredientGroups({
                 >
                   Remove Group
                 </Button>
-              </>
-            )}
-          </Box>
+              </Box>
 
-          <Box>
-            {list.ingredients.map((ingredient, ingredientIndex) => (
-              <BaseIngredientInput
-                key={ingredientIndex}
-                ingredient={ingredient}
-                onIngredientChange={(updatedIngredient) => handleIngredientChange(listIndex, ingredientIndex, updatedIngredient)}
-                onRemove={() => handleRemoveIngredient(listIndex, ingredientIndex)}
-                foodItems={foodItems}
-                onFoodItemAdded={onFoodItemAdded}
-                currentRecipeId={currentRecipeId}
-                selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
-                slotId={`${listIndex}-${ingredientIndex}`}
-                removeButtonText="Remove Ingredient"
-              />
-            ))}
+              <Box>
+                {list.ingredients.map((ingredient, ingredientIndex) => (
+                  <BaseIngredientInput
+                    key={ingredientIndex}
+                    ingredient={ingredient}
+                    onIngredientChange={(updatedIngredient) => handleIngredientChange(listIndex, ingredientIndex, updatedIngredient)}
+                    onRemove={() => handleRemoveIngredient(listIndex, ingredientIndex)}
+                    foodItems={foodItems}
+                    onFoodItemAdded={onFoodItemAdded}
+                    currentRecipeId={currentRecipeId}
+                    selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
+                    slotId={`${listIndex}-${ingredientIndex}`}
+                    autoFocus={shouldAutoFocus(listIndex, ingredientIndex)}
+                    removeButtonText="Remove Ingredient"
+                  />
+                ))}
 
-            <Button
-              startIcon={<Add />}
-              onClick={() => handleAddIngredient(listIndex)}
-              variant="outlined"
-              size="small"
-              sx={{ mt: 1 }}
-            >
-              {addIngredientButtonText}
-            </Button>
+                <Button
+                  startIcon={<Add />}
+                  onClick={() => handleAddIngredient(listIndex)}
+                  variant="outlined"
+                  size="small"
+                  sx={{ mt: 1 }}
+                >
+                  {addIngredientButtonText}
+                </Button>
 
-            {list.ingredients.length === 0 && (
-              <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-                {emptyGroupText}
-              </Typography>
-            )}
-          </Box>
-        </Paper>
-      ))}
+                {list.ingredients.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                    {emptyGroupText}
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       <Box display="flex" justifyContent="flex-start" mt={2}>
         <Button
@@ -216,9 +294,9 @@ export default function RecipeIngredientGroups({
           startIcon={<AddCircle />}
           variant="outlined"
           size="small"
-          title="Add ingredient group"
+          title={isStandaloneMode ? "Convert to ingredient groups" : "Add ingredient group"}
         >
-          {addIngredientGroupButtonText}
+          {isStandaloneMode ? "Convert to Groups" : addIngredientGroupButtonText}
         </Button>
       </Box>
     </Box>
