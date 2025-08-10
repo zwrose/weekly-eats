@@ -11,6 +11,10 @@ vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
   authOptions: {},
 }));
 
+vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+  default: Promise.resolve({}),
+}));
+
 // Mock Mongo client
 const findOneMock = vi.fn();
 const updateOneMock = vi.fn();
