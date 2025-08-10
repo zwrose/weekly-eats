@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '../../../../lib/auth';
+import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
-import { getMongoClient } from '../../../../lib/mongodb';
+import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { UpdateRecipeRequest } from '../../../../types/recipe';
 import { 

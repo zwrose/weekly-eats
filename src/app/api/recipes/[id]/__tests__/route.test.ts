@@ -7,11 +7,11 @@ vi.mock('next-auth/next', () => ({
 }));
 
 // Mock authOptions
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
+vi.mock('@/lib/auth', () => ({
   authOptions: {},
 }));
 
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
 }));
 
@@ -20,7 +20,7 @@ const findOneMock = vi.fn();
 const updateOneMock = vi.fn();
 const deleteOneMock = vi.fn();
 
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb.ts', () => ({
+vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
       collection: () => ({

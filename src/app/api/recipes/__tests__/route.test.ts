@@ -7,12 +7,12 @@ vi.mock('next-auth/next', () => ({
 
 // Mock authOptions to avoid importing real auth module side effects
 // Use the exact specifier used by the route file
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
+vi.mock('@/lib/auth', () => ({
   authOptions: {},
 }));
 
 // Prevent accidental DB adapter connections if auth gets imported elsewhere
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
 }));
 
@@ -23,7 +23,7 @@ const toArrayMock = vi.fn();
 const sortMock = vi.fn(() => ({ limit: () => ({ toArray: toArrayMock }) }));
 const limitMock = vi.fn((n: number) => ({ toArray: toArrayMock }));
 
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb.ts', () => ({
+vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
       collection: () => ({
