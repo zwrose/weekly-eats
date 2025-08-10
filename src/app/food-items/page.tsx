@@ -28,18 +28,20 @@ import {
   FormControl,
   InputLabel,
   FormControlLabel,
-  Switch
+  Switch,
+  IconButton
 } from "@mui/material";
 import { 
   Public,
   Person,
   Edit,
-  Delete
+  Delete,
+  Close
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { getUnitOptions } from "@/lib/food-items-utils";
 import { useFoodItems } from '@/lib/hooks';
-import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import type { FoodItem } from '@/lib/hooks/use-food-items';
@@ -73,14 +75,14 @@ export default function FoodItemsPage() {
   });
 
   // Dialogs
-  const viewDialog = useDialog();
-  const editDialog = useDialog();
+  const viewDialog = usePersistentDialog('viewFoodItem');
   const deleteConfirmDialog = useConfirmDialog();
   const confirmGlobalDialog = useDialog();
 
   // Selected item state
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<FoodItem>>({});
+  const [editMode, setEditMode] = useState(false);
 
   const itemsPerPage = 25;
 
@@ -98,7 +100,9 @@ export default function FoodItemsPage() {
     }
   }, [status, loadFoodItems]);
 
-  const handleViewItem = (item: FoodItem) => {
+
+
+  const handleViewItem = useCallback((item: FoodItem) => {
     setSelectedItem(item);
     setEditingItem({
       name: item.name,
@@ -107,13 +111,41 @@ export default function FoodItemsPage() {
       unit: item.unit,
       isGlobal: item.isGlobal
     });
-    viewDialog.openDialog();
-    editDialog.closeDialog();
-  };
+    viewDialog.openDialog({ foodItemId: item._id });
+  }, [viewDialog]);
 
-  const handleEditItem = () => {
-    editDialog.openDialog();
-  };
+  const handleEditItem = useCallback(() => {
+    if (selectedItem?._id) {
+      setEditMode(true);
+      viewDialog.openDialog({ foodItemId: selectedItem._id, editMode: 'true' });
+    }
+  }, [selectedItem, viewDialog]);
+
+  // Handle persistent dialog data
+  useEffect(() => {
+    // Only try to restore dialog state after data is loaded
+    if (loading) return;
+    
+    if (viewDialog.open && viewDialog.data?.foodItemId && !selectedItem) {
+      // Find the food item in our loaded data
+      const item = [...userFoodItems, ...globalFoodItems].find(item => item._id === viewDialog.data?.foodItemId);
+      if (item) {
+        // Set the selected item without opening the dialog again
+        setSelectedItem(item);
+        setEditingItem({
+          name: item.name,
+          singularName: item.singularName,
+          pluralName: item.pluralName,
+          unit: item.unit,
+          isGlobal: item.isGlobal
+        });
+      }
+    }
+    // Handle edit mode persistence
+    if (viewDialog.open && viewDialog.data?.editMode === 'true' && selectedItem && !editMode) {
+      setEditMode(true);
+    }
+  }, [viewDialog.open, viewDialog.data, selectedItem, userFoodItems, globalFoodItems, editMode, loading]);
 
   const handleUpdateItem = async () => {
     if (!selectedItem?._id) return;
@@ -126,8 +158,9 @@ export default function FoodItemsPage() {
         pluralName: editingItem.pluralName || '',
         unit: editingItem.unit || '',
       });
-      viewDialog.closeDialog();
-      setSelectedItem(null);
+      // Exit edit mode but keep dialog open in view mode
+      setEditMode(false);
+      viewDialog.openDialog({ foodItemId: selectedItem._id });
       loadFoodItems(); // Refresh the lists
     } catch (error) {
       console.error('Error updating food item:', error);
@@ -147,7 +180,7 @@ export default function FoodItemsPage() {
   const handleCloseViewDialog = () => {
     viewDialog.closeDialog();
     setSelectedItem(null);
-    editDialog.closeDialog();
+    setEditMode(false);
   };
 
   const canDeleteItem = (item: FoodItem) => {
@@ -491,12 +524,26 @@ export default function FoodItemsPage() {
         fullWidth
       >
         <DialogTitle>
-          {editDialog.open ? 'Edit Food Item' : 'View Food Item'}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              {editMode ? 'Edit Food Item' : 'View Food Item'}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {!editMode && (
+                <IconButton onClick={handleEditItem} color="inherit" aria-label="Edit">
+                  <Edit />
+                </IconButton>
+              )}
+              <IconButton onClick={handleCloseViewDialog} color="inherit" aria-label="Close">
+                <Close />
+              </IconButton>
+            </Box>
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedItem && (
             <Box sx={{ mt: 2 }}>
-              {editDialog.open ? (
+              {editMode ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <TextField
                     label="Default Name"
@@ -609,12 +656,13 @@ export default function FoodItemsPage() {
             </Box>
           )}
           
-          <DialogActions>
-            {editDialog.open ? (
+              <DialogActions>
+            {editMode ? (
               <>
                 <Button 
                   onClick={() => {
-                    editDialog.closeDialog();
+                    setEditMode(false);
+                    viewDialog.removeDialogData('editMode');
                     setEditingItem({});
                   }}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -645,23 +693,7 @@ export default function FoodItemsPage() {
                   Save
                 </Button>
               </>
-            ) : (
-              <>
-                <Button 
-                  onClick={handleCloseViewDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Close
-                </Button>
-                <Button 
-                  onClick={handleEditItem} 
-                  startIcon={<Edit />}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Edit
-                </Button>
-              </>
-            )}
+            ) : null}
           </DialogActions>
         </DialogContent>
       </Dialog>

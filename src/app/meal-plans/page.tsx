@@ -22,8 +22,9 @@ import {
   TableHead,
   TableRow,
   Divider,
+  IconButton,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings, Edit } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Edit, Close } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -51,7 +52,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
 import { addDays } from 'date-fns';
 import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
-import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions } from '@/components/ui/DialogActions';
@@ -66,8 +67,7 @@ export default function MealPlansPage() {
   const createDialog = useDialog();
   const templateDialog = useDialog();
   const deleteConfirmDialog = useConfirmDialog();
-  const viewDialog = useDialog();
-  const editDialog = useDialog();
+  const viewDialog = usePersistentDialog('viewMealPlan');
   const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlanWithTemplate | null>(null);
   const [editMode, setEditMode] = useState(false);
   
@@ -221,13 +221,30 @@ export default function MealPlansPage() {
   const handleEditMealPlan = (mealPlan: MealPlanWithTemplate) => {
     setSelectedMealPlan(mealPlan);
     setEditMode(false);
-    viewDialog.openDialog();
+    viewDialog.openDialog({ mealPlanId: mealPlan._id! });
   };
 
   const handleEditMealPlanMode = () => {
+    if (!selectedMealPlan?._id) return;
     setEditMode(true);
-    editDialog.openDialog();
+    viewDialog.openDialog({ mealPlanId: selectedMealPlan._id, editMode: 'true' });
   };
+
+  // Restore dialog state from URL
+  useEffect(() => {
+    if (!viewDialog.open) return;
+    // Restore selected meal plan if needed
+    if (!selectedMealPlan && viewDialog.data?.mealPlanId) {
+      const plan = mealPlans.find(p => p._id === viewDialog.data?.mealPlanId);
+      if (plan) {
+        setSelectedMealPlan(plan);
+      }
+    }
+    // Restore edit mode
+    if (viewDialog.data?.editMode === 'true' && !editMode) {
+      setEditMode(true);
+    }
+  }, [viewDialog.open, viewDialog.data, selectedMealPlan, mealPlans, editMode]);
 
   const handleUpdateMealPlan = async () => {
     if (!selectedMealPlan?._id) return;
@@ -237,10 +254,9 @@ export default function MealPlansPage() {
       await updateMealPlan(selectedMealPlan._id, {
         items: selectedMealPlan.items
       });
-      
-      viewDialog.closeDialog();
-      setSelectedMealPlan(null);
+      // Exit edit mode but keep dialog open in view mode
       setEditMode(false);
+      viewDialog.openDialog({ mealPlanId: selectedMealPlan._id });
       loadData(); // Refresh the lists
     } catch (error) {
       console.error('Error updating meal plan:', error);
@@ -282,7 +298,6 @@ export default function MealPlansPage() {
 
   const handleCloseViewDialog = () => {
     viewDialog.closeDialog();
-    editDialog.closeDialog();
     setSelectedMealPlan(null);
     setEditMode(false);
   };
@@ -726,7 +741,21 @@ export default function MealPlansPage() {
             fullWidth
           >
             <DialogTitle>
-              {selectedMealPlan?.name || 'This Meal Plan'}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6">
+                  {selectedMealPlan?.name || 'This Meal Plan'}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {!editMode && (
+                    <IconButton onClick={handleEditMealPlanMode} color="inherit" aria-label="Edit">
+                      <Edit />
+                    </IconButton>
+                  )}
+                  <IconButton onClick={handleCloseViewDialog} color="inherit" aria-label="Close">
+                    <Close />
+                  </IconButton>
+                </Box>
+              </Box>
             </DialogTitle>
             <DialogContent>
               {selectedMealPlan && (
@@ -916,7 +945,7 @@ export default function MealPlansPage() {
                     <Button 
                       onClick={() => {
                         setEditMode(false);
-                        editDialog.closeDialog();
+                        viewDialog.removeDialogData('editMode');
                       }}
                       sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
@@ -931,23 +960,7 @@ export default function MealPlansPage() {
                       Save
                     </Button>
                   </>
-                ) : (
-                  <>
-                    <Button 
-                      onClick={handleCloseViewDialog}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                    >
-                      Close
-                    </Button>
-                    <Button 
-                      onClick={handleEditMealPlanMode} 
-                      startIcon={<Edit />}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                    >
-                      Edit
-                    </Button>
-                  </>
-                )}
+                ) : null}
               </DialogActions>
             </DialogContent>
           </Dialog>
