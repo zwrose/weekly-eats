@@ -6,11 +6,11 @@ vi.mock('next-auth/next', () => ({
 }));
 
 // Mock authOptions to avoid importing real adapter
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
+vi.mock('@/lib/auth', () => ({
   authOptions: {},
 }));
 
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
 }));
 
@@ -20,7 +20,7 @@ const toArrayMock = vi.fn();
 const insertOneMock = vi.fn();
 const findOneMock = vi.fn();
 
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb.ts', () => ({
+vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
       collection: () => ({
