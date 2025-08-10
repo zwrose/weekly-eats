@@ -33,7 +33,8 @@ import {
   EmojiEmotions,
   Public,
   Person,
-  RestaurantMenu
+  RestaurantMenu,
+  Close
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";
@@ -43,7 +44,7 @@ import IngredientInput from "../../components/IngredientInput";
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from '@/lib/hooks';
-import { useSearchPagination, useDialog, useConfirmDialog } from '@/lib/hooks';
+import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions } from '@/components/ui/DialogActions';
 
@@ -52,7 +53,7 @@ export default function RecipesPage() {
   const { userRecipes, globalRecipes, loading, userLoading, globalLoading, createRecipe, updateRecipe, deleteRecipe } = useRecipes();
   // Dialogs
   const createDialog = useDialog();
-  const viewDialog = useDialog();
+  const viewDialog = usePersistentDialog('viewRecipe');
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   // Selected recipe state
@@ -214,16 +215,39 @@ export default function RecipesPage() {
     }
   };
 
-  const handleViewRecipe = async (recipe: Recipe) => {
+  const handleViewRecipe = useCallback(async (recipe: Recipe) => {
     try {
       // Fetch the full recipe data
       const fullRecipe = await fetchRecipe(recipe._id!);
       setSelectedRecipe(fullRecipe);
-      viewDialog.openDialog();
+      viewDialog.openDialog({ recipeId: recipe._id! });
     } catch (error) {
       console.error('Error loading recipe details:', error);
     }
-  };
+  }, [viewDialog]);
+
+  // Handle persistent dialog data
+  useEffect(() => {
+    if (viewDialog.open && viewDialog.data?.recipeId && !selectedRecipe) {
+      // Find the recipe in our loaded data
+      const recipe = [...userRecipes, ...globalRecipes].find(r => r._id === viewDialog.data?.recipeId);
+      if (recipe) {
+        handleViewRecipe(recipe);
+      }
+    }
+    
+    // Handle edit mode persistence
+    if (viewDialog.open && viewDialog.data?.editMode === 'true' && selectedRecipe && !editMode) {
+      setEditMode(true);
+      setEditingRecipe({
+        title: selectedRecipe.title,
+        emoji: selectedRecipe.emoji || '',
+        ingredients: selectedRecipe.ingredients,
+        instructions: selectedRecipe.instructions,
+        isGlobal: selectedRecipe.isGlobal,
+      });
+    }
+  }, [viewDialog.open, viewDialog.data, selectedRecipe, userRecipes, globalRecipes, editMode, handleViewRecipe]);
 
   const handleEditRecipe = () => {
     if (selectedRecipe) {
@@ -235,6 +259,11 @@ export default function RecipesPage() {
         isGlobal: selectedRecipe.isGlobal,
       });
       setEditMode(true);
+      // Update URL to include edit mode
+      viewDialog.openDialog({ 
+        recipeId: selectedRecipe._id!,
+        editMode: 'true'
+      });
     }
   };
 
@@ -251,9 +280,9 @@ export default function RecipesPage() {
       const updatedRecipe = await fetchRecipe(selectedRecipe._id);
       setSelectedRecipe(updatedRecipe);
       loadRecipes(); // Refresh the lists
-      // Close the dialog and exit edit mode
+      // Exit edit mode but keep dialog open in view mode
       setEditMode(false);
-      viewDialog.closeDialog();
+      viewDialog.openDialog({ recipeId: selectedRecipe._id });
     } catch (error) {
       console.error('Error updating recipe:', error);
     }
@@ -796,6 +825,7 @@ export default function RecipesPage() {
           onClose={handleCloseViewDialog}
           maxWidth="lg"
           fullWidth
+          disableEscapeKeyDown={false}
         >
           <DialogTitle>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -807,11 +837,16 @@ export default function RecipesPage() {
                   {selectedRecipe?.title}
                 </Typography>
               </Box>
-              {selectedRecipe && canEditRecipe(selectedRecipe) && !editMode && (
-                <IconButton onClick={handleEditRecipe} color="primary">
-                  <Edit />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {selectedRecipe && canEditRecipe(selectedRecipe) && !editMode && (
+                  <IconButton onClick={handleEditRecipe} color="inherit">
+                    <Edit />
+                  </IconButton>
+                )}
+                <IconButton onClick={handleCloseViewDialog} color="inherit">
+                  <Close />
                 </IconButton>
-              )}
+              </Box>
             </Box>
           </DialogTitle>
           <DialogContent>
@@ -896,7 +931,10 @@ export default function RecipesPage() {
 
                 <DialogActions>
                   <Button 
-                    onClick={() => setEditMode(false)}
+                    onClick={() => {
+                      setEditMode(false);
+                      viewDialog.removeDialogData('editMode');
+                    }}
                     sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Cancel
