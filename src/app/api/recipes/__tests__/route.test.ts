@@ -6,9 +6,14 @@ vi.mock('next-auth/next', () => ({
 }));
 
 // Mock authOptions to avoid importing real auth module side effects
-// Use absolute path to ensure the resolved ID matches what the route imports
+// Use the exact specifier used by the route file
 vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
   authOptions: {},
+}));
+
+// Prevent accidental DB adapter connections if auth gets imported elsewhere
+vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+  default: Promise.resolve({}),
 }));
 
 // Mock Mongo client used by this route file

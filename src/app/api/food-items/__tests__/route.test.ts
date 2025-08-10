@@ -10,6 +10,10 @@ vi.mock('/Users/zach.rose/weekly-eats/src/lib/auth.ts', () => ({
   authOptions: {},
 }));
 
+vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+  default: Promise.resolve({}),
+}));
+
 // Mock Mongo client used by this route file
 const findMock = vi.fn();
 const toArrayMock = vi.fn();
