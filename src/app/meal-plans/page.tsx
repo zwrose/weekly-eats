@@ -26,7 +26,7 @@ import {
 } from "@mui/material";
 import { Add, CalendarMonth, Settings, Edit, Close } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { 
   MealPlanWithTemplate, 
@@ -59,7 +59,7 @@ import { DialogActions } from '@/components/ui/DialogActions';
 import { formatDateForAPI } from '@/lib/date-utils';
 import { dayOfWeekToIndex } from "../../lib/date-utils";
 
-export default function MealPlansPage() {
+function MealPlansPageContent() {
   const { status } = useSession();
   const [loading, setLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlanWithTemplate[]>([]);
@@ -403,6 +403,15 @@ export default function MealPlansPage() {
   }
 
   return (
+    <Suspense fallback={
+      <AuthenticatedLayout>
+        <Container maxWidth="md">
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </AuthenticatedLayout>
+    }>
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 2, md: 4 } }}>
@@ -1006,5 +1015,22 @@ export default function MealPlansPage() {
         </Box>
       </Container>
     </AuthenticatedLayout>
+    </Suspense>
   );
-} 
+}
+
+export default function MealPlansPage() {
+  return (
+    <Suspense fallback={
+      <AuthenticatedLayout>
+        <Container maxWidth="md">
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </AuthenticatedLayout>
+    }>
+      <MealPlansPageContent />
+    </Suspense>
+  );
+}

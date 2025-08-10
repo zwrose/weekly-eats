@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { 
   Container, 
   Typography, 
@@ -48,7 +48,7 @@ import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog }
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions } from '@/components/ui/DialogActions';
 
-export default function RecipesPage() {
+function RecipesPageContent() {
   const { data: session, status } = useSession();
   const { userRecipes, globalRecipes, loading, userLoading, globalLoading, createRecipe, updateRecipe, deleteRecipe } = useRecipes();
   // Dialogs
@@ -1060,4 +1060,20 @@ export default function RecipesPage() {
       </Container>
     </AuthenticatedLayout>
   );
-} 
+}
+
+export default function RecipesPage() {
+  return (
+    <Suspense fallback={
+      <AuthenticatedLayout>
+        <Container maxWidth="xl">
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </AuthenticatedLayout>
+    }>
+      <RecipesPageContent />
+    </Suspense>
+  );
+}

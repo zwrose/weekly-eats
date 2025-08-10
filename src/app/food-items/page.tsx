@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { 
   Container, 
   Typography, 
@@ -47,7 +47,7 @@ import Pagination from '@/components/optimized/Pagination';
 import type { FoodItem } from '@/lib/hooks/use-food-items';
 import { DialogActions } from '@/components/ui/DialogActions';
 
-export default function FoodItemsPage() {
+function FoodItemsPageContent() {
   const { data: session, status } = useSession();
   const user = session?.user as { id: string; isAdmin?: boolean } | undefined;
   const isAdmin = user?.isAdmin;
@@ -208,6 +208,15 @@ export default function FoodItemsPage() {
   }
 
   return (
+    <Suspense fallback={
+      <AuthenticatedLayout>
+        <Container maxWidth="md">
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </AuthenticatedLayout>
+    }>
     <AuthenticatedLayout>
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom>
@@ -752,5 +761,22 @@ export default function FoodItemsPage() {
         </DialogContent>
       </Dialog>
     </AuthenticatedLayout>
+    </Suspense>
   );
-} 
+}
+
+export default function FoodItemsPage() {
+  return (
+    <Suspense fallback={
+      <AuthenticatedLayout>
+        <Container maxWidth="md">
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </AuthenticatedLayout>
+    }>
+      <FoodItemsPageContent />
+    </Suspense>
+  );
+}
