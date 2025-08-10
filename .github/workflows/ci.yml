@@ -30,6 +30,8 @@ jobs:
           GOOGLE_CLIENT_ID: fake
           GOOGLE_CLIENT_SECRET: fake
           NODE_ENV: test
+          CI: true
+          SKIP_DB_SETUP: true
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

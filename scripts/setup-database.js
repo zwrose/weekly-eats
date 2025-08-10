@@ -104,6 +104,13 @@ async function createDatabaseIndexes() {
 
 async function main() {
   try {
+    // Skip DB setup in CI/test environments or when explicitly disabled
+    const shouldSkip = process.env.CI === 'true' || process.env.NODE_ENV === 'test' || process.env.SKIP_DB_SETUP === 'true';
+    if (shouldSkip) {
+      console.log('Skipping database setup (CI/test/disabled).');
+      process.exit(0);
+    }
+
     console.log('Starting database setup...');
     
     // Create database indexes
