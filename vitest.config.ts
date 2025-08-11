@@ -6,7 +6,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['./react-act.setup.ts', './vitest.setup.ts'],
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost/',
+      },
+    },
     testTimeout: 20000,
     hookTimeout: 20000,
     coverage: {
