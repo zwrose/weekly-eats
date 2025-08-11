@@ -109,6 +109,8 @@ describe('IngredientInput', () => {
     // Open Unit combobox and pick gram (g)
     const unitCombo = await screen.findByLabelText(/unit/i);
     await user.click(unitCombo);
+    // On CI, click alone may not open MUI Autocomplete; open via keyboard
+    await user.keyboard('{ArrowDown}');
     const listbox = await screen.findByRole('listbox');
     const gramOption = within(listbox).getAllByText(/gram/i)[0];
     await user.click(gramOption);
