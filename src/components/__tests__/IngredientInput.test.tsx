@@ -109,10 +109,16 @@ describe('IngredientInput', () => {
     // Open Unit combobox and pick gram (g)
     const unitCombo = await screen.findByLabelText(/unit/i);
     await user.click(unitCombo);
-    // On CI, click alone may not open MUI Autocomplete; open via keyboard
-    await user.keyboard('{ArrowDown}');
-    const listbox = await screen.findByRole('listbox');
-    const gramOption = within(listbox).getAllByText(/gram/i)[0];
+    // Prefer targeting the specific input for keyboard interaction
+    await user.type(unitCombo, '{ArrowDown}');
+    let listbox = screen.queryByRole('listbox');
+    if (!listbox) {
+      // Fallback for headless CI: click the Unit autocomplete popup indicator button
+      const openButtons = screen.getAllByRole('button', { name: /open|close/i });
+      await user.click(openButtons[openButtons.length - 1]);
+      listbox = await screen.findByRole('listbox', undefined, { timeout: 3000 });
+    }
+    const gramOption = within(listbox!).getAllByText(/gram/i)[0];
     await user.click(gramOption);
     expect(onChange).toHaveBeenCalled();
   });
