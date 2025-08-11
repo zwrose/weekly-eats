@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IngredientInput from '../IngredientInput';
 
@@ -14,11 +14,17 @@ describe('IngredientInput', () => {
         mode="recipe"
       />
     );
-    // Open autocomplete and type to trigger options load
-    const input = screen.getByLabelText(/food item or recipe/i);
-    await user.type(input, 'a');
-    // Expect that 'Apple' which is selected (f1) does not appear as an option
-    expect(screen.queryByText('Apple')).toBeNull();
+    // Add a new ingredient slot to test exclusion against existing selection
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }));
+    const inputs = screen.getAllByLabelText(/food item or recipe/i);
+    const newInput = inputs[inputs.length - 1];
+    await user.type(newInput, 'a');
+    // Wait for the options list to appear and settle
+    const listbox = await screen.findByRole('listbox');
+    await waitFor(() => {
+      // Expect that 'Apple' (selected id f1) is not in the options
+      expect(within(listbox).queryByText(/Apple/i)).toBeNull();
+    });
   });
 
   it('auto-focuses newly added ingredient quantity field', async () => {
