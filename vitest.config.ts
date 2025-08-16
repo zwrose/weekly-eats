@@ -18,12 +18,27 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
-      exclude: [
-        'src/types/**',
-        'src/**/*.d.ts',
-        'src/app/**',
-        'src/components/**/index.ts',
+      // Sustainable fix: Only include source files, exclude all build artifacts
+      include: [
+        'src/**/*.{ts,tsx}',
+        '!src/**/*.{test,spec}.{ts,tsx}',
+        '!src/types/**',
+        '!src/**/*.d.ts',
       ],
+      exclude: [
+        '**/*.config.{js,ts}',
+        '**/*.setup.{js,ts}',
+        '**/*.map',
+        '**/*.js.map',
+        '**/*.ts.map',
+        '.next/**',
+        'node_modules/**',
+        'coverage/**',
+        'dist/**',
+        'build/**',
+      ],
+      // Ensure coverage only processes source files, not compiled output
+      all: false,
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
