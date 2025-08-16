@@ -21,7 +21,7 @@ interface BaseIngredientInputProps {
   onIngredientChange: (ingredient: RecipeIngredient) => void;
   onRemove: () => void;
   foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
-  onFoodItemAdded?: (newFoodItem: {_id: string, name: string, singularName: string, pluralName: string, unit: string}) => void;
+  onFoodItemAdded?: (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
   currentRecipeId?: string; // ID of the current recipe being edited (to prevent self-reference)
   selectedIds?: string[]; // IDs of other selected ingredients to exclude from options
   slotId: string; // Unique identifier for this ingredient slot

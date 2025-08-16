@@ -1,3 +1,5 @@
+import { RecipeIngredientList } from './recipe';
+
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
 
@@ -22,11 +24,12 @@ export interface MealPlanItem {
 }
 
 export interface MealItem {
-  type: 'recipe' | 'foodItem';
+  type: 'recipe' | 'foodItem' | 'ingredientGroup';
   id: string;
   name: string;
   quantity?: number;
   unit?: string;
+  ingredients?: RecipeIngredientList[]; // For ingredient groups
 }
 
 export interface MealPlan {

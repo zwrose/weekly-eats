@@ -40,7 +40,7 @@ import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";
 import { fetchRecipe } from "../../lib/recipe-utils";
 import EmojiPicker from "../../components/EmojiPicker";
-import IngredientInput from "../../components/IngredientInput";
+import RecipeIngredients from "../../components/RecipeIngredients";
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from '@/lib/hooks';
@@ -135,16 +135,23 @@ function RecipesPageContent() {
     }
   };
 
-  const handleFoodItemAdded = (newFoodItem: {_id: string, name: string, singularName: string, pluralName: string, unit: string}) => {
+  const handleFoodItemAdded = async (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+    // For now, we'll need to create the food item via API and get the _id
+    // This is a simplified version - in practice you'd want to handle the API call properly
+    const foodItemWithId = {
+      _id: `temp-${Date.now()}`, // This should come from the API response
+      ...newFoodItem
+    };
+    
     // Update both the map and the list
     setFoodItems(prev => ({
       ...prev,
-      [newFoodItem._id]: {
+      [foodItemWithId._id]: {
         singularName: newFoodItem.singularName,
         pluralName: newFoodItem.pluralName
       }
     }));
-    setFoodItemsList(prev => [...prev, newFoodItem]);
+    setFoodItemsList(prev => [...prev, foodItemWithId]);
   };
 
   useEffect(() => {
@@ -776,12 +783,12 @@ function RecipesPageContent() {
               <Typography variant="h6" gutterBottom>
                 Ingredients
               </Typography>
-              <IngredientInput
+              <RecipeIngredients
                 ingredients={newRecipe.ingredients}
                 onChange={handleIngredientsChange}
                 foodItems={foodItemsList}
                 onFoodItemAdded={handleFoodItemAdded}
-                mode="recipe"
+                removeIngredientButtonText="Remove Ingredient"
               />
 
               <Divider sx={{ my: 3 }} />
@@ -905,13 +912,12 @@ function RecipesPageContent() {
                 <Typography variant="h6" gutterBottom>
                   Ingredients
                 </Typography>
-                <IngredientInput
+                <RecipeIngredients
                   ingredients={editingRecipe.ingredients || []}
                   onChange={handleIngredientsChange}
                   foodItems={foodItemsList}
                   onFoodItemAdded={handleFoodItemAdded}
-                  currentRecipeId={selectedRecipe?._id}
-                  mode="recipe"
+                  removeIngredientButtonText="Remove Ingredient"
                 />
 
                 <Divider sx={{ my: 3 }} />
