@@ -462,14 +462,7 @@ function MealPlansPageContent() {
     }>
     <AuthenticatedLayout>
       <Container maxWidth="xl">
-        <Box sx={{ py: { xs: 2, md: 4 } }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: { xs: 2, md: 4 } }}>
-            <CalendarMonth sx={{ fontSize: 40, color: "#1976d2" }} />
-            <Typography variant="h3" component="h1" sx={{ color: "#1976d2" }}>
-              Meal Plans
-            </Typography>
-          </Box>
-
+        <Box sx={{ py: { xs: 0.5, md: 1 } }}>
           <Box sx={{ 
             display: "flex", 
             flexDirection: { xs: 'column', sm: 'row' },
@@ -478,9 +471,12 @@ function MealPlansPageContent() {
             gap: { xs: 2, sm: 0 },
             mb: { xs: 2, md: 4 } 
           }}>
-            <Typography variant="h5" gutterBottom>
-              Your Meal Plans
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <CalendarMonth sx={{ fontSize: 40, color: "#1976d2" }} />
+              <Typography variant="h3" component="h1" sx={{ color: "#1976d2" }}>
+                Meal Plans
+              </Typography>
+            </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button 
                 variant="outlined"
