@@ -131,7 +131,7 @@ export default function PantryPage() {
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Kitchen sx={{ fontSize: 40, color: "#9c27b0" }} />
             <Typography variant="h3" component="h1" sx={{ color: "#9c27b0" }}>
-              Pantry Items ({pantryItems.length})
+              Pantry Items ({pagination.searchTerm ? `${pagination.totalItems}/${pantryItems.length}` : pantryItems.length})
             </Typography>
           </Box>
           <Button
