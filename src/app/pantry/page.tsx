@@ -119,17 +119,21 @@ export default function PantryPage() {
 
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: { xs: 2, md: 4 } }}>
-          <Kitchen sx={{ fontSize: 40, color: "#9c27b0" }} />
-          <Typography variant="h3" component="h1" sx={{ color: "#9c27b0" }}>
-            Pantry
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: { xs: 2, sm: 0 }, mb: { xs: 2, md: 4 } }}>
-          <Typography variant="h5" gutterBottom>
-            Your Pantry Items ({pantryItems.length})
-          </Typography>
+      <Container maxWidth="xl" sx={{ py: { xs: 0.5, md: 1 } }}>
+        <Box sx={{ 
+          display: "flex", 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: "space-between", 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: { xs: 2, sm: 0 },
+          mb: { xs: 2, md: 4 } 
+        }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Kitchen sx={{ fontSize: 40, color: "#9c27b0" }} />
+            <Typography variant="h3" component="h1" sx={{ color: "#9c27b0" }}>
+              Pantry Items ({pantryItems.length})
+            </Typography>
+          </Box>
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -275,18 +279,34 @@ export default function PantryPage() {
         <AddFoodItemDialog
           open={addFoodItemDialog.open}
           onClose={addFoodItemDialog.closeDialog}
-          onAdd={(item) => {
-            const newFoodItem = {
-              _id: Math.random().toString(),
-              name: item.name,
-              singularName: item.singularName,
-              pluralName: item.pluralName,
-              unit: item.unit,
-            };
-            addFoodItem(newFoodItem);
-            setNewItem({ foodItemId: newFoodItem._id });
-            setInputText("");
-            addFoodItemDialog.closeDialog();
+          onAdd={async (item) => {
+            try {
+              // Create the food item in the database
+              const response = await fetch('/api/food-items', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(item),
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to create food item');
+              }
+
+              const newFoodItem = await response.json();
+              
+              // Add to local state
+              addFoodItem(newFoodItem);
+              
+              // Set the new food item as selected
+              setNewItem({ foodItemId: newFoodItem._id });
+              setInputText("");
+              addFoodItemDialog.closeDialog();
+            } catch (error) {
+              console.error('Error creating food item:', error);
+              alert('Failed to create food item. Please try again.');
+            }
           }}
           prefillName={pendingFoodItemName}
         />

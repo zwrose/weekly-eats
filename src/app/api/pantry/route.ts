@@ -99,6 +99,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: PANTRY_ERRORS.FOOD_ITEM_ID_REQUIRED }, { status: 400 });
     }
 
+    // Validate ObjectId format
+    if (!ObjectId.isValid(foodItemId)) {
+      return NextResponse.json({ error: 'Invalid food item ID format' }, { status: 400 });
+    }
+
     const client = await getMongoClient();
     const db = client.db();
     const pantryCollection = db.collection('pantry');

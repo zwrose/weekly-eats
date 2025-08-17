@@ -28,7 +28,7 @@ export default function AuthenticatedLayout({
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <Header />
-      <Box component="main" sx={{ pt: { xs: 2, sm: 4, md: 8 } }}>
+      <Box component="main" sx={{ pt: { xs: 1, sm: 2, md: 3 } }}>
         {children}
       </Box>
     </Box>

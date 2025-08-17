@@ -379,14 +379,7 @@ function RecipesPageContent() {
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl">
-        <Box sx={{ py: { xs: 2, md: 4 } }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: { xs: 2, md: 4 } }}>
-            <Restaurant sx={{ fontSize: 40, color: "#ed6c02" }} />
-            <Typography variant="h3" component="h1" sx={{ color: "#ed6c02" }}>
-              Recipes
-            </Typography>
-          </Box>
-
+        <Box sx={{ py: { xs: 0.5, md: 1 } }}>
           <Box sx={{ 
             display: "flex", 
             flexDirection: { xs: 'column', sm: 'row' },
@@ -395,9 +388,12 @@ function RecipesPageContent() {
             gap: { xs: 2, sm: 0 },
             mb: { xs: 2, md: 4 } 
           }}>
-            <Typography variant="h5" gutterBottom>
-              Recipe Collection
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Restaurant sx={{ fontSize: 40, color: "#ed6c02" }} />
+              <Typography variant="h3" component="h1" sx={{ color: "#ed6c02" }}>
+                Recipes
+              </Typography>
+            </Box>
             <Button 
               variant="contained" 
               startIcon={<Add />}
