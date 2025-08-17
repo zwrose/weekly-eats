@@ -221,7 +221,10 @@ export default function RecipeIngredients({
             onClick={handleAddIngredient}
             variant="outlined"
             size="small"
-            sx={{ mt: 1 }}
+            sx={{ 
+              mt: 1,
+              width: { xs: '100%', sm: 'auto' }
+            }}
           >
             {addIngredientButtonText}
           </Button>

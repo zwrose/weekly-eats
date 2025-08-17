@@ -230,4 +230,30 @@ describe('MealEditor', () => {
     
     expect(screen.queryByText('Use the buttons below to add to this meal.')).not.toBeInTheDocument();
   });
+
+  it('renders ingredient groups with responsive delete buttons', async () => {
+    const mealItems: MealItem[] = [
+      {
+        type: 'ingredientGroup',
+        id: '',
+        name: '',
+        ingredients: [{
+          title: 'Test Group',
+          ingredients: []
+        }]
+      }
+    ];
+
+    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
+    
+    await waitFor(() => {
+      // Should show both inline and bottom delete buttons (responsive design)
+      const deleteIcons = screen.getAllByTestId('DeleteIcon');
+      expect(deleteIcons.length).toBeGreaterThan(0);
+      
+      // Should show the bottom delete button with text
+      const bottomDeleteButton = screen.getByText('Remove Group');
+      expect(bottomDeleteButton).toBeInTheDocument();
+    });
+  });
 });

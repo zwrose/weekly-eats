@@ -101,15 +101,17 @@ export default function IngredientGroup({
           }}
         />
         {showRemoveButton && onRemove && (
-          <Box sx={{ display: 'flex', alignItems: 'center', height: '40px' }}>
-            <IconButton
-              onClick={onRemove}
-              color="error"
-              size="small"
-            >
-              <Delete />
-            </IconButton>
-          </Box>
+          <IconButton
+            onClick={onRemove}
+            color="error"
+            size="small"
+            sx={{ 
+              display: { xs: 'none', sm: 'flex' },
+              alignSelf: 'flex-start'
+            }}
+          >
+            <Delete />
+          </IconButton>
         )}
       </Box>
 
@@ -132,7 +134,10 @@ export default function IngredientGroup({
         onClick={handleAddIngredient}
         variant="outlined"
         size="small"
-        sx={{ mt: 1 }}
+        sx={{ 
+          mt: 1,
+          width: { xs: '100%', sm: 'auto' }
+        }}
       >
         {addIngredientButtonText}
       </Button>
@@ -141,6 +146,24 @@ export default function IngredientGroup({
         <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
           {emptyGroupText}
         </Typography>
+      )}
+
+      {showRemoveButton && onRemove && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Button
+            onClick={onRemove}
+            color="error"
+            variant="outlined"
+            size="small"
+            startIcon={<Delete />}
+            sx={{ 
+              display: { xs: 'flex', sm: 'none' },
+              width: '100%'
+            }}
+          >
+            Remove Group
+          </Button>
+        </Box>
       )}
     </Paper>
   );

@@ -202,7 +202,7 @@ describe('RecipeIngredients', () => {
 
     render(<RecipeIngredients {...defaultProps} ingredients={ingredients} />);
     
-    const deleteButtons = screen.getAllByTestId('DeleteIcon');
+    const deleteButtons = screen.getAllByText('Remove Group');
     fireEvent.click(deleteButtons[0]); // Remove first group
     
     expect(defaultProps.onChange).toHaveBeenCalledWith([
@@ -211,5 +211,24 @@ describe('RecipeIngredients', () => {
         ingredients: [{ type: 'foodItem', id: '2', quantity: 1, unit: 'tbsp' }]
       }
     ]);
+  });
+
+  it('renders ingredient groups with responsive delete buttons', () => {
+    const ingredients = [
+      {
+        title: 'Test Group',
+        ingredients: [{ type: 'foodItem', id: '1', quantity: 2, unit: 'cup' }]
+      }
+    ] as any;
+
+    render(<RecipeIngredients {...defaultProps} ingredients={ingredients} />);
+    
+    // Should show both inline and bottom delete buttons (responsive design)
+    const deleteIcons = screen.getAllByTestId('DeleteIcon');
+    expect(deleteIcons.length).toBeGreaterThan(0);
+    
+    // Should show the bottom delete button with text
+    const bottomDeleteButton = screen.getByText('Remove Group');
+    expect(bottomDeleteButton).toBeInTheDocument();
   });
 });

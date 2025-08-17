@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import IngredientGroup from '../IngredientGroup';
 
 describe('IngredientGroup', () => {
@@ -44,5 +44,103 @@ describe('IngredientGroup', () => {
     expect(screen.getByText('Add Meal Item')).toBeInTheDocument();
     // The custom empty text should be displayed
     expect(screen.getByText('No items in this group')).toBeInTheDocument();
+  });
+
+  it('shows both inline and bottom delete buttons (responsive design)', () => {
+    const onChange = vi.fn();
+    const onRemove = vi.fn();
+    const group = {
+      title: 'Test Group',
+      ingredients: []
+    };
+    
+    render(
+      <IngredientGroup
+        group={group}
+        onChange={onChange}
+        onRemove={onRemove}
+        showRemoveButton={true}
+      />
+    );
+    
+    // Should show both delete buttons (responsive design)
+    const deleteIcons = screen.getAllByTestId('DeleteIcon');
+    expect(deleteIcons).toHaveLength(2); // One for inline, one for bottom button
+    
+    // Should show the bottom delete button with text
+    const bottomDeleteButton = screen.getByText('Remove Group');
+    expect(bottomDeleteButton).toBeInTheDocument();
+    
+    // Click the bottom delete button
+    fireEvent.click(bottomDeleteButton);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles delete button clicks correctly', () => {
+    const onChange = vi.fn();
+    const onRemove = vi.fn();
+    const group = {
+      title: 'Test Group',
+      ingredients: []
+    };
+    
+    render(
+      <IngredientGroup
+        group={group}
+        onChange={onChange}
+        onRemove={onRemove}
+        showRemoveButton={true}
+      />
+    );
+    
+    // Should show the bottom delete button with text
+    const bottomDeleteButton = screen.getByText('Remove Group');
+    expect(bottomDeleteButton).toBeInTheDocument();
+    
+    // Click the bottom delete button
+    fireEvent.click(bottomDeleteButton);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show delete button when showRemoveButton is false', () => {
+    const onChange = vi.fn();
+    const onRemove = vi.fn();
+    const group = {
+      title: 'Test Group',
+      ingredients: []
+    };
+    
+    render(
+      <IngredientGroup
+        group={group}
+        onChange={onChange}
+        onRemove={onRemove}
+        showRemoveButton={false}
+      />
+    );
+    
+    // Should not show any delete buttons
+    expect(screen.queryByTestId('DeleteIcon')).not.toBeInTheDocument();
+    expect(screen.queryByText('Remove Group')).not.toBeInTheDocument();
+  });
+
+  it('does not show delete button when onRemove is not provided', () => {
+    const onChange = vi.fn();
+    const group = {
+      title: 'Test Group',
+      ingredients: []
+    };
+    
+    render(
+      <IngredientGroup
+        group={group}
+        onChange={onChange}
+        showRemoveButton={true}
+      />
+    );
+    
+    // Should not show any delete buttons
+    expect(screen.queryByTestId('DeleteIcon')).not.toBeInTheDocument();
+    expect(screen.queryByText('Remove Group')).not.toBeInTheDocument();
   });
 });
