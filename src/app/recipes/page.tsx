@@ -762,11 +762,16 @@ function RecipesPageContent() {
                 <Typography variant="h6" gutterBottom>
                   Access Level
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2,
+                  flexDirection: { xs: 'column', sm: 'row' }
+                }}>
                   <Button
                     variant={newRecipe.isGlobal ? "outlined" : "contained"}
                     onClick={() => setNewRecipe({ ...newRecipe, isGlobal: false })}
                     startIcon={<Person />}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Personal (only visible to you)
                   </Button>
@@ -774,6 +779,7 @@ function RecipesPageContent() {
                     variant={newRecipe.isGlobal ? "contained" : "outlined"}
                     onClick={() => setNewRecipe({ ...newRecipe, isGlobal: true })}
                     startIcon={<Public />}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Global (visible to all users)
                   </Button>
@@ -891,11 +897,16 @@ function RecipesPageContent() {
                   <Typography variant="h6" gutterBottom>
                     Access Level
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 2,
+                    flexDirection: { xs: 'column', sm: 'row' }
+                  }}>
                     <Button
                       variant={editingRecipe.isGlobal ? "outlined" : "contained"}
                       onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: false })}
                       startIcon={<Person />}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       Personal (only visible to you)
                     </Button>
@@ -903,6 +914,7 @@ function RecipesPageContent() {
                       variant={editingRecipe.isGlobal ? "contained" : "outlined"}
                       onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: true })}
                       startIcon={<Public />}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       Global (visible to all users)
                     </Button>
