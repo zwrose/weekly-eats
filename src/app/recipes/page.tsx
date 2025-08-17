@@ -410,7 +410,10 @@ function RecipesPageContent() {
               <TextField
                 fullWidth
                 value={userPagination.searchTerm}
-                onChange={(e) => userPagination.setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  userPagination.setSearchTerm(e.target.value);
+                  globalPagination.setSearchTerm(e.target.value);
+                }}
                 placeholder="Start typing to filter recipes by title..."
                 autoComplete="off"
               />
@@ -434,8 +437,8 @@ function RecipesPageContent() {
                   }}>
                     <Typography variant="h6" gutterBottom>
                       <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Your Recipes ({filteredUserRecipes.length})
-              </Typography>
+                      Your Recipes ({userPagination.searchTerm ? `${userPagination.totalItems}/${userRecipes.length}` : userRecipes.length})
+                    </Typography>
                     {userLoading && <CircularProgress size={20} />}
                   </Box>
                   
@@ -589,8 +592,8 @@ function RecipesPageContent() {
                   }}>
                     <Typography variant="h6" gutterBottom>
                       <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Global Recipes ({filteredGlobalRecipes.length})
-                      </Typography>
+                      Global Recipes ({globalPagination.searchTerm ? `${globalPagination.totalItems}/${globalRecipes.length}` : globalRecipes.length})
+                    </Typography>
                     {globalLoading && <CircularProgress size={20} />}
                   </Box>
                   

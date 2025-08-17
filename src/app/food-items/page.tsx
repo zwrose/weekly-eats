@@ -228,7 +228,10 @@ function FoodItemsPageContent() {
           <Box sx={{ mb: 4 }}>
             <SearchBar
               value={userPagination.searchTerm}
-              onChange={(value) => userPagination.setSearchTerm(value)}
+              onChange={(value) => {
+                userPagination.setSearchTerm(value);
+                globalPagination.setSearchTerm(value);
+              }}
               placeholder="Start typing to filter food items by name..."
             />
           </Box>
@@ -251,7 +254,7 @@ function FoodItemsPageContent() {
                 }}>
                   <Typography variant="h6" gutterBottom>
                     <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Your Food Items ({userFoodItems.length})
+                    Your Food Items ({userPagination.searchTerm ? `${userPagination.totalItems}/${userFoodItems.length}` : userFoodItems.length})
                   </Typography>
                 </Box>
                 
@@ -392,7 +395,7 @@ function FoodItemsPageContent() {
                   }}>
                     <Typography variant="h6" gutterBottom>
                       <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Global Food Items Owned By Others ({globalFoodItems.length})
+                      Global Food Items Owned By Others ({globalPagination.searchTerm ? `${globalPagination.totalItems}/${globalFoodItems.length}` : globalFoodItems.length})
                     </Typography>
                   </Box>
                   

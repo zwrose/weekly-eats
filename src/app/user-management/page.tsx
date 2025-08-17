@@ -250,7 +250,7 @@ export default function UserManagementPage() {
             }}>
               <Typography variant="h6" gutterBottom>
                 <HourglassEmpty sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Users Pending Approval ({pendingPagination.filteredData.length})
+                Users Pending Approval ({pendingPagination.searchTerm ? `${pendingPagination.totalItems}/${pendingUsers?.length || 0}` : pendingUsers?.length || 0})
               </Typography>
               {pendingLoading && <CircularProgress size={20} />}
             </Box>
@@ -394,7 +394,7 @@ export default function UserManagementPage() {
             }}>
               <Typography variant="h6" gutterBottom>
                 <AdminPanelSettings sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Active Users ({approvedPagination.filteredData.length})
+                Active Users ({approvedPagination.searchTerm ? `${approvedPagination.totalItems}/${approvedUsers?.length || 0}` : approvedUsers?.length || 0})
               </Typography>
               {loading && <CircularProgress size={20} />}
             </Box>
