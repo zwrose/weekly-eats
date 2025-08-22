@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ interface FoodItem {
   singularName: string;
   pluralName: string;
   unit: string;
+  isGlobal: boolean;
 }
 
 interface Recipe {
@@ -49,6 +50,9 @@ export default function MealEditor({
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [error, setError] = useState('');
+  
+  // Store the last created food item temporarily for auto-selection
+  const lastCreatedFoodItemRef = useRef<FoodItem | null>(null);
 
   // Load food items and recipes on mount
   useEffect(() => {
@@ -69,6 +73,26 @@ export default function MealEditor({
     
     loadData();
   }, []);
+
+  // Handle food item creation and update local state
+  const handleFoodItemAdded = async (newFoodItem: FoodItem | { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+    // Add the new food item to local state if it has _id (already created)
+    if ('_id' in newFoodItem) {
+      setFoodItems(prev => {
+        const newItems = [...prev, newFoodItem as FoodItem];
+        return newItems;
+      });
+      
+      // Store the newly created food item temporarily so we can use it in onIngredientChange
+      // This will be used when the auto-selection happens before the state update
+      lastCreatedFoodItemRef.current = newFoodItem;
+    }
+    
+    // Also notify parent component if callback exists
+    if (onFoodItemAdded) {
+      await onFoodItemAdded(newFoodItem as { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean });
+    }
+  };
 
   const handleAddMealItem = () => {
     const newItem: MealItem = {
@@ -163,19 +187,44 @@ export default function MealEditor({
                     name: recipe.title
                   });
                 } else {
-                  // Handle cleared ingredient (when X button is clicked)
-                  handleItemChange(index, {
-                    type: 'foodItem',
-                    id: '',
-                    name: '',
-                    quantity: 1,
-                    unit: 'cup'
-                  });
+                  // Check if this is a newly created food item that hasn't been added to foodItems yet
+                  // We can identify this by checking if the ingredient has a valid ID but no matching food item
+                  if (updatedIngredient.id && updatedIngredient.id.trim() !== '') {
+                    // Check if this is the last created food item
+                    if (lastCreatedFoodItemRef.current && lastCreatedFoodItemRef.current._id === updatedIngredient.id) {
+                      handleItemChange(index, {
+                        type: 'foodItem',
+                        id: updatedIngredient.id,
+                        name: lastCreatedFoodItemRef.current.name,
+                        quantity: updatedIngredient.quantity,
+                        unit: updatedIngredient.unit
+                      });
+                      // Clear the ref after using it
+                      lastCreatedFoodItemRef.current = null;
+                    } else {
+                      handleItemChange(index, {
+                        type: 'foodItem',
+                        id: updatedIngredient.id,
+                        name: 'New Food Item', // Placeholder name that will be updated when foodItems refreshes
+                        quantity: updatedIngredient.quantity,
+                        unit: updatedIngredient.unit
+                      });
+                    }
+                  } else {
+                    // Handle cleared ingredient (when X button is clicked)
+                    handleItemChange(index, {
+                      type: 'foodItem',
+                      id: '',
+                      name: '',
+                      quantity: 1,
+                      unit: 'cup'
+                    });
+                  }
                 }
               }}
               onRemove={() => handleRemoveItem(index)}
               foodItems={foodItems}
-              onFoodItemAdded={onFoodItemAdded}
+              onFoodItemAdded={handleFoodItemAdded}
               selectedIds={getAllSelectedIds().filter(id => id !== item.id)}
               slotId={`meal-item-${index}`}
               removeButtonText="Remove Meal Item"
@@ -188,7 +237,7 @@ export default function MealEditor({
               onChange={(group) => handleIngredientGroupChange(index, [group])}
               onRemove={() => handleRemoveItem(index)}
               foodItems={foodItems}
-              onFoodItemAdded={onFoodItemAdded}
+              onFoodItemAdded={handleFoodItemAdded}
               addIngredientButtonText="Add Ingredient"
               emptyGroupText="No ingredients in this group. Click 'Add Ingredient' to begin."
               removeIngredientButtonText="Remove Ingredient"
@@ -199,7 +248,7 @@ export default function MealEditor({
 
       {mealItems.length === 0 && (
         <Typography variant="body2" color="text.secondary" textAlign="center" py={1}>
-          Use the buttons below to add to this meal.
+          Use the buttons below to add items.
         </Typography>
       )}
 

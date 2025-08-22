@@ -94,9 +94,14 @@ function MealPlansPageContent() {
     meals: {
       [key in MealType]: boolean;
     };
+    weeklyStaples: MealItem[];
   }>({
     startDay: DEFAULT_TEMPLATE.startDay,
-    meals: DEFAULT_TEMPLATE.meals
+    meals: {
+      ...DEFAULT_TEMPLATE.meals,
+      staples: false // Staples are managed separately
+    },
+    weeklyStaples: []
   });
 
   // Search and pagination
@@ -130,8 +135,10 @@ function MealPlansPageContent() {
           meals: {
             breakfast: userTemplate.meals.breakfast ?? true,
             lunch: userTemplate.meals.lunch ?? true,
-            dinner: userTemplate.meals.dinner ?? true
-          }
+            dinner: userTemplate.meals.dinner ?? true,
+            staples: false // Staples are managed separately
+          },
+          weeklyStaples: userTemplate.weeklyStaples || []
         });
       }
     } catch (error) {
@@ -316,7 +323,16 @@ function MealPlansPageContent() {
 
 
 
-  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean } | { _id: string; name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+    // Check if this is already a created food item (passed from IngredientInput after successful creation)
+    // vs. raw form data that needs to be created
+    if ('_id' in foodItemData) {
+      // This is already a created food item, just close dialog
+      setAddFoodItemDialogOpen(false);
+      return;
+    }
+
+    // This is raw form data that needs to be created (legacy direct dialog usage)
     try {
       const response = await fetch('/api/food-items', {
         method: 'POST',
@@ -328,16 +344,21 @@ function MealPlansPageContent() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle specific error cases
+        if (response.status === 409 && errorData.error === 'Food item already exists') {
+          const details = errorData.details || 'A food item with this name already exists. Please choose a different name.';
+          alert(details);
+          return;
+        }
+        
         throw new Error(errorData.error || 'Failed to add food item');
       }
 
-      const newFoodItem = await response.json();
+      await response.json();
       
       // Close the dialog
       setAddFoodItemDialogOpen(false);
-      
-      // Show success feedback
-      console.log('Food item added successfully:', newFoodItem);
     } catch (error) {
       console.error('Error adding food item:', error);
       alert('Failed to add food item');
@@ -354,6 +375,9 @@ function MealPlansPageContent() {
 
   // Helper function to get meal type display name
   const getMealTypeName = (mealType: string): string => {
+    if (mealType === 'staples') {
+      return 'Weekly Staples';
+    }
     return mealType.charAt(0).toUpperCase() + mealType.slice(1);
   };
 
@@ -727,7 +751,7 @@ function MealPlansPageContent() {
           <Dialog 
             open={templateDialog.open} 
             onClose={templateDialog.closeDialog}
-            maxWidth="sm"
+            maxWidth="lg"
             fullWidth
             sx={responsiveDialogStyle}
           >
@@ -772,6 +796,23 @@ function MealPlansPageContent() {
                     </Box>
                   ))}
                 </Box>
+
+                <Divider sx={{ my: 3 }} />
+                
+                <Typography variant="subtitle2" gutterBottom>
+                  Weekly Staples (Optional):
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  These items will be automatically added once to new meal plans.
+                </Typography>
+                
+                <MealEditor
+                  mealItems={templateForm.weeklyStaples}
+                  onChange={(newStaples) => {
+                    setTemplateForm({ ...templateForm, weeklyStaples: newStaples });
+                  }}
+                  onFoodItemAdded={handleAddFoodItem}
+                />
               </Box>
               
               <DialogActions primaryButtonIndex={1}>
@@ -875,9 +916,61 @@ function MealPlansPageContent() {
                         </Alert>
                       )}
                       
+                      {/* Weekly Staples Section - Show once at the top in edit mode as read-only */}
+                      {(() => {
+                        const staplesItems = selectedMealPlan.items.filter(item => item.mealType === 'staples');
+                        if (staplesItems.length > 0) {
+                          return (
+                            <Paper 
+                              elevation={1}
+                              sx={{ 
+                                mb: 3,
+                                border: '1px solid',
+                                borderColor: 'primary.main',
+                                borderRadius: 2,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {/* Staples Header */}
+                              <Box 
+                                sx={{ 
+                                  p: 2, 
+                                  backgroundColor: 'primary.main',
+                                  color: 'primary.contrastText',
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider'
+                                }}
+                              >
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                                  Weekly Staples
+                                </Typography>
+                              </Box>
+                              
+                              {/* Staples Content */}
+                              <Box sx={{ p: 3 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+                                  Staples are managed in Template Settings and apply to the entire meal plan.
+                                </Typography>
+                                {staplesItems[0].items.map((staple, index) => (
+                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                    • {staple.name}
+                                    {staple.quantity && staple.unit && (
+                                      <span style={{ color: 'text.secondary' }}>
+                                        {' '}({staple.quantity} {staple.unit})
+                                      </span>
+                                    )}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            </Paper>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {/* Edit meals by day */}
                       {getDaysInOrder().map((dayOfWeek) => {
-                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek);
+                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples');
                         const meals = ['breakfast', 'lunch', 'dinner'] as MealType[];
                         
                         // Get all meals for this day that are included in the template
@@ -985,15 +1078,64 @@ function MealPlansPageContent() {
                       </Box> */}
                       <Divider />
                       
+                      {/* Weekly Staples Section - Show once at the top */}
+                      {(() => {
+                        const staplesItems = selectedMealPlan.items.filter(item => item.mealType === 'staples');
+                        if (staplesItems.length > 0) {
+                          return (
+                            <Paper 
+                              elevation={1}
+                              sx={{ 
+                                mb: 3,
+                                border: '1px solid',
+                                borderColor: 'primary.main',
+                                borderRadius: 2,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {/* Staples Header */}
+                              <Box 
+                                sx={{ 
+                                  p: 2, 
+                                  backgroundColor: 'primary.main',
+                                  color: 'primary.contrastText',
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider'
+                                }}
+                              >
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                                  Weekly Staples
+                                </Typography>
+                              </Box>
+                              
+                              {/* Staples Content */}
+                              <Box sx={{ p: 3 }}>
+                                {staplesItems[0].items.map((staple, index) => (
+                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                    • {staple.name}
+                                    {staple.quantity && staple.unit && (
+                                      <span style={{ color: 'text.secondary' }}>
+                                        {' '}({staple.quantity} {staple.unit})
+                                      </span>
+                                    )}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            </Paper>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {/* Show meals by day */}
                       {getDaysInOrder().map((dayOfWeek) => {
-                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek);
+                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples');
                         
                         return (
                           <Paper 
                             key={dayOfWeek} 
                             elevation={1}
-                                                         sx={{ 
+                            sx={{ 
                                mb: 3,
                                border: '1px solid',
                                borderColor: 'divider',

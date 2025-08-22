@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { CreateMealPlanRequest, MealPlan } from '@/types/meal-plan';
+import { CreateMealPlanRequest, MealPlan, DayOfWeek, MealItem, MealType } from '@/types/meal-plan';
 import { 
   generateMealPlanNameFromString, 
   calculateEndDateAsString
@@ -16,6 +16,7 @@ import {
   API_ERRORS,
   logError 
 } from '@/lib/errors';
+import { ObjectId } from 'mongodb';
 
 export async function GET() {
   try {
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
           lunch: true,
           dinner: true
         },
+        weeklyStaples: [], // Initialize with empty staples
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -115,6 +117,66 @@ export async function POST(request: NextRequest) {
     // Generate meal plan name based on start date
     const mealPlanName = generateMealPlanNameFromString(startDate);
 
+    // Create meal plan items based on template
+    const items = [];
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDateString);
+    
+    // Generate items for each day in the meal plan
+    for (let date = new Date(startDateObj); date <= endDateObj; date.setDate(date.getDate() + 1)) {
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayOfWeek = dayNames[date.getDay()] as DayOfWeek;
+      
+      // Add meals based on template
+      if (template.meals.breakfast) {
+        items.push({
+          _id: new ObjectId().toString(),
+          mealPlanId: '', // Will be set after meal plan creation
+          dayOfWeek,
+          mealType: 'breakfast',
+          items: [],
+          notes: ''
+        });
+      }
+      
+      if (template.meals.lunch) {
+        items.push({
+          _id: new ObjectId().toString(),
+          mealPlanId: '', // Will be set after meal plan creation
+          dayOfWeek,
+          mealType: 'lunch',
+          items: [],
+          notes: ''
+        });
+      }
+      
+      if (template.meals.dinner) {
+        items.push({
+          _id: new ObjectId().toString(),
+          mealPlanId: '', // Will be set after meal plan creation
+          dayOfWeek,
+          mealType: 'dinner',
+          items: [],
+          notes: ''
+        });
+      }
+    }
+    
+    // Add weekly staples once for the entire meal plan (not per day)
+    if (template.weeklyStaples && template.weeklyStaples.length > 0) {
+      items.push({
+        _id: new ObjectId().toString(),
+        mealPlanId: '', // Will be set after meal plan creation
+        dayOfWeek: template.startDay, // Use the meal plan start day for staples
+        mealType: 'staples' as MealType, // Special meal type for staples
+        items: template.weeklyStaples.map((staple: MealItem) => ({
+          ...staple,
+          _id: new ObjectId().toString()
+        })),
+        notes: 'Weekly Staples'
+      });
+    }
+
     const now = new Date();
     const mealPlan = {
       name: mealPlanName,
@@ -123,10 +185,11 @@ export async function POST(request: NextRequest) {
       templateId: template._id.toString(),
       templateSnapshot: {
         startDay: template.startDay,
-        meals: template.meals
+        meals: template.meals,
+        weeklyStaples: template.weeklyStaples || [] // Include staples in snapshot
       },
       userId: session.user.id,
-      items: [], // Will be populated based on template
+      items, // Populated based on template
       createdAt: now,
       updatedAt: now
     };
@@ -138,9 +201,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_CREATION_FAILED }, { status: 500 });
     }
 
+    // Update meal plan items with the correct meal plan ID
+    if (items.length > 0) {
+      await mealPlansCollection.updateOne(
+        { _id: result.insertedId },
+        { 
+          $set: { 
+            'items': items.map(item => ({ ...item, mealPlanId: result.insertedId.toString() }))
+          }
+        }
+      );
+    }
+
     // Return with template snapshot data
     const mealPlanWithTemplate = {
       ...createdMealPlan,
+      items: items.map(item => ({ ...item, mealPlanId: result.insertedId.toString() })),
       template: {
         _id: template._id.toString(),
         userId: session.user.id,

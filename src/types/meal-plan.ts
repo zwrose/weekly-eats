@@ -1,7 +1,7 @@
 import { RecipeIngredientList } from './recipe';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'staples';
 
 export interface MealPlanTemplate {
   _id: string;
@@ -10,6 +10,7 @@ export interface MealPlanTemplate {
   meals: {
     [key in MealType]: boolean;
   };
+  weeklyStaples?: MealItem[]; // Optional weekly staples items
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,7 @@ export interface CreateMealPlanTemplateRequest {
   meals: {
     [key in MealType]: boolean;
   };
+  weeklyStaples?: MealItem[];
 }
 
 export interface UpdateMealPlanTemplateRequest {
@@ -62,6 +64,7 @@ export interface UpdateMealPlanTemplateRequest {
   meals?: {
     [key in MealType]: boolean;
   };
+  weeklyStaples?: MealItem[];
 }
 
 export interface CreateMealPlanRequest {

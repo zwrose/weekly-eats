@@ -33,7 +33,6 @@ import {
   Public,
   Person,
   RestaurantMenu,
-  Close
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { CreateMealPlanTemplateRequest, UpdateMealPlanTemplateRequest } from '@/types/meal-plan';
+import { CreateMealPlanTemplateRequest, UpdateMealPlanTemplateRequest, MealItem } from '@/types/meal-plan';
 import { isValidDayOfWeek, isValidMealsConfig } from '@/lib/validation';
 import { DEFAULT_TEMPLATE } from '@/lib/meal-plan-utils';
 import { 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CreateMealPlanTemplateRequest = await request.json();
-    const { startDay, meals } = body;
+    const { startDay, meals, weeklyStaples } = body;
 
     // Validation
     if (!startDay || !isValidDayOfWeek(startDay)) {
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     const template = {
       startDay,
       meals,
+      weeklyStaples: weeklyStaples || [], // Include weekly staples
       userId: session.user.id,
       createdAt: now,
       updatedAt: now
@@ -89,7 +90,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body: UpdateMealPlanTemplateRequest = await request.json();
-    const { startDay, meals } = body;
+    const { startDay, meals, weeklyStaples } = body;
 
     const client = await getMongoClient();
     const db = client.db();
@@ -105,6 +106,7 @@ export async function PUT(request: NextRequest) {
         userId: session.user.id,
         startDay: startDay || DEFAULT_TEMPLATE.startDay,
         meals: meals || DEFAULT_TEMPLATE.meals,
+        weeklyStaples: weeklyStaples || [], // Include weekly staples
         createdAt: now,
         updatedAt: now
       };
@@ -123,6 +125,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Partial<{
       startDay: string;
       meals: Record<string, boolean>;
+      weeklyStaples: MealItem[];
       updatedAt: Date;
     }> = { updatedAt: new Date() };
 
@@ -138,6 +141,10 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: TEMPLATE_ERRORS.MEALS_CONFIG_REQUIRED }, { status: 400 });
       }
       updateData.meals = meals;
+    }
+
+    if (weeklyStaples !== undefined) {
+      updateData.weeklyStaples = weeklyStaples;
     }
 
     const result = await templatesCollection.updateOne(

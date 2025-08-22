@@ -254,7 +254,7 @@ export default function BaseIngredientInput({
         onFoodItemAdded(newFoodItem);
       }
       
-      console.log('Food item added successfully:', newFoodItem);
+
     } catch (error) {
       console.error('Error adding food item:', error);
       setError(error instanceof Error ? error.message : 'Failed to add food item');

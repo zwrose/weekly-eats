@@ -1,6 +1,5 @@
 import React from 'react';
 import { DialogActions as MuiDialogActions, Box } from '@mui/material';
-import { Button, ButtonProps } from '@mui/material';
 
 interface DialogActionsProps {
   children: React.ReactNode;
