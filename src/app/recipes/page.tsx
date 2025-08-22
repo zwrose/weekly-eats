@@ -11,7 +11,6 @@ import {
   Paper,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogContentText,
   TextField,
@@ -45,8 +44,9 @@ import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from '@/lib/hooks';
 import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { responsiveDialogStyle } from '@/lib/theme';
 import Pagination from '@/components/optimized/Pagination';
-import { DialogActions } from '@/components/ui/DialogActions';
+import { DialogActions, DialogTitle } from '@/components/ui';
 
 function RecipesPageContent() {
   const { data: session, status } = useSession();
@@ -398,7 +398,11 @@ function RecipesPageContent() {
               variant="contained" 
               startIcon={<Add />}
               onClick={() => createDialog.openDialog()}
-              sx={{ bgcolor: "#ed6c02", "&:hover": { bgcolor: "#e65100" } }}
+              sx={{ 
+                bgcolor: "#ed6c02", 
+                "&:hover": { bgcolor: "#e65100" },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Recipe
             </Button>
@@ -725,8 +729,9 @@ function RecipesPageContent() {
           onClose={() => createDialog.closeDialog()}
           maxWidth="lg"
           fullWidth
+          sx={responsiveDialogStyle}
         >
-          <DialogTitle>Create New Recipe</DialogTitle>
+          <DialogTitle onClose={() => createDialog.closeDialog()}>Create New Recipe</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 2 }}>
               <Box sx={{ 
@@ -811,18 +816,12 @@ function RecipesPageContent() {
                 required
               />
 
-          <DialogActions>
-                <Button 
-                  onClick={() => createDialog.closeDialog()}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Cancel
-                </Button>
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={() => createDialog.closeDialog()}>Cancel</Button>
             <Button 
               onClick={handleCreateRecipe}
               variant="contained"
-                  disabled={!newRecipe.title || !newRecipe.instructions || !hasValidIngredients(newRecipe.ingredients)}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+              disabled={!newRecipe.title || !newRecipe.instructions || !hasValidIngredients(newRecipe.ingredients)}
             >
               Create Recipe
             </Button>
@@ -838,27 +837,25 @@ function RecipesPageContent() {
           maxWidth="lg"
           fullWidth
           disableEscapeKeyDown={false}
+          sx={responsiveDialogStyle}
         >
-          <DialogTitle>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {selectedRecipe?.emoji && (
-                  <Typography variant="h4">{selectedRecipe.emoji}</Typography>
-                )}
-                <Typography variant="h5">
-                  {selectedRecipe?.title}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {selectedRecipe && canEditRecipe(selectedRecipe) && !editMode && (
-                  <IconButton onClick={handleEditRecipe} color="inherit">
-                    <Edit />
-                  </IconButton>
-                )}
-                <IconButton onClick={handleCloseViewDialog} color="inherit">
-                  <Close />
+          <DialogTitle 
+            onClose={handleCloseViewDialog}
+            actions={
+              !editMode && selectedRecipe && canEditRecipe(selectedRecipe) ? (
+                <IconButton onClick={handleEditRecipe} color="inherit">
+                  <Edit />
                 </IconButton>
-              </Box>
+              ) : undefined
+            }
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {selectedRecipe?.emoji && (
+                <Typography variant="h4">{selectedRecipe.emoji}</Typography>
+              )}
+              <Typography variant="h5">
+                {selectedRecipe?.title}
+              </Typography>
             </Box>
           </DialogTitle>
           <DialogContent>
@@ -946,13 +943,12 @@ function RecipesPageContent() {
                   required
                 />
 
-                <DialogActions>
+                <DialogActions primaryButtonIndex={1}>
                   <Button 
                     onClick={() => {
                       setEditMode(false);
                       viewDialog.removeDialogData('editMode');
                     }}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Cancel
                   </Button>
@@ -960,7 +956,6 @@ function RecipesPageContent() {
                     onClick={handleUpdateRecipe}
                     variant="contained"
                     disabled={!editingRecipe.title || !editingRecipe.instructions || !hasValidIngredients(editingRecipe.ingredients || [])}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Update Recipe
                   </Button>
@@ -1041,25 +1036,22 @@ function RecipesPageContent() {
         <Dialog
           open={deleteConfirmDialog.open}
           onClose={() => deleteConfirmDialog.closeDialog()}
+          sx={responsiveDialogStyle}
         >
-          <DialogTitle>Delete Recipe</DialogTitle>
+          <DialogTitle onClose={() => deleteConfirmDialog.closeDialog()}>Delete Recipe</DialogTitle>
           <DialogContent>
             <DialogContentText>
               Are you sure you want to delete &quot;{selectedRecipe?.title}&quot;? This action cannot be undone.
             </DialogContentText>
             
-            <DialogActions>
-              <Button 
-                onClick={() => deleteConfirmDialog.closeDialog()}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
+            <DialogActions primaryButtonIndex={1}>
+              <Button onClick={() => deleteConfirmDialog.closeDialog()}>
                 Cancel
               </Button>
               <Button 
                 onClick={handleDeleteRecipe} 
                 color="error" 
                 variant="contained"
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Delete
               </Button>

@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   FormControl,
   InputLabel,
@@ -24,7 +23,7 @@ import {
   Divider,
   IconButton,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings, Edit, Close } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Edit } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -56,9 +55,10 @@ import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
 import { addDays } from 'date-fns';
 import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
 import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
-import { DialogActions } from '@/components/ui/DialogActions';
+import { DialogActions, DialogTitle } from '@/components/ui';
 import { formatDateForAPI } from '@/lib/date-utils';
 import { dayOfWeekToIndex } from "../../lib/date-utils";
 
@@ -477,22 +477,36 @@ function MealPlansPageContent() {
                 Meal Plans
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button 
-                variant="outlined"
-                startIcon={<Settings />}
-                onClick={() => templateDialog.openDialog()}
-                sx={{ borderColor: "#1976d2", color: "#1976d2", "&:hover": { borderColor: "#1565c0" } }}
-              >
-                Template Settings
-              </Button>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2,
+              alignItems: 'center',
+              width: { xs: '100%', sm: 'auto' }
+            }}>
               <Button 
                 variant="contained" 
                 startIcon={<Add />}
                 onClick={handleOpenCreateDialog}
-                sx={{ bgcolor: "#1976d2", "&:hover": { bgcolor: "#1565c0" } }}
+                sx={{ 
+                  bgcolor: "#1976d2", 
+                  "&:hover": { bgcolor: "#1565c0" },
+                  flexGrow: 1
+                }}
               >
                 Create Meal Plan
+              </Button>
+              <Button 
+                variant="outlined"
+                onClick={() => templateDialog.openDialog()}
+                sx={{ 
+                  borderColor: "#1976d2", 
+                  color: "#1976d2", 
+                  "&:hover": { borderColor: "#1565c0" },
+                  minWidth: 'auto',
+                  p: 1
+                }}
+              >
+                <Settings />
               </Button>
             </Box>
           </Box>
@@ -597,8 +611,9 @@ function MealPlansPageContent() {
             onClose={handleCloseCreateDialog}
             maxWidth="sm"
             fullWidth
+            sx={responsiveDialogStyle}
           >
-            <DialogTitle>Create Meal Plan</DialogTitle>
+            <DialogTitle onClose={handleCloseCreateDialog}>Create Meal Plan</DialogTitle>
             <DialogContent>
               <Box sx={{ pt: 2 }}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -689,12 +704,7 @@ function MealPlansPageContent() {
                 )}
               </Box>
               
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
-                justifyContent: { xs: 'stretch', sm: 'flex-end' }
-              }}>
+              <DialogActions primaryButtonIndex={1}>
                 <Button 
                   onClick={handleCloseCreateDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -709,7 +719,7 @@ function MealPlansPageContent() {
                 >
                   Create Plan
                 </Button>
-              </Box>
+              </DialogActions>
             </DialogContent>
           </Dialog>
 
@@ -719,8 +729,9 @@ function MealPlansPageContent() {
             onClose={templateDialog.closeDialog}
             maxWidth="sm"
             fullWidth
+            sx={responsiveDialogStyle}
           >
-            <DialogTitle>Template Settings</DialogTitle>
+            <DialogTitle onClose={templateDialog.closeDialog}>Template Settings</DialogTitle>
             <DialogContent>
               <Box sx={{ pt: 2 }}>
                 <FormControl fullWidth sx={{ mb: 3 }}>
@@ -763,12 +774,7 @@ function MealPlansPageContent() {
                 </Box>
               </Box>
               
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
-                justifyContent: { xs: 'stretch', sm: 'flex-end' }
-              }}>
+              <DialogActions primaryButtonIndex={1}>
                 <Button 
                   onClick={templateDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -782,7 +788,7 @@ function MealPlansPageContent() {
                 >
                   Save Settings
                 </Button>
-              </Box>
+              </DialogActions>
             </DialogContent>
           </Dialog>
 
@@ -792,56 +798,54 @@ function MealPlansPageContent() {
             onClose={handleCloseViewDialog}
             maxWidth="lg"
             fullWidth
+            sx={responsiveDialogStyle}
           >
-            <DialogTitle>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6">
-                  {selectedMealPlan?.name || 'This Meal Plan'}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {editMode ? (
-                    <>
-                      <Button 
-                        onClick={() => {
-                          setEditMode(false);
-                          viewDialog.removeDialogData('editMode');
-                        }}
-                        size="small"
-                        sx={{ minWidth: 'auto' }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          if (mealPlanValidationErrors.length > 0) {
-                            setShowValidationErrors(true);
-                          } else {
-                            handleUpdateMealPlan();
-                          }
-                        }}
-                        variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
-                        size="small"
-                        sx={{ 
-                          minWidth: 'auto',
-                          ...(mealPlanValidationErrors.length > 0 && {
-                            color: 'text.secondary',
-                            borderColor: 'text.secondary'
-                          })
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </>
-                  ) : (
-                    <IconButton onClick={handleEditMealPlanMode} color="inherit" aria-label="Edit">
-                      <Edit />
-                    </IconButton>
-                  )}
-                  <IconButton onClick={handleCloseViewDialog} color="inherit" aria-label="Close">
-                    <Close />
+            <DialogTitle 
+              onClose={handleCloseViewDialog}
+              actions={
+                editMode ? (
+                  <>
+                    <Button 
+                      onClick={() => {
+                        setEditMode(false);
+                        viewDialog.removeDialogData('editMode');
+                      }}
+                      size="small"
+                      sx={{ minWidth: 'auto' }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        if (mealPlanValidationErrors.length > 0) {
+                          setShowValidationErrors(true);
+                        } else {
+                          handleUpdateMealPlan();
+                        }
+                      }}
+                      variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
+                      size="small"
+                      sx={{ 
+                        minWidth: 'auto',
+                        ...(mealPlanValidationErrors.length > 0 && {
+                          color: 'text.secondary',
+                          borderColor: 'text.secondary'
+                        })
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </>
+                ) : (
+                  <IconButton onClick={handleEditMealPlanMode} color="inherit" aria-label="Edit">
+                    <Edit />
                   </IconButton>
-                </Box>
-              </Box>
+                )
+              }
+            >
+              <Typography variant="h6">
+                {selectedMealPlan?.name || 'This Meal Plan'}
+              </Typography>
             </DialogTitle>
             <DialogContent>
               {selectedMealPlan && (
@@ -1074,7 +1078,7 @@ function MealPlansPageContent() {
                 </Box>
               )}
               
-              <DialogActions>
+              <DialogActions primaryButtonIndex={1}>
                 {editMode ? (
                   <>
                     <Button 
@@ -1115,14 +1119,15 @@ function MealPlansPageContent() {
           <Dialog
             open={deleteConfirmDialog.open}
             onClose={deleteConfirmDialog.closeDialog}
+            sx={responsiveDialogStyle}
           >
-            <DialogTitle>Delete Meal Plan</DialogTitle>
+            <DialogTitle onClose={deleteConfirmDialog.closeDialog}>Delete Meal Plan</DialogTitle>
             <DialogContent>
               <Typography>
                 Are you sure you want to delete &quot;{selectedMealPlan?.name}&quot;? This action cannot be undone.
               </Typography>
               
-              <DialogActions>
+              <DialogActions primaryButtonIndex={1}>
                 <Button 
                   onClick={deleteConfirmDialog.closeDialog}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}

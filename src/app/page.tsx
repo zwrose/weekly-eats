@@ -32,9 +32,9 @@ export default function Home() {
     );
   }
 
-  // If user is signed in, redirect to /home
+  // If user is signed in, redirect to /meal-plans
   if (session) {
-    redirect("/home");
+    redirect("/meal-plans");
   }
 
   return (

@@ -15,7 +15,6 @@ import {
   Box,
   CircularProgress,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogContentText,
   Alert
@@ -30,9 +29,10 @@ import {
 import { useSession } from 'next-auth/react';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import { useSearchPagination, useConfirmDialog } from '@/lib/hooks';
+import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
-import { DialogActions } from '@/components/ui/DialogActions';
+import { DialogActions, DialogTitle } from '@/components/ui';
 
 interface User {
   _id: string;
@@ -582,22 +582,22 @@ export default function UserManagementPage() {
         </Paper>
 
         {/* Confirmation Dialog */}
-        <Dialog open={confirmDialog.open} onClose={closeConfirmDialog}>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
+        <Dialog 
+          open={confirmDialog.open} 
+          onClose={closeConfirmDialog}
+          sx={responsiveDialogStyle}
+        >
+          <DialogTitle onClose={closeConfirmDialog}>{getDialogTitle()}</DialogTitle>
           <DialogContent>
             <DialogContentText>{getDialogContent()}</DialogContentText>
-            <DialogActions>
-              <Button 
-                onClick={closeConfirmDialog}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
+            <DialogActions primaryButtonIndex={1}>
+              <Button onClick={closeConfirmDialog}>
                 Cancel
               </Button>
               <Button 
                 onClick={confirmAction} 
                 color="primary" 
                 variant="contained"
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Confirm
               </Button>

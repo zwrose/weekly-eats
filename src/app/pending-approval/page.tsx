@@ -27,7 +27,7 @@ export default function PendingApprovalPage() {
     if (status === "unauthenticated") {
       router.push('/');
     } else if (status === "authenticated" && (session?.user as { isApproved?: boolean })?.isApproved) {
-      router.push('/home');
+              router.push('/meal-plans');
     }
   }, [status, session, router]);
 

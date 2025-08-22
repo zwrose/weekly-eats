@@ -11,7 +11,6 @@ import {
   Alert,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
 } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -19,13 +18,14 @@ import { PantryItemWithFoodItem, CreatePantryItemRequest } from "../../types/pan
 import { createPantryItem, deletePantryItem, fetchPantryItems } from "../../lib/pantry-utils";
 import AddFoodItemDialog from "../../components/AddFoodItemDialog";
 import { useFoodItems, useSearchPagination, useDialog, useConfirmDialog } from "@/lib/hooks";
+import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from "@/components/optimized/SearchBar";
 import Pagination from "@/components/optimized/Pagination";
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Kitchen from '@mui/icons-material/Kitchen';
 import Add from '@mui/icons-material/Add';
-import { DialogActions } from '@/components/ui/DialogActions';
+import { DialogActions, DialogTitle } from '@/components/ui';
 
 export default function PantryPage() {
   const { status } = useSession();
@@ -191,8 +191,14 @@ export default function PantryPage() {
         )}
 
         {/* Add Pantry Item Dialog */}
-        <Dialog open={createDialog.open} onClose={createDialog.closeDialog} maxWidth="xs" fullWidth>
-          <DialogTitle>Add Pantry Item</DialogTitle>
+        <Dialog 
+          open={createDialog.open} 
+          onClose={createDialog.closeDialog} 
+          maxWidth="xs" 
+          fullWidth
+          sx={responsiveDialogStyle}
+        >
+                      <DialogTitle onClose={createDialog.closeDialog}>Add Pantry Item</DialogTitle>
           <DialogContent>
             <Autocomplete
               options={foodItems}
@@ -253,23 +259,41 @@ export default function PantryPage() {
               }
             />
           </DialogContent>
-          <DialogActions>
-            <Button onClick={createDialog.closeDialog}>Cancel</Button>
-            <Button onClick={handleCreateItem} disabled={!newItem.foodItemId} variant="contained">
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={createDialog.closeDialog}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateItem} 
+              disabled={!newItem.foodItemId} 
+              variant="contained"
+            >
               Add
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={deleteConfirmDialog.open} onClose={deleteConfirmDialog.closeDialog} maxWidth="xs" fullWidth>
-          <DialogTitle>Remove Pantry Item</DialogTitle>
+        <Dialog 
+          open={deleteConfirmDialog.open} 
+          onClose={deleteConfirmDialog.closeDialog} 
+          maxWidth="xs" 
+          fullWidth
+          sx={responsiveDialogStyle}
+        >
+                      <DialogTitle onClose={deleteConfirmDialog.closeDialog}>Remove Pantry Item</DialogTitle>
           <DialogContent>
             Are you sure you want to remove {deleteConfirmDialog.data?.foodItem.name} from your pantry?
           </DialogContent>
-          <DialogActions>
-            <Button onClick={deleteConfirmDialog.cancel}>Cancel</Button>
-            <Button onClick={handleDeleteItem} color="error" variant="contained">
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={deleteConfirmDialog.cancel}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteItem} 
+              color="error" 
+              variant="contained"
+            >
               Remove
             </Button>
           </DialogActions>

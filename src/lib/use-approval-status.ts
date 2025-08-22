@@ -32,7 +32,7 @@ export const useApprovalStatus = () => {
           eventSource.close();
           setTimeout(() => {
             update({ isApproved: true }).then(() => {
-              router.push('/home');
+              router.push('/meal-plans');
             });
           }, 100);
         }
