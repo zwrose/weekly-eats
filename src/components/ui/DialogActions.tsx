@@ -1,42 +1,51 @@
-import { Box, BoxProps } from '@mui/material';
-import { ReactNode } from 'react';
+import React from 'react';
+import { DialogActions as MuiDialogActions, Box } from '@mui/material';
+import { Button, ButtonProps } from '@mui/material';
 
-interface DialogActionsProps extends Omit<BoxProps, 'children'> {
-  children: ReactNode;
-  align?: 'left' | 'right' | 'center';
+interface DialogActionsProps {
+  children: React.ReactNode;
+  primaryButtonIndex?: number; // Index of the primary button (0-based)
 }
 
-/**
- * Reusable dialog actions component that provides consistent responsive button layout
- * across all dialogs in the application.
- * 
- * @param children - Button components to render
- * @param align - Alignment of buttons on desktop (default: 'right')
- * @param props - Additional Box props
- */
-export const DialogActions = ({ 
+export const DialogActions: React.FC<DialogActionsProps> = ({ 
   children, 
-  align = 'right', 
-  ...props 
-}: DialogActionsProps) => {
-  const justifyContent = align === 'left' ? 'flex-start' : 
-                        align === 'center' ? 'center' : 'flex-end';
+  primaryButtonIndex = 0 
+}) => {
+  const childrenArray = React.Children.toArray(children);
+  
+  // Reorder children so primary button comes first on mobile
+  const reorderedChildren = React.useMemo(() => {
+    if (childrenArray.length <= 1) return childrenArray;
+    
+    const primaryButton = childrenArray[primaryButtonIndex];
+    const otherButtons = childrenArray.filter((_, index) => index !== primaryButtonIndex);
+    
+    return [primaryButton, ...otherButtons];
+  }, [childrenArray, primaryButtonIndex]);
 
   return (
-    <Box
-      sx={{
+    <MuiDialogActions>
+      <Box sx={{ 
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 0 },
-        mt: 3,
-        pt: 2,
-        px: 2,
-        pb: 2,
-        justifyContent: { xs: 'stretch', sm: justifyContent }
-      }}
-      {...props}
-    >
-      {children}
-    </Box>
+        justifyContent: { xs: 'stretch', sm: 'flex-end' },
+        width: '100%'
+      }}>
+        {reorderedChildren.map((child, index) => (
+          <Box
+            key={index}
+            sx={{
+              width: { xs: '100%', sm: 'auto' },
+              '& > *': {
+                width: { xs: '100%', sm: 'auto' }
+              }
+            }}
+          >
+            {child}
+          </Box>
+        ))}
+      </Box>
+    </MuiDialogActions>
   );
 }; 

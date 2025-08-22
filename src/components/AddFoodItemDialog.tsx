@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   TextField,
   Button,
@@ -24,7 +23,8 @@ import {
 } from '@mui/material';
 import { getUnitOptions } from '../lib/food-items-utils';
 import pluralize from '@wei/pluralize';
-import { DialogActions } from './ui/DialogActions';
+import { DialogActions, DialogTitle } from './ui';
+import { responsiveDialogStyle } from '../lib/theme';
 
 interface AddFoodItemDialogProps {
   open: boolean;
@@ -125,8 +125,14 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
   const steps = ['Basic Information', 'Confirm Names'];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>
+          <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        maxWidth="md" 
+        fullWidth
+        sx={responsiveDialogStyle}
+      >
+      <DialogTitle onClose={handleClose}>
         <Box sx={{ mb: 2 }}>
           <Typography variant="h6" gutterBottom>
             Add New Food Item
@@ -266,33 +272,25 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
             </Box>
           )}
 
-          <DialogActions>
-            <Button 
-              onClick={handleClose} 
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
+          <DialogActions primaryButtonIndex={step === 0 ? 1 : 2}>
+            <Button onClick={handleClose}>
               Cancel
             </Button>
             {step === 0 ? (
               <Button 
                 onClick={handleNext} 
                 variant="contained"
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Next
               </Button>
             ) : (
               <>
-                <Button 
-                  onClick={handleBack}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
+                <Button onClick={handleBack}>
                   Back
                 </Button>
                 <Button 
                   onClick={handleSubmit} 
                   variant="contained"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Add Food Item
                 </Button>

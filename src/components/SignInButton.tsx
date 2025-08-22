@@ -7,7 +7,7 @@ export default function SignInButton() {
   return (
     <Button
       variant="outlined"
-      onClick={() => signIn("google", { callbackUrl: "/home" })}
+      onClick={() => signIn("google", { callbackUrl: "/meal-plans" })}
       sx={{
         borderColor: "#dadce0",
         color: "#3c4043",

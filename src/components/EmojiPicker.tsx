@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  IconButton,
   Box,
   Typography,
   TextField,
   InputAdornment,
 } from '@mui/material';
-import { Close, Search } from '@mui/icons-material';
+import { Search } from '@mui/icons-material';
+import { responsiveDialogStyle } from '../lib/theme';
+import { DialogTitle } from './ui';
 
 interface EmojiPickerProps {
   open: boolean;
@@ -185,14 +185,15 @@ export default function EmojiPicker({ open, onClose, onSelect, currentEmoji }: E
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Choose an Emoji</Typography>
-          <IconButton onClick={onClose} size="small">
-            <Close />
-          </IconButton>
-        </Box>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      sx={responsiveDialogStyle}
+    >
+      <DialogTitle onClose={onClose}>
+        <Typography variant="h6">Choose an Emoji</Typography>
       </DialogTitle>
       <DialogContent>
         <TextField

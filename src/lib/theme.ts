@@ -130,3 +130,13 @@ export const darkTheme = createTheme(createThemeOptions('dark'));
 
 // Export theme options for potential customization
 export { createThemeOptions }; 
+
+// Reusable responsive dialog styling for full-screen mobile experience
+export const responsiveDialogStyle = {
+  '& .MuiDialog-paper': {
+    margin: { xs: 0, sm: 'auto', md: 'auto', lg: 'auto', xl: 'auto' },
+    width: { xs: '100%' },
+    height: { xs: '100%', sm: 'auto', md: 'auto', lg: 'auto', xl: 'auto' },
+    maxHeight: { xs: '100%', sm: '90vh', md: '90vh', lg: '90vh', xl: '90vh' }
+  }
+}; 

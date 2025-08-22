@@ -19,7 +19,6 @@ import {
   Chip,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   Tooltip,
   Divider,
@@ -35,17 +34,17 @@ import {
   Public,
   Person,
   Edit,
-  Delete,
-  Close
+  Delete
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { getUnitOptions } from "@/lib/food-items-utils";
 import { useFoodItems } from '@/lib/hooks';
 import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import type { FoodItem } from '@/lib/hooks/use-food-items';
-import { DialogActions } from '@/components/ui/DialogActions';
+import { DialogActions, DialogTitle } from '@/components/ui';
 
 function FoodItemsPageContent() {
   const { data: session, status } = useSession();
@@ -534,23 +533,19 @@ function FoodItemsPageContent() {
         onClose={handleCloseViewDialog}
         maxWidth="lg"
         fullWidth
+        sx={responsiveDialogStyle}
       >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              {editMode ? 'Edit Food Item' : 'View Food Item'}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {!editMode && (
-                <IconButton onClick={handleEditItem} color="inherit" aria-label="Edit">
-                  <Edit />
-                </IconButton>
-              )}
-              <IconButton onClick={handleCloseViewDialog} color="inherit" aria-label="Close">
-                <Close />
-              </IconButton>
-            </Box>
-          </Box>
+        <DialogTitle 
+          onClose={handleCloseViewDialog}
+          actions={!editMode ? (
+            <IconButton onClick={handleEditItem} color="inherit" aria-label="Edit">
+              <Edit />
+            </IconButton>
+          ) : undefined}
+        >
+          <Typography variant="h6">
+            {editMode ? 'Edit Food Item' : 'View Food Item'}
+          </Typography>
         </DialogTitle>
         <DialogContent>
           {selectedItem && (
@@ -668,7 +663,7 @@ function FoodItemsPageContent() {
             </Box>
           )}
           
-              <DialogActions>
+              <DialogActions primaryButtonIndex={2}>
             {editMode ? (
               <>
                 <Button 
@@ -677,7 +672,6 @@ function FoodItemsPageContent() {
                     viewDialog.removeDialogData('editMode');
                     setEditingItem({});
                   }}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
                 </Button>
@@ -691,7 +685,6 @@ function FoodItemsPageContent() {
                       startIcon={<Delete />}
                       color="error"
                       disabled={!canDeleteItem(selectedItem!)}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       Delete
                     </Button>
@@ -700,7 +693,6 @@ function FoodItemsPageContent() {
                 <Button 
                   onClick={handleUpdateItem} 
                   variant="contained"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Save
                 </Button>
@@ -711,18 +703,19 @@ function FoodItemsPageContent() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmDialog.open} onClose={deleteConfirmDialog.closeDialog}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+      <Dialog 
+        open={deleteConfirmDialog.open} 
+        onClose={deleteConfirmDialog.closeDialog}
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={deleteConfirmDialog.closeDialog}>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
             Are you sure you want to delete &quot;{selectedItem?.name}&quot;? This action cannot be undone.
           </Typography>
           
-          <DialogActions>
-            <Button 
-              onClick={deleteConfirmDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={deleteConfirmDialog.closeDialog}>
               Cancel
             </Button>
             <Button 
@@ -732,7 +725,6 @@ function FoodItemsPageContent() {
               }} 
               color="error" 
               variant="contained"
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Delete
             </Button>
@@ -741,14 +733,18 @@ function FoodItemsPageContent() {
       </Dialog>
 
       {/* Confirmation Dialog for making global */}
-      <Dialog open={confirmGlobalDialog.open} onClose={confirmGlobalDialog.closeDialog}>
-        <DialogTitle>Confirm Make Global</DialogTitle>
+      <Dialog 
+        open={confirmGlobalDialog.open} 
+        onClose={confirmGlobalDialog.closeDialog}
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={confirmGlobalDialog.closeDialog}>Confirm Make Global</DialogTitle>
         <DialogContent>
           <Typography>
             Making this item global will make it available to all users. <b>This action cannot be undone</b>—once global, the item cannot be made personal again. Are you sure you want to proceed?
           </Typography>
-          <DialogActions>
-            <Button onClick={confirmGlobalDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={confirmGlobalDialog.closeDialog}>Cancel</Button>
             <Button 
               onClick={() => {
                 setEditingItem((prev) => ({ ...prev, isGlobal: true }));
@@ -756,7 +752,6 @@ function FoodItemsPageContent() {
               }} 
               color="primary" 
               variant="contained"
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Yes, Make Global
             </Button>
