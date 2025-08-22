@@ -17,8 +17,10 @@ export const DEFAULT_TEMPLATE: CreateMealPlanTemplateRequest = {
   meals: {
     breakfast: true,
     lunch: true,
-    dinner: true
-  }
+    dinner: true,
+    staples: false // Staples are managed separately, not as a regular meal
+  },
+  weeklyStaples: []
 };
 
 /**

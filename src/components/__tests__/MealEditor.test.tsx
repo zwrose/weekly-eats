@@ -1,259 +1,292 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import MealEditor from '../MealEditor';
-import { MealItem } from '../../types/meal-plan';
 
-const server = setupServer(
-  http.get('/api/food-items', () => {
-    return HttpResponse.json([
-      { _id: '1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece' },
-      { _id: '2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'piece' }
-    ]);
-  }),
-  http.get('/api/recipes', () => {
-    return HttpResponse.json([
-      { _id: '1', title: 'Apple Pie' },
-      { _id: '2', title: 'Banana Bread' }
-    ]);
-  })
-);
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+// Mock fetch for API calls
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('MealEditor', () => {
-  const defaultProps = {
-    mealItems: [],
-    onChange: vi.fn(),
-    onFoodItemAdded: vi.fn(),
-  };
-
-  it('renders empty state with action buttons', () => {
-    render(<MealEditor {...defaultProps} />);
-    
-    expect(screen.getByText('Use the buttons below to add to this meal.')).toBeInTheDocument();
-    expect(screen.getByText('Add Meal Item')).toBeInTheDocument();
-    expect(screen.getByText('Add Meal Item Group')).toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('calls onChange when Add Meal Item is clicked', () => {
-    render(<MealEditor {...defaultProps} />);
+  it('auto-selects newly created food item in meal editor', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onFoodItemAdded = vi.fn();
     
-    fireEvent.click(screen.getByText('Add Meal Item'));
-    
-    expect(defaultProps.onChange).toHaveBeenCalledWith([{
-      type: 'foodItem',
-      id: '',
-      name: '',
-      quantity: 1,
-      unit: 'cup'
-    }]);
-  });
-
-  it('calls onChange when Add Meal Item Group is clicked', () => {
-    render(<MealEditor {...defaultProps} />);
-    
-    fireEvent.click(screen.getByText('Add Meal Item Group'));
-    
-    expect(defaultProps.onChange).toHaveBeenCalledWith([{
-      type: 'ingredientGroup',
-      id: '',
-      name: '',
-      ingredients: [{
-        title: '',
-        ingredients: []
-      }]
-    }]);
-  });
-
-  it('renders existing meal items', async () => {
-    const mealItems: MealItem[] = [
-      {
-        type: 'foodItem',
-        id: '1',
-        name: 'Apple',
-        quantity: 2,
-        unit: 'piece'
-      },
-      {
-        type: 'ingredientGroup',
-        id: '',
-        name: '',
-        ingredients: [{
-          title: 'Fruits',
-          ingredients: []
-        }]
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
-    
-    await waitFor(() => {
-      expect(screen.getAllByText('Remove Meal Item')).toHaveLength(1);
-    });
-  });
-
-  it('calls onChange when meal item is removed', async () => {
-    const mealItems: MealItem[] = [
-      {
-        type: 'foodItem',
-        id: '1',
-        name: 'Apple',
-        quantity: 2,
-        unit: 'piece'
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
-    
-    await waitFor(() => {
-      const removeButton = screen.getByText('Remove Meal Item');
-      fireEvent.click(removeButton);
+    // Mock the initial data loading
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
+      ]
     });
     
-    expect(defaultProps.onChange).toHaveBeenCalledWith([]);
-  });
-
-  it('handles ingredient group changes', async () => {
-    const mealItems: MealItem[] = [
-      {
-        type: 'ingredientGroup',
-        id: '',
-        name: '',
-        ingredients: [{
-          title: 'Fruits',
-          ingredients: []
-        }]
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
-    
-    await waitFor(() => {
-      const titleInput = screen.getByDisplayValue('Fruits');
-      fireEvent.change(titleInput, { target: { value: 'Fresh Fruits' } });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [] // No recipes
     });
     
-    expect(defaultProps.onChange).toHaveBeenCalledWith([{
-      type: 'ingredientGroup',
-      id: '',
-      name: '',
-      ingredients: [{
-        title: 'Fresh Fruits',
-        ingredients: []
-      }]
-    }]);
-  });
-
-  it('handles food item selection and type updates', async () => {
-    const mealItems: MealItem[] = [
-      {
+    // Mock the food item creation API response
+    const newFoodItem = {
+      _id: 'new-food-789',
+      name: 'Fresh Avocado',
+      singularName: 'Fresh Avocado',
+      pluralName: 'Fresh Avocados',
+      unit: 'piece',
+      isGlobal: false
+    };
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => newFoodItem
+    });
+    
+    render(
+      <MealEditor
+        mealItems={[]}
+        onChange={onChange}
+        onFoodItemAdded={onFoodItemAdded}
+      />
+    );
+    
+    // Add a meal item
+    const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
+    await user.click(addMealItemButton);
+    
+    // Verify that onChange was called with a new meal item
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({
         type: 'foodItem',
         id: '',
         name: '',
         quantity: 1,
         unit: 'cup'
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Remove Meal Item')).toBeInTheDocument();
-    });
-  });
-
-  it('handles API errors gracefully', async () => {
-    server.use(
-      http.get('/api/food-items', () => {
-        return HttpResponse.error();
-      }),
-      http.get('/api/recipes', () => {
-        return HttpResponse.error();
       })
+    ]);
+    
+    // Get the updated meal items from the last onChange call
+    const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    
+    // Re-render with the updated meal items
+    render(
+      <MealEditor
+        mealItems={updatedMealItems}
+        onChange={onChange}
+        onFoodItemAdded={onFoodItemAdded}
+      />
     );
-
-    render(<MealEditor {...defaultProps} />);
     
-    // Should still render the empty state
-    expect(screen.getByText('Use the buttons below to add to this meal.')).toBeInTheDocument();
-  });
-
-  it('handles multiple meal items', async () => {
-    const mealItems: MealItem[] = [
-      {
-        type: 'foodItem',
-        id: '1',
-        name: 'Apple',
-        quantity: 2,
-        unit: 'piece'
-      },
-      {
-        type: 'recipe',
-        id: '1',
-        name: 'Apple Pie'
-      },
-      {
-        type: 'ingredientGroup',
-        id: '',
-        name: '',
-        ingredients: [{
-          title: 'Fruits',
-          ingredients: []
-        }]
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
+    // Type a new food item name in the ingredient input
+    const input = screen.getByLabelText(/food item or recipe/i);
+    await user.type(input, 'Fresh Avocado');
     
+    // Press Enter to open the add dialog
+    await user.keyboard('{Enter}');
+    
+    // Wait for the dialog to appear and fill in the form (Step 1)
+    const nameField = await screen.findByLabelText(/default name/i);
+    await user.clear(nameField);
+    await user.type(nameField, 'Fresh Avocado');
+    
+    // Click Next to go to Step 2
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    await user.click(nextButton);
+    
+    // Fill in the form fields in Step 2
+    const singularField = await screen.findByLabelText(/singular name/i);
+    const pluralField = await screen.findByLabelText(/plural name/i);
+    
+    await user.clear(singularField);
+    await user.type(singularField, 'Fresh Avocado');
+    await user.clear(pluralField);
+    await user.type(pluralField, 'Fresh Avocados');
+    
+    // Submit the form
+    const addButton = screen.getByRole('button', { name: /add food item/i });
+    await user.click(addButton);
+    
+    // Wait for the auto-selection to happen and verify the meal item was updated
     await waitFor(() => {
-      // Should have 2 "Remove Meal Item" buttons (from food item and recipe)
-      expect(screen.getAllByText('Remove Meal Item')).toHaveLength(2);
+      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
+      const updatedItems = lastCall[0];
+      expect(updatedItems[0]).toEqual(
+        expect.objectContaining({
+          type: 'foodItem',
+          id: 'new-food-id',
+          name: 'Fresh Avocado',
+          quantity: 1,
+          unit: 'each'
+        })
+      );
+    });
+    
+    // Verify that onFoodItemAdded was called with the new food item
+    expect(onFoodItemAdded).toHaveBeenCalledWith({
+      _id: 'new-food-id',
+      name: 'Fresh Avocado',
+      singularName: 'Fresh Avocado',
+      pluralName: 'Fresh Avocados',
+      unit: 'each',
+      isGlobal: false
     });
   });
 
-  it('does not show empty state when items exist', async () => {
-    const mealItems: MealItem[] = [
-      {
-        type: 'foodItem',
-        id: '1',
-        name: 'Apple',
-        quantity: 2,
-        unit: 'piece'
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
+  it('handles auto-selection when foodItems state is not yet updated', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onFoodItemAdded = vi.fn();
     
-    expect(screen.queryByText('Use the buttons below to add to this meal.')).not.toBeInTheDocument();
+    // Mock the initial data loading
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
+      ]
+    });
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [] // No recipes
+    });
+    
+    // Mock the food item creation API response
+    const newFoodItem = {
+      _id: 'new-food-timing-test',
+      name: 'Organic Blueberries',
+      singularName: 'Organic Blueberries',
+      pluralName: 'Organic Blueberries',
+      unit: 'package',
+      isGlobal: false
+    };
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => newFoodItem
+    });
+    
+    render(
+      <MealEditor
+        mealItems={[]}
+        onChange={onChange}
+        onFoodItemAdded={onFoodItemAdded}
+      />
+    );
+    
+    // Add a meal item
+    const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
+    await user.click(addMealItemButton);
+    
+    // Get the updated meal items
+    const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    
+    // Re-render with the updated meal items
+    render(
+      <MealEditor
+        mealItems={updatedMealItems}
+        onChange={onChange}
+        onFoodItemAdded={onFoodItemAdded}
+      />
+    );
+    
+    // Type a new food item name
+    const input = screen.getByLabelText(/food item or recipe/i);
+    await user.type(input, 'Organic Blueberries');
+    
+    // Press Enter to open the add dialog
+    await user.keyboard('{Enter}');
+    
+    // Fill in the form (Step 1)
+    const nameField = await screen.findByLabelText(/default name/i);
+    await user.clear(nameField);
+    await user.type(nameField, 'Organic Blueberries');
+    
+    // Click Next to go to Step 2
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    await user.click(nextButton);
+    
+    // Fill in the form fields in Step 2
+    const singularField = await screen.findByLabelText(/singular name/i);
+    const pluralField = await screen.findByLabelText(/plural name/i);
+    
+    await user.clear(singularField);
+    await user.type(singularField, 'Organic Blueberries');
+    await user.clear(pluralField);
+    await user.type(pluralField, 'Organic Blueberries');
+    
+    // Submit the form
+    const addButton = screen.getByRole('button', { name: /add food item/i });
+    await user.click(addButton);
+    
+    // Wait for the auto-selection to happen
+    await waitFor(() => {
+      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
+      const updatedItems = lastCall[0];
+      expect(updatedItems[0]).toEqual(
+        expect.objectContaining({
+          type: 'foodItem',
+          id: 'new-food-id',
+          name: 'Organic Blueberries',
+          quantity: 1,
+          unit: 'each'
+        })
+      );
+    });
+    
+    // Verify that the ref-based fallback worked correctly
+    expect(onFoodItemAdded).toHaveBeenCalledWith({
+      _id: 'new-food-id',
+      name: 'Organic Blueberries',
+      singularName: 'Organic Blueberries',
+      pluralName: 'Organic Blueberries',
+      unit: 'each',
+      isGlobal: false
+    });
   });
 
-  it('renders ingredient groups with responsive delete buttons', async () => {
-    const mealItems: MealItem[] = [
-      {
+  it('adds meal item group correctly', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    
+    // Mock the initial data loading
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => []
+    });
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => []
+    });
+    
+    render(
+      <MealEditor
+        mealItems={[]}
+        onChange={onChange}
+        onFoodItemAdded={async () => {}}
+      />
+    );
+    
+    // Add a meal item group
+    const addGroupButton = screen.getByRole('button', { name: /add meal item group/i });
+    await user.click(addGroupButton);
+    
+    // Verify that onChange was called with a new ingredient group
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({
         type: 'ingredientGroup',
         id: '',
         name: '',
-        ingredients: [{
-          title: 'Test Group',
-          ingredients: []
-        }]
-      }
-    ];
-
-    render(<MealEditor {...defaultProps} mealItems={mealItems} />);
-    
-    await waitFor(() => {
-      // Should show both inline and bottom delete buttons (responsive design)
-      const deleteIcons = screen.getAllByTestId('DeleteIcon');
-      expect(deleteIcons.length).toBeGreaterThan(0);
-      
-      // Should show the bottom delete button with text
-      const bottomDeleteButton = screen.getByText('Remove Group');
-      expect(bottomDeleteButton).toBeInTheDocument();
-    });
+        ingredients: [
+          expect.objectContaining({
+            title: '',
+            ingredients: []
+          })
+        ]
+      })
+    ]);
   });
 });

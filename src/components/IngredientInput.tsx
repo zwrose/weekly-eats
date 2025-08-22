@@ -52,6 +52,7 @@ export default function IngredientInput({
   ingredient, 
   onIngredientChange, 
   onRemove,
+  foodItems: propFoodItems,
   onFoodItemAdded, 
   currentRecipeId,
   selectedIds = [],
@@ -62,8 +63,11 @@ export default function IngredientInput({
   const [error, setError] = useState('');
   const [prefillName, setPrefillName] = useState('');
   const [pendingSelection, setPendingSelection] = useState<boolean>(false);
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [localFoodItems, setLocalFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  
+  // Use prop foodItems if provided, otherwise use local state
+  const foodItems = propFoodItems || localFoodItems;
   
   // Search state for this slot
   const [searchData, setSearchData] = useState<{ input: string; options: SearchOption[]; loading: boolean; selectedIndex: number }>({
@@ -76,8 +80,13 @@ export default function IngredientInput({
   const autocompleteRef = useRef<HTMLInputElement | null>(null);
   const quantityRef = useRef<HTMLInputElement | null>(null);
 
-  // Load food items and recipes on mount
+  // Load food items and recipes on mount (only if propFoodItems is not provided)
   useEffect(() => {
+    if (propFoodItems) {
+      // If propFoodItems is provided, we don't need to load food items
+      return;
+    }
+    
     const loadData = async () => {
       try {
         const [foodRes, recipeRes] = await Promise.all([
@@ -86,7 +95,7 @@ export default function IngredientInput({
         ]);
         const foodItemsData = foodRes.ok ? await foodRes.json() : [];
         const recipesData = recipeRes.ok ? await recipeRes.json() : [];
-        setFoodItems(foodItemsData);
+        setLocalFoodItems(foodItemsData);
         setRecipes(recipesData);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -94,7 +103,7 @@ export default function IngredientInput({
     };
     
     loadData();
-  }, []);
+  }, [propFoodItems]);
 
   // Auto-focus the input if autoFocus prop is true
   useEffect(() => {
@@ -237,24 +246,32 @@ export default function IngredientInput({
 
       const newFoodItem = await response.json();
       
-      // Add the new food item to the local state
-      setFoodItems(prev => [...prev, newFoodItem]);
+      // Add the new food item to the local state only if we're not using prop foodItems
+      if (!propFoodItems) {
+        setLocalFoodItems(prev => [...prev, newFoodItem]);
+      }
       
       // Close the dialog
       setAddDialogOpen(false);
       
-      // Automatically select the newly created food item
-      if (pendingSelection) {
-        handleItemSelect({ ...newFoodItem, type: 'foodItem' as const });
-        setPendingSelection(false);
-      }
-      
-      // Notify parent component about the new food item
+      // Notify parent component about the new food item first (so parent state is updated)
       if (onFoodItemAdded) {
-        onFoodItemAdded(newFoodItem);
+        await onFoodItemAdded(newFoodItem);
       }
       
-      console.log('Food item added successfully:', newFoodItem);
+      // Automatically select the newly created food item after parent state is updated
+      if (pendingSelection) {
+        // Use a small delay to ensure parent state update has propagated
+        setTimeout(() => {
+          // Convert newFoodItem to SearchOption format
+          const searchOption: SearchOption = {
+            ...newFoodItem,
+            type: 'foodItem' as const
+          };
+          handleItemSelect(searchOption);
+          setPendingSelection(false);
+        }, 50);
+      }
     } catch (error) {
       console.error('Error adding food item:', error);
       setError(error instanceof Error ? error.message : 'Failed to add food item');
@@ -323,7 +340,7 @@ export default function IngredientInput({
             getOptionLabel={(option) => {
               if (option.type === 'foodItem') {
                 return option.name || '[Unknown Food Item]';
-              } else {
+  } else {
                 return option.title || '[Unknown Recipe]';
               }
             }}
@@ -338,7 +355,7 @@ export default function IngredientInput({
               const { key, ...otherProps } = props;
               const isSelected = searchData.selectedIndex === index;
               
-              return (
+    return (
                 <Box 
                   component="li" 
                   key={key} 

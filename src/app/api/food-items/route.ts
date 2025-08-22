@@ -114,15 +114,18 @@ export async function POST(request: NextRequest) {
     const trimmedSingularName = singularName.trim();
     const trimmedPluralName = pluralName.trim();
 
+    // Escape regex special characters to prevent injection issues
+    const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
     // Check if food item already exists (case-insensitive, check both singular and plural forms)
     const existingItem = await foodItemsCollection.findOne({
       $and: [
         {
           $or: [
-            { singularName: { $regex: `^${trimmedSingularName}$`, $options: 'i' } },
-            { pluralName: { $regex: `^${trimmedPluralName}$`, $options: 'i' } },
-            { singularName: { $regex: `^${trimmedPluralName}$`, $options: 'i' } },
-            { pluralName: { $regex: `^${trimmedSingularName}$`, $options: 'i' } }
+            { singularName: { $regex: `^${escapeRegex(trimmedSingularName)}$`, $options: 'i' } },
+            { pluralName: { $regex: `^${escapeRegex(trimmedPluralName)}$`, $options: 'i' } },
+            { singularName: { $regex: `^${escapeRegex(trimmedPluralName)}$`, $options: 'i' } },
+            { pluralName: { $regex: `^${escapeRegex(trimmedSingularName)}$`, $options: 'i' } }
           ]
         },
         {
@@ -134,8 +137,11 @@ export async function POST(request: NextRequest) {
       ]
     });
 
-    if (existingItem) {
-      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_ALREADY_EXISTS }, { status: 409 });
+        if (existingItem) {
+      return NextResponse.json({ 
+        error: FOOD_ITEM_ERRORS.FOOD_ITEM_ALREADY_EXISTS,
+        details: `A food item with name "${existingItem.singularName}" or "${existingItem.pluralName}" already exists`
+      }, { status: 409 });
     }
 
     const newFoodItem = {
