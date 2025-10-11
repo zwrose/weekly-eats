@@ -1,0 +1,264 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { SessionProvider } from 'next-auth/react';
+
+// Mock next-auth
+vi.mock('next-auth/react', async () => {
+  const actual = await vi.importActual('next-auth/react');
+  return {
+    ...actual,
+    useSession: vi.fn(() => ({
+      data: { user: { id: 'user-123', email: 'test@example.com' } },
+      status: 'authenticated'
+    })),
+  };
+});
+
+// Mock the meal plan utilities
+const mockDeleteMealPlan = vi.fn();
+const mockUpdateMealPlan = vi.fn();
+const mockFetchMealPlans = vi.fn();
+const mockFetchMealPlanTemplate = vi.fn();
+
+vi.mock('../../../lib/meal-plan-utils', () => ({
+  fetchMealPlans: () => mockFetchMealPlans(),
+  createMealPlan: vi.fn(),
+  deleteMealPlan: (id: string) => mockDeleteMealPlan(id),
+  fetchMealPlanTemplate: () => mockFetchMealPlanTemplate(),
+  updateMealPlanTemplate: vi.fn(),
+  updateMealPlan: (id: string, data: any) => mockUpdateMealPlan(id, data),
+  DEFAULT_TEMPLATE: {
+    startDay: 'saturday' as const,
+    meals: {
+      breakfast: true,
+      lunch: true,
+      dinner: true,
+      staples: false
+    },
+    weeklyStaples: []
+  },
+  checkMealPlanOverlap: vi.fn(() => ({ isOverlapping: false, conflict: null })),
+  findNextAvailableMealPlanStartDate: vi.fn(() => ({
+    startDate: '2024-01-06',
+    skipped: false
+  }))
+}));
+
+// Mock hooks
+vi.mock('@/lib/hooks', () => ({
+  useSearchPagination: vi.fn(() => ({
+    searchTerm: '',
+    setSearchTerm: vi.fn(),
+    currentPage: 1,
+    setCurrentPage: vi.fn(),
+    totalPages: 1,
+    paginatedData: [],
+    totalItems: 0
+  })),
+  useDialog: vi.fn(() => ({
+    open: false,
+    openDialog: vi.fn(),
+    closeDialog: vi.fn()
+  })),
+  useConfirmDialog: vi.fn(() => ({
+    open: false,
+    openDialog: vi.fn(),
+    closeDialog: vi.fn()
+  })),
+  usePersistentDialog: vi.fn(() => ({
+    open: false,
+    data: null,
+    openDialog: vi.fn(),
+    closeDialog: vi.fn(),
+    removeDialogData: vi.fn()
+  }))
+}));
+
+// Mock components that might have issues
+vi.mock('../../../components/AuthenticatedLayout', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}));
+
+vi.mock('../../../components/MealEditor', () => ({
+  default: () => <div data-testid="meal-editor">Meal Editor</div>
+}));
+
+vi.mock('../../../components/AddFoodItemDialog', () => ({
+  default: () => <div>Add Food Item Dialog</div>
+}));
+
+// Import after mocks
+import MealPlansPage from '../page';
+
+describe('MealPlansPage - Delete Functionality', () => {
+  const mockMealPlan = {
+    _id: 'meal-plan-123',
+    name: 'Week of Jan 6, 2024',
+    userId: 'user-123',
+    startDate: '2024-01-06',
+    items: [
+      {
+        _id: 'item-1',
+        mealPlanId: 'meal-plan-123',
+        dayOfWeek: 'saturday' as const,
+        mealType: 'breakfast' as const,
+        items: []
+      }
+    ],
+    template: {
+      startDay: 'saturday' as const,
+      meals: {
+        breakfast: true,
+        lunch: true,
+        dinner: true,
+        staples: false
+      },
+      weeklyStaples: []
+    },
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01')
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
+    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('shows delete button in edit mode', async () => {
+    const user = userEvent.setup();
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn()
+    }));
+
+    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
+      expect(deleteButtons.length).toBeGreaterThan(0);
+    });
+
+    unmount();
+  });
+
+  it('opens confirmation dialog when delete button is clicked', async () => {
+    const user = userEvent.setup();
+    const mockCloseDialog = vi.fn();
+    const mockOpenConfirmDialog = vi.fn();
+    
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
+      openDialog: vi.fn(),
+      closeDialog: mockCloseDialog,
+      removeDialogData: vi.fn()
+    }));
+
+    const mockConfirmDialog = vi.fn(() => ({
+      open: false,
+      openDialog: mockOpenConfirmDialog,
+      closeDialog: vi.fn()
+    }));
+
+    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
+      expect(deleteButtons.length).toBeGreaterThan(0);
+    });
+
+    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+    // Click the first delete button (the one in the edit dialog)
+    await user.click(deleteButtons[0]);
+
+    expect(mockOpenConfirmDialog).toHaveBeenCalled();
+    unmount();
+  });
+
+  it('calls deleteMealPlan when deletion is confirmed', async () => {
+    const user = userEvent.setup();
+    const mockCloseDialog = vi.fn();
+    const mockCloseConfirmDialog = vi.fn();
+    
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
+      openDialog: vi.fn(),
+      closeDialog: mockCloseDialog,
+      removeDialogData: vi.fn()
+    }));
+
+    const mockConfirmDialog = vi.fn(() => ({
+      open: true,
+      openDialog: vi.fn(),
+      closeDialog: mockCloseConfirmDialog
+    }));
+
+    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
+
+    mockDeleteMealPlan.mockResolvedValue(undefined);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      const deleteTexts = screen.queryAllByText(/are you sure you want to delete/i);
+      expect(deleteTexts.length).toBeGreaterThan(0);
+    });
+
+    // Get all delete buttons and find the one in the confirmation dialog (should be the last one)
+    const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i });
+    const confirmButton = deleteButtons[deleteButtons.length - 1];
+    await user.click(confirmButton);
+
+    await waitFor(() => {
+      expect(mockDeleteMealPlan).toHaveBeenCalledWith('meal-plan-123');
+      expect(mockCloseConfirmDialog).toHaveBeenCalled();
+      expect(mockCloseDialog).toHaveBeenCalled();
+    });
+
+    unmount();
+  });
+
+  it('delete button styled as error button in edit mode', async () => {
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn()
+    }));
+
+    const { usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
+      expect(deleteButtons.length).toBeGreaterThan(0);
+      // Check the first delete button (the one in the edit dialog) has error styling
+      expect(deleteButtons[0]?.className).toMatch(/MuiButton.*Error/);
+    });
+
+    unmount();
+  });
+});
+

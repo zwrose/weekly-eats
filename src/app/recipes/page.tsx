@@ -33,6 +33,7 @@ import {
   Public,
   Person,
   RestaurantMenu,
+  Delete,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from "../../types/recipe";
@@ -300,10 +301,12 @@ function RecipesPageContent() {
     try {
       await deleteRecipe(selectedRecipe._id);
       deleteConfirmDialog.closeDialog();
+      viewDialog.closeDialog();
       setSelectedRecipe(null);
-        loadRecipes();
-      } catch (error) {
-        console.error('Error deleting recipe:', error);
+      setEditMode(false);
+      loadRecipes();
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
     }
   };
 
@@ -942,12 +945,37 @@ function RecipesPageContent() {
                   required
                 />
 
-                <DialogActions primaryButtonIndex={1}>
+                <Box sx={{ 
+                  display: 'flex',
+                  flexDirection: { xs: 'column-reverse', sm: 'row' },
+                  gap: 1,
+                  p: 2,
+                  justifyContent: { xs: 'stretch', sm: 'flex-start' },
+                  alignItems: { xs: 'stretch', sm: 'center' }
+                }}>
+                  <Button 
+                    onClick={() => deleteConfirmDialog.openDialog()}
+                    color="error"
+                    variant="outlined"
+                    startIcon={<Delete />}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      mr: { xs: 0, sm: 'auto' },
+                      border: { sm: 'none' },
+                      '&:hover': {
+                        border: { sm: 'none' },
+                        backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' }
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
                   <Button 
                     onClick={() => {
                       setEditMode(false);
                       viewDialog.removeDialogData('editMode');
                     }}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Cancel
                   </Button>
@@ -955,10 +983,11 @@ function RecipesPageContent() {
                     onClick={handleUpdateRecipe}
                     variant="contained"
                     disabled={!editingRecipe.title || !editingRecipe.instructions || !hasValidIngredients(editingRecipe.ingredients || [])}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Update Recipe
                   </Button>
-                </DialogActions>
+                </Box>
               </Box>
             ) : (
               <Box sx={{ pt: 2 }}>

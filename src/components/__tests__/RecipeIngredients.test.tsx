@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import RecipeIngredients from '../RecipeIngredients';
 import { RecipeIngredient } from '../../types/recipe';
 
@@ -10,6 +10,10 @@ describe('RecipeIngredients', () => {
     foodItems: [],
     onFoodItemAdded: vi.fn(),
   };
+
+  afterEach(() => {
+    cleanup();
+  });
 
   it('renders empty state with add ingredient button', () => {
     render(<RecipeIngredients {...defaultProps} />);
@@ -221,14 +225,17 @@ describe('RecipeIngredients', () => {
       }
     ] as any;
 
-    render(<RecipeIngredients {...defaultProps} ingredients={ingredients} />);
+    const { unmount } = render(<RecipeIngredients {...defaultProps} ingredients={ingredients} />);
     
     // Should show both inline and bottom delete buttons (responsive design)
     const deleteIcons = screen.getAllByTestId('DeleteIcon');
     expect(deleteIcons.length).toBeGreaterThan(0);
     
-    // Should show the bottom delete button with text
-    const bottomDeleteButton = screen.getByText('Remove Group');
-    expect(bottomDeleteButton).toBeInTheDocument();
+    // Should show the bottom delete button(s) with text
+    const bottomDeleteButtons = screen.getAllByText('Remove Group');
+    expect(bottomDeleteButtons.length).toBeGreaterThan(0);
+    expect(bottomDeleteButtons[0]).toBeInTheDocument();
+    
+    unmount();
   });
 });
