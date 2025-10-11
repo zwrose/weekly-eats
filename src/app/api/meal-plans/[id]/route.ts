@@ -3,13 +3,14 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { UpdateMealPlanRequest, MealPlanItem } from '@/types/meal-plan';
+import { UpdateMealPlanRequest, MealPlanItem, MealItem } from '@/types/meal-plan';
 import { 
   AUTH_ERRORS, 
   MEAL_PLAN_ERRORS, 
   API_ERRORS,
   logError 
 } from '@/lib/errors';
+import { RecipeIngredientList } from '@/types/recipe';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -27,6 +28,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
+    const foodItemsCollection = db.collection('foodItems');
+    const recipesCollection = db.collection('recipes');
 
     const mealPlan = await mealPlansCollection.findOne({
       _id: new ObjectId(id),
@@ -37,9 +40,77 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
+    // Helper function to populate a single meal item's name
+    const populateMealItemName = async (mealItem: MealItem): Promise<MealItem> => {
+      if (mealItem.type === 'foodItem' && mealItem.id) {
+        const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        return {
+          ...mealItem,
+          name: foodItem ? (mealItem.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : mealItem.name || 'Unknown'
+        };
+      } else if (mealItem.type === 'recipe' && mealItem.id) {
+        const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        return {
+          ...mealItem,
+          name: recipe ? recipe.title : mealItem.name || 'Unknown'
+        };
+      } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
+        // Populate names for ingredients within the group
+        const populatedIngredients = await Promise.all(
+          mealItem.ingredients.map(async (group: RecipeIngredientList) => {
+            const populatedGroupIngredients = await Promise.all(
+              (group.ingredients || []).map(async (ingredient) => {
+                if (ingredient.type === 'foodItem' && ingredient.id) {
+                  const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
+                  return {
+                    ...ingredient,
+                    name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown'
+                  };
+                } else if (ingredient.type === 'recipe' && ingredient.id) {
+                  const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
+                  return {
+                    ...ingredient,
+                    name: recipe ? recipe.title : 'Unknown'
+                  };
+                }
+                return ingredient;
+              })
+            );
+            
+            return {
+              ...group,
+              ingredients: populatedGroupIngredients
+            };
+          })
+        );
+        
+        return {
+          ...mealItem,
+          ingredients: populatedIngredients,
+          name: mealItem.name || ''
+        };
+      }
+      return mealItem;
+    };
+
+    // Populate names for meal items
+    const populatedItems = await Promise.all(
+      ((mealPlan.items || []) as MealPlanItem[]).map(async (mealPlanItem) => {
+        const populatedMealItems = await Promise.all(
+          (mealPlanItem.items || []).map(populateMealItemName)
+        );
+        
+        return {
+          ...mealPlanItem,
+          items: populatedMealItems
+        };
+      })
+    );
+
     // Use template snapshot instead of fetching current template
     const mealPlanWithTemplate = {
       ...mealPlan,
+      items: populatedItems,
       template: {
         _id: mealPlan.templateId,
         userId: session.user.id,

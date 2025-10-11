@@ -40,6 +40,7 @@ import { RecipeIngredient } from "../../types/recipe";
 
 import { 
   fetchMealPlans, 
+  fetchMealPlan,
   createMealPlan, 
   deleteMealPlan,
   fetchMealPlanTemplate,
@@ -214,11 +215,18 @@ function MealPlansPageContent() {
     }
   };
 
-  // Handle edit meal plan (placeholder for now)
-  const handleEditMealPlan = (mealPlan: MealPlanWithTemplate) => {
-    setSelectedMealPlan(mealPlan);
-    setEditMode(false);
-    viewDialog.openDialog({ mealPlanId: mealPlan._id! });
+  // Handle edit meal plan
+  const handleEditMealPlan = async (mealPlan: MealPlanWithTemplate) => {
+    try {
+      // Fetch the full meal plan with populated names
+      const fullMealPlan = await fetchMealPlan(mealPlan._id!);
+      setSelectedMealPlan(fullMealPlan);
+      setEditMode(false);
+      viewDialog.openDialog({ mealPlanId: mealPlan._id! });
+    } catch (error) {
+      console.error('Error loading meal plan details:', error);
+      alert('Failed to load meal plan details');
+    }
   };
 
   const handleEditMealPlanMode = () => {
@@ -234,7 +242,14 @@ function MealPlansPageContent() {
     if (!selectedMealPlan && viewDialog.data?.mealPlanId) {
       const plan = mealPlans.find(p => p._id === viewDialog.data?.mealPlanId);
       if (plan) {
-        setSelectedMealPlan(plan);
+        // Fetch the full meal plan with populated names
+        fetchMealPlan(plan._id!).then((fullPlan) => {
+          setSelectedMealPlan(fullPlan);
+        }).catch((error) => {
+          console.error('Error loading meal plan details:', error);
+          // Fallback to the plan from the list
+          setSelectedMealPlan(plan);
+        });
       }
     }
     // Restore edit mode
@@ -309,6 +324,9 @@ function MealPlansPageContent() {
       await updateMealPlan(selectedMealPlan._id, {
         items: selectedMealPlan.items
       });
+      // Fetch the updated meal plan with populated names
+      const updatedMealPlan = await fetchMealPlan(selectedMealPlan._id);
+      setSelectedMealPlan(updatedMealPlan);
       // Exit edit mode but keep dialog open in view mode
       setEditMode(false);
       viewDialog.openDialog({ mealPlanId: selectedMealPlan._id });
@@ -918,56 +936,73 @@ function MealPlansPageContent() {
                         </Alert>
                       )}
                       
-                      {/* Weekly Staples Section - Show once at the top in edit mode as read-only */}
+                      {/* Weekly Staples Section - Editable */}
                       {(() => {
                         const staplesItems = selectedMealPlan.items.filter(item => item.mealType === 'staples');
-                        if (staplesItems.length > 0) {
-                          return (
-                            <Paper 
-                              elevation={1}
+                        const staples = staplesItems.length > 0 ? staplesItems[0].items : [];
+                        
+                        return (
+                          <Paper 
+                            elevation={1}
+                            sx={{ 
+                              mb: 3,
+                              border: '1px solid',
+                              borderColor: 'primary.main',
+                              borderRadius: 2,
+                              overflow: 'hidden'
+                            }}
+                          >
+                            {/* Staples Header */}
+                            <Box 
                               sx={{ 
-                                mb: 3,
-                                border: '1px solid',
-                                borderColor: 'primary.main',
-                                borderRadius: 2,
-                                overflow: 'hidden'
+                                p: 2, 
+                                backgroundColor: 'primary.main',
+                                color: 'primary.contrastText',
+                                borderBottom: '1px solid',
+                                borderColor: 'divider'
                               }}
                             >
-                              {/* Staples Header */}
-                              <Box 
-                                sx={{ 
-                                  p: 2, 
-                                  backgroundColor: 'primary.main',
-                                  color: 'primary.contrastText',
-                                  borderBottom: '1px solid',
-                                  borderColor: 'divider'
+                              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                                Weekly Staples
+                              </Typography>
+                            </Box>
+                            
+                            {/* Staples Content - Editable */}
+                            <Box sx={{ p: 3 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Add, edit, or remove staples for this specific meal plan.
+                              </Typography>
+                              <MealEditor
+                                mealItems={staples}
+                                onChange={(newStaples) => {
+                                  // Update the meal plan staples
+                                  const updatedMealPlan = { ...selectedMealPlan };
+                                  const existingStaplesIndex = updatedMealPlan.items.findIndex(
+                                    item => item.mealType === 'staples'
+                                  );
+                                  
+                                  if (existingStaplesIndex !== -1) {
+                                    // Update existing staples
+                                    updatedMealPlan.items[existingStaplesIndex].items = newStaples;
+                                  } else {
+                                    // Create new staples entry
+                                    updatedMealPlan.items.push({
+                                      _id: `temp-${Date.now()}`,
+                                      mealPlanId: selectedMealPlan._id,
+                                      dayOfWeek: 'saturday', // Staples don't belong to a specific day
+                                      mealType: 'staples',
+                                      items: newStaples
+                                    });
+                                  }
+                                  
+                                  setSelectedMealPlan(updatedMealPlan);
+                                  updateMealPlanValidation();
                                 }}
-                              >
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                                  Weekly Staples
-                                </Typography>
-                              </Box>
-                              
-                              {/* Staples Content */}
-                              <Box sx={{ p: 3 }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
-                                  Staples are managed in Template Settings and apply to the entire meal plan.
-                                </Typography>
-                                {staplesItems[0].items.map((staple, index) => (
-                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                    • {staple.name}
-                                    {staple.quantity && staple.unit && (
-                                      <span style={{ color: 'text.secondary' }}>
-                                        {' '}({staple.quantity} {staple.unit})
-                                      </span>
-                                    )}
-                                  </Typography>
-                                ))}
-                              </Box>
-                            </Paper>
-                          );
-                        }
-                        return null;
+                                onFoodItemAdded={handleAddFoodItem}
+                              />
+                            </Box>
+                          </Paper>
+                        );
                       })()}
 
                       {/* Edit meals by day */}
@@ -1112,16 +1147,43 @@ function MealPlansPageContent() {
                               
                               {/* Staples Content */}
                               <Box sx={{ p: 3 }}>
-                                {staplesItems[0].items.map((staple, index) => (
-                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                    • {staple.name}
-                                    {staple.quantity && staple.unit && (
-                                      <span style={{ color: 'text.secondary' }}>
-                                        {' '}({staple.quantity} {staple.unit})
-                                      </span>
-                                    )}
-                                  </Typography>
-                                ))}
+                                {staplesItems[0].items.map((staple, index) => {
+                                  if (staple.type === 'ingredientGroup') {
+                                    // Render ingredient group
+                                    return (
+                                      <Box key={index} sx={{ mb: 1 }}>
+                                        {staple.ingredients && staple.ingredients.map((group, groupIndex) => (
+                                          <Box key={groupIndex} sx={{ mb: 1 }}>
+                                            {group.title && (
+                                              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                                {group.title}:
+                                              </Typography>
+                                            )}
+                                            <Box sx={{ pl: 2 }}>
+                                              {group.ingredients.map((ingredient, ingIndex) => (
+                                                <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
+                                                  • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? ingredient.unit + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                </Typography>
+                                              ))}
+                                            </Box>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    );
+                                  } else {
+                                    // Render regular staple item
+                                    return (
+                                      <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                        • {staple.name}
+                                        {staple.quantity && staple.unit && (
+                                          <span style={{ color: 'text.secondary' }}>
+                                            {' '}({staple.quantity} {staple.unit})
+                                          </span>
+                                        )}
+                                      </Typography>
+                                    );
+                                  }
+                                })}
                               </Box>
                             </Paper>
                           );
@@ -1187,16 +1249,43 @@ function MealPlansPageContent() {
                                         <Box sx={{ pl: 2 }}>
                                           {mealItems.map((item, index) => (
                                             <Box key={index}>
-                                              {item.items.map((mealItem, mealIndex) => (
-                                                <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                  • {mealItem.name}
-                                                  {mealItem.quantity && mealItem.unit && (
-                                                    <span style={{ color: 'text.secondary' }}>
-                                                      {' '}({mealItem.quantity} {mealItem.unit})
-                                                    </span>
-                                                  )}
-                                                </Typography>
-                                              ))}
+                                              {item.items.map((mealItem, mealIndex) => {
+                                                if (mealItem.type === 'ingredientGroup') {
+                                                  // Render ingredient group
+                                                  return (
+                                                    <Box key={mealIndex} sx={{ mb: 1 }}>
+                                                      {mealItem.ingredients && mealItem.ingredients.map((group, groupIndex) => (
+                                                        <Box key={groupIndex} sx={{ mb: 1 }}>
+                                                          {group.title && (
+                                                            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                                              {group.title}:
+                                                            </Typography>
+                                                          )}
+                                                          <Box sx={{ pl: 2 }}>
+                                                            {group.ingredients.map((ingredient, ingIndex) => (
+                                                              <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
+                                                                • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? ingredient.unit + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                              </Typography>
+                                                            ))}
+                                                          </Box>
+                                                        </Box>
+                                                      ))}
+                                                    </Box>
+                                                  );
+                                                } else {
+                                                  // Render regular meal item (foodItem or recipe)
+                                                  return (
+                                                    <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
+                                                      • {mealItem.name}
+                                                      {mealItem.quantity && mealItem.unit && (
+                                                        <span style={{ color: 'text.secondary' }}>
+                                                          {' '}({mealItem.quantity} {mealItem.unit})
+                                                        </span>
+                                                      )}
+                                                    </Typography>
+                                                  );
+                                                }
+                                              })}
                                               {item.notes && (
                                                 <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 2 }}>
                                                   Note: {item.notes}

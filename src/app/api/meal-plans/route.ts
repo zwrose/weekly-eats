@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { CreateMealPlanRequest, MealPlan, DayOfWeek, MealItem, MealType } from '@/types/meal-plan';
+import { CreateMealPlanRequest, MealPlan, DayOfWeek, MealItem, MealType, MealPlanItem } from '@/types/meal-plan';
 import { 
   generateMealPlanNameFromString, 
   calculateEndDateAsString
@@ -17,6 +17,7 @@ import {
   logError 
 } from '@/lib/errors';
 import { ObjectId } from 'mongodb';
+import { RecipeIngredientList } from '@/types/recipe';
 
 export async function GET() {
   try {
@@ -28,23 +29,96 @@ export async function GET() {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
+    const foodItemsCollection = db.collection('foodItems');
+    const recipesCollection = db.collection('recipes');
 
     const mealPlans = await mealPlansCollection
       .find({ userId: session.user.id })
       .sort({ startDate: -1 })
       .toArray();
 
-    // Transform meal plans to use template snapshot instead of fetching current template
-    const mealPlansWithTemplates = mealPlans.map(plan => ({
-      ...plan,
-      template: {
-        _id: plan.templateId,
-        userId: session.user.id,
-        ...plan.templateSnapshot,
-        createdAt: plan.createdAt,
-        updatedAt: plan.createdAt // Use creation time as template was snapshot at creation
+    // Helper function to populate a single meal item's name
+    const populateMealItemName = async (mealItem: MealItem): Promise<MealItem> => {
+      if (mealItem.type === 'foodItem' && mealItem.id) {
+        const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        return {
+          ...mealItem,
+          name: foodItem ? (mealItem.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : mealItem.name || 'Unknown'
+        };
+      } else if (mealItem.type === 'recipe' && mealItem.id) {
+        const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        return {
+          ...mealItem,
+          name: recipe ? recipe.title : mealItem.name || 'Unknown'
+        };
+      } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
+        // Populate names for ingredients within the group
+        const populatedIngredients = await Promise.all(
+          mealItem.ingredients.map(async (group: RecipeIngredientList) => {
+            const populatedGroupIngredients = await Promise.all(
+              (group.ingredients || []).map(async (ingredient) => {
+                if (ingredient.type === 'foodItem' && ingredient.id) {
+                  const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
+                  return {
+                    ...ingredient,
+                    name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown'
+                  };
+                } else if (ingredient.type === 'recipe' && ingredient.id) {
+                  const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
+                  return {
+                    ...ingredient,
+                    name: recipe ? recipe.title : 'Unknown'
+                  };
+                }
+                return ingredient;
+              })
+            );
+            
+            return {
+              ...group,
+              ingredients: populatedGroupIngredients
+            };
+          })
+        );
+        
+        return {
+          ...mealItem,
+          ingredients: populatedIngredients,
+          name: mealItem.name || ''
+        };
       }
-    }));
+      return mealItem;
+    };
+
+    // Transform meal plans to use template snapshot and populate names
+    const mealPlansWithTemplates = await Promise.all(
+      mealPlans.map(async (plan) => {
+        const populatedItems = await Promise.all(
+          ((plan.items || []) as MealPlanItem[]).map(async (mealPlanItem) => {
+            const populatedMealItems = await Promise.all(
+              (mealPlanItem.items || []).map(populateMealItemName)
+            );
+            
+            return {
+              ...mealPlanItem,
+              items: populatedMealItems
+            };
+          })
+        );
+
+        return {
+          ...plan,
+          items: populatedItems,
+          template: {
+            _id: plan.templateId,
+            userId: session.user.id,
+            ...plan.templateSnapshot,
+            createdAt: plan.createdAt,
+            updatedAt: plan.createdAt
+          }
+        };
+      })
+    );
 
     return NextResponse.json(mealPlansWithTemplates);
   } catch (error) {
