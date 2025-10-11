@@ -3,6 +3,7 @@ export interface RecipeIngredient {
   id: string; // foodItemId or recipeId
   quantity: number;
   unit?: string; // Only for food items, not for recipes
+  name?: string; // Populated from API when fetching
 }
 
 export interface RecipeIngredientList {

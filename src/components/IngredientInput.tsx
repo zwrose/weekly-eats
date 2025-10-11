@@ -159,7 +159,8 @@ export default function IngredientInput({
         type: item.type,
         id: item._id || '',
         quantity: 1,
-        unit: item.type === 'foodItem' ? item.unit : undefined
+        unit: item.type === 'foodItem' ? item.unit : undefined,
+        name: item.type === 'foodItem' ? item.singularName : item.title
       };
       
       onIngredientChange(newIngredient);
@@ -313,9 +314,28 @@ export default function IngredientInput({
     
     if (ingredient.type === 'foodItem') {
       const foodItem = foodItems.find(item => item._id === ingredient.id);
+      // If we have a populated name from the API but can't find the food item, create a placeholder option
+      if (!foodItem && ingredient.name) {
+        return {
+          _id: ingredient.id,
+          name: ingredient.name,
+          singularName: ingredient.name,
+          pluralName: ingredient.name,
+          unit: ingredient.unit || 'cup',
+          type: 'foodItem' as const
+        };
+      }
       return foodItem ? { ...foodItem, type: 'foodItem' as const } : null;
     } else {
       const recipe = recipes.find(item => item._id === ingredient.id);
+      // If we have a populated name from the API but can't find the recipe, create a placeholder option
+      if (!recipe && ingredient.name) {
+        return {
+          _id: ingredient.id,
+          title: ingredient.name,
+          type: 'recipe' as const
+        };
+      }
       return recipe ? { ...recipe, type: 'recipe' as const } : null;
     }
   };
@@ -427,7 +447,15 @@ export default function IngredientInput({
               const value = parseFloat(e.target.value);
               // Allow any non-negative value during editing (including 0 and NaN for empty field)
               if (!isNaN(value) && value >= 0) {
-                onIngredientChange({ ...ingredient, quantity: value });
+                // Update name based on quantity for food items (singular/plural)
+                let updatedName = ingredient.name;
+                if (ingredient.type === 'foodItem' && ingredient.id) {
+                  const foodItem = foodItems.find(item => item._id === ingredient.id);
+                  if (foodItem) {
+                    updatedName = value === 1 ? foodItem.singularName : foodItem.pluralName;
+                  }
+                }
+                onIngredientChange({ ...ingredient, quantity: value, name: updatedName });
               } else if (e.target.value === '') {
                 // Allow empty field for editing
                 onIngredientChange({ ...ingredient, quantity: 0 });

@@ -40,12 +40,14 @@ interface MealEditorProps {
   mealItems: MealItem[];
   onChange: (items: MealItem[]) => void;
   onFoodItemAdded?: (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
+  removeItemButtonText?: string; // Text for remove button on items within ingredient groups
 }
 
 export default function MealEditor({ 
   mealItems, 
   onChange, 
-  onFoodItemAdded
+  onFoodItemAdded,
+  removeItemButtonText = "Remove Meal Item"
 }: MealEditorProps) {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -165,62 +167,41 @@ export default function MealEditor({
                 type: item.type, // Use the actual type from the meal item
                 id: item.id,
                 quantity: item.quantity || 1,
-                unit: item.unit || 'cup'
+                unit: item.unit || 'cup',
+                name: item.name // ✅ Preserve the name from the meal item
               }}
               onIngredientChange={(updatedIngredient) => {
-                // Check if it's a food item or recipe based on the selected ID
-                const foodItem = foodItems.find(f => f._id === updatedIngredient.id);
-                const recipe = recipes.find(r => r._id === updatedIngredient.id);
+                let itemName = '';
                 
-                if (foodItem) {
-                  handleItemChange(index, {
-                    type: 'foodItem',
-                    id: updatedIngredient.id,
-                    name: foodItem.name,
-                    quantity: updatedIngredient.quantity,
-                    unit: updatedIngredient.unit
-                  });
-                } else if (recipe) {
-                  handleItemChange(index, {
-                    type: 'recipe',
-                    id: updatedIngredient.id,
-                    name: recipe.title
-                  });
-                } else {
-                  // Check if this is a newly created food item that hasn't been added to foodItems yet
-                  // We can identify this by checking if the ingredient has a valid ID but no matching food item
-                  if (updatedIngredient.id && updatedIngredient.id.trim() !== '') {
-                    // Check if this is the last created food item
-                    if (lastCreatedFoodItemRef.current && lastCreatedFoodItemRef.current._id === updatedIngredient.id) {
-                      handleItemChange(index, {
-                        type: 'foodItem',
-                        id: updatedIngredient.id,
-                        name: lastCreatedFoodItemRef.current.name,
-                        quantity: updatedIngredient.quantity,
-                        unit: updatedIngredient.unit
-                      });
-                      // Clear the ref after using it
-                      lastCreatedFoodItemRef.current = null;
-                    } else {
-                      handleItemChange(index, {
-                        type: 'foodItem',
-                        id: updatedIngredient.id,
-                        name: 'New Food Item', // Placeholder name that will be updated when foodItems refreshes
-                        quantity: updatedIngredient.quantity,
-                        unit: updatedIngredient.unit
-                      });
-                    }
-                  } else {
-                    // Handle cleared ingredient (when X button is clicked)
-                    handleItemChange(index, {
-                      type: 'foodItem',
-                      id: '',
-                      name: '',
-                      quantity: 1,
-                      unit: 'cup'
-                    });
+                // Always look up the name to ensure it's correct
+                if (updatedIngredient.id) {
+                  const foodItem = foodItems.find(f => f._id === updatedIngredient.id);
+                  const recipe = recipes.find(r => r._id === updatedIngredient.id);
+                  
+                  if (foodItem) {
+                    // For food items, use singular/plural based on quantity
+                    itemName = updatedIngredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
+                  } else if (recipe) {
+                    // For recipes, use the title
+                    itemName = recipe.title;
+                  } else if (lastCreatedFoodItemRef.current && lastCreatedFoodItemRef.current._id === updatedIngredient.id) {
+                    // Use newly created food item (before it's in foodItems state)
+                    itemName = lastCreatedFoodItemRef.current.name;
+                    lastCreatedFoodItemRef.current = null;
+                  } else if (updatedIngredient.name) {
+                    // Fall back to the name from updatedIngredient (might be stale but better than nothing)
+                    itemName = updatedIngredient.name;
                   }
                 }
+                
+                // Update the meal item with the ingredient data
+                handleItemChange(index, {
+                  type: updatedIngredient.type,
+                  id: updatedIngredient.id,
+                  name: itemName,
+                  quantity: updatedIngredient.quantity,
+                  unit: updatedIngredient.unit
+                });
               }}
               onRemove={() => handleRemoveItem(index)}
               foodItems={foodItems}
@@ -240,7 +221,7 @@ export default function MealEditor({
               onFoodItemAdded={handleFoodItemAdded}
               addIngredientButtonText="Add Ingredient"
               emptyGroupText="No ingredients in this group. Click 'Add Ingredient' to begin."
-              removeIngredientButtonText="Remove Ingredient"
+              removeIngredientButtonText={removeItemButtonText}
             />
           )}
         </Box>
