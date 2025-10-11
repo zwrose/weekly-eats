@@ -11,9 +11,9 @@
     "setup-db": "node scripts/setup-database.js",
     "migrate-meal-plans": "node scripts/migrate-meal-plans.js",
     "postinstall": "npm run setup-db",
-    "test": "vitest run",
+    "test": "vitest run --run --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --run --coverage --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "check": "npm run lint -- --max-warnings=0 && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run test:coverage && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run build"
   },
   "dependencies": {

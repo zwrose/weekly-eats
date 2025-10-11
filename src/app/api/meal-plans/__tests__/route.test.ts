@@ -8,6 +8,7 @@ const findMock = vi.fn();
 const toArrayMock = vi.fn();
 const insertOneMock = vi.fn();
 const findOneMock = vi.fn();
+const updateOneMock = vi.fn();
 
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
@@ -22,6 +23,7 @@ vi.mock('@/lib/mongodb', () => ({
             }),
             insertOne: insertOneMock,
             findOne: findOneMock,
+            updateOne: updateOneMock,
           };
         }
         if (name === 'mealPlanTemplates') {
@@ -47,6 +49,7 @@ beforeEach(() => {
   toArrayMock.mockReset();
   findOneMock.mockReset();
   insertOneMock.mockReset();
+  updateOneMock.mockReset();
 });
 
 describe('api/meal-plans route', () => {
@@ -70,14 +73,17 @@ describe('api/meal-plans route', () => {
 
   it('POST validates startDate and creates meal plan', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    // Existing plans for overlap check
+    toArrayMock.mockResolvedValueOnce([]); // existing plans for overlap
     // No existing template -> create default
     findOneMock.mockResolvedValueOnce(null); // templatesCollection.findOne
     insertOneMock.mockResolvedValueOnce({ insertedId: 't-new' }); // templates insert
-    findOneMock.mockResolvedValueOnce({ _id: 't-new', startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true } });
+    findOneMock.mockResolvedValueOnce({ _id: 't-new', startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] });
     // Insert meal plan
     insertOneMock.mockResolvedValueOnce({ insertedId: 'p-new' });
-    findOneMock.mockResolvedValueOnce({ _id: 'p-new', name: 'Week of ...', templateId: 't-new', templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true } }, createdAt: new Date() });
-    toArrayMock.mockResolvedValueOnce([]); // existing plans for overlap
+    findOneMock.mockResolvedValueOnce({ _id: 'p-new', name: 'Week of ...', templateId: 't-new', templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] }, createdAt: new Date() });
+    // Update meal plan with items
+    updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
     const res = await routes.POST(makeReq('http://localhost/api/meal-plans', { startDate: '2024-03-01' }));
     expect(res.status).toBe(201);

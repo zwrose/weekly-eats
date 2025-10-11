@@ -23,7 +23,7 @@ import {
   Divider,
   IconButton,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings, Edit } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Edit, Delete } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -204,7 +204,9 @@ function MealPlansPageContent() {
     try {
       await deleteMealPlan(selectedMealPlan._id);
       deleteConfirmDialog.closeDialog();
+      viewDialog.closeDialog();
       setSelectedMealPlan(null);
+      setEditMode(false);
       loadData();
     } catch (error) {
       console.error('Error deleting meal plan:', error);
@@ -1220,40 +1222,62 @@ function MealPlansPageContent() {
                 </Box>
               )}
               
-              <DialogActions primaryButtonIndex={1}>
-                {editMode ? (
-                  <>
-                    <Button 
-                      onClick={() => {
-                        setEditMode(false);
-                        viewDialog.removeDialogData('editMode');
-                      }}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={() => {
-                        if (mealPlanValidationErrors.length > 0) {
-                          setShowValidationErrors(true);
-                        } else {
-                          handleUpdateMealPlan();
-                        }
-                      }}
-                      variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
-                      sx={{ 
-                        width: { xs: '100%', sm: 'auto' },
-                        ...(mealPlanValidationErrors.length > 0 && {
-                          color: 'text.secondary',
-                          borderColor: 'text.secondary'
-                        })
-                      }}
-                    >
-                      Save
-                    </Button>
-                  </>
-                ) : null}
-              </DialogActions>
+              {editMode && (
+                <Box sx={{ 
+                  display: 'flex',
+                  flexDirection: { xs: 'column-reverse', sm: 'row' },
+                  gap: 1,
+                  p: 2,
+                  justifyContent: { xs: 'stretch', sm: 'flex-start' },
+                  alignItems: { xs: 'stretch', sm: 'center' }
+                }}>
+                  <Button 
+                    onClick={() => deleteConfirmDialog.openDialog()}
+                    color="error"
+                    variant="outlined"
+                    startIcon={<Delete />}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      mr: { xs: 0, sm: 'auto' },
+                      border: { sm: 'none' },
+                      '&:hover': {
+                        border: { sm: 'none' },
+                        backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' }
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setEditMode(false);
+                      viewDialog.removeDialogData('editMode');
+                    }}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (mealPlanValidationErrors.length > 0) {
+                        setShowValidationErrors(true);
+                      } else {
+                        handleUpdateMealPlan();
+                      }
+                    }}
+                    variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      ...(mealPlanValidationErrors.length > 0 && {
+                        color: 'text.secondary',
+                        borderColor: 'text.secondary'
+                      })
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              )}
             </DialogContent>
           </Dialog>
 
