@@ -40,6 +40,10 @@ import { responsiveDialogStyle } from "@/lib/theme";
 import SearchBar from "@/components/optimized/SearchBar";
 import Pagination from "@/components/optimized/Pagination";
 import { getUnitOptions, getUnitForm } from "../../lib/food-items-utils";
+import { MealPlanWithTemplate } from "../../types/meal-plan";
+import { fetchMealPlans } from "../../lib/meal-plan-utils";
+import { extractFoodItemsFromMealPlans, mergeWithShoppingList, UnitConflict } from "../../lib/meal-plan-to-shopping-list";
+import { CalendarMonth } from "@mui/icons-material";
 
 interface FoodItem {
   _id: string;
@@ -70,6 +74,9 @@ export default function ShoppingListsPage() {
   const viewListDialog = useDialog();
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
+  const mealPlanSelectionDialog = useDialog();
+  const mealPlanConfirmDialog = useDialog();
+  const unitConflictDialog = useDialog();
   
   // Form states
   const [newStoreName, setNewStoreName] = useState("");
@@ -82,6 +89,13 @@ export default function ShoppingListsPage() {
   const [selectedUnit, setSelectedUnit] = useState('');
   const [shoppingListItems, setShoppingListItems] = useState<ShoppingListItem[]>([]);
   const [shopMode, setShopMode] = useState(false); // false = Edit Mode, true = Shop Mode
+  
+  // Meal plan import states
+  const [availableMealPlans, setAvailableMealPlans] = useState<MealPlanWithTemplate[]>([]);
+  const [selectedMealPlanIds, setSelectedMealPlanIds] = useState<string[]>([]);
+  const [unitConflicts, setUnitConflicts] = useState<UnitConflict[]>([]);
+  const [currentConflictIndex, setCurrentConflictIndex] = useState(0);
+  const [conflictResolutions, setConflictResolutions] = useState<Map<string, { quantity: number; unit: string }>>(new Map());
 
   const loadData = useCallback(async () => {
     try {
@@ -279,6 +293,145 @@ export default function ShoppingListsPage() {
     setShoppingListItems(shoppingListItems.map(item =>
       item.foodItemId === foodItemId ? { ...item, checked: !item.checked } : item
     ));
+  };
+
+  // Meal plan import handlers
+  const handleOpenMealPlanSelection = async () => {
+    try {
+      const allMealPlans = await fetchMealPlans();
+      
+      // Filter meal plans: last 3 days or future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threeDaysAgo = new Date(today);
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      
+      const filtered = allMealPlans.filter(mp => {
+        const startDate = new Date(mp.startDate);
+        return startDate >= threeDaysAgo || startDate >= today;
+      });
+      
+      setAvailableMealPlans(filtered);
+      setSelectedMealPlanIds([]);
+      mealPlanSelectionDialog.openDialog();
+    } catch (error) {
+      console.error('Error loading meal plans:', error);
+      alert('Failed to load meal plans');
+    }
+  };
+
+  const handleConfirmMealPlanSelection = () => {
+    if (selectedMealPlanIds.length === 0) return;
+    
+    mealPlanSelectionDialog.closeDialog();
+    mealPlanConfirmDialog.openDialog();
+  };
+
+  const handleAddItemsFromMealPlans = async () => {
+    if (!selectedStore) return;
+    
+    mealPlanConfirmDialog.closeDialog();
+    
+    try {
+      // Get selected meal plans
+      const selectedPlans = availableMealPlans.filter(mp => 
+        selectedMealPlanIds.includes(mp._id)
+      );
+      
+      // Extract food items from meal plans
+      const extractedItems = await extractFoodItemsFromMealPlans(selectedPlans);
+      
+      // Create food items map for name lookup
+      const foodItemsMap = new Map(
+        foodItems.map(f => [f._id, { singularName: f.singularName, pluralName: f.pluralName, unit: f.unit }])
+      );
+      
+      // Merge with existing shopping list
+      const { mergedItems, conflicts } = mergeWithShoppingList(
+        shoppingListItems,
+        extractedItems,
+        foodItemsMap
+      );
+      
+      if (conflicts.length > 0) {
+        // Has unit conflicts - show resolution dialog
+        setUnitConflicts(conflicts);
+        setCurrentConflictIndex(0);
+        setConflictResolutions(new Map());
+        setShoppingListItems(mergedItems); // Update with non-conflicted items
+        unitConflictDialog.openDialog();
+      } else {
+        // No conflicts - save directly
+        setShoppingListItems(mergedItems);
+        await updateShoppingList(selectedStore._id, { items: mergedItems });
+        // Refresh stores list
+        const updatedStores = await fetchStores();
+        setStores(updatedStores);
+        setSelectedMealPlanIds([]);
+      }
+    } catch (error) {
+      console.error('Error adding items from meal plans:', error);
+      alert('Failed to add items from meal plans');
+    }
+  };
+
+  const handleResolveConflict = (quantity: number, unit: string) => {
+    const conflict = unitConflicts[currentConflictIndex];
+    const newResolutions = new Map(conflictResolutions);
+    newResolutions.set(conflict.foodItemId, { quantity, unit });
+    setConflictResolutions(newResolutions);
+    
+    if (currentConflictIndex < unitConflicts.length - 1) {
+      // Move to next conflict
+      setCurrentConflictIndex(currentConflictIndex + 1);
+    } else {
+      // All conflicts resolved - apply and save
+      handleApplyConflictResolutions();
+    }
+  };
+
+  const handlePreviousConflict = () => {
+    if (currentConflictIndex > 0) {
+      setCurrentConflictIndex(currentConflictIndex - 1);
+    }
+  };
+
+  const handleApplyConflictResolutions = async () => {
+    if (!selectedStore) return;
+    
+    // Apply resolutions to shopping list
+    const updatedItems = shoppingListItems.map(item => {
+      const resolution = conflictResolutions.get(item.foodItemId);
+      if (resolution) {
+        const foodItem = foodItems.find(f => f._id === item.foodItemId);
+        return {
+          ...item,
+          quantity: resolution.quantity,
+          unit: resolution.unit,
+          name: foodItem
+            ? (resolution.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
+            : item.name
+        };
+      }
+      return item;
+    });
+    
+    setShoppingListItems(updatedItems);
+    
+    try {
+      await updateShoppingList(selectedStore._id, { items: updatedItems });
+      // Refresh stores list
+      const updatedStores = await fetchStores();
+      setStores(updatedStores);
+      unitConflictDialog.closeDialog();
+      setSelectedMealPlanIds([]);
+      setUnitConflicts([]);
+      setCurrentConflictIndex(0);
+      setConflictResolutions(new Map());
+    } catch (error) {
+      console.error('Error saving shopping list after conflict resolution:', error);
+      alert('Failed to save shopping list');
+    }
   };
 
   const handleUpdateItemQuantity = async (foodItemId: string, newQuantity: number) => {
@@ -687,6 +840,17 @@ export default function ShoppingListsPage() {
             {/* Edit Mode */}
             {!shopMode && (
               <>
+                {/* Add from Meal Plans Button */}
+                <Button
+                  variant="outlined"
+                  startIcon={<CalendarMonth />}
+                  onClick={handleOpenMealPlanSelection}
+                  fullWidth
+                  sx={{ mb: 3 }}
+                >
+                  Add Items from Meal Plans
+                </Button>
+
                 {/* Edit Mode - Items List */}
                 {shoppingListItems.length === 0 ? (
                   <Alert severity="info" sx={{ mb: 3 }}>
@@ -927,6 +1091,207 @@ export default function ShoppingListsPage() {
               Delete
             </Button>
           </DialogActions>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meal Plan Selection Dialog */}
+      <Dialog
+        open={mealPlanSelectionDialog.open}
+        onClose={mealPlanSelectionDialog.closeDialog}
+        maxWidth="sm"
+        fullWidth
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={mealPlanSelectionDialog.closeDialog}>
+          Select Meal Plans
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Select one or more meal plans to add their items to your shopping list.
+          </Typography>
+          
+          {availableMealPlans.length === 0 ? (
+            <Alert severity="info">
+              No meal plans available (must be within last 3 days or in the future).
+            </Alert>
+          ) : (
+            <List>
+              {availableMealPlans.map((mealPlan) => (
+                <ListItem
+                  key={mealPlan._id}
+                  onClick={() => {
+                    setSelectedMealPlanIds(prev =>
+                      prev.includes(mealPlan._id)
+                        ? prev.filter(id => id !== mealPlan._id)
+                        : [...prev, mealPlan._id]
+                    );
+                  }}
+                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                >
+                  <Checkbox
+                    checked={selectedMealPlanIds.includes(mealPlan._id)}
+                    onChange={() => {
+                      setSelectedMealPlanIds(prev =>
+                        prev.includes(mealPlan._id)
+                          ? prev.filter(id => id !== mealPlan._id)
+                          : [...prev, mealPlan._id]
+                      );
+                    }}
+                  />
+                  <ListItemText
+                    primary={mealPlan.name}
+                    secondary={new Date(mealPlan.startDate).toLocaleDateString()}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+          
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={mealPlanSelectionDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmMealPlanSelection}
+              variant="contained"
+              disabled={selectedMealPlanIds.length === 0}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Next
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meal Plan Confirmation Dialog */}
+      <Dialog
+        open={mealPlanConfirmDialog.open}
+        onClose={mealPlanConfirmDialog.closeDialog}
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={mealPlanConfirmDialog.closeDialog}>
+          Confirm Add Items
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Add items from:
+          </Typography>
+          <List>
+            {availableMealPlans
+              .filter(mp => selectedMealPlanIds.includes(mp._id))
+              .map((mp) => (
+                <ListItem key={mp._id}>
+                  <ListItemText primary={mp.name} />
+                </ListItem>
+              ))}
+          </List>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            This will extract all food items from these meal plans (including from recipes) and add them to your shopping list.
+          </Typography>
+          
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={mealPlanConfirmDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddItemsFromMealPlans}
+              variant="contained"
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Add Items
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unit Conflict Resolution Dialog */}
+      <Dialog
+        open={unitConflictDialog.open}
+        onClose={() => {}} // Prevent closing - must resolve conflicts
+        maxWidth="sm"
+        fullWidth
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle showCloseButton={false}>
+          Resolve Unit Conflict ({currentConflictIndex + 1} of {unitConflicts.length})
+        </DialogTitle>
+        <DialogContent>
+          {unitConflicts.length > 0 && (
+            <>
+              <Typography variant="body1" gutterBottom>
+                <strong>{unitConflicts[currentConflictIndex]?.foodItemName}</strong> has different units:
+              </Typography>
+              
+              <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                <Typography variant="body2" gutterBottom>
+                  Already on list:
+                </Typography>
+                <Typography variant="body1">
+                  {unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
+                  {unitConflicts[currentConflictIndex]?.existingUnit}
+                </Typography>
+              </Paper>
+              
+              <Paper sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+                <Typography variant="body2" gutterBottom>
+                  From meal plans:
+                </Typography>
+                <Typography variant="body1">
+                  {unitConflicts[currentConflictIndex]?.newQuantity}{' '}
+                  {unitConflicts[currentConflictIndex]?.newUnit}
+                </Typography>
+              </Paper>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Choose which quantity and unit to use:
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleResolveConflict(
+                    unitConflicts[currentConflictIndex].existingQuantity,
+                    unitConflicts[currentConflictIndex].existingUnit
+                  )}
+                  fullWidth
+                >
+                  Keep Existing ({unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
+                  {unitConflicts[currentConflictIndex]?.existingUnit})
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleResolveConflict(
+                    unitConflicts[currentConflictIndex].newQuantity,
+                    unitConflicts[currentConflictIndex].newUnit
+                  )}
+                  fullWidth
+                >
+                  Use from Meal Plans ({unitConflicts[currentConflictIndex]?.newQuantity}{' '}
+                  {unitConflicts[currentConflictIndex]?.newUnit})
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleResolveConflict(
+                    unitConflicts[currentConflictIndex].existingQuantity + unitConflicts[currentConflictIndex].newQuantity,
+                    unitConflicts[currentConflictIndex].existingUnit
+                  )}
+                  fullWidth
+                >
+                  Combine with Existing Unit ({unitConflicts[currentConflictIndex]?.existingQuantity + unitConflicts[currentConflictIndex]?.newQuantity}{' '}
+                  {unitConflicts[currentConflictIndex]?.existingUnit})
+                </Button>
+              </Box>
+              
+              {currentConflictIndex > 0 && (
+                <Button
+                  onClick={handlePreviousConflict}
+                  sx={{ mt: 2 }}
+                >
+                  ← Previous
+                </Button>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -3,19 +3,11 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 
 // Mock dependencies
-vi.mock('next-auth', () => ({
-  getServerSession: vi.fn(),
-}));
+vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/mongodb', () => ({ getMongoClient: vi.fn() }));
 
-vi.mock('@/lib/mongodb', () => ({
-  getMongoClient: vi.fn(),
-}));
-
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
-
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 
 describe('Stores API', () => {

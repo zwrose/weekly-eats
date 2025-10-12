@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -64,8 +64,11 @@ export async function GET(
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      await shoppingListsCollection.insertOne(newList);
-      shoppingList = newList;
+      const insertResult = await shoppingListsCollection.insertOne(newList);
+      shoppingList = await shoppingListsCollection.findOne({ _id: insertResult.insertedId });
+      if (!shoppingList) {
+        return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
+      }
     }
 
     // Populate food item names
