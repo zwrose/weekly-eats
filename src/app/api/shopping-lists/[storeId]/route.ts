@@ -144,7 +144,7 @@ export async function PUT(
     }
 
     // Update or create the shopping list
-    const result = await shoppingListsCollection.updateOne(
+    await shoppingListsCollection.updateOne(
       { storeId },
       {
         $set: {
@@ -160,7 +160,7 @@ export async function PUT(
     );
 
     // Get the updated shopping list with populated names
-    let shoppingList = await shoppingListsCollection.findOne({ storeId });
+    const shoppingList = await shoppingListsCollection.findOne({ storeId });
 
     if (shoppingList && shoppingList.items && shoppingList.items.length > 0) {
       const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) => 
