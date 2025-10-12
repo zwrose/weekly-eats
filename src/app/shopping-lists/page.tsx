@@ -375,14 +375,44 @@ export default function ShoppingListsPage() {
     }
   };
 
-  const handleResolveConflict = (quantity: number, unit: string) => {
-    const conflict = unitConflicts[currentConflictIndex];
-    const newResolutions = new Map(conflictResolutions);
-    newResolutions.set(conflict.foodItemId, { quantity, unit });
-    setConflictResolutions(newResolutions);
+  const getCurrentConflictResolution = (): { quantity: number; unit: string } => {
+    if (unitConflicts.length === 0) return { quantity: 1, unit: 'piece' };
     
+    const conflict = unitConflicts[currentConflictIndex];
+    const existing = conflictResolutions.get(conflict?.foodItemId);
+    
+    if (existing) return existing;
+    
+    // Default to existing values
+    return {
+      quantity: conflict?.existingQuantity || 1,
+      unit: conflict?.existingUnit || 'piece'
+    };
+  };
+
+  const handleConflictQuantityChange = (value: string) => {
+    if (unitConflicts.length === 0) return;
+    
+    const quantity = Math.max(0.01, parseFloat(value) || 0);
+    const conflict = unitConflicts[currentConflictIndex];
+    const current = getCurrentConflictResolution();
+    const newResolutions = new Map(conflictResolutions);
+    newResolutions.set(conflict.foodItemId, { quantity, unit: current.unit });
+    setConflictResolutions(newResolutions);
+  };
+
+  const handleConflictUnitChange = (unit: string) => {
+    if (unitConflicts.length === 0) return;
+    
+    const conflict = unitConflicts[currentConflictIndex];
+    const current = getCurrentConflictResolution();
+    const newResolutions = new Map(conflictResolutions);
+    newResolutions.set(conflict.foodItemId, { quantity: current.quantity, unit });
+    setConflictResolutions(newResolutions);
+  };
+
+  const handleNextConflict = () => {
     if (currentConflictIndex < unitConflicts.length - 1) {
-      // Move to next conflict
       setCurrentConflictIndex(currentConflictIndex + 1);
     } else {
       // All conflicts resolved - apply and save
@@ -840,17 +870,6 @@ export default function ShoppingListsPage() {
             {/* Edit Mode */}
             {!shopMode && (
               <>
-                {/* Add from Meal Plans Button */}
-                <Button
-                  variant="outlined"
-                  startIcon={<CalendarMonth />}
-                  onClick={handleOpenMealPlanSelection}
-                  fullWidth
-                  sx={{ mb: 3 }}
-                >
-                  Add Items from Meal Plans
-                </Button>
-
                 {/* Edit Mode - Items List */}
                 {shoppingListItems.length === 0 ? (
                   <Alert severity="info" sx={{ mb: 3 }}>
@@ -877,9 +896,10 @@ export default function ShoppingListsPage() {
                             <TextField
                               label="Quantity"
                               type="number"
+                              inputProps={{ step: 0.01, min: 0.01 }}
                               value={item.quantity}
                               onChange={(e) => {
-                                const newQty = Math.max(1, parseInt(e.target.value) || 1);
+                                const newQty = Math.max(0.01, parseFloat(e.target.value) || 0.01);
                                 handleUpdateItemQuantity(item.foodItemId, newQty);
                               }}
                               size="small"
@@ -908,8 +928,10 @@ export default function ShoppingListsPage() {
                   </List>
                 )}
 
+                <Divider sx={{ my: 3 }} />
+
                 {/* Add Item Section - Moved to bottom */}
-                <Paper elevation={1} sx={{ p: 2, mt: 3 }}>
+                <Paper elevation={0} sx={{ p: 2 }}>
                   <Typography variant="subtitle1" gutterBottom>
                     Add Item
                   </Typography>
@@ -938,8 +960,9 @@ export default function ShoppingListsPage() {
                     <TextField
                       label="Quantity"
                       type="number"
+                      inputProps={{ step: 0.01, min: 0.01 }}
                       value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) => setQuantity(Math.max(0.01, parseFloat(e.target.value) || 0.01))}
                       onKeyDown={handleKeyDown}
                       size="small"
                       sx={{ width: { xs: '100%', sm: 100 } }}
@@ -967,6 +990,20 @@ export default function ShoppingListsPage() {
                     </Button>
                   </Box>
                 </Paper>
+
+                <Divider sx={{ my: 3 }} />
+
+                {/* Add from Meal Plans Button */}
+                <Button
+                  variant="outlined"
+                  startIcon={<CalendarMonth />}
+                  onClick={handleOpenMealPlanSelection}
+                  fullWidth
+                >
+                  Add Items from Meal Plans
+                </Button>
+
+                <Divider sx={{ my: 3 }} />
               </>
             )}
 
@@ -1218,78 +1255,79 @@ export default function ShoppingListsPage() {
         <DialogContent>
           {unitConflicts.length > 0 && (
             <>
-              <Typography variant="body1" gutterBottom>
-                <strong>{unitConflicts[currentConflictIndex]?.foodItemName}</strong> has different units:
+              <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                {unitConflicts[currentConflictIndex]?.foodItemName}
               </Typography>
               
-              <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
-                <Typography variant="body2" gutterBottom>
-                  Already on list:
+              <Alert severity="info" sx={{ mb: 2 }}>
+                This item has different units in your shopping list and the meal plans.
+              </Alert>
+              
+              <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                <Typography variant="caption" color="text.secondary" gutterBottom>
+                  Already on shopping list:
                 </Typography>
-                <Typography variant="body1">
+                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
                   {unitConflicts[currentConflictIndex]?.existingUnit}
                 </Typography>
               </Paper>
               
-              <Paper sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
-                <Typography variant="body2" gutterBottom>
+              <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                <Typography variant="caption" color="text.secondary" gutterBottom>
                   From meal plans:
                 </Typography>
-                <Typography variant="body1">
+                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.newQuantity}{' '}
                   {unitConflicts[currentConflictIndex]?.newUnit}
                 </Typography>
               </Paper>
               
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Choose which quantity and unit to use:
+                Set the quantity and unit for your shopping list:
               </Typography>
               
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => handleResolveConflict(
-                    unitConflicts[currentConflictIndex].existingQuantity,
-                    unitConflicts[currentConflictIndex].existingUnit
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                  label="Quantity"
+                  type="number"
+                  inputProps={{ step: 0.01, min: 0.01 }}
+                  value={getCurrentConflictResolution().quantity}
+                  onChange={(e) => handleConflictQuantityChange(e.target.value)}
+                  size="small"
+                  sx={{ width: 150 }}
+                />
+                <Autocomplete
+                  options={getUnitOptions()}
+                  value={getUnitOptions().find(option => option.value === getCurrentConflictResolution().unit) ?? null}
+                  onChange={(_, value) => {
+                    if (value) {
+                      handleConflictUnitChange(value.value);
+                    }
+                  }}
+                  getOptionLabel={(option) => option.label}
+                  isOptionEqualToValue={(option, value) => option.value === value.value}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Unit" size="small" />
                   )}
-                  fullWidth
-                >
-                  Keep Existing ({unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.existingUnit})
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => handleResolveConflict(
-                    unitConflicts[currentConflictIndex].newQuantity,
-                    unitConflicts[currentConflictIndex].newUnit
-                  )}
-                  fullWidth
-                >
-                  Use from Meal Plans ({unitConflicts[currentConflictIndex]?.newQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.newUnit})
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => handleResolveConflict(
-                    unitConflicts[currentConflictIndex].existingQuantity + unitConflicts[currentConflictIndex].newQuantity,
-                    unitConflicts[currentConflictIndex].existingUnit
-                  )}
-                  fullWidth
-                >
-                  Combine with Existing Unit ({unitConflicts[currentConflictIndex]?.existingQuantity + unitConflicts[currentConflictIndex]?.newQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.existingUnit})
-                </Button>
+                  sx={{ flex: 1 }}
+                />
               </Box>
               
-              {currentConflictIndex > 0 && (
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
                 <Button
                   onClick={handlePreviousConflict}
-                  sx={{ mt: 2 }}
+                  disabled={currentConflictIndex === 0}
                 >
                   ← Previous
                 </Button>
-              )}
+                <Button
+                  onClick={handleNextConflict}
+                  variant="contained"
+                >
+                  {currentConflictIndex < unitConflicts.length - 1 ? 'Next →' : 'Complete'}
+                </Button>
+              </Box>
             </>
           )}
         </DialogContent>
