@@ -46,6 +46,7 @@ import { useRecipes } from '@/lib/hooks';
 import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import { responsiveDialogStyle } from '@/lib/theme';
 import Pagination from '@/components/optimized/Pagination';
+import SearchBar from '@/components/optimized/SearchBar';
 import { DialogActions, DialogTitle } from '@/components/ui';
 
 function RecipesPageContent() {
@@ -410,20 +411,15 @@ function RecipesPageContent() {
             </Button>
           </Box>
 
-          <Paper sx={{ p: 3, mb: 4 }}>
-            {/* Search Bar */}
-            <Box sx={{ mb: 4 }}>
-              <TextField
-                fullWidth
-                value={userPagination.searchTerm}
-                onChange={(e) => {
-                  userPagination.setSearchTerm(e.target.value);
-                  globalPagination.setSearchTerm(e.target.value);
-                }}
-                placeholder="Start typing to filter recipes by title..."
-                autoComplete="off"
-              />
-          </Box>
+          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+            <SearchBar
+              value={userPagination.searchTerm}
+              onChange={(value) => {
+                userPagination.setSearchTerm(value);
+                globalPagination.setSearchTerm(value);
+              }}
+              placeholder="Start typing to filter recipes by title..."
+            />
 
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -456,9 +452,9 @@ function RecipesPageContent() {
                           <Table>
                             <TableHead>
                               <TableRow>
-                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
-                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold', wordWrap: 'break-word' }}>Recipe</TableCell>
+                                <TableCell align="center" sx={{ width: '20%', fontWeight: 'bold', wordWrap: 'break-word' }}>Access Level</TableCell>
+                                <TableCell align="center" sx={{ width: '15%', fontWeight: 'bold', wordWrap: 'break-word' }}>Updated</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -468,7 +464,7 @@ function RecipesPageContent() {
                                   onClick={() => handleViewRecipe(recipe)}
                                   sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
                                 >
-                                  <TableCell>
+                                  <TableCell sx={{ wordWrap: 'break-word' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       {recipe.emoji ? (
                                         <Typography variant="h6">{recipe.emoji}</Typography>
@@ -478,7 +474,7 @@ function RecipesPageContent() {
                                       <Typography variant="body1">{recipe.title}</Typography>
                                     </Box>
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                     {recipe.isGlobal ? (
                                       <Chip 
                                         label="Global" 
@@ -497,7 +493,7 @@ function RecipesPageContent() {
                                       />
                                     )}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                     {new Date(recipe.updatedAt).toLocaleDateString()}
                                   </TableCell>
                                 </TableRow>
@@ -611,9 +607,9 @@ function RecipesPageContent() {
                           <Table>
                             <TableHead>
                               <TableRow>
-                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Recipe</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
-                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Updated</TableCell>
+                                <TableCell sx={{ width: '65%', fontWeight: 'bold', wordWrap: 'break-word' }}>Recipe</TableCell>
+                                <TableCell align="center" sx={{ width: '20%', fontWeight: 'bold', wordWrap: 'break-word' }}>Access Level</TableCell>
+                                <TableCell align="center" sx={{ width: '15%', fontWeight: 'bold', wordWrap: 'break-word' }}>Updated</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -623,7 +619,7 @@ function RecipesPageContent() {
                                   onClick={() => handleViewRecipe(recipe)}
                                   sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
                                 >
-                                  <TableCell>
+                                  <TableCell sx={{ wordWrap: 'break-word' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       {recipe.emoji ? (
                                         <Typography variant="h6">{recipe.emoji}</Typography>
@@ -633,7 +629,7 @@ function RecipesPageContent() {
                                       <Typography variant="body1">{recipe.title}</Typography>
                                     </Box>
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                     <Chip 
                                       label="Global" 
                                       size="small" 
@@ -642,7 +638,7 @@ function RecipesPageContent() {
                                       icon={<Public fontSize="small" />}
                                     />
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                     {new Date(recipe.updatedAt).toLocaleDateString()}
                                   </TableCell>
                                 </TableRow>

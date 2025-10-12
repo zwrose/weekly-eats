@@ -575,7 +575,7 @@ function MealPlansPageContent() {
                         <Table>
                           <TableHead>
                             <TableRow>
-                              <TableCell sx={{ fontWeight: 'bold' }}>Meal Plan</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', wordWrap: 'break-word' }}>Meal Plan (click to open)</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -585,7 +585,7 @@ function MealPlansPageContent() {
                                 onClick={() => handleEditMealPlan(mealPlan)}
                                 sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
                               >
-                                <TableCell>
+                                <TableCell sx={{ wordWrap: 'break-word' }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <CalendarMonth sx={{ fontSize: 24, color: 'text.secondary' }} />
                                     <Typography variant="body1">{mealPlan.name}</Typography>
@@ -865,7 +865,7 @@ function MealPlansPageContent() {
               onClose={handleCloseViewDialog}
               actions={
                 editMode ? (
-                  <>
+                  <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignItems: 'center' }}>
                     <Button 
                       onClick={() => {
                         setEditMode(false);
@@ -896,7 +896,7 @@ function MealPlansPageContent() {
                     >
                       Save
                     </Button>
-                  </>
+                  </Box>
                 ) : (
                   <IconButton onClick={handleEditMealPlanMode} color="inherit" aria-label="Edit">
                     <Edit />

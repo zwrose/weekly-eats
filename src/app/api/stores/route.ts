@@ -1,0 +1,127 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getMongoClient } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
+import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
+
+const STORE_ERRORS = {
+  INVALID_NAME: 'Store name is required',
+  STORE_NOT_FOUND: 'Store not found',
+  DUPLICATE_STORE: 'A store with this name already exists',
+};
+
+function logError(context: string, error: unknown) {
+  console.error(`[${context}]`, error);
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
+    }
+
+    const client = await getMongoClient();
+    const db = client.db();
+    const storesCollection = db.collection('stores');
+    const shoppingListsCollection = db.collection('shoppingLists');
+
+    // Get all stores for the user
+    const stores = await storesCollection
+      .find({ userId: session.user.id })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    // Get shopping lists for all stores
+    const storeIds = stores.map(store => store._id);
+    const shoppingLists = await shoppingListsCollection
+      .find({ storeId: { $in: storeIds.map(id => id.toString()) } })
+      .toArray();
+
+    // Create a map of storeId -> shoppingList
+    const shoppingListMap = new Map(
+      shoppingLists.map(list => [list.storeId, list])
+    );
+
+    // Combine stores with their shopping lists
+    const storesWithLists = stores.map(store => ({
+      ...store,
+      shoppingList: shoppingListMap.get(store._id.toString()) || {
+        _id: null,
+        storeId: store._id.toString(),
+        userId: session.user.id,
+        items: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    }));
+
+    return NextResponse.json(storesWithLists);
+  } catch (error) {
+    logError('Stores GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { name, emoji } = body;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_NAME }, { status: 400 });
+    }
+
+    const client = await getMongoClient();
+    const db = client.db();
+    const storesCollection = db.collection('stores');
+
+    // Check for duplicate store name for this user
+    const existingStore = await storesCollection.findOne({
+      userId: session.user.id,
+      name: name.trim()
+    });
+
+    if (existingStore) {
+      return NextResponse.json({ error: STORE_ERRORS.DUPLICATE_STORE }, { status: 400 });
+    }
+
+    const newStore = {
+      userId: session.user.id,
+      name: name.trim(),
+      emoji: emoji || '🏪',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await storesCollection.insertOne(newStore);
+
+    // Create an empty shopping list for this store
+    const shoppingListsCollection = db.collection('shoppingLists');
+    const newShoppingList = {
+      storeId: result.insertedId.toString(),
+      userId: session.user.id,
+      items: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    await shoppingListsCollection.insertOne(newShoppingList);
+
+    return NextResponse.json({ 
+      ...newStore, 
+      _id: result.insertedId,
+      shoppingList: newShoppingList
+    }, { status: 201 });
+  } catch (error) {
+    logError('Stores POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
+  }
+}
+

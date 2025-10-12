@@ -22,6 +22,15 @@ interface EmojiPickerProps {
 
 // Food and cooking related emojis with descriptions
 const FOOD_EMOJIS = [
+  // Stores & Shopping
+  { emoji: '🏪', description: 'convenience store' },
+  { emoji: '🏬', description: 'department store' },
+  { emoji: '🛒', description: 'shopping cart' },
+  { emoji: '🛍️', description: 'shopping bags' },
+  { emoji: '🎯', description: 'target' },
+  { emoji: '🥬', description: 'leafy green store' },
+  { emoji: '🏪', description: 'market' },
+  { emoji: '🌽', description: 'farmers market' },
   // Fruits
   { emoji: '🍎', description: 'red apple' },
   { emoji: '🍐', description: 'pear' },
