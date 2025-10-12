@@ -12,6 +12,13 @@ import {
   Button,
   Dialog,
   DialogContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton
 } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { PantryItemWithFoodItem, CreatePantryItemRequest } from "../../types/pantry";
@@ -25,6 +32,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Kitchen from '@mui/icons-material/Kitchen';
 import Add from '@mui/icons-material/Add';
+import Delete from '@mui/icons-material/Delete';
 import { DialogActions, DialogTitle } from '@/components/ui';
 
 export default function PantryPage() {
@@ -144,13 +152,14 @@ export default function PantryPage() {
           </Button>
         </Box>
 
-        <SearchBar
-          value={pagination.searchTerm}
-          onChange={pagination.setSearchTerm}
-          placeholder="Search your pantry..."
-        />
+        <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+          <SearchBar
+            value={pagination.searchTerm}
+            onChange={pagination.setSearchTerm}
+            placeholder="Search your pantry..."
+          />
 
-        {loading ? (
+          {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
@@ -158,23 +167,76 @@ export default function PantryPage() {
           <>
             {pagination.paginatedData.length > 0 ? (
               <>
-                {/* Desktop Table View (if needed) */}
+                {/* Desktop Table View */}
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ width: '70%', fontWeight: 'bold', wordWrap: 'break-word' }}>Food Item</TableCell>
+                          <TableCell align="center" sx={{ width: '30%', fontWeight: 'bold', wordWrap: 'break-word' }}>Delete</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pagination.paginatedData.map((item) => (
+                          <TableRow 
+                            key={item._id}
+                            sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
+                          >
+                            <TableCell sx={{ wordWrap: 'break-word' }}>
+                              <Typography variant="body1">{item.foodItem.pluralName}</Typography>
+                            </TableCell>
+                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
+                              <IconButton 
+                                color="error" 
+                                size="small"
+                                onClick={() => deleteConfirmDialog.openDialog(item)}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+
                 {/* Mobile Card View */}
-                <Box>
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   {pagination.paginatedData.map((item) => (
                     <Paper
                       key={item._id}
-                      sx={{ p: 3, mb: 2, boxShadow: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                      sx={{ 
+                        p: 3, 
+                        mb: 2, 
+                        boxShadow: 2, 
+                        border: "1px solid", 
+                        borderColor: "divider", 
+                        borderRadius: 2, 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center",
+                        '&:hover': { 
+                          backgroundColor: 'action.hover',
+                          transform: 'translateY(-2px)',
+                          boxShadow: 4
+                        },
+                        transition: 'all 0.2s ease-in-out'
+                      }}
                     >
-                      <Box>
-                        <Typography variant="subtitle1">{item.foodItem.pluralName}</Typography>
-                      </Box>
-                      <Button color="error" onClick={() => deleteConfirmDialog.openDialog(item)}>
-                        Remove
-                      </Button>
+                      <Typography variant="subtitle1">{item.foodItem.pluralName}</Typography>
+                      <IconButton 
+                        color="error" 
+                        size="small"
+                        onClick={() => deleteConfirmDialog.openDialog(item)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
                     </Paper>
                   ))}
                 </Box>
+
                 <Pagination
                   count={pagination.totalPages}
                   page={pagination.currentPage}
@@ -189,6 +251,7 @@ export default function PantryPage() {
             )}
           </>
         )}
+        </Paper>
 
         {/* Add Pantry Item Dialog */}
         <Dialog 

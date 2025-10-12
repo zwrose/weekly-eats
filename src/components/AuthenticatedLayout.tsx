@@ -2,6 +2,7 @@
 
 import { Box, CircularProgress, Container } from "@mui/material";
 import Header from "./Header";
+import BottomNav from "./BottomNav";
 import { useApprovalStatus } from "../lib/use-approval-status";
 
 export default function AuthenticatedLayout({
@@ -17,7 +18,7 @@ export default function AuthenticatedLayout({
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
         <Header />
         <Container maxWidth="md">
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4, pt: { xs: 8, md: 4 } }}>
             <CircularProgress />
           </Box>
         </Container>
@@ -28,9 +29,16 @@ export default function AuthenticatedLayout({
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <Header />
-      <Box component="main" sx={{ pt: { xs: 1, sm: 2, md: 3 } }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          pt: { xs: 2, md: 3 }, // Top padding on mobile matches side padding
+          pb: { xs: 10, md: 3 } // Extra padding on mobile to account for bottom nav
+        }}
+      >
         {children}
       </Box>
+      <BottomNav />
     </Box>
   );
 } 
