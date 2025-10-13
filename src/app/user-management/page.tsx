@@ -139,7 +139,7 @@ export default function UserManagementPage() {
         },
         body: JSON.stringify({
           userId,
-          approved,
+          isApproved: approved,
         }),
       });
 
