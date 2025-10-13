@@ -34,7 +34,6 @@ export async function GET() {
           { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
         ]
       })
-      .sort({ createdAt: -1 })
       .toArray();
 
     // Get shopping lists for all stores
@@ -60,6 +59,13 @@ export async function GET() {
         updatedAt: new Date()
       }
     }));
+
+    // Sort by shopping list updatedAt (most recently edited first)
+    storesWithLists.sort((a, b) => {
+      const aUpdated = a.shoppingList?.updatedAt ? new Date(a.shoppingList.updatedAt).getTime() : 0;
+      const bUpdated = b.shoppingList?.updatedAt ? new Date(b.shoppingList.updatedAt).getTime() : 0;
+      return bUpdated - aUpdated;
+    });
 
     return NextResponse.json(storesWithLists);
   } catch (error) {
