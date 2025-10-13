@@ -145,7 +145,7 @@ describe('IngredientInput', () => {
       singularName: 'Fresh Spinach',
       pluralName: 'Fresh Spinach',
       unit: 'each',
-      isGlobal: false
+      isGlobal: true
     });
   });
 
@@ -232,7 +232,7 @@ describe('IngredientInput', () => {
       singularName: 'Organic Kale',
       pluralName: 'Organic Kale',
       unit: 'each',
-      isGlobal: false
+      isGlobal: true
     });
   });
 });

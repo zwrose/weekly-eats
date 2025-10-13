@@ -135,7 +135,7 @@ describe('MealEditor', () => {
       singularName: 'Fresh Avocado',
       pluralName: 'Fresh Avocados',
       unit: 'each',
-      isGlobal: false
+      isGlobal: true
     });
   });
 
@@ -247,7 +247,7 @@ describe('MealEditor', () => {
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',
       unit: 'each',
-      isGlobal: false
+      isGlobal: true
     });
   });
 
