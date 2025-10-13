@@ -2,12 +2,16 @@
 
 import { signIn } from "next-auth/react";
 import { Button } from "@mui/material";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInButton() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/meal-plans';
+
   return (
     <Button
       variant="outlined"
-      onClick={() => signIn("google", { callbackUrl: "/meal-plans" })}
+      onClick={() => signIn("google", { callbackUrl })}
       sx={{
         borderColor: "#dadce0",
         color: "#3c4043",

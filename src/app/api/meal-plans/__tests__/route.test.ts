@@ -59,6 +59,13 @@ vi.mock('@/lib/mongodb', () => ({
             }),
           };
         }
+        if (name === 'users') {
+          return {
+            find: () => ({
+              toArray: vi.fn().mockResolvedValue([]), // No shared users by default
+            }),
+          };
+        }
         return {} as any;
       },
     }),

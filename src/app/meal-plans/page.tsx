@@ -22,8 +22,13 @@ import {
   TableRow,
   Divider,
   IconButton,
+  Snackbar,
+  List,
+  ListItem,
+  ListItemText,
+  TextField,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings, Edit, Delete } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -55,6 +60,16 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
 import { addDays } from 'date-fns';
 import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
+import { 
+  inviteUserToMealPlanSharing,
+  respondToMealPlanSharingInvitation,
+  removeUserFromMealPlanSharing,
+  fetchPendingMealPlanSharingInvitations,
+  fetchSharedMealPlanUsers,
+  fetchMealPlanOwners,
+  SharedUser,
+  PendingMealPlanInvitation
+} from "../../lib/meal-plan-sharing-utils";
 import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
@@ -89,6 +104,35 @@ function MealPlansPageContent() {
   const [mealPlanValidationErrors, setMealPlanValidationErrors] = useState<string[]>([]);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
 
+  // Meal plan sharing state
+  const shareDialog = useDialog();
+  const leaveSharingConfirmDialog = useConfirmDialog();
+  const [pendingMealPlanInvitations, setPendingMealPlanInvitations] = useState<PendingMealPlanInvitation[]>([]);
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]); // Users YOU invited (for sharing dialog)
+  const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]); // Users who invited YOU (for "Create For" dropdown)
+  const [shareEmail, setShareEmail] = useState("");
+  const [selectedOwner, setSelectedOwner] = useState<string | null>(null); // For creating meal plans
+  const [userSettings, setUserSettings] = useState<{ defaultMealPlanOwner?: string } | null>(null);
+  
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+  
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
+  
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   // Template form state
   const [templateForm, setTemplateForm] = useState<{
     startDay: DayOfWeek;
@@ -112,6 +156,37 @@ function MealPlansPageContent() {
     searchFields: ['name']
   });
 
+  // Organize meal plans by owner
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as { id?: string })?.id;
+  
+  const mealPlansByOwner = () => {
+    const grouped: Record<string, MealPlanWithTemplate[]> = {};
+    
+    mealPlanPagination.paginatedData.forEach(plan => {
+      const owner = plan.userId;
+      if (!grouped[owner]) {
+        grouped[owner] = [];
+      }
+      grouped[owner].push(plan);
+    });
+    
+    // Sort owners: current user first, then others alphabetically
+    const sortedEntries = Object.entries(grouped).sort(([ownerA], [ownerB]) => {
+      if (ownerA === currentUserId) return -1;
+      if (ownerB === currentUserId) return 1;
+      return getOwnerName(ownerA).localeCompare(getOwnerName(ownerB));
+    });
+    
+    return Object.fromEntries(sortedEntries);
+  };
+  
+  const getOwnerName = (userId: string): string => {
+    if (userId === currentUserId) return 'Your Meal Plans';
+    const owner = mealPlanOwners.find(u => u.userId === userId);
+    return `Shared by ${owner?.name || owner?.email || 'Unknown User'}`;
+  };
+
   // State to track if we skipped a default due to overlap
   const [skippedDefault, setSkippedDefault] = useState<{ skipped: boolean; skippedFrom?: string; earliestAvailable: string | null } | null>(null);
   
@@ -122,12 +197,20 @@ function MealPlansPageContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [plans, userTemplate] = await Promise.all([
+      const [plans, userTemplate, pendingInvites, invitedUsers, owners, settingsResponse] = await Promise.all([
         fetchMealPlans(),
-        fetchMealPlanTemplate()
+        fetchMealPlanTemplate(),
+        fetchPendingMealPlanSharingInvitations(),
+        fetchSharedMealPlanUsers(), // Users YOU invited
+        fetchMealPlanOwners(), // Users who invited YOU
+        fetch('/api/user/settings').then(res => res.json())
       ]);
       setMealPlans(plans);
       setTemplate(userTemplate);
+      setPendingMealPlanInvitations(pendingInvites);
+      setSharedUsers(invitedUsers);
+      setMealPlanOwners(owners);
+      setUserSettings(settingsResponse.settings || null);
       
       // Initialize template form with current template values
       if (userTemplate) {
@@ -157,7 +240,69 @@ function MealPlansPageContent() {
     }
   }, [status, loadData]);
 
+  // Meal plan sharing handlers
+  const handleInviteUser = async () => {
+    if (!shareEmail.trim()) return;
+    
+    try {
+      await inviteUserToMealPlanSharing(shareEmail.trim());
+      setShareEmail("");
+      showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
+      loadData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to invite user';
+      showSnackbar(message, 'error');
+    }
+  };
 
+  const handleAcceptMealPlanInvitation = async (userId: string) => {
+    try {
+      await respondToMealPlanSharingInvitation(userId, 'accept');
+      loadData();
+      showSnackbar('Invitation accepted', 'success');
+    } catch {
+      showSnackbar('Failed to accept invitation', 'error');
+    }
+  };
+
+  const handleRejectMealPlanInvitation = async (userId: string) => {
+    try {
+      await respondToMealPlanSharingInvitation(userId, 'reject');
+      loadData();
+    } catch {
+      showSnackbar('Failed to reject invitation', 'error');
+    }
+  };
+
+  const handleRemoveMealPlanUser = async (userId: string) => {
+    try {
+      await removeUserFromMealPlanSharing(userId);
+      loadData();
+      showSnackbar('User removed', 'info');
+    } catch {
+      showSnackbar('Failed to remove user', 'error');
+    }
+  };
+
+  const handleLeaveSharedMealPlans = async (ownerId: string) => {
+    const owner = mealPlanOwners.find(u => u.userId === ownerId);
+    const ownerName = owner?.name || owner?.email || 'this user';
+    leaveSharingConfirmDialog.openDialog({ ownerId, ownerName });
+  };
+
+  const handleConfirmLeaveSharing = async () => {
+    const data = leaveSharingConfirmDialog.data as { ownerId: string; ownerName: string } | null;
+    if (!data) return;
+
+    try {
+      await removeUserFromMealPlanSharing(data.ownerId);
+      loadData();
+      leaveSharingConfirmDialog.closeDialog();
+      showSnackbar(`You've left ${data.ownerName}'s meal plans`, 'info');
+    } catch {
+      showSnackbar('Failed to leave shared meal plans', 'error');
+    }
+  };
 
   // Open create dialog and set default start date
   const handleOpenCreateDialog = () => {
@@ -165,19 +310,35 @@ function MealPlansPageContent() {
     const { startDate, skipped, skippedFrom } = findNextAvailableMealPlanStartDate(startDay, mealPlans);
     setNewMealPlan({ startDate });
     setSkippedDefault(skipped ? { skipped, skippedFrom, earliestAvailable: startDate } : null);
+    
+    // Use default owner from settings if available and valid
+    let defaultOwner = currentUserId || null;
+    if (userSettings?.defaultMealPlanOwner) {
+      // Verify the default owner is still accessible (either current user or in meal plan owners list)
+      const isValidOwner = userSettings.defaultMealPlanOwner === currentUserId || 
+                          mealPlanOwners.some(o => o.userId === userSettings.defaultMealPlanOwner);
+      if (isValidOwner) {
+        defaultOwner = userSettings.defaultMealPlanOwner;
+      }
+    }
+    setSelectedOwner(defaultOwner);
+    
     createDialog.openDialog();
   };
 
   const handleCreateMealPlan = async () => {
     try {
-      await createMealPlan(newMealPlan);
+      const targetOwner = selectedOwner || currentUserId;
+      await createMealPlan({ ...newMealPlan, ownerId: targetOwner } as CreateMealPlanRequest & { ownerId?: string });
       createDialog.closeDialog();
       setNewMealPlan({ startDate: '' });
+      setSelectedOwner(null);
       setValidationError(null);
       loadData();
+      showSnackbar('Meal plan created successfully', 'success');
     } catch (error) {
       console.error('Error creating meal plan:', error);
-      alert('Failed to create meal plan');
+      showSnackbar('Failed to create meal plan', 'error');
     }
   };
 
@@ -186,6 +347,7 @@ function MealPlansPageContent() {
     setNewMealPlan({ startDate: '' });
     setValidationError(null);
     setSkippedDefault(null);
+    setSelectedOwner(null);
   };
 
   const handleUpdateTemplate = async () => {
@@ -552,8 +714,64 @@ function MealPlansPageContent() {
               >
                 <Settings />
               </Button>
+              <Button 
+                variant="outlined"
+                onClick={() => shareDialog.openDialog()}
+                sx={{ 
+                  borderColor: "#1976d2", 
+                  color: "#1976d2", 
+                  "&:hover": { borderColor: "#1565c0" },
+                  minWidth: 'auto',
+                  p: 1
+                }}
+              >
+                <Share />
+              </Button>
             </Box>
           </Box>
+
+          {/* Pending Meal Plan Sharing Invitations */}
+          {pendingMealPlanInvitations.length > 0 && (
+            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonAdd />
+                Pending Meal Plan Invitations ({pendingMealPlanInvitations.length})
+              </Typography>
+              <List>
+                {pendingMealPlanInvitations.map((inv) => (
+                  <Box key={inv.ownerId}>
+                    <ListItem>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                        <ListItemText
+                          primary={`${inv.ownerName || inv.ownerEmail}'s Meal Plans`}
+                          secondary={`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          color="success"
+                          size="small"
+                          title="Accept"
+                          onClick={() => handleAcceptMealPlanInvitation(inv.invitation.userId)}
+                        >
+                          <Check fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          title="Reject"
+                          onClick={() => handleRejectMealPlanInvitation(inv.invitation.userId)}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </ListItem>
+                    <Divider />
+                  </Box>
+                ))}
+              </List>
+            </Paper>
+          )}
 
           <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
             <SearchBar
@@ -569,38 +787,67 @@ function MealPlansPageContent() {
               <>
                 {mealPlans.length > 0 ? (
                   <>
-                    {/* Desktop Table View */}
-                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 'bold', wordWrap: 'break-word' }}>Meal Plan (click to open)</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {mealPlanPagination.paginatedData.map((mealPlan) => (
-                              <TableRow 
-                                key={mealPlan._id}
-                                onClick={() => handleEditMealPlan(mealPlan)}
-                                sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                    {/* Render sections for each owner */}
+                    {Object.entries(mealPlansByOwner()).map(([ownerId, ownerMealPlans], sectionIndex) => {
+                      const owners = Object.keys(mealPlansByOwner());
+                      const hasMultipleOwners = owners.length > 1;
+                      const isOnlyOwnerAndNotCurrentUser = owners.length === 1 && ownerId !== currentUserId;
+                      const shouldShowHeader = hasMultipleOwners || isOnlyOwnerAndNotCurrentUser;
+                      
+                      return (
+                      <Box key={ownerId} sx={{ mb: sectionIndex < Object.keys(mealPlansByOwner()).length - 1 ? 4 : 0 }}>
+                        {/* Show owner header if multiple owners OR if only owner is not the current user */}
+                        {shouldShowHeader && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                              {getOwnerName(ownerId)}
+                            </Typography>
+                            {ownerId !== currentUserId && (
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                color="error"
+                                onClick={() => handleLeaveSharedMealPlans(ownerId)}
+                                sx={{ minWidth: { xs: 'auto', sm: '80px' } }}
                               >
-                                <TableCell sx={{ wordWrap: 'break-word' }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <CalendarMonth sx={{ fontSize: 24, color: 'text.secondary' }} />
-                                    <Typography variant="body1">{mealPlan.name}</Typography>
-                                  </Box>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Box>
+                                Leave
+                              </Button>
+                            )}
+                          </Box>
+                        )}
+                        
+                        {/* Desktop Table View */}
+                        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                          <TableContainer>
+                            <Table>
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell sx={{ fontWeight: 'bold', wordWrap: 'break-word' }}>Meal Plan (click to open)</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {ownerMealPlans.map((mealPlan) => (
+                                  <TableRow 
+                                    key={mealPlan._id}
+                                    onClick={() => handleEditMealPlan(mealPlan)}
+                                    sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                                  >
+                                    <TableCell sx={{ wordWrap: 'break-word' }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <CalendarMonth sx={{ fontSize: 24, color: 'text.secondary' }} />
+                                        <Typography variant="body1">{mealPlan.name}</Typography>
+                                      </Box>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </Box>
 
-                    {/* Mobile Card View */}
-                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                      {mealPlanPagination.paginatedData.map((mealPlan) => (
+                        {/* Mobile Card View */}
+                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                          {ownerMealPlans.map((mealPlan) => (
                         <Paper
                           key={mealPlan._id}
                           onClick={() => handleEditMealPlan(mealPlan)}
@@ -627,8 +874,12 @@ function MealPlansPageContent() {
                             </Typography>
                           </Box>
                         </Paper>
-                      ))}
-                    </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                      );
+                    }
+                    )}
                     
                     {mealPlans.length > 10 && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -660,6 +911,25 @@ function MealPlansPageContent() {
             <DialogTitle onClose={handleCloseCreateDialog}>Create Meal Plan</DialogTitle>
             <DialogContent>
               <Box sx={{ pt: 2 }}>
+                {/* Owner selection if user has shared access */}
+                {mealPlanOwners.length > 0 && (
+                  <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel>Create For</InputLabel>
+                    <Select
+                      value={selectedOwner || currentUserId || ''}
+                      onChange={(e) => setSelectedOwner(e.target.value)}
+                      label="Create For"
+                    >
+                      <MenuItem value={currentUserId || ''}>Your Meal Plans</MenuItem>
+                      {mealPlanOwners.map((user) => (
+                        <MenuItem key={user.userId} value={user.userId}>
+                          {user.name || user.email}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+                
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
                     label="Start Date"
@@ -778,6 +1048,15 @@ function MealPlansPageContent() {
             <DialogTitle onClose={templateDialog.closeDialog}>Template Settings</DialogTitle>
             <DialogContent>
               <Box sx={{ pt: 2 }}>
+                {/* Owner selection if user has shared access */}
+                {mealPlanOwners.length > 0 && (
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <Typography variant="body2">
+                      Editing your own template. To edit a shared user&apos;s template, create or edit one of their meal plans.
+                    </Typography>
+                  </Alert>
+                )}
+                
                 <FormControl fullWidth sx={{ mb: 3 }}>
                   <InputLabel>Start Day</InputLabel>
                   <Select
@@ -1401,6 +1680,37 @@ function MealPlansPageContent() {
             </DialogContent>
           </Dialog>
 
+          {/* Leave Sharing Confirmation Dialog */}
+          <Dialog
+            open={leaveSharingConfirmDialog.open}
+            onClose={leaveSharingConfirmDialog.closeDialog}
+            sx={responsiveDialogStyle}
+          >
+            <DialogTitle onClose={leaveSharingConfirmDialog.closeDialog}>Leave Shared Meal Plans</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to leave {(leaveSharingConfirmDialog.data as { ownerName: string } | null)?.ownerName}&apos;s meal plans? You will no longer be able to view or edit their meal plans.
+              </Typography>
+              
+              <DialogActions primaryButtonIndex={1}>
+                <Button 
+                  onClick={leaveSharingConfirmDialog.closeDialog}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleConfirmLeaveSharing} 
+                  color="error" 
+                  variant="contained"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Leave
+                </Button>
+              </DialogActions>
+            </DialogContent>
+          </Dialog>
+
           {/* Add Food Item Dialog */}
           <AddFoodItemDialog
             open={addFoodItemDialogOpen}
@@ -1408,6 +1718,95 @@ function MealPlansPageContent() {
             onAdd={handleAddFoodItem}
             prefillName={prefillFoodItemName}
           />
+
+          {/* Share Meal Plans Dialog */}
+          <Dialog
+            open={shareDialog.open}
+            onClose={shareDialog.closeDialog}
+            maxWidth="sm"
+            fullWidth
+            sx={responsiveDialogStyle}
+          >
+            <DialogTitle onClose={shareDialog.closeDialog}>
+              Share Meal Plans
+            </DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Invite users by email. They&apos;ll be able to view and edit all your meal plans.
+              </Typography>
+              
+              {/* Invite Section */}
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                  label="Email Address"
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && shareEmail.trim()) {
+                      handleInviteUser();
+                    }
+                  }}
+                  size="small"
+                  fullWidth
+                  placeholder="user@example.com"
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleInviteUser}
+                  disabled={!shareEmail.trim()}
+                  sx={{ minWidth: 100 }}
+                >
+                  Invite
+                </Button>
+              </Box>
+
+              {/* Shared Users List */}
+              {sharedUsers && sharedUsers.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                    Shared With:
+                  </Typography>
+                  <List>
+                    {sharedUsers.map((user) => (
+                      <ListItem key={user.userId}>
+                        <ListItemText
+                          primary={user.name || user.email}
+                          secondary={user.email}
+                        />
+                        <IconButton
+                          size="small"
+                          color="error"
+                          title="Remove user"
+                          onClick={() => handleRemoveMealPlanUser(user.userId)}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </>
+              )}
+
+              <DialogActions primaryButtonIndex={0}>
+                <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                  Done
+                </Button>
+              </DialogActions>
+            </DialogContent>
+          </Dialog>
+
+          {/* Snackbar for notifications */}
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
 
         </Box>
       </Container>

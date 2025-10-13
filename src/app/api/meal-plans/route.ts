@@ -31,9 +31,27 @@ export async function GET() {
     const mealPlansCollection = db.collection('mealPlans');
     const foodItemsCollection = db.collection('foodItems');
     const recipesCollection = db.collection('recipes');
+    const usersCollection = db.collection('users');
 
+    // Get users who have shared their meal plans with the current user
+    const sharedOwners = await usersCollection
+      .find({
+        'settings.mealPlanSharing.invitations': {
+          $elemMatch: {
+            userId: session.user.id,
+            status: 'accepted'
+          }
+        }
+      })
+      .toArray();
+
+    const sharedOwnerIds = sharedOwners.map(owner => owner._id.toString());
+
+    // Get meal plans for current user AND shared owners
     const mealPlans = await mealPlansCollection
-      .find({ userId: session.user.id })
+      .find({
+        userId: { $in: [session.user.id, ...sharedOwnerIds] }
+      })
       .sort({ startDate: -1 })
       .toArray();
 
@@ -134,8 +152,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
-    const body: CreateMealPlanRequest = await request.json();
-    const { startDate } = body;
+    const body: CreateMealPlanRequest & { ownerId?: string } = await request.json();
+    const { startDate, ownerId } = body;
 
     // Validation
     if (!isValidDateString(startDate)) {
@@ -146,9 +164,35 @@ export async function POST(request: NextRequest) {
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
     const templatesCollection = db.collection('mealPlanTemplates');
+    const usersCollection = db.collection('users');
+
+    // Determine the owner of this meal plan
+    let targetUserId = session.user.id;
+    
+    if (ownerId && ownerId !== session.user.id) {
+      // Verify the current user has permission to create meal plans for this owner
+      const owner = await usersCollection.findOne({
+        _id: ObjectId.createFromHexString(ownerId),
+        'settings.mealPlanSharing.invitations': {
+          $elemMatch: {
+            userId: session.user.id,
+            status: 'accepted'
+          }
+        }
+      });
+
+      if (!owner) {
+        return NextResponse.json(
+          { error: 'You do not have permission to create meal plans for this user' },
+          { status: 403 }
+        );
+      }
+
+      targetUserId = ownerId;
+    }
 
     // --- Overlap validation ---
-    const existingPlans = (await mealPlansCollection.find({ userId: session.user.id }).toArray()) as unknown as MealPlan[];
+    const existingPlans = (await mealPlansCollection.find({ userId: targetUserId }).toArray()) as unknown as MealPlan[];
     const overlapResult = checkMealPlanOverlap(startDate, existingPlans);
     if (overlapResult.isOverlapping) {
       return NextResponse.json({
@@ -157,15 +201,15 @@ export async function POST(request: NextRequest) {
     }
     // --- End overlap validation ---
 
-    // Get or create user's template
+    // Get or create target user's template
     let template = await templatesCollection.findOne({
-      userId: session.user.id
+      userId: targetUserId
     });
 
     if (!template) {
       // Create default template
       const defaultTemplate = {
-        userId: session.user.id,
+        userId: targetUserId,
         startDay: 'saturday',
         meals: {
           breakfast: true,
@@ -262,7 +306,7 @@ export async function POST(request: NextRequest) {
         meals: template.meals,
         weeklyStaples: template.weeklyStaples || [] // Include staples in snapshot
       },
-      userId: session.user.id,
+      userId: targetUserId,
       items, // Populated based on template
       createdAt: now,
       updatedAt: now

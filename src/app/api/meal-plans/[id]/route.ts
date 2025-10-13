@@ -30,14 +30,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const mealPlansCollection = db.collection('mealPlans');
     const foodItemsCollection = db.collection('foodItems');
     const recipesCollection = db.collection('recipes');
+    const usersCollection = db.collection('users');
 
     const mealPlan = await mealPlansCollection.findOne({
-      _id: new ObjectId(id),
-      userId: session.user.id
+      _id: new ObjectId(id)
     });
 
     if (!mealPlan) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
+    }
+
+    // Check if user owns this meal plan OR if it's been shared with them
+    const isOwner = mealPlan.userId === session.user.id;
+    let hasSharedAccess = false;
+    
+    if (!isOwner) {
+      const owner = await usersCollection.findOne({
+        _id: ObjectId.createFromHexString(mealPlan.userId),
+        'settings.mealPlanSharing.invitations': {
+          $elemMatch: {
+            userId: session.user.id,
+            status: 'accepted'
+          }
+        }
+      });
+      hasSharedAccess = !!owner;
+    }
+
+    if (!isOwner && !hasSharedAccess) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 403 });
     }
 
     // Helper function to populate a single meal item's name
@@ -141,15 +162,36 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
+    const usersCollection = db.collection('users');
 
-    // Check if meal plan exists and belongs to user
+    // Check if meal plan exists
     const existingMealPlan = await mealPlansCollection.findOne({
-      _id: new ObjectId(id),
-      userId: session.user.id
+      _id: new ObjectId(id)
     });
 
     if (!existingMealPlan) {
       return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
+    }
+
+    // Check if user owns this meal plan OR if it's been shared with them
+    const isOwner = existingMealPlan.userId === session.user.id;
+    let hasSharedAccess = false;
+    
+    if (!isOwner) {
+      const owner = await usersCollection.findOne({
+        _id: ObjectId.createFromHexString(existingMealPlan.userId),
+        'settings.mealPlanSharing.invitations': {
+          $elemMatch: {
+            userId: session.user.id,
+            status: 'accepted'
+          }
+        }
+      });
+      hasSharedAccess = !!owner;
+    }
+
+    if (!isOwner && !hasSharedAccess) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 403 });
     }
 
     // Build update object
@@ -219,10 +261,40 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const client = await getMongoClient();
     const db = client.db();
     const mealPlansCollection = db.collection('mealPlans');
+    const usersCollection = db.collection('users');
+
+    // Get the meal plan first
+    const mealPlan = await mealPlansCollection.findOne({
+      _id: new ObjectId(id)
+    });
+
+    if (!mealPlan) {
+      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+    }
+
+    // Check if user owns this meal plan OR if it's been shared with them
+    const isOwner = mealPlan.userId === session.user.id;
+    let hasSharedAccess = false;
+    
+    if (!isOwner) {
+      const owner = await usersCollection.findOne({
+        _id: ObjectId.createFromHexString(mealPlan.userId),
+        'settings.mealPlanSharing.invitations': {
+          $elemMatch: {
+            userId: session.user.id,
+            status: 'accepted'
+          }
+        }
+      });
+      hasSharedAccess = !!owner;
+    }
+
+    if (!isOwner && !hasSharedAccess) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 403 });
+    }
 
     const result = await mealPlansCollection.deleteOne({
-      _id: new ObjectId(id),
-      userId: session.user.id
+      _id: new ObjectId(id)
     });
 
     if (result.deletedCount === 0) {

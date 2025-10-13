@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Box, Typography, Container, Paper, ThemeProvider } from "@mui/material";
 import SignInButton from "../components/SignInButton";
 import { lightTheme } from "../lib/theme";
+import { Suspense } from "react";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -76,7 +77,9 @@ export default function Home() {
                 </Typography>
               </Box>
 
-              <SignInButton />
+              <Suspense fallback={null}>
+                <SignInButton />
+              </Suspense>
             </Box>
           </Paper>
         </Container>

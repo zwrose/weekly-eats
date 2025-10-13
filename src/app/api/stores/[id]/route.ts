@@ -174,13 +174,21 @@ export async function DELETE(
       return NextResponse.json({ error: STORE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
+    // Check if store has accepted users
+    const acceptedInvitations = store.invitations?.filter(
+      (inv: { status: string }) => inv.status === 'accepted'
+    ) || [];
+    
+    // Return info about accepted users (frontend will show warning)
+    const sharedUserCount = acceptedInvitations.length;
+
     // Delete the shopping list first
     await shoppingListsCollection.deleteOne({ storeId: id });
 
     // Delete the store
     await storesCollection.deleteOne({ _id: ObjectId.createFromHexString(id) });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, sharedUserCount });
   } catch (error) {
     logError('Stores DELETE [id]', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });

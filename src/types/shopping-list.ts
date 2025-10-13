@@ -1,8 +1,17 @@
+export interface StoreInvitation {
+  userId: string;
+  userEmail: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  invitedBy: string; // userId of the inviter
+  invitedAt: Date;
+}
+
 export interface Store {
   _id: string;
-  userId: string;
+  userId: string; // The user who created/owns the store
   name: string;
   emoji?: string;
+  invitations?: StoreInvitation[];
   createdAt: Date;
   updatedAt: Date;
 }

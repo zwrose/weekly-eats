@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       }
     }).limit(50).toArray();
 
-    return NextResponse.json(users);
+    return NextResponse.json({ users });
   } catch (error) {
     logError('Admin Users GET', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
