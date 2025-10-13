@@ -6,10 +6,6 @@ import {
   DialogContent,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControlLabel,
   Radio,
   RadioGroup,
@@ -20,6 +16,7 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Autocomplete,
 } from '@mui/material';
 import { getUnitOptions } from '../lib/food-items-utils';
 import pluralize from '@wei/pluralize';
@@ -36,7 +33,7 @@ interface AddFoodItemDialogProps {
 export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = '' }: AddFoodItemDialogProps) {
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('each');
-  const [isGlobal, setIsGlobal] = useState(false);
+  const [isGlobal, setIsGlobal] = useState(true);
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
   const [singularName, setSingularName] = useState('');
@@ -48,7 +45,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
     if (open) {
       setName(prefillName);
       setUnit('each');
-      setIsGlobal(false);
+      setIsGlobal(true);
       setError('');
       setStep(0);
     }
@@ -101,7 +98,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
     // Reset form
     setName('');
     setUnit('each');
-    setIsGlobal(false);
+    setIsGlobal(true);
     setError('');
     setStep(0);
     setSingularName('');
@@ -113,7 +110,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
     // Reset form
     setName('');
     setUnit('each');
-    setIsGlobal(false);
+    setIsGlobal(true);
     setError('');
     setStep(0);
     setSingularName('');
@@ -177,20 +174,24 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                 helperText="Enter the name as you would normally say it (e.g., &apos;apples&apos; or &apos;apple&apos;)"
               />
 
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>Typical Selling Unit</InputLabel>
-                <Select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  label="Typical Selling Unit"
-                >
-                  {getUnitOptions().map((unitOption) => (
-                    <MenuItem key={unitOption.value} value={unitOption.value}>
-                      {unitOption.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={getUnitOptions()}
+                value={getUnitOptions().find(option => option.value === unit) ?? undefined}
+                onChange={(_, newValue) => setUnit(newValue?.value || 'each')}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                disableClearable
+                autoHighlight
+                fullWidth
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Typical Selling Unit"
+                    margin="normal"
+                    required
+                  />
+                )}
+              />
 
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>
@@ -201,14 +202,14 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                   onChange={(e) => setIsGlobal(e.target.value === 'true')}
                 >
                   <FormControlLabel
-                    value={false}
-                    control={<Radio />}
-                    label="Personal (only visible to you)"
-                  />
-                  <FormControlLabel
                     value={true}
                     control={<Radio />}
                     label="Global (visible to all users)"
+                  />
+                  <FormControlLabel
+                    value={false}
+                    control={<Radio />}
+                    label="Personal (only visible to you)"
                   />
                 </RadioGroup>
               </Box>

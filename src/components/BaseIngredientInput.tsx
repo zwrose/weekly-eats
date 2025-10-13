@@ -141,7 +141,7 @@ export default function BaseIngredientInput({
       } catch {
         setSearchData(prev => ({ ...prev, input, options: [], loading: false, selectedIndex: 0 }));
       }
-    }, 300);
+    }, 750);
   }, []);
 
   const handleItemSelect = (item: SearchOption | null) => {
@@ -178,9 +178,14 @@ export default function BaseIngredientInput({
     }
   };
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (value: string, reason: string) => {
+    // Update the input value for user typing and resets (when item is selected)
     setSearchData(prev => ({ ...prev, input: value }));
-    performSearch(value);
+    
+    // Only trigger search on user input, not on reset/clear events
+    if (reason === 'input') {
+      performSearch(value);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -351,7 +356,7 @@ export default function BaseIngredientInput({
             inputValue={searchData.input}
             value={getSelectedOption()}
             onChange={(_, value) => handleItemSelect(value)}
-            onInputChange={(_, value) => handleInputChange(value)}
+            onInputChange={(_, value, reason) => handleInputChange(value, reason)}
             filterOptions={(options) => options}
             onKeyDown={handleKeyDown}
             renderOption={(props, option, { index }) => {

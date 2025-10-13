@@ -43,6 +43,7 @@ import {
 } from "../../types/meal-plan";
 import { RecipeIngredient } from "../../types/recipe";
 
+import { getUnitForm } from "../../lib/food-items-utils";
 import { 
   fetchMealPlans, 
   fetchMealPlan,
@@ -1441,7 +1442,7 @@ function MealPlansPageContent() {
                                             <Box sx={{ pl: 2 }}>
                                               {group.ingredients.map((ingredient, ingIndex) => (
                                                 <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                  • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? ingredient.unit + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                  • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{ingredient.name || 'Unknown'}
                                                 </Typography>
                                               ))}
                                             </Box>
@@ -1456,7 +1457,7 @@ function MealPlansPageContent() {
                                         • {staple.name}
                                         {staple.quantity && staple.unit && (
                                           <span style={{ color: 'text.secondary' }}>
-                                            {' '}({staple.quantity} {staple.unit})
+                                            {' '}({staple.quantity} {getUnitForm(staple.unit, staple.quantity)})
                                           </span>
                                         )}
                                       </Typography>
@@ -1543,7 +1544,7 @@ function MealPlansPageContent() {
                                                           <Box sx={{ pl: 2 }}>
                                                             {group.ingredients.map((ingredient, ingIndex) => (
                                                               <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                                • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? ingredient.unit + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                                • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{ingredient.name || 'Unknown'}
                                                               </Typography>
                                                             ))}
                                                           </Box>
@@ -1558,7 +1559,7 @@ function MealPlansPageContent() {
                                                       • {mealItem.name}
                                                       {mealItem.quantity && mealItem.unit && (
                                                         <span style={{ color: 'text.secondary' }}>
-                                                          {' '}({mealItem.quantity} {mealItem.unit})
+                                                          {' '}({mealItem.quantity} {getUnitForm(mealItem.unit, mealItem.quantity)})
                                                         </span>
                                                       )}
                                                     </Typography>
