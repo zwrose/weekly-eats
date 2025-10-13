@@ -27,6 +27,10 @@ const mockCreateStore = vi.fn();
 const mockUpdateStore = vi.fn();
 const mockDeleteStore = vi.fn();
 const mockUpdateShoppingList = vi.fn();
+const mockFetchPendingInvitations = vi.fn();
+const mockInviteUserToStore = vi.fn();
+const mockRespondToInvitation = vi.fn();
+const mockRemoveUserFromStore = vi.fn();
 
 vi.mock('../../../lib/shopping-list-utils', () => ({
   fetchStores: () => mockFetchStores(),
@@ -34,6 +38,10 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   updateStore: (...args: any[]) => mockUpdateStore(...args),
   deleteStore: (...args: any[]) => mockDeleteStore(...args),
   updateShoppingList: (...args: any[]) => mockUpdateShoppingList(...args),
+  fetchPendingInvitations: () => mockFetchPendingInvitations(),
+  inviteUserToStore: (...args: any[]) => mockInviteUserToStore(...args),
+  respondToInvitation: (...args: any[]) => mockRespondToInvitation(...args),
+  removeUserFromStore: (...args: any[]) => mockRemoveUserFromStore(...args),
 }));
 
 // Mock components
@@ -48,6 +56,9 @@ vi.mock('../../../components/EmojiPicker', () => ({
 describe('ShoppingListsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for pending invitations
+    mockFetchPendingInvitations.mockResolvedValue([]);
+    
     // Mock fetch for food items
     global.fetch = vi.fn((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -99,6 +110,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Whole Foods',
         emoji: '🥬',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -140,6 +152,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -172,6 +185,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Whole Foods',
         emoji: '🥬',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -203,6 +217,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -244,6 +259,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -286,6 +302,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -327,6 +344,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -372,6 +390,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {
@@ -415,6 +434,7 @@ describe('ShoppingListsPage', () => {
         userId: 'user-123',
         name: 'Target',
         emoji: '🎯',
+        invitations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         shoppingList: {

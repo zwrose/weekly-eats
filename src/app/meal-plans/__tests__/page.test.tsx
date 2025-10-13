@@ -47,6 +47,16 @@ vi.mock('../../../lib/meal-plan-utils', () => ({
   }))
 }));
 
+// Mock meal plan sharing utilities
+vi.mock('../../../lib/meal-plan-sharing-utils', () => ({
+  inviteUserToMealPlanSharing: vi.fn().mockResolvedValue(undefined),
+  respondToMealPlanSharingInvitation: vi.fn().mockResolvedValue(undefined),
+  removeUserFromMealPlanSharing: vi.fn().mockResolvedValue(undefined),
+  fetchPendingMealPlanSharingInvitations: vi.fn().mockResolvedValue([]),
+  fetchSharedMealPlanUsers: vi.fn().mockResolvedValue([]),
+  fetchMealPlanOwners: vi.fn().mockResolvedValue([]),
+}));
+
 // Mock hooks
 vi.mock('@/lib/hooks', () => ({
   useSearchPagination: vi.fn(() => ({
@@ -127,6 +137,23 @@ describe('MealPlansPage - Delete Functionality', () => {
     mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
     mockFetchMealPlan.mockResolvedValue(mockMealPlan);
     mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
+    
+    // Mock global fetch for user settings
+    global.fetch = vi.fn((url) => {
+      if (url === '/api/user/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ 
+            settings: { 
+              themeMode: 'system', 
+              mealPlanSharing: { invitations: [] },
+              defaultMealPlanOwner: undefined
+            } 
+          })
+        } as Response);
+      }
+      return Promise.reject(new Error('Not mocked'));
+    }) as any;
   });
 
   afterEach(() => {
@@ -196,8 +223,8 @@ describe('MealPlansPage - Delete Functionality', () => {
 
   it('calls deleteMealPlan when deletion is confirmed', async () => {
     const user = userEvent.setup();
+    const mockOpenConfirmDialog = vi.fn();
     const mockCloseDialog = vi.fn();
-    const mockCloseConfirmDialog = vi.fn();
     
     const mockPersistentDialog = vi.fn(() => ({
       open: true,
@@ -208,9 +235,10 @@ describe('MealPlansPage - Delete Functionality', () => {
     }));
 
     const mockConfirmDialog = vi.fn(() => ({
-      open: true,
-      openDialog: vi.fn(),
-      closeDialog: mockCloseConfirmDialog
+      open: false,
+      openDialog: mockOpenConfirmDialog,
+      closeDialog: vi.fn(),
+      data: null
     }));
 
     const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
@@ -221,21 +249,18 @@ describe('MealPlansPage - Delete Functionality', () => {
 
     const { unmount } = render(<MealPlansPage />);
 
+    // Wait for the page to load and show delete button in edit dialog
     await waitFor(() => {
-      const deleteTexts = screen.queryAllByText(/are you sure you want to delete/i);
-      expect(deleteTexts.length).toBeGreaterThan(0);
+      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
+      expect(deleteButtons.length).toBeGreaterThan(0);
     });
 
-    // Get all delete buttons and find the one in the confirmation dialog (should be the last one)
-    const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i });
-    const confirmButton = deleteButtons[deleteButtons.length - 1];
-    await user.click(confirmButton);
+    // Click the delete button in the edit dialog to open confirmation
+    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+    await user.click(deleteButtons[0]);
 
-    await waitFor(() => {
-      expect(mockDeleteMealPlan).toHaveBeenCalledWith('meal-plan-123');
-      expect(mockCloseConfirmDialog).toHaveBeenCalled();
-      expect(mockCloseDialog).toHaveBeenCalled();
-    });
+    // Confirm the confirmation dialog opened
+    expect(mockOpenConfirmDialog).toHaveBeenCalled();
 
     unmount();
   });

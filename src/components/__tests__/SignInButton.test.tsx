@@ -9,6 +9,13 @@ vi.mock('next-auth/react', () => ({
   signIn: () => mockSignIn(),
 }));
 
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => ({
+    get: vi.fn(() => null),
+  }),
+}));
+
 describe('SignInButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -26,9 +26,14 @@ export async function GET() {
     const storesCollection = db.collection('stores');
     const shoppingListsCollection = db.collection('shoppingLists');
 
-    // Get all stores for the user
+    // Get stores owned by user OR where user has accepted invitation
     const stores = await storesCollection
-      .find({ userId: session.user.id })
+      .find({
+        $or: [
+          { userId: session.user.id },
+          { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
+        ]
+      })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -95,6 +100,7 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       name: name.trim(),
       emoji: emoji || '🏪',
+      invitations: [],
       createdAt: new Date(),
       updatedAt: new Date()
     };

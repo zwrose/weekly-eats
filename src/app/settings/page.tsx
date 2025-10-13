@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { ThemeMode, UserSettings, DEFAULT_USER_SETTINGS } from "../../lib/user-settings";
+import { fetchMealPlanOwners, SharedUser } from "../../lib/meal-plan-sharing-utils";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -26,10 +27,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]);
+  
+  const currentUserId = (session?.user as { id?: string })?.id;
 
   useEffect(() => {
     if (session?.user?.email) {
       loadUserSettings();
+      loadMealPlanOwners();
     }
   }, [session?.user?.email]);
 
@@ -44,6 +49,15 @@ export default function SettingsPage() {
       console.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMealPlanOwners = async () => {
+    try {
+      const owners = await fetchMealPlanOwners();
+      setMealPlanOwners(owners);
+    } catch (error) {
+      console.error('Failed to load meal plan owners:', error);
     }
   };
 
@@ -74,6 +88,15 @@ export default function SettingsPage() {
   const handleThemeChange = (event: SelectChangeEvent<ThemeMode>) => {
     const newThemeMode = event.target.value as ThemeMode;
     const newSettings = { ...settings, themeMode: newThemeMode };
+    saveUserSettings(newSettings);
+  };
+
+  const handleDefaultOwnerChange = (event: SelectChangeEvent<string>) => {
+    const newDefaultOwner = event.target.value;
+    const newSettings = { 
+      ...settings, 
+      defaultMealPlanOwner: newDefaultOwner === currentUserId ? undefined : newDefaultOwner 
+    };
     saveUserSettings(newSettings);
   };
 
@@ -146,6 +169,35 @@ export default function SettingsPage() {
                 Choose your preferred theme. System Default will follow your operating system&apos;s theme setting.
               </Typography>
             </Box>
+
+            {mealPlanOwners.length > 0 && (
+              <Box>
+                <Typography variant="h6" color="text.primary" gutterBottom sx={{ mb: 2 }}>
+                  Meal Plans
+                </Typography>
+                <FormControl fullWidth>
+                  <InputLabel id="default-owner-label">Default Owner for New Meal Plans</InputLabel>
+                  <Select
+                    labelId="default-owner-label"
+                    id="default-owner-select"
+                    value={settings.defaultMealPlanOwner || currentUserId || ''}
+                    label="Default Owner for New Meal Plans"
+                    onChange={handleDefaultOwnerChange}
+                    disabled={saving}
+                  >
+                    <MenuItem value={currentUserId || ''}>Your Meal Plans</MenuItem>
+                    {mealPlanOwners.map((owner) => (
+                      <MenuItem key={owner.userId} value={owner.userId}>
+                        {owner.name || owner.email}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Set the default owner when creating new meal plans. This determines which &quot;Create For&quot; option is pre-selected.
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Paper>
       </Container>

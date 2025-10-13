@@ -26,12 +26,13 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Snackbar
 } from "@mui/material";
-import { ShoppingCart, Add, Edit, Delete } from "@mui/icons-material";
+import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd, Kitchen } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
-import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList } from "../../lib/shopping-list-utils";
+import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
 import { useDialog, useConfirmDialog, useSearchPagination } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
@@ -44,6 +45,7 @@ import { MealPlanWithTemplate } from "../../types/meal-plan";
 import { fetchMealPlans } from "../../lib/meal-plan-utils";
 import { extractFoodItemsFromMealPlans, mergeWithShoppingList, UnitConflict } from "../../lib/meal-plan-to-shopping-list";
 import { CalendarMonth } from "@mui/icons-material";
+import { fetchPantryItems } from "../../lib/pantry-utils";
 
 interface FoodItem {
   _id: string;
@@ -55,10 +57,23 @@ interface FoodItem {
 
 export default function ShoppingListsPage() {
   const { status } = useSession();
+  const { data: session } = useSession();
   const [stores, setStores] = useState<StoreWithShoppingList[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState<StoreWithShoppingList | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<Array<{
+    storeId: string;
+    storeName: string;
+    storeEmoji?: string;
+    invitation: {
+      userId: string;
+      userEmail: string;
+      status: 'pending';
+      invitedBy: string;
+      invitedAt: Date;
+    };
+  }>>([]);
   
   // Search and pagination
   const storePagination = useSearchPagination<StoreWithShoppingList>({
@@ -77,11 +92,35 @@ export default function ShoppingListsPage() {
   const mealPlanSelectionDialog = useDialog();
   const mealPlanConfirmDialog = useDialog();
   const unitConflictDialog = useDialog();
+  const shareDialog = useDialog();
+  const leaveStoreConfirmDialog = useConfirmDialog();
+  const pantryCheckDialog = useDialog();
+  
+  // Notification state
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+  
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
+  
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
   
   // Form states
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreEmoji, setNewStoreEmoji] = useState("🏪");
   const [editingStore, setEditingStore] = useState<StoreWithShoppingList | null>(null);
+  const [shareEmail, setShareEmail] = useState("");
+  const [sharingStore, setSharingStore] = useState<StoreWithShoppingList | null>(null);
   
   // Shopping list states
   const [selectedFoodItem, setSelectedFoodItem] = useState<FoodItem | null>(null);
@@ -97,15 +136,28 @@ export default function ShoppingListsPage() {
   const [currentConflictIndex, setCurrentConflictIndex] = useState(0);
   const [conflictResolutions, setConflictResolutions] = useState<Map<string, { quantity: number; unit: string }>>(new Map());
 
+  // Pantry check states
+  const [matchingPantryItems, setMatchingPantryItems] = useState<Array<{
+    foodItemId: string;
+    name: string;
+    currentQuantity: number;
+    unit: string;
+    checked: boolean;
+    newQuantity: number;
+  }>>([]);
+  const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storesData, foodItemsData] = await Promise.all([
+      const [storesData, foodItemsData, invitationsData] = await Promise.all([
         fetchStores(),
-        fetch('/api/food-items?limit=1000').then(res => res.json())
+        fetch('/api/food-items?limit=1000').then(res => res.json()),
+        fetchPendingInvitations()
       ]);
       setStores(storesData);
       setFoodItems(foodItemsData);
+      setPendingInvitations(invitationsData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -130,7 +182,7 @@ export default function ShoppingListsPage() {
       loadData();
     } catch (error) {
       console.error('Error creating store:', error);
-      alert('Failed to create store');
+      showSnackbar('Failed to create store', 'error');
     }
   };
 
@@ -156,7 +208,7 @@ export default function ShoppingListsPage() {
       loadData();
     } catch (error) {
       console.error('Error updating store:', error);
-      alert('Failed to update store');
+      showSnackbar('Failed to update store', 'error');
     }
   };
 
@@ -164,15 +216,119 @@ export default function ShoppingListsPage() {
     if (!selectedStore) return;
     
     try {
-      await deleteStore(selectedStore._id);
+      const result = await deleteStore(selectedStore._id);
+      // Check if there were shared users (returned from API)
+      if (result.sharedUserCount && result.sharedUserCount > 0) {
+        console.log(`Store was shared with ${result.sharedUserCount} user(s)`);
+      }
       deleteConfirmDialog.closeDialog();
       viewListDialog.closeDialog();
       setSelectedStore(null);
       loadData();
     } catch (error) {
       console.error('Error deleting store:', error);
-      alert('Failed to delete store');
+      showSnackbar('Failed to delete store', 'error');
     }
+  };
+
+  // Sharing handlers
+  const handleOpenShareDialog = async (store: StoreWithShoppingList) => {
+    // Refresh data to get latest invitation status
+    await loadData();
+    
+    // Find the updated store from the refreshed data
+    const updatedStores = await fetchStores();
+    const updatedStore = updatedStores.find(s => s._id === store._id);
+    
+    setSharingStore(updatedStore || store);
+    setShareEmail("");
+    shareDialog.openDialog();
+  };
+
+  const handleInviteUser = async () => {
+    if (!sharingStore || !shareEmail.trim()) return;
+    
+    try {
+      await inviteUserToStore(sharingStore._id, shareEmail.trim());
+      setShareEmail("");
+      showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
+      
+      // Refresh data and update the sharing store to show new invitation
+      await loadData();
+      const updatedStores = await fetchStores();
+      const updatedStore = updatedStores.find(s => s._id === sharingStore._id);
+      if (updatedStore) {
+        setSharingStore(updatedStore);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to invite user';
+      showSnackbar(message, 'error');
+    }
+  };
+
+  const handleAcceptInvitation = async (storeId: string, userId: string) => {
+    try {
+      await respondToInvitation(storeId, userId, 'accept');
+      loadData();
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      showSnackbar('Failed to accept invitation', 'error');
+    }
+  };
+
+  const handleRejectInvitation = async (storeId: string, userId: string) => {
+    try {
+      await respondToInvitation(storeId, userId, 'reject');
+      loadData();
+    } catch (error) {
+      console.error('Error rejecting invitation:', error);
+      showSnackbar('Failed to reject invitation', 'error');
+    }
+  };
+
+  const handleRemoveUser = async (storeId: string, userId: string) => {
+    try {
+      await removeUserFromStore(storeId, userId);
+      
+      // Refresh data and update the sharing store to show updated list
+      await loadData();
+      if (sharingStore && sharingStore._id === storeId) {
+        const updatedStores = await fetchStores();
+        const updatedStore = updatedStores.find(s => s._id === storeId);
+        if (updatedStore) {
+          setSharingStore(updatedStore);
+        }
+      }
+    } catch (error) {
+      console.error('Error removing user:', error);
+      showSnackbar('Failed to remove user', 'error');
+    }
+  };
+
+  const handleLeaveStore = (store: StoreWithShoppingList) => {
+    setSelectedStore(store);
+    leaveStoreConfirmDialog.openDialog();
+  };
+
+  const confirmLeaveStore = async () => {
+    const userId = (session?.user as { id?: string })?.id;
+    if (!userId || !selectedStore) return;
+    
+    try {
+      await removeUserFromStore(selectedStore._id, userId);
+      leaveStoreConfirmDialog.closeDialog();
+      setSelectedStore(null);
+      loadData();
+      showSnackbar(`Left "${selectedStore.name}"`, 'info');
+    } catch (error) {
+      console.error('Error leaving store:', error);
+      showSnackbar('Failed to leave store', 'error');
+    }
+  };
+
+  const isStoreOwner = (store: StoreWithShoppingList): boolean => {
+    const userId = (session?.user as { id?: string })?.id;
+    return store.userId === userId;
   };
 
   const handleViewList = (store: StoreWithShoppingList) => {
@@ -215,7 +371,7 @@ export default function ShoppingListsPage() {
       setStores(updatedStores);
     } catch (error) {
       console.error('Error completing shopping session:', error);
-      alert('Failed to complete shopping session');
+      showSnackbar('Failed to complete shopping session', 'error');
     }
   };
 
@@ -229,7 +385,7 @@ export default function ShoppingListsPage() {
     // Check if item already exists
     const exists = shoppingListItems.some(item => item.foodItemId === selectedFoodItem._id);
     if (exists) {
-      alert('This item is already in your shopping list');
+      showSnackbar('This item is already in your shopping list', 'warning');
       return;
     }
     
@@ -252,7 +408,7 @@ export default function ShoppingListsPage() {
       setStores(updatedStores);
     } catch (error) {
       console.error('Error saving shopping list:', error);
-      alert('Failed to save item to shopping list');
+      showSnackbar('Failed to save item to shopping list', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
     }
@@ -283,7 +439,7 @@ export default function ShoppingListsPage() {
       setStores(updatedStores);
     } catch (error) {
       console.error('Error saving shopping list:', error);
-      alert('Failed to remove item from shopping list');
+      showSnackbar('Failed to remove item from shopping list', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
     }
@@ -316,7 +472,7 @@ export default function ShoppingListsPage() {
       mealPlanSelectionDialog.openDialog();
     } catch (error) {
       console.error('Error loading meal plans:', error);
-      alert('Failed to load meal plans');
+      showSnackbar('Failed to load meal plans', 'error');
     }
   };
 
@@ -371,7 +527,7 @@ export default function ShoppingListsPage() {
       }
     } catch (error) {
       console.error('Error adding items from meal plans:', error);
-      alert('Failed to add items from meal plans');
+      showSnackbar('Failed to add items from meal plans', 'error');
     }
   };
 
@@ -460,7 +616,112 @@ export default function ShoppingListsPage() {
       setConflictResolutions(new Map());
     } catch (error) {
       console.error('Error saving shopping list after conflict resolution:', error);
-      alert('Failed to save shopping list');
+      showSnackbar('Failed to save shopping list', 'error');
+    }
+  };
+
+  // Pantry Check Handlers
+  const handleOpenPantryCheck = async () => {
+    if (!selectedStore) return;
+    
+    try {
+      setLoadingPantryCheck(true);
+      
+      // Fetch pantry items
+      const pantryItems = await fetchPantryItems();
+      
+      // Find shopping list items that are in pantry
+      const matches = shoppingListItems
+        .filter(item => pantryItems.some(p => p.foodItemId === item.foodItemId))
+        .map(item => ({
+          foodItemId: item.foodItemId,
+          name: item.name,
+          currentQuantity: item.quantity,
+          unit: item.unit,
+          checked: false,
+          newQuantity: item.quantity,
+        }));
+      
+      setMatchingPantryItems(matches);
+      
+      // Only open dialog after successful fetch and match
+      pantryCheckDialog.openDialog();
+    } catch (error) {
+      console.error('Error loading pantry items:', error);
+      showSnackbar('Failed to load pantry items', 'error');
+    } finally {
+      setLoadingPantryCheck(false);
+    }
+  };
+
+  const handlePantryItemCheck = (foodItemId: string, checked: boolean) => {
+    setMatchingPantryItems(prev =>
+      prev.map(item =>
+        item.foodItemId === foodItemId ? { ...item, checked } : item
+      )
+    );
+  };
+
+  const handlePantryItemQuantityChange = (foodItemId: string, newQuantity: number) => {
+    setMatchingPantryItems(prev =>
+      prev.map(item =>
+        item.foodItemId === foodItemId ? { ...item, newQuantity } : item
+      )
+    );
+  };
+
+  const handleApplyPantryCheck = async () => {
+    if (!selectedStore) return;
+    
+    try {
+      // Apply changes from pantry check
+      const updatedItems = shoppingListItems
+        .map(item => {
+          const match = matchingPantryItems.find(m => m.foodItemId === item.foodItemId);
+          if (match) {
+            // If checked off or quantity is 0, remove it (will be filtered out below)
+            if (match.checked || match.newQuantity <= 0) {
+              return null;
+            }
+            // Update quantity if changed
+            if (match.newQuantity !== item.quantity) {
+              const foodItem = foodItems.find(f => f._id === item.foodItemId);
+              const newName = foodItem 
+                ? (match.newQuantity === 1 ? foodItem.singularName : foodItem.pluralName)
+                : item.name;
+              return { ...item, quantity: match.newQuantity, name: newName };
+            }
+          }
+          return item;
+        })
+        .filter((item): item is ShoppingListItem => item !== null);
+      
+      setShoppingListItems(updatedItems);
+      
+      // Save to database
+      await updateShoppingList(selectedStore._id, { items: updatedItems });
+      
+      // Refresh stores list
+      const updatedStores = await fetchStores();
+      setStores(updatedStores);
+      
+      pantryCheckDialog.closeDialog();
+      setMatchingPantryItems([]);
+      
+      const removedCount = shoppingListItems.length - updatedItems.length;
+      const changedCount = matchingPantryItems.filter(m => !m.checked && m.newQuantity !== m.currentQuantity).length;
+      
+      if (removedCount > 0 || changedCount > 0) {
+        showSnackbar(
+          `Pantry check complete! ${removedCount > 0 ? `Removed ${removedCount} item(s). ` : ''}${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ''}`,
+          'success'
+        );
+      } else {
+        showSnackbar('No changes made', 'info');
+      }
+    } catch (error) {
+      console.error('Error applying pantry check:', error);
+      showSnackbar('Failed to apply pantry check', 'error');
     }
   };
 
@@ -489,7 +750,7 @@ export default function ShoppingListsPage() {
       setStores(updatedStores);
     } catch (error) {
       console.error('Error updating item quantity:', error);
-      alert('Failed to update item quantity');
+      showSnackbar('Failed to update item quantity', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
     }
@@ -509,7 +770,7 @@ export default function ShoppingListsPage() {
       await updateShoppingList(selectedStore._id, { items: updatedItems });
     } catch (error) {
       console.error('Error updating item unit:', error);
-      alert('Failed to update item unit');
+      showSnackbar('Failed to update item unit', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
     }
@@ -564,6 +825,50 @@ export default function ShoppingListsPage() {
               Add Store
             </Button>
           </Box>
+
+          {/* Pending Invitations Section */}
+          {pendingInvitations.length > 0 && (
+            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonAdd />
+                Pending Invitations ({pendingInvitations.length})
+              </Typography>
+              <List>
+                {pendingInvitations.map((inv) => (
+                  <Box key={inv.storeId}>
+                    <ListItem>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                        <Typography variant="h6">{inv.storeEmoji}</Typography>
+                        <ListItemText
+                          primary={inv.storeName}
+                          secondary={`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          color="success"
+                          size="small"
+                          title="Accept"
+                          onClick={() => handleAcceptInvitation(inv.storeId, inv.invitation.userId)}
+                        >
+                          <Check fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          title="Reject"
+                          onClick={() => handleRejectInvitation(inv.storeId, inv.invitation.userId)}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </ListItem>
+                    <Divider />
+                  </Box>
+                ))}
+              </List>
+            </Paper>
+          )}
 
           <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
             <SearchBar
@@ -628,28 +933,55 @@ export default function ShoppingListsPage() {
                                 >
                                   <ShoppingCart fontSize="small" />
                                 </IconButton>
-                                <IconButton 
-                                  size="small"
-                                  title="Edit Store"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditStore(store);
-                                  }}
-                                >
-                                  <Edit fontSize="small" />
-                                </IconButton>
-                                <IconButton 
-                                  size="small" 
-                                  color="error"
-                                  title="Delete Store"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedStore(store);
-                                    deleteConfirmDialog.openDialog();
-                                  }}
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
+                                
+                                {isStoreOwner(store) ? (
+                                  <>
+                                    <IconButton 
+                                      size="small"
+                                      title="Share Store"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenShareDialog(store);
+                                      }}
+                                    >
+                                      <Share fontSize="small" />
+                                    </IconButton>
+                                    <IconButton 
+                                      size="small"
+                                      title="Edit Store"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditStore(store);
+                                      }}
+                                    >
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton 
+                                      size="small" 
+                                      color="error"
+                                      title="Delete Store"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedStore(store);
+                                        deleteConfirmDialog.openDialog();
+                                      }}
+                                    >
+                                      <Delete fontSize="small" />
+                                    </IconButton>
+                                  </>
+                                ) : (
+                                  <IconButton 
+                                    size="small"
+                                    color="warning"
+                                    title="Leave Store"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleLeaveStore(store);
+                                    }}
+                                  >
+                                    <CloseIcon fontSize="small" />
+                                  </IconButton>
+                                )}
                               </Box>
                             </TableCell>
                           </TableRow>
@@ -705,28 +1037,55 @@ export default function ShoppingListsPage() {
                         >
                           <ShoppingCart fontSize="small" />
                         </IconButton>
-                        <IconButton 
-                          size="small"
-                          title="Edit Store"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditStore(store);
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          color="error"
-                          title="Delete Store"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedStore(store);
-                            deleteConfirmDialog.openDialog();
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
+                        
+                        {isStoreOwner(store) ? (
+                          <>
+                            <IconButton 
+                              size="small"
+                              title="Share Store"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenShareDialog(store);
+                              }}
+                            >
+                              <Share fontSize="small" />
+                            </IconButton>
+                            <IconButton 
+                              size="small"
+                              title="Edit Store"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditStore(store);
+                              }}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              title="Delete Store"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStore(store);
+                                deleteConfirmDialog.openDialog();
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </>
+                        ) : (
+                          <IconButton 
+                            size="small"
+                            color="warning"
+                            title="Leave Store"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLeaveStore(store);
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       </Box>
                     </Paper>
                   ))}
@@ -993,15 +1352,36 @@ export default function ShoppingListsPage() {
 
                 <Divider sx={{ my: 3 }} />
 
-                {/* Add from Meal Plans Button */}
-                <Button
-                  variant="outlined"
-                  startIcon={<CalendarMonth />}
-                  onClick={handleOpenMealPlanSelection}
-                  fullWidth
-                >
-                  Add Items from Meal Plans
-                </Button>
+                {/* Add from Meal Plans and Pantry Check Buttons */}
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<CalendarMonth />}
+                    onClick={handleOpenMealPlanSelection}
+                    fullWidth
+                    sx={{ flex: { sm: 1 } }}
+                  >
+                    Add Items from Meal Plans
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={loadingPantryCheck ? <CircularProgress size={20} sx={{ color: '#9c27b0' }} /> : <Kitchen />}
+                    onClick={handleOpenPantryCheck}
+                    disabled={loadingPantryCheck}
+                    fullWidth
+                    sx={{ 
+                      flex: { sm: 1 },
+                      borderColor: '#9c27b0',
+                      color: '#9c27b0',
+                      '&:hover': {
+                        borderColor: '#7b1fa2',
+                        bgcolor: 'rgba(156, 39, 176, 0.04)'
+                      }
+                    }}
+                  >
+                    {loadingPantryCheck ? 'Loading...' : 'Pantry Check'}
+                  </Button>
+                </Box>
 
                 <Divider sx={{ my: 3 }} />
               </>
@@ -1112,9 +1492,17 @@ export default function ShoppingListsPage() {
           Delete Store
         </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography gutterBottom>
             Are you sure you want to delete &quot;{selectedStore?.name}&quot;? This will also delete its shopping list. This action cannot be undone.
           </Typography>
+          
+          {selectedStore?.invitations?.some(inv => inv.status === 'accepted') && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              This store is shared with {selectedStore.invitations.filter(inv => inv.status === 'accepted').length} user(s). 
+              They will lose access when you delete it.
+            </Alert>
+          )}
+          
           <DialogActions primaryButtonIndex={1}>
             <Button onClick={deleteConfirmDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Cancel
@@ -1333,6 +1721,190 @@ export default function ShoppingListsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Share Store Dialog */}
+      <Dialog
+        open={shareDialog.open}
+        onClose={shareDialog.closeDialog}
+        maxWidth="sm"
+        fullWidth
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={shareDialog.closeDialog}>
+          Share &quot;{sharingStore?.name}&quot;
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Invite users by email. They&apos;ll be able to view and edit the shopping list.
+          </Typography>
+          
+          {/* Invite Section */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <TextField
+              label="Email Address"
+              type="email"
+              value={shareEmail}
+              onChange={(e) => setShareEmail(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && shareEmail.trim()) {
+                  handleInviteUser();
+                }
+              }}
+              size="small"
+              fullWidth
+              placeholder="user@example.com"
+            />
+            <Button
+              variant="contained"
+              onClick={handleInviteUser}
+              disabled={!shareEmail.trim()}
+              sx={{ minWidth: 100 }}
+            >
+              Invite
+            </Button>
+          </Box>
+
+          {/* Shared Users List */}
+          {sharingStore?.invitations && sharingStore.invitations.length > 0 && (
+            <>
+              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                Shared With:
+              </Typography>
+              <List>
+                {sharingStore.invitations
+                  .filter(inv => inv.status === 'accepted' || inv.status === 'pending')
+                  .map((inv) => (
+                  <ListItem key={inv.userId}>
+                    <ListItemText
+                      primary={inv.userEmail}
+                      secondary={inv.status === 'pending' ? 'Pending' : 'Accepted'}
+                    />
+                    {inv.status === 'accepted' && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        title="Remove user"
+                        onClick={() => handleRemoveUser(sharingStore._id, inv.userId)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    )}
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+
+          <DialogActions primaryButtonIndex={0}>
+            <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Done
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pantry Check Dialog */}
+      <Dialog
+        open={pantryCheckDialog.open}
+        onClose={pantryCheckDialog.closeDialog}
+        maxWidth="sm"
+        fullWidth
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={pantryCheckDialog.closeDialog}>
+          Pantry Check
+        </DialogTitle>
+        <DialogContent>
+          {matchingPantryItems.length === 0 ? (
+            <>
+              <Alert severity="info">
+                No items found in pantry. Add items to your pantry to use this feature.
+              </Alert>
+              <DialogActions primaryButtonIndex={0}>
+                <Button onClick={pantryCheckDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                  Close
+                </Button>
+              </DialogActions>
+            </>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These shopping list items are in your pantry. Check them off to remove from the list, or adjust quantities as needed.
+              </Typography>
+              <List>
+                {matchingPantryItems.map((item, index) => (
+                  <Box key={item.foodItemId}>
+                    <ListItem
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        py: 2,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+                        <Checkbox
+                          checked={item.checked}
+                          onChange={(e) => handlePantryItemCheck(item.foodItemId, e.target.checked)}
+                          sx={{ mr: 1 }}
+                        />
+                        <ListItemText
+                          primary={item.name}
+                          secondary={`Current: ${item.currentQuantity} ${item.unit && item.unit !== 'each' ? getUnitForm(item.unit, item.currentQuantity) : ''}`}
+                          sx={{
+                            textDecoration: item.checked ? 'line-through' : 'none',
+                            opacity: item.checked ? 0.6 : 1,
+                          }}
+                        />
+                      </Box>
+                      {!item.checked && (
+                        <Box sx={{ display: 'flex', gap: 1, ml: 6 }}>
+                          <TextField
+                            label="New Quantity"
+                            type="number"
+                            size="small"
+                            inputProps={{ step: 0.01, min: 0 }}
+                            value={item.newQuantity}
+                            onChange={(e) =>
+                              handlePantryItemQuantityChange(
+                                item.foodItemId,
+                                Math.max(0, parseFloat(e.target.value) || 0)
+                              )
+                            }
+                            sx={{ width: 150 }}
+                          />
+                          <TextField
+                            label="Unit"
+                            size="small"
+                            value={item.unit && item.unit !== 'each' ? getUnitForm(item.unit, item.newQuantity) : ''}
+                            disabled
+                            sx={{ width: 120 }}
+                          />
+                        </Box>
+                      )}
+                    </ListItem>
+                    {index < matchingPantryItems.length - 1 && <Divider />}
+                  </Box>
+                ))}
+              </List>
+            </>
+          )}
+          {matchingPantryItems.length > 0 && (
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={pantryCheckDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleApplyPantryCheck}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Apply Changes
+            </Button>
+          </DialogActions>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Emoji Picker Dialog */}
       <EmojiPicker
         open={emojiPickerDialog.open}
@@ -1340,6 +1912,47 @@ export default function ShoppingListsPage() {
         onSelect={handleEmojiSelect}
         currentEmoji={newStoreEmoji}
       />
+
+      {/* Leave Store Confirmation Dialog */}
+      <Dialog
+        open={leaveStoreConfirmDialog.open}
+        onClose={leaveStoreConfirmDialog.closeDialog}
+        sx={responsiveDialogStyle}
+      >
+        <DialogTitle onClose={leaveStoreConfirmDialog.closeDialog}>
+          Leave Store
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to leave &quot;{selectedStore?.name}&quot;? You&apos;ll lose access to this shared store.
+          </Typography>
+          <DialogActions primaryButtonIndex={1}>
+            <Button onClick={leaveStoreConfirmDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmLeaveStore} 
+              color="warning"
+              variant="contained"
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Leave Store
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AuthenticatedLayout>
   );
 }

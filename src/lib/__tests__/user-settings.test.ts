@@ -16,6 +16,9 @@ describe('user-settings', () => {
     it('has consistent structure', () => {
       expect(DEFAULT_USER_SETTINGS).toEqual({
         themeMode: expect.any(String),
+        mealPlanSharing: {
+          invitations: expect.any(Array)
+        }
       });
     });
 

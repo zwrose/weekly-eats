@@ -45,6 +45,11 @@ vi.mock('@/lib/mongodb', () => ({
             }),
           };
         }
+        if (name === 'users') {
+          return {
+            findOne: vi.fn().mockResolvedValue(null), // No shared access by default
+          };
+        }
         return {
           findOne: findOneMock,
           updateOne: updateOneMock,
