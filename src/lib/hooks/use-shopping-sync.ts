@@ -44,6 +44,24 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
+  // Store callbacks in refs to avoid dependency issues
+  const callbacksRef = useRef({
+    onPresenceUpdate,
+    onItemChecked,
+    onListUpdated,
+    onItemDeleted
+  });
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    callbacksRef.current = {
+      onPresenceUpdate,
+      onItemChecked,
+      onListUpdated,
+      onItemDeleted
+    };
+  }, [onPresenceUpdate, onItemChecked, onListUpdated, onItemDeleted]);
+
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const data: ShoppingListSyncMessage = JSON.parse(event.data);
@@ -52,32 +70,32 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
         case 'presence':
           if (data.activeUsers) {
             setActiveUsers(data.activeUsers);
-            onPresenceUpdate?.(data.activeUsers);
+            callbacksRef.current.onPresenceUpdate?.(data.activeUsers);
           }
           break;
 
         case 'item_checked':
           if (data.foodItemId !== undefined && data.checked !== undefined && data.updatedBy) {
-            onItemChecked?.(data.foodItemId, data.checked, data.updatedBy);
+            callbacksRef.current.onItemChecked?.(data.foodItemId, data.checked, data.updatedBy);
           }
           break;
 
         case 'list_updated':
           if (data.items && data.updatedBy) {
-            onListUpdated?.(data.items, data.updatedBy);
+            callbacksRef.current.onListUpdated?.(data.items, data.updatedBy);
           }
           break;
 
         case 'item_deleted':
           if (data.foodItemId && data.updatedBy) {
-            onItemDeleted?.(data.foodItemId, data.updatedBy);
+            callbacksRef.current.onItemDeleted?.(data.foodItemId, data.updatedBy);
           }
           break;
       }
     } catch (error) {
       console.error('Error parsing SSE message:', error);
     }
-  }, [onPresenceUpdate, onItemChecked, onListUpdated, onItemDeleted]);
+  }, []);
 
   const connect = useCallback(() => {
     if (!storeId || !enabled) return;
@@ -146,7 +164,9 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     return () => {
       disconnect();
     };
-  }, [storeId, enabled, connect, disconnect]);
+    // Only depend on storeId and enabled - connect/disconnect are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, enabled]);
 
   return {
     isConnected,

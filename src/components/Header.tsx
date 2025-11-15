@@ -7,7 +7,6 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Avatar,
   Menu,
   MenuItem,
   Button,
@@ -16,6 +15,7 @@ import {
   Divider,
   Box,
 } from "@mui/material";
+import { CachedAvatar } from "./CachedAvatar";
 import { 
   AccountCircle, 
   Settings,
@@ -220,15 +220,11 @@ export default function Header() {
                 },
               }}
             >
-              {session.user.image ? (
-                <Avatar
-                  src={session.user.image}
-                  alt={session.user.name || "Profile"}
-                  sx={{ width: 32, height: 32 }}
-                />
-              ) : (
-                <AccountCircle sx={{ width: 32, height: 32 }} />
-              )}
+              <CachedAvatar
+                src={session.user.image}
+                alt={session.user.name || "Profile"}
+                sx={{ width: 32, height: 32 }}
+              />
               <Typography variant="body1" color="text.secondary">
                 {session.user.name}
               </Typography>
