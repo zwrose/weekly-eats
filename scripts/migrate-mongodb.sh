@@ -15,8 +15,18 @@ DB_NAME="${MONGODB_DB_NAME:-weekly-eats}"
 DUMP_DIR="${MONGODB_DUMP_DIR:-./mongodb-dump}"
 
 export_data() {
+    # Try to detect database from .env.local if not set
+    local export_db_name="$DB_NAME"
+    if [ -f ".env.local" ]; then
+        local env_db=$(grep "^MONGODB_URI=" .env.local | sed 's/.*\/\([^/]*\)$/\1/' | tr -d '\r')
+        if [ -n "$env_db" ]; then
+            export_db_name="$env_db"
+            echo "ℹ️  Detected database from .env.local: $export_db_name"
+        fi
+    fi
+    
     echo "📦 Exporting MongoDB data..."
-    echo "   Database: $DB_NAME"
+    echo "   Database: $export_db_name"
     echo "   Output directory: $DUMP_DIR"
     echo ""
     
@@ -24,7 +34,7 @@ export_data() {
     mkdir -p "$DUMP_DIR"
     
     # Export the database
-    mongodump --db="$DB_NAME" --out="$DUMP_DIR"
+    mongodump --db="$export_db_name" --out="$DUMP_DIR"
     
     # Create a compressed archive
     echo ""
@@ -58,10 +68,44 @@ import_data() {
         exit 1
     fi
     
+    # Detect source database name from dump directory
+    local source_db_name=""
+    for dir in "$source_dump"/*; do
+        if [ -d "$dir" ] && [ -n "$(find "$dir" -name "*.bson" -o -name "*.metadata.json" | grep -v "\._")" ]; then
+            source_db_name=$(basename "$dir")
+            break
+        fi
+    done
+    
+    if [ -z "$source_db_name" ]; then
+        echo "❌ Error: Could not detect database name in dump directory"
+        echo "   Expected structure: $source_dump/<database-name>/"
+        exit 1
+    fi
+    
+    # Try to detect target database from .env.local if not set
+    local target_db_name="$DB_NAME"
+    if [ -f ".env.local" ]; then
+        local env_db=$(grep "^MONGODB_URI=" .env.local | sed 's/.*\/\([^/]*\)$/\1/' | tr -d '\r')
+        if [ -n "$env_db" ]; then
+            target_db_name="$env_db"
+            echo "ℹ️  Detected target database from .env.local: $target_db_name"
+        fi
+    fi
+    
     echo "📥 Importing MongoDB data..."
     echo "   Source: $source_dump"
-    echo "   Target database: $DB_NAME"
+    echo "   Source database: $source_db_name"
+    echo "   Target database: $target_db_name"
     echo ""
+    
+    # Clean up macOS metadata files (._* files)
+    echo "🧹 Cleaning up macOS metadata files..."
+    find "$source_dump" -name "._*" -type f -delete
+    local cleaned_count=$(find "$source_dump" -name "._*" -type f 2>/dev/null | wc -l)
+    if [ "$cleaned_count" -gt 0 ]; then
+        echo "   Removed macOS metadata files"
+    fi
     
     # Check if MongoDB is running
     if ! systemctl is-active --quiet mongod 2>/dev/null; then
@@ -75,14 +119,22 @@ import_data() {
     fi
     
     # Import the database
-    mongorestore --db="$DB_NAME" --drop "$source_dump/$DB_NAME"
+    echo "📥 Restoring data..."
+    if [ "$source_db_name" != "$target_db_name" ]; then
+        echo "   Note: Importing from '$source_db_name' into '$target_db_name'"
+        # When database names differ, restore directly to target database
+        # mongorestore will import all collections from the source directory
+        mongorestore --db="$target_db_name" --drop "$source_dump/$source_db_name"
+    else
+        mongorestore --db="$target_db_name" --drop "$source_dump/$source_db_name"
+    fi
     
     echo ""
     echo "✅ Import complete!"
     echo ""
     echo "🔧 Next steps:"
     echo "   1. Run 'npm run setup-db' to recreate indexes"
-    echo "   2. Verify your data: mongosh $DB_NAME"
+    echo "   2. Verify your data: mongosh $target_db_name"
 }
 
 show_help() {
