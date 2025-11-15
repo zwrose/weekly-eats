@@ -44,6 +44,16 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   removeUserFromStore: (...args: any[]) => mockRemoveUserFromStore(...args),
 }));
 
+// Mock the shopping sync hook
+vi.mock('../../../lib/hooks/use-shopping-sync', () => ({
+  useShoppingSync: vi.fn(() => ({
+    isConnected: false,
+    activeUsers: [],
+    reconnect: vi.fn(),
+    disconnect: vi.fn()
+  }))
+}));
+
 // Mock components
 vi.mock('../../../components/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>

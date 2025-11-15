@@ -33,7 +33,7 @@ import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, Pers
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
 import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
-import { useDialog, useConfirmDialog, useSearchPagination } from "@/lib/hooks";
+import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, type ActiveUser } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
@@ -146,6 +146,30 @@ export default function ShoppingListsPage() {
     newQuantity: number;
   }>>([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+
+  // Shopping Sync SSE connection
+  const shoppingSync = useShoppingSync({
+    storeId: selectedStore?._id || null,
+    enabled: viewListDialog.open,
+    onPresenceUpdate: (users) => {
+      setActiveUsers(users.filter(u => u.email !== session?.user?.email));
+    },
+    onItemChecked: (foodItemId, checked) => {
+      setShoppingListItems(prev => 
+        prev.map(item => 
+          item.foodItemId === foodItemId ? { ...item, checked } : item
+        )
+      );
+    },
+    onListUpdated: (items) => {
+      setShoppingListItems(items as ShoppingListItem[]);
+    },
+    onItemDeleted: (foodItemId, updatedBy) => {
+      setShoppingListItems(prev => prev.filter(item => item.foodItemId !== foodItemId));
+      showSnackbar(`${updatedBy} removed an item from the list`, 'info');
+    }
+  });
 
   const loadData = useCallback(async () => {
     try {
@@ -445,10 +469,51 @@ export default function ShoppingListsPage() {
     }
   };
 
-  const handleToggleItemChecked = (foodItemId: string) => {
+  const handleToggleItemChecked = async (foodItemId: string) => {
+    if (!selectedStore) return;
+
+    // Optimistic update
+    const previousItems = [...shoppingListItems];
     setShoppingListItems(shoppingListItems.map(item =>
       item.foodItemId === foodItemId ? { ...item, checked: !item.checked } : item
     ));
+
+    try {
+      const response = await fetch(
+        `/api/shopping-lists/${selectedStore._id}/items/${foodItemId}/toggle`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        // Revert on error
+        setShoppingListItems(previousItems);
+        
+        const errorData = await response.json();
+        if (response.status === 404) {
+          // Item was deleted by another user
+          showSnackbar('This item was already removed from the list', 'warning');
+          // Refresh the list
+          const store = await fetchStores().then(stores => 
+            stores.find(s => s._id === selectedStore._id)
+          );
+          if (store) {
+            setShoppingListItems(store.shoppingList?.items || []);
+          }
+        } else {
+          showSnackbar(errorData.error || 'Failed to update item', 'error');
+        }
+      }
+    } catch (error) {
+      // Revert on error
+      setShoppingListItems(previousItems);
+      console.error('Error toggling item checked:', error);
+      showSnackbar('Failed to update item', 'error');
+    }
   };
 
   // Meal plan import handlers
@@ -1219,9 +1284,64 @@ export default function ShoppingListsPage() {
         sx={responsiveDialogStyle}
       >
         <DialogTitle onClose={viewListDialog.closeDialog}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="h4">{selectedStore?.emoji}</Typography>
-            <Typography variant="h6">{selectedStore?.name}</Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="h4">{selectedStore?.emoji}</Typography>
+              <Typography variant="h6">{selectedStore?.name}</Typography>
+            </Box>
+            {(activeUsers.length > 0 || shoppingSync.isConnected) && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                {activeUsers.length > 0 && (
+                  <>
+                    <Typography variant="caption" color="text.secondary">
+                      Also viewing:
+                    </Typography>
+                    {activeUsers.map((user, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                          fontSize: "0.75rem"
+                        }}
+                      >
+                        {user.name}
+                      </Box>
+                    ))}
+                  </>
+                )}
+                {shoppingSync.isConnected && (
+                  <Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      bgcolor: "success.main",
+                      color: "success.contrastText",
+                      fontSize: "0.7rem"
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: "success.contrastText"
+                      }}
+                    />
+                    Live
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
         </DialogTitle>
         <DialogContent>

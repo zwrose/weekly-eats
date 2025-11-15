@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
+import { broadcastToStore } from '@/lib/shopping-sync-broadcast';
 import { ObjectId } from 'mongodb';
 import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
 
@@ -186,6 +187,14 @@ export async function PUT(
         };
       });
     }
+
+    // Broadcast the update to other connected users
+    broadcastToStore(storeId, {
+      type: 'list_updated',
+      items: shoppingList?.items || [],
+      updatedBy: session.user.email,
+      timestamp: new Date().toISOString()
+    }, session.user.id);
 
     return NextResponse.json(shoppingList);
   } catch (error) {
