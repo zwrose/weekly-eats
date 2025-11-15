@@ -16,9 +16,11 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/weekly
 
 async function createDatabaseIndexes() {
   const client = new MongoClient(MONGODB_URI);
+  let connected = false;
   
   try {
     await client.connect();
+    connected = true;
     const db = client.db();
 
     console.log('Creating database indexes...');
@@ -94,11 +96,28 @@ async function createDatabaseIndexes() {
     );
 
     console.log('Database indexes created successfully');
+    return true;
   } catch (error) {
+    // Check if it's a connection error
+    const isConnectionError = error.code === 'ECONNREFUSED' || 
+                             error.message?.includes('ECONNREFUSED') ||
+                             error.cause?.code === 'ECONNREFUSED';
+    
+    if (isConnectionError) {
+      console.warn('⚠️  MongoDB is not running or not accessible.');
+      console.warn('   The database indexes will be created when MongoDB is available.');
+      console.warn('   To install MongoDB, run: ./scripts/setup-ubuntu.sh');
+      console.warn('   Or see docs/SETUP.md for manual installation instructions.');
+      // Exit gracefully so dev server can still start
+      return false;
+    }
+    
     console.error('Error creating database indexes:', error);
     throw error;
   } finally {
-    await client.close();
+    if (connected) {
+      await client.close();
+    }
   }
 }
 
@@ -114,11 +133,23 @@ async function main() {
     console.log('Starting database setup...');
     
     // Create database indexes
-    await createDatabaseIndexes();
+    const success = await createDatabaseIndexes();
     
-    console.log('Database setup completed successfully!');
+    if (success) {
+      console.log('Database setup completed successfully!');
+    }
     process.exit(0);
   } catch (error) {
+    // Check if it's a connection error that was already handled
+    const isConnectionError = error.code === 'ECONNREFUSED' || 
+                             error.message?.includes('ECONNREFUSED') ||
+                             error.cause?.code === 'ECONNREFUSED';
+    
+    if (isConnectionError) {
+      // Already handled in createDatabaseIndexes, exit gracefully
+      process.exit(0);
+    }
+    
     console.error('Database setup failed:', error);
     process.exit(1);
   }

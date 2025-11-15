@@ -2,6 +2,18 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### First Time Setup
+
+If you're setting up on a new machine, see [docs/SETUP.md](docs/SETUP.md) for complete setup instructions, or run:
+
+```bash
+./scripts/setup-ubuntu.sh
+```
+
+This will install MongoDB and set up your environment.
+
+### Running the Development Server
+
 First, run the development server:
 
 ```bash
