@@ -18,7 +18,6 @@ import {
   CalendarMonth,
   ShoppingCart,
   Restaurant,
-  AccountCircle,
   Kitchen,
   FormatListBulleted,
   Settings,

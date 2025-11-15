@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import { CachedAvatar } from "./CachedAvatar";
 import { 
-  AccountCircle, 
   Settings,
   Logout,
   Person,

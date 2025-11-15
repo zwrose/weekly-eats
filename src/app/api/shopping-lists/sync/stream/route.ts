@@ -10,9 +10,6 @@ import {
   removeConnection
 } from '@/lib/shopping-sync-broadcast';
 
-// Re-export broadcastToStore for backward compatibility
-export { broadcastToStore } from '@/lib/shopping-sync-broadcast';
-
 /**
  * Helper to get all user IDs with access to a store
  */
