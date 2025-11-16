@@ -7,18 +7,17 @@ import {
   Paper,
   BottomNavigation,
   BottomNavigationAction,
-  Avatar,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Divider,
 } from "@mui/material";
+import { CachedAvatar } from "./CachedAvatar";
 import {
   CalendarMonth,
   ShoppingCart,
   Restaurant,
-  AccountCircle,
   Kitchen,
   FormatListBulleted,
   Settings,
@@ -144,15 +143,11 @@ export default function BottomNav() {
           <BottomNavigationAction
             aria-label="Profile"
             icon={
-              session.user.image ? (
-                <Avatar
-                  src={session.user.image}
-                  alt={session.user.name || "Profile"}
-                  sx={{ width: 24, height: 24 }}
-                />
-              ) : (
-                <AccountCircle />
-              )
+              <CachedAvatar
+                src={session.user.image}
+                alt={session.user.name || "Profile"}
+                sx={{ width: 24, height: 24 }}
+              />
             }
             onClick={handleProfileMenu}
           />

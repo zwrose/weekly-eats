@@ -22,6 +22,8 @@ export interface MealPlanItem {
   mealType: MealType;
   items: MealItem[];
   notes?: string;
+  skipped?: boolean;
+  skipReason?: string;
 }
 
 export interface MealItem {

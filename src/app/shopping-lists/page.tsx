@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { 
   Container, 
   Typography, 
@@ -32,8 +32,8 @@ import {
 import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd, Kitchen } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
-import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
-import { useDialog, useConfirmDialog, useSearchPagination } from "@/lib/hooks";
+import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations, fetchShoppingList } from "../../lib/shopping-list-utils";
+import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, usePersistentDialog, type ActiveUser } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
@@ -55,7 +55,7 @@ interface FoodItem {
   unit: string;
 }
 
-export default function ShoppingListsPage() {
+function ShoppingListsPageContent() {
   const { status } = useSession();
   const { data: session } = useSession();
   const [stores, setStores] = useState<StoreWithShoppingList[]>([]);
@@ -86,7 +86,7 @@ export default function ShoppingListsPage() {
   // Dialog states
   const createStoreDialog = useDialog();
   const editStoreDialog = useDialog();
-  const viewListDialog = useDialog();
+  const viewListDialog = usePersistentDialog('shoppingList');
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
@@ -127,6 +127,9 @@ export default function ShoppingListsPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState('');
   const [shoppingListItems, setShoppingListItems] = useState<ShoppingListItem[]>([]);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<"before" | "after" | null>(null);
   const [shopMode, setShopMode] = useState(false); // false = Edit Mode, true = Shop Mode
   
   // Meal plan import states
@@ -146,6 +149,58 @@ export default function ShoppingListsPage() {
     newQuantity: number;
   }>>([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+
+  // Shopping Sync SSE connection
+  const shoppingSync = useShoppingSync({
+    storeId: selectedStore?._id || null,
+    enabled: viewListDialog.open,
+    presenceUser: session?.user?.email
+      ? {
+          email: session.user.email,
+          name: (session.user as { name?: string })?.name || session.user.email,
+        }
+      : null,
+    onPresenceUpdate: (users) => {
+      setActiveUsers(users.filter(u => u.email !== session?.user?.email));
+    },
+    onItemChecked: (foodItemId, checked) => {
+      // Remote toggle: update the local state for that item
+      setShoppingListItems(prev =>
+        prev.map(item =>
+          item.foodItemId === foodItemId ? { ...item, checked } : item
+        )
+      );
+    },
+    onListUpdated: (items) => {
+      // Merge: keep local checked state, but accept structural/other changes from server
+      setShoppingListItems(prev => {
+        const newItems = items as ShoppingListItem[];
+
+        // Index current items by foodItemId for quick lookup
+        const currentById = new Map(prev.map(item => [item.foodItemId, item]));
+
+        return newItems.map(newItem => {
+          const current = currentById.get(newItem.foodItemId);
+          if (!current) {
+            // New item - trust server state
+            return newItem;
+          }
+
+          // Preserve local checked state, but accept other fields from server
+          return { ...newItem, checked: current.checked };
+        });
+      });
+    },
+    onItemDeleted: (foodItemId, updatedBy) => {
+      setShoppingListItems(prev => prev.filter(item => item.foodItemId !== foodItemId));
+      showSnackbar(`${updatedBy} removed an item from the list`, 'info');
+    }
+  });
+
+  // NOTE: Polling-based sync was temporarily used as a fallback while SSE reliability
+  // was being improved. With Redis-backed SSE broadcasting in place, this polling
+  // effect is disabled to allow testing pure real-time behavior.
 
   const loadData = useCallback(async () => {
     try {
@@ -331,19 +386,64 @@ export default function ShoppingListsPage() {
     return store.userId === userId;
   };
 
-  const handleViewList = (store: StoreWithShoppingList) => {
+  const handleViewList = async (store: StoreWithShoppingList) => {
     setSelectedStore(store);
-    setShoppingListItems(store.shoppingList?.items || []);
-    setShopMode(false); // Always start in Edit Mode
-    viewListDialog.openDialog();
+    setShopMode(false); // Always start in Edit Mode when opening from list
+    viewListDialog.openDialog({ storeId: store._id, mode: 'edit' });
+
+    try {
+      const list = await fetchShoppingList(store._id);
+      setShoppingListItems(list.items || []);
+    } catch (error) {
+      console.error('Error loading shopping list:', error);
+      showSnackbar('Failed to load latest shopping list', 'error');
+      setShoppingListItems(store.shoppingList?.items || []);
+    }
   };
 
-  const handleStartShopping = (store: StoreWithShoppingList) => {
+  const handleStartShopping = async (store: StoreWithShoppingList) => {
     setSelectedStore(store);
-    setShoppingListItems(store.shoppingList?.items || []);
     setShopMode(true); // Start directly in Shop Mode
-    viewListDialog.openDialog();
+    viewListDialog.openDialog({ storeId: store._id, mode: 'shop' });
+
+    try {
+      const list = await fetchShoppingList(store._id);
+      setShoppingListItems(list.items || []);
+    } catch (error) {
+      console.error('Error loading shopping list:', error);
+      showSnackbar('Failed to load latest shopping list', 'error');
+      setShoppingListItems(store.shoppingList?.items || []);
+    }
   };
+
+  // Restore selected store and mode from URL when dialog is open
+  useEffect(() => {
+    if (!viewListDialog.open) return;
+    const storeId = viewListDialog.data?.storeId;
+    if (!storeId) return;
+
+    const store = stores.find(s => s._id === storeId);
+    if (!store) {
+      return;
+    }
+
+    setSelectedStore(store);
+    setShopMode(viewListDialog.data?.mode === 'shop');
+
+    // Always re-fetch the latest list when entering the dialog (including refresh)
+    const loadLatestList = async () => {
+      try {
+        const list = await fetchShoppingList(store._id);
+        setShoppingListItems(list.items || []);
+      } catch (error) {
+        console.error('Error loading shopping list:', error);
+        showSnackbar('Failed to load latest shopping list', 'error');
+        setShoppingListItems(store.shoppingList?.items || []);
+      }
+    };
+
+    void loadLatestList();
+  }, [viewListDialog.open, viewListDialog.data, stores]);
 
   const getSortedShoppingListItems = (): ShoppingListItem[] => {
     if (!shopMode) return shoppingListItems;
@@ -445,10 +545,51 @@ export default function ShoppingListsPage() {
     }
   };
 
-  const handleToggleItemChecked = (foodItemId: string) => {
+  const handleToggleItemChecked = async (foodItemId: string) => {
+    if (!selectedStore) return;
+
+    // Optimistic update
+    const previousItems = [...shoppingListItems];
     setShoppingListItems(shoppingListItems.map(item =>
       item.foodItemId === foodItemId ? { ...item, checked: !item.checked } : item
     ));
+
+    try {
+      const response = await fetch(
+        `/api/shopping-lists/${selectedStore._id}/items/${foodItemId}/toggle`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        // Revert on error
+        setShoppingListItems(previousItems);
+        
+        const errorData = await response.json();
+        if (response.status === 404) {
+          // Item was deleted by another user
+          showSnackbar('This item was already removed from the list', 'warning');
+          // Refresh the list
+          const store = await fetchStores().then(stores => 
+            stores.find(s => s._id === selectedStore._id)
+          );
+          if (store) {
+            setShoppingListItems(store.shoppingList?.items || []);
+          }
+        } else {
+          showSnackbar(errorData.error || 'Failed to update item', 'error');
+        }
+      }
+    } catch (error) {
+      // Revert on error
+      setShoppingListItems(previousItems);
+      console.error('Error toggling item checked:', error);
+      showSnackbar('Failed to update item', 'error');
+    }
   };
 
   // Meal plan import handlers
@@ -773,6 +914,48 @@ export default function ShoppingListsPage() {
       showSnackbar('Failed to update item unit', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
+    }
+  };
+
+  const handleReorderItem = async (
+    sourceItemId: string,
+    targetItemId: string,
+    position: "before" | "after"
+  ) => {
+    if (!selectedStore || sourceItemId === targetItemId) {
+      return;
+    }
+
+    const currentItems = [...shoppingListItems];
+    const sourceIndex = currentItems.findIndex(item => item.foodItemId === sourceItemId);
+    const targetIndex = currentItems.findIndex(item => item.foodItemId === targetItemId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    let insertIndex = targetIndex;
+    if (position === "after") {
+      insertIndex = targetIndex + 1;
+    }
+
+    // Adjust for removal shifting indices when moving downwards
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+
+    const updatedItems = [...currentItems];
+    const [moved] = updatedItems.splice(sourceIndex, 1);
+    updatedItems.splice(insertIndex, 0, moved);
+
+    setShoppingListItems(updatedItems);
+
+    try {
+      await updateShoppingList(selectedStore._id, { items: updatedItems });
+    } catch (error) {
+      console.error('Error reordering items:', error);
+      showSnackbar('Failed to save new order', 'error');
+      setShoppingListItems(currentItems);
     }
   };
 
@@ -1219,9 +1402,64 @@ export default function ShoppingListsPage() {
         sx={responsiveDialogStyle}
       >
         <DialogTitle onClose={viewListDialog.closeDialog}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="h4">{selectedStore?.emoji}</Typography>
-            <Typography variant="h6">{selectedStore?.name}</Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="h4">{selectedStore?.emoji}</Typography>
+              <Typography variant="h6">{selectedStore?.name}</Typography>
+            </Box>
+            {(activeUsers.length > 0 || shoppingSync.isConnected) && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                {activeUsers.length > 0 && (
+                  <>
+                    <Typography variant="caption" color="text.secondary">
+                      Also viewing:
+                    </Typography>
+                    {activeUsers.map((user, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                          fontSize: "0.75rem"
+                        }}
+                      >
+                        {user.name}
+                      </Box>
+                    ))}
+                  </>
+                )}
+                {shoppingSync.isConnected && (
+                  <Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      bgcolor: "success.main",
+                      color: "success.contrastText",
+                      fontSize: "0.7rem"
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: "success.contrastText"
+                      }}
+                    />
+                    Live
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -1238,7 +1476,58 @@ export default function ShoppingListsPage() {
                   <List>
                     {shoppingListItems.map((item, index) => (
                       <Box key={item.foodItemId}>
-                        <ListItem sx={{ flexDirection: 'column', alignItems: 'stretch', py: 2 }}>
+                        <ListItem
+                          sx={{
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            py: 2,
+                            cursor: 'grab',
+                            borderTop:
+                              dragOverItemId === item.foodItemId && dragOverPosition === 'before'
+                                ? '2px solid'
+                                : 'none',
+                            borderBottom:
+                              dragOverItemId === item.foodItemId && dragOverPosition === 'after'
+                                ? '2px solid'
+                                : 'none',
+                            borderColor:
+                              dragOverItemId === item.foodItemId ? 'primary.main' : 'transparent',
+                          }}
+                          draggable
+                          onDragStart={() => setDraggedItemId(item.foodItemId)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            if (!draggedItemId || draggedItemId === item.foodItemId) {
+                              return;
+                            }
+
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const offsetY = e.clientY - rect.top;
+                            const position = offsetY < rect.height / 2 ? 'before' : 'after';
+
+                            setDragOverItemId(item.foodItemId);
+                            setDragOverPosition(position);
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverItemId === item.foodItemId) {
+                              setDragOverItemId(null);
+                              setDragOverPosition(null);
+                            }
+                          }}
+                          onDrop={() => {
+                            if (draggedItemId && dragOverPosition) {
+                              void handleReorderItem(draggedItemId, item.foodItemId, dragOverPosition);
+                            }
+                            setDraggedItemId(null);
+                            setDragOverItemId(null);
+                            setDragOverPosition(null);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedItemId(null);
+                            setDragOverItemId(null);
+                            setDragOverPosition(null);
+                          }}
+                        >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
                             <Typography variant="h6" sx={{ fontWeight: 'bold', flex: 1 }}>
                               {item.name}
@@ -1272,7 +1561,9 @@ export default function ShoppingListsPage() {
                                   handleUpdateItemUnit(item.foodItemId, value.value);
                                 }
                               }}
-                              getOptionLabel={(option) => option.label}
+                              getOptionLabel={(option) =>
+                                getUnitForm(option.value, item.quantity)
+                              }
                               isOptionEqualToValue={(option, value) => option.value === value.value}
                               renderInput={(params) => (
                                 <TextField {...params} label="Unit" size="small" />
@@ -1330,7 +1621,9 @@ export default function ShoppingListsPage() {
                       options={getUnitOptions()}
                       value={getUnitOptions().find(option => option.value === selectedUnit) ?? null}
                       onChange={(_, value) => setSelectedUnit(value?.value || '')}
-                      getOptionLabel={(option) => option.label}
+                      getOptionLabel={(option) =>
+                        getUnitForm(option.value, quantity)
+                      }
                       isOptionEqualToValue={(option, value) => option.value === value.value}
                       disabled={!selectedFoodItem}
                       renderInput={(params) => (
@@ -1411,7 +1704,10 @@ export default function ShoppingListsPage() {
                           >
                             <Checkbox
                               checked={item.checked}
-                              onChange={() => handleToggleItemChecked(item.foodItemId)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleItemChecked(item.foodItemId);
+                              }}
                             />
                             <ListItemText
                               primary={item.name}
@@ -1436,14 +1732,24 @@ export default function ShoppingListsPage() {
           <Box sx={{ display: 'flex', gap: 2, mt: 3, mb: 2 }}>
             <Button
               variant={!shopMode ? "contained" : "outlined"}
-              onClick={() => setShopMode(false)}
+              onClick={() => {
+                setShopMode(false);
+                if (selectedStore) {
+                  viewListDialog.openDialog({ storeId: selectedStore._id, mode: 'edit' });
+                }
+              }}
               fullWidth
             >
               Edit Mode
             </Button>
             <Button
               variant={shopMode ? "contained" : "outlined"}
-              onClick={() => setShopMode(true)}
+              onClick={() => {
+                setShopMode(true);
+                if (selectedStore) {
+                  viewListDialog.openDialog({ storeId: selectedStore._id, mode: 'shop' });
+                }
+              }}
               fullWidth
               disabled={shoppingListItems.length === 0}
             >
@@ -1657,7 +1963,12 @@ export default function ShoppingListsPage() {
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.existingUnit}
+                  {unitConflicts[currentConflictIndex]?.existingUnit
+                    ? getUnitForm(
+                        unitConflicts[currentConflictIndex]!.existingUnit,
+                        unitConflicts[currentConflictIndex]!.existingQuantity
+                      )
+                    : ''}
                 </Typography>
               </Paper>
               
@@ -1667,7 +1978,12 @@ export default function ShoppingListsPage() {
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.newQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.newUnit}
+                  {unitConflicts[currentConflictIndex]?.newUnit
+                    ? getUnitForm(
+                        unitConflicts[currentConflictIndex]!.newUnit,
+                        unitConflicts[currentConflictIndex]!.newQuantity
+                      )
+                    : ''}
                 </Typography>
               </Paper>
               
@@ -1693,7 +2009,9 @@ export default function ShoppingListsPage() {
                       handleConflictUnitChange(value.value);
                     }
                   }}
-                  getOptionLabel={(option) => option.label}
+                  getOptionLabel={(option) =>
+                    getUnitForm(option.value, getCurrentConflictResolution().quantity)
+                  }
                   isOptionEqualToValue={(option, value) => option.value === value.value}
                   renderInput={(params) => (
                     <TextField {...params} label="Unit" size="small" />
@@ -1954,5 +2272,23 @@ export default function ShoppingListsPage() {
         </Alert>
       </Snackbar>
     </AuthenticatedLayout>
+  );
+}
+
+export default function ShoppingListsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthenticatedLayout>
+          <Container maxWidth="md">
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          </Container>
+        </AuthenticatedLayout>
+      }
+    >
+      <ShoppingListsPageContent />
+    </Suspense>
   );
 }

@@ -46,6 +46,8 @@ export const FOOD_UNITS: FoodUnit[] = [
   { singular: 'drop', plural: 'drops', abbreviation: 'drop', abbreviationPlural: 'drops' },
   { singular: 'scoop', plural: 'scoops', abbreviation: 'scoop', abbreviationPlural: 'scoops' },
   { singular: 'dozen', plural: 'dozen', abbreviation: 'dozen', abbreviationPlural: 'dozen' },
+  { singular: 'box', plural: 'boxes', abbreviation: 'box', abbreviationPlural: 'boxes' },
+  { singular: 'loaf', plural: 'loaves', abbreviation: 'loaf', abbreviationPlural: 'loaves' },
 
   // Size modifiers
   { singular: 'large', plural: 'large', abbreviation: 'lg', abbreviationPlural: 'lg' },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
+import { publishShoppingEvent } from '@/lib/realtime/ably-server';
 import { ObjectId } from 'mongodb';
 import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
 
@@ -42,10 +43,13 @@ export async function GET(
     const shoppingListsCollection = db.collection('shoppingLists');
     const foodItemsCollection = db.collection('foodItems');
 
-    // Verify store exists and belongs to user
+    // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(storeId),
-      userId: session.user.id
+      $or: [
+        { userId: session.user.id },
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
+      ]
     });
 
     if (!store) {
@@ -71,7 +75,7 @@ export async function GET(
       }
     }
 
-    // Populate food item names
+    // Populate food item names, but preserve per-list units and quantities
     if (shoppingList.items && shoppingList.items.length > 0) {
       const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) => 
         ObjectId.createFromHexString(item.foodItemId)
@@ -84,12 +88,13 @@ export async function GET(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number }) => {
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
         const foodItem = foodItemMap.get(item.foodItemId);
         return {
           ...item,
           name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
-          unit: foodItem?.unit || 'piece'
+          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+          unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
       });
     }
@@ -136,15 +141,24 @@ export async function PUT(
     const shoppingListsCollection = db.collection('shoppingLists');
     const foodItemsCollection = db.collection('foodItems');
 
-    // Verify store exists and belongs to user
+    // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(storeId),
-      userId: session.user.id
+      $or: [
+        { userId: session.user.id },
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
+      ]
     });
 
     if (!store) {
       return NextResponse.json({ error: SHOPPING_LIST_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
+
+    // Capture previous items to detect deletions
+    const previousList = await shoppingListsCollection.findOne({ storeId });
+    const previousItems: { foodItemId: string }[] = Array.isArray(previousList?.items)
+      ? previousList!.items
+      : [];
 
     // Update or create the shopping list
     await shoppingListsCollection.updateOne(
@@ -177,15 +191,48 @@ export async function PUT(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number }) => {
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
         const foodItem = foodItemMap.get(item.foodItemId);
         return {
           ...item,
           name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
-          unit: foodItem?.unit || 'piece'
+          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+          unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
       });
     }
+
+    const timestamp = new Date().toISOString();
+
+    // Detect deleted items and broadcast item_deleted events
+    if (previousItems.length > 0) {
+      const newItemIds = new Set(
+        (shoppingList?.items || []).map(
+          (item: { foodItemId: string }) => item.foodItemId
+        )
+      );
+
+      const deletedItemIds = previousItems
+        .map(item => item.foodItemId)
+        .filter(foodItemId => !newItemIds.has(foodItemId));
+
+      await Promise.all(
+        deletedItemIds.map((foodItemId) =>
+          publishShoppingEvent(storeId, 'item_deleted', {
+            foodItemId,
+            updatedBy: session.user.email,
+            timestamp,
+          })
+        )
+      );
+    }
+
+    // Broadcast the updated list
+    await publishShoppingEvent(storeId, 'list_updated', {
+      items: shoppingList?.items || [],
+      updatedBy: session.user.email,
+      timestamp,
+    });
 
     return NextResponse.json(shoppingList);
   } catch (error) {

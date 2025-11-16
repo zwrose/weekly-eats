@@ -9,6 +9,9 @@ vi.mock('@mui/material/Grow', () => ({ default: ({ children }: { children: React
 vi.mock('@mui/material/Slide', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock('@mui/material/Zoom', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
 
+// ReadableStream polyfill is set up in react-act.setup.ts (runs first)
+// This ensures it's available before any Next.js modules are imported
+
 // Workaround for Next.js app/router globals if needed in tests
 // You can extend here as the test suite grows
 

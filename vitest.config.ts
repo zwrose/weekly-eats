@@ -7,6 +7,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./react-act.setup.ts', './vitest.setup.ts'],
+    isolate: true, // Ensure each test file runs in isolation
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true, // Use single fork for better isolation
+      },
+    },
     environmentOptions: {
       jsdom: {
         url: 'http://localhost/',

@@ -27,6 +27,7 @@ import {
   ListItem,
   ListItemText,
   TextField,
+  Checkbox,
 } from "@mui/material";
 import { Add, CalendarMonth, Settings, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
@@ -427,6 +428,10 @@ function MealPlansPageContent() {
     
     // Check each day's meals
     items.forEach((mealPlanItem) => {
+      // Skip validation for meals explicitly marked as skipped
+      if (mealPlanItem.skipped) {
+        return;
+      }
       const dayOfWeek = mealPlanItem.dayOfWeek;
       const mealType = mealPlanItem.mealType;
       
@@ -1294,11 +1299,12 @@ function MealPlansPageContent() {
                         const dayMeals = meals
                           .filter(mealType => selectedMealPlan.template.meals[mealType])
                           .map(mealType => {
-                            const mealItems = dayItems.filter(item => item.mealType === mealType);
+                            const mealPlanItem = dayItems.find(item => item.mealType === mealType);
                             
                             return {
                               mealType,
-                              items: mealItems.length > 0 ? mealItems[0].items : []
+                              items: mealPlanItem?.items ?? [],
+                              planItem: mealPlanItem ?? null
                             };
                           });
                         
@@ -1331,7 +1337,12 @@ function MealPlansPageContent() {
                             
                             {/* Day Content */}
                             <Box sx={{ p: 3 }}>
-                              {dayMeals.map((meal, mealIndex) => (
+                              {dayMeals.map((meal, mealIndex) => {
+                                const hasItems = (meal.items?.length ?? 0) > 0;
+                                const isSkipped = !hasItems && (meal.planItem?.skipped ?? false);
+                                const skipReason = !hasItems ? (meal.planItem?.skipReason ?? '') : '';
+
+                                return (
                                 <Box key={meal.mealType} sx={{ mb: mealIndex === dayMeals.length - 1 ? 0 : 3 }}>
                                   <Typography 
                                     variant="subtitle1" 
@@ -1347,42 +1358,132 @@ function MealPlansPageContent() {
                                   >
                                     {getMealTypeName(meal.mealType)}
                                   </Typography>
-                                  <MealEditor
-                                    mealItems={meal.items}
-                                    onChange={(newItems) => {
-                                      // Update the meal plan
-                                      const updatedMealPlan = { ...selectedMealPlan };
-                                      const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
-                                        item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
-                                      );
-                                      
-                                      // Always update the meal plan item, even if it's empty
-                                      if (existingMealPlanItemIndex !== -1) {
-                                        updatedMealPlan.items[existingMealPlanItemIndex].items = newItems;
-                                      } else {
-                                        // Create a new meal plan item even if it's empty (to allow adding items)
-                                        updatedMealPlan.items.push({
-                                          _id: `temp-${Date.now()}`,
-                                          mealPlanId: selectedMealPlan._id,
-                                          dayOfWeek: dayOfWeek as DayOfWeek,
-                                          mealType: meal.mealType as MealType,
-                                          items: newItems
-                                        });
-                                      }
-                                      
-                                      setSelectedMealPlan(updatedMealPlan);
-                                      // Update validation immediately
-                                      const validation = validateMealPlan(updatedMealPlan.items);
-                                      setMealPlanValidationErrors(validation.errors);
-                                      // Hide validation errors if they're resolved
-                                      if (validation.isValid) {
-                                        setShowValidationErrors(false);
-                                      }
-                                    }}
-                                    onFoodItemAdded={handleAddFoodItem}
-                                  />
+                                  {/* Skip controls only when there are no meal items */}
+                                  {!hasItems && (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Checkbox
+                                          size="small"
+                                          checked={isSkipped}
+                                          onChange={(e) => {
+                                            if (!selectedMealPlan) return;
+                                            const updatedMealPlan = { ...selectedMealPlan };
+                                            const existingIndex = updatedMealPlan.items.findIndex(
+                                              item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
+                                            );
+
+                                            if (existingIndex !== -1) {
+                                              updatedMealPlan.items[existingIndex] = {
+                                                ...updatedMealPlan.items[existingIndex],
+                                                skipped: e.target.checked,
+                                                skipReason: e.target.checked
+                                                  ? (updatedMealPlan.items[existingIndex].skipReason || '')
+                                                  : undefined
+                                              };
+                                            } else {
+                                              updatedMealPlan.items.push({
+                                                _id: `temp-${Date.now()}`,
+                                                mealPlanId: selectedMealPlan._id,
+                                                dayOfWeek: dayOfWeek as DayOfWeek,
+                                                mealType: meal.mealType as MealType,
+                                                items: [],
+                                                skipped: e.target.checked,
+                                                skipReason: e.target.checked ? '' : undefined
+                                              });
+                                            }
+
+                                            setSelectedMealPlan(updatedMealPlan);
+                                            const validation = validateMealPlan(updatedMealPlan.items);
+                                            setMealPlanValidationErrors(validation.errors);
+                                            if (validation.isValid) {
+                                              setShowValidationErrors(false);
+                                            }
+                                          }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary">
+                                          Skip this meal
+                                        </Typography>
+                                      </Box>
+                                      {isSkipped && (
+                                        <TextField
+                                          label="Skip reason"
+                                          size="small"
+                                          fullWidth
+                                          value={skipReason}
+                                          onChange={(e) => {
+                                            if (!selectedMealPlan) return;
+                                            const updatedMealPlan = { ...selectedMealPlan };
+                                            const existingIndex = updatedMealPlan.items.findIndex(
+                                              item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
+                                            );
+
+                                            if (existingIndex !== -1) {
+                                              updatedMealPlan.items[existingIndex] = {
+                                                ...updatedMealPlan.items[existingIndex],
+                                                skipped: true,
+                                                skipReason: e.target.value
+                                              };
+                                            } else {
+                                              updatedMealPlan.items.push({
+                                                _id: `temp-${Date.now()}`,
+                                                mealPlanId: selectedMealPlan._id,
+                                                dayOfWeek: dayOfWeek as DayOfWeek,
+                                                mealType: meal.mealType as MealType,
+                                                items: [],
+                                                skipped: true,
+                                                skipReason: e.target.value
+                                              });
+                                            }
+
+                                            setSelectedMealPlan(updatedMealPlan);
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
+                                  )}
+
+                                  {/* Only show MealEditor when meal is not explicitly skipped */}
+                                  {!isSkipped && (
+                                    <MealEditor
+                                      mealItems={meal.items}
+                                      onChange={(newItems) => {
+                                        // Update the meal plan
+                                        const updatedMealPlan = { ...selectedMealPlan };
+                                        const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
+                                          item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
+                                        );
+                                        
+                                        // Always update the meal plan item, even if it's empty
+                                        if (existingMealPlanItemIndex !== -1) {
+                                          updatedMealPlan.items[existingMealPlanItemIndex] = {
+                                            ...updatedMealPlan.items[existingMealPlanItemIndex],
+                                            items: newItems
+                                          };
+                                        } else {
+                                          // Create a new meal plan item even if it's empty (to allow adding items)
+                                          updatedMealPlan.items.push({
+                                            _id: `temp-${Date.now()}`,
+                                            mealPlanId: selectedMealPlan._id,
+                                            dayOfWeek: dayOfWeek as DayOfWeek,
+                                            mealType: meal.mealType as MealType,
+                                            items: newItems
+                                          });
+                                        }
+                                        
+                                        setSelectedMealPlan(updatedMealPlan);
+                                        // Update validation immediately
+                                        const validation = validateMealPlan(updatedMealPlan.items);
+                                        setMealPlanValidationErrors(validation.errors);
+                                        // Hide validation errors if they're resolved
+                                        if (validation.isValid) {
+                                          setShowValidationErrors(false);
+                                        }
+                                      }}
+                                      onFoodItemAdded={handleAddFoodItem}
+                                    />
+                                  )}
                                 </Box>
-                              ))}
+                              )})}
                             </Box>
                           </Paper>
                         );
@@ -1508,7 +1609,10 @@ function MealPlansPageContent() {
                                 .filter(mealType => selectedMealPlan.template.meals[mealType])
                                 .map((mealType) => {
                                   const mealItems = dayItems.filter(item => item.mealType === mealType);
-                                  
+                                  const mealPlanItem = mealItems[0];
+                                  const isSkipped = mealPlanItem?.skipped ?? false;
+                                  const skipReason = mealPlanItem?.skipReason ?? '';
+
                                   return (
                                     <Box key={mealType} sx={{ mb: 3 }}>
                                       <Typography 
@@ -1525,7 +1629,11 @@ function MealPlansPageContent() {
                                       >
                                         {getMealTypeName(mealType)}
                                       </Typography>
-                                      {mealItems.length > 0 ? (
+                                      {isSkipped ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ pl: 2, fontStyle: 'italic' }}>
+                                          Skipped{skipReason ? `: ${skipReason}` : ''}
+                                        </Typography>
+                                      ) : mealItems.length > 0 ? (
                                         <Box sx={{ pl: 2 }}>
                                           {mealItems.map((item, index) => (
                                             <Box key={index}>
