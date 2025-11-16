@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { 
   Container, 
   Typography, 
@@ -55,7 +55,7 @@ interface FoodItem {
   unit: string;
 }
 
-export default function ShoppingListsPage() {
+function ShoppingListsPageContent() {
   const { status } = useSession();
   const { data: session } = useSession();
   const [stores, setStores] = useState<StoreWithShoppingList[]>([]);
@@ -2272,5 +2272,23 @@ export default function ShoppingListsPage() {
         </Alert>
       </Snackbar>
     </AuthenticatedLayout>
+  );
+}
+
+export default function ShoppingListsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthenticatedLayout>
+          <Container maxWidth="md">
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          </Container>
+        </AuthenticatedLayout>
+      }
+    >
+      <ShoppingListsPageContent />
+    </Suspense>
   );
 }

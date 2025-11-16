@@ -579,5 +579,110 @@ describe('MealPlansPage - Delete Functionality', () => {
 
     unmount();
   });
+
+  it('displays skipped meals with reason in view mode', async () => {
+    const mealPlanWithSkippedMeal = {
+      ...mockMealPlan,
+      items: [
+        {
+          _id: 'item-1',
+          mealPlanId: 'meal-plan-123',
+          dayOfWeek: 'saturday' as const,
+          mealType: 'breakfast' as const,
+          items: [],
+          skipped: true,
+          skipReason: 'Out for brunch'
+        }
+      ],
+      template: {
+        startDay: 'saturday' as const,
+        meals: {
+          breakfast: true,
+          lunch: false,
+          dinner: false,
+          staples: false
+        },
+        weeklyStaples: []
+      }
+    };
+
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn()
+    }));
+
+    const { usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+
+    mockFetchMealPlans.mockResolvedValue([mealPlanWithSkippedMeal]);
+    mockFetchMealPlan.mockResolvedValue(mealPlanWithSkippedMeal);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      // Should show the "Skipped: reason" text in view mode
+      expect(screen.getByText(/Skipped: Out for brunch/i)).toBeInTheDocument();
+    });
+
+    unmount();
+  });
+
+  it('shows skip controls and reason in edit mode for a skipped meal', async () => {
+    const mealPlanSkipped = {
+      ...mockMealPlan,
+      items: [
+        {
+          _id: 'item-1',
+          mealPlanId: 'meal-plan-123',
+          dayOfWeek: 'saturday' as const,
+          mealType: 'breakfast' as const,
+          items: [],
+          skipped: true,
+          skipReason: 'Leftovers'
+        }
+      ],
+      template: {
+        startDay: 'saturday' as const,
+        meals: {
+          breakfast: true,
+          lunch: false,
+          dinner: false,
+          staples: false
+        },
+        weeklyStaples: []
+      }
+    };
+
+    const mockPersistentDialog = vi.fn(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn()
+    }));
+
+    const { usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
+
+    mockFetchMealPlans.mockResolvedValue([mealPlanSkipped]);
+    mockFetchMealPlan.mockResolvedValue(mealPlanSkipped);
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      // Edit dialog is open with our meal plan
+      expect(screen.getByText(mealPlanSkipped.name)).toBeInTheDocument();
+    });
+
+    // Skip checkbox label and reason should be visible
+    const skipLabels = screen.getAllByText(/Skip this meal/i);
+    expect(skipLabels.length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue('Leftovers')).toBeInTheDocument();
+
+    unmount();
+  });
 });
 

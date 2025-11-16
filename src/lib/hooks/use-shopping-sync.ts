@@ -45,6 +45,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const clientRef = useRef<Ably.Realtime | null>(null);
   const channelRef = useRef<Ably.Types.RealtimeChannelCallbacks | null>(null);
+  const presenceUserRef = useRef<ActiveUser | null>(presenceUser ?? null);
 
   // Store callbacks in refs to avoid dependency issues
   const callbacksRef = useRef({
@@ -64,6 +65,11 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     };
   }, [onPresenceUpdate, onItemChecked, onListUpdated, onItemDeleted]);
 
+  // Keep presenceUser in a ref so we don't need it in connect's dependencies
+  useEffect(() => {
+    presenceUserRef.current = presenceUser ?? null;
+  }, [presenceUser]);
+
   const connect = useCallback(async () => {
     if (!storeId || !enabled) return;
 
@@ -76,9 +82,10 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
       channelRef.current = channel;
 
       // Enter presence with current user info so others can see who is viewing
-      if (presenceUser) {
+      const userForPresence = presenceUserRef.current;
+      if (userForPresence) {
         try {
-          channel.presence.enter(presenceUser);
+          channel.presence.enter(userForPresence);
         } catch (err) {
           console.error('Error entering Ably presence:', err);
         }
