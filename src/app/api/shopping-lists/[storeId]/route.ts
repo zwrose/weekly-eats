@@ -43,10 +43,13 @@ export async function GET(
     const shoppingListsCollection = db.collection('shoppingLists');
     const foodItemsCollection = db.collection('foodItems');
 
-    // Verify store exists and belongs to user
+    // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(storeId),
-      userId: session.user.id
+      $or: [
+        { userId: session.user.id },
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
+      ]
     });
 
     if (!store) {
@@ -137,15 +140,24 @@ export async function PUT(
     const shoppingListsCollection = db.collection('shoppingLists');
     const foodItemsCollection = db.collection('foodItems');
 
-    // Verify store exists and belongs to user
+    // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(storeId),
-      userId: session.user.id
+      $or: [
+        { userId: session.user.id },
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
+      ]
     });
 
     if (!store) {
       return NextResponse.json({ error: SHOPPING_LIST_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
+
+    // Capture previous items to detect deletions
+    const previousList = await shoppingListsCollection.findOne({ storeId });
+    const previousItems: { foodItemId: string }[] = Array.isArray(previousList?.items)
+      ? previousList!.items
+      : [];
 
     // Update or create the shopping list
     await shoppingListsCollection.updateOne(
@@ -188,13 +200,45 @@ export async function PUT(
       });
     }
 
+    const timestamp = new Date().toISOString();
+
+    // Detect deleted items and broadcast item_deleted events
+    if (previousItems.length > 0) {
+      const newItemIds = new Set(
+        (shoppingList?.items || []).map(
+          (item: { foodItemId: string }) => item.foodItemId
+        )
+      );
+
+      const deletedItemIds = previousItems
+        .map(item => item.foodItemId)
+        .filter(foodItemId => !newItemIds.has(foodItemId));
+
+      deletedItemIds.forEach((foodItemId) => {
+        broadcastToStore(
+          storeId,
+          {
+            type: 'item_deleted',
+            foodItemId,
+            updatedBy: session.user.email,
+            timestamp,
+          },
+          session.user.id
+        );
+      });
+    }
+
     // Broadcast the update to other connected users
-    broadcastToStore(storeId, {
-      type: 'list_updated',
-      items: shoppingList?.items || [],
-      updatedBy: session.user.email,
-      timestamp: new Date().toISOString()
-    }, session.user.id);
+    broadcastToStore(
+      storeId,
+      {
+        type: 'list_updated',
+        items: shoppingList?.items || [],
+        updatedBy: session.user.email,
+        timestamp,
+      },
+      session.user.id
+    );
 
     return NextResponse.json(shoppingList);
   } catch (error) {

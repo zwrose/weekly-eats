@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   Container, 
   Typography, 
@@ -32,7 +32,7 @@ import {
 import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd, Kitchen } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
-import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
+import { fetchStores, fetchShoppingList, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
 import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, type ActiveUser } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
@@ -156,20 +156,87 @@ export default function ShoppingListsPage() {
       setActiveUsers(users.filter(u => u.email !== session?.user?.email));
     },
     onItemChecked: (foodItemId, checked) => {
-      setShoppingListItems(prev => 
-        prev.map(item => 
+      // Remote toggle: update the local state for that item
+      setShoppingListItems(prev =>
+        prev.map(item =>
           item.foodItemId === foodItemId ? { ...item, checked } : item
         )
       );
     },
     onListUpdated: (items) => {
-      setShoppingListItems(items as ShoppingListItem[]);
+      // Merge: keep local checked state, but accept structural/other changes from server
+      setShoppingListItems(prev => {
+        const newItems = items as ShoppingListItem[];
+
+        // Index current items by foodItemId for quick lookup
+        const currentById = new Map(prev.map(item => [item.foodItemId, item]));
+
+        return newItems.map(newItem => {
+          const current = currentById.get(newItem.foodItemId);
+          if (!current) {
+            // New item - trust server state
+            return newItem;
+          }
+
+          // Preserve local checked state, but accept other fields from server
+          return { ...newItem, checked: current.checked };
+        });
+      });
     },
     onItemDeleted: (foodItemId, updatedBy) => {
       setShoppingListItems(prev => prev.filter(item => item.foodItemId !== foodItemId));
       showSnackbar(`${updatedBy} removed an item from the list`, 'info');
     }
   });
+
+  // Fallback polling to keep shopping list in sync across users while dialog is open
+  useEffect(() => {
+    if (!viewListDialog.open || !selectedStore?._id) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const pollShoppingList = async () => {
+      try {
+        const list = await fetchShoppingList(selectedStore._id);
+        if (isCancelled) return;
+
+        // Merge polled data with local checked state to avoid flicker
+        setShoppingListItems(prev => {
+          const currentById = new Map(prev.map(item => [item.foodItemId, item]));
+          const serverItems = (list.items || []) as ShoppingListItem[];
+
+          return serverItems.map(newItem => {
+            const current = currentById.get(newItem.foodItemId);
+            if (!current) {
+              return newItem;
+            }
+            return { ...newItem, checked: current.checked };
+          });
+        });
+
+        setStores(prev =>
+          prev.map(store =>
+            store._id === selectedStore._id
+              ? { ...store, shoppingList: list }
+              : store
+          )
+        );
+      } catch (error) {
+        console.error('Error polling shopping list:', error);
+      }
+    };
+
+    // Initial fetch plus interval
+    pollShoppingList();
+    const intervalId = setInterval(pollShoppingList, 2000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [viewListDialog.open, selectedStore?._id]);
 
   const loadData = useCallback(async () => {
     try {

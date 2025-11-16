@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .next",
     "dev": "npm run setup-db && next dev --turbopack",
+    "dev:clean": "npm run clean && npm run dev",
     "build": "npm run setup-db && next build",
     "start": "next start",
     "lint": "next lint",
