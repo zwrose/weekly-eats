@@ -75,7 +75,7 @@ export async function GET(
       }
     }
 
-    // Populate food item names
+    // Populate food item names, but preserve per-list units and quantities
     if (shoppingList.items && shoppingList.items.length > 0) {
       const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) => 
         ObjectId.createFromHexString(item.foodItemId)
@@ -88,12 +88,13 @@ export async function GET(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number }) => {
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
         const foodItem = foodItemMap.get(item.foodItemId);
         return {
           ...item,
           name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
-          unit: foodItem?.unit || 'piece'
+          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+          unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
       });
     }
@@ -190,12 +191,13 @@ export async function PUT(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number }) => {
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
         const foodItem = foodItemMap.get(item.foodItemId);
         return {
           ...item,
           name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
-          unit: foodItem?.unit || 'piece'
+          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+          unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
       });
     }

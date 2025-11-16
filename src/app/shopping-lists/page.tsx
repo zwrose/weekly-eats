@@ -152,6 +152,12 @@ export default function ShoppingListsPage() {
   const shoppingSync = useShoppingSync({
     storeId: selectedStore?._id || null,
     enabled: viewListDialog.open,
+    presenceUser: session?.user?.email
+      ? {
+          email: session.user.email,
+          name: (session.user as { name?: string })?.name || session.user.email,
+        }
+      : null,
     onPresenceUpdate: (users) => {
       setActiveUsers(users.filter(u => u.email !== session?.user?.email));
     },
@@ -1414,7 +1420,9 @@ export default function ShoppingListsPage() {
                                   handleUpdateItemUnit(item.foodItemId, value.value);
                                 }
                               }}
-                              getOptionLabel={(option) => option.label}
+                              getOptionLabel={(option) =>
+                                getUnitForm(option.value, item.quantity)
+                              }
                               isOptionEqualToValue={(option, value) => option.value === value.value}
                               renderInput={(params) => (
                                 <TextField {...params} label="Unit" size="small" />
@@ -1472,7 +1480,9 @@ export default function ShoppingListsPage() {
                       options={getUnitOptions()}
                       value={getUnitOptions().find(option => option.value === selectedUnit) ?? null}
                       onChange={(_, value) => setSelectedUnit(value?.value || '')}
-                      getOptionLabel={(option) => option.label}
+                      getOptionLabel={(option) =>
+                        getUnitForm(option.value, quantity)
+                      }
                       isOptionEqualToValue={(option, value) => option.value === value.value}
                       disabled={!selectedFoodItem}
                       renderInput={(params) => (
@@ -1802,7 +1812,12 @@ export default function ShoppingListsPage() {
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.existingQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.existingUnit}
+                  {unitConflicts[currentConflictIndex]?.existingUnit
+                    ? getUnitForm(
+                        unitConflicts[currentConflictIndex]!.existingUnit,
+                        unitConflicts[currentConflictIndex]!.existingQuantity
+                      )
+                    : ''}
                 </Typography>
               </Paper>
               
@@ -1812,7 +1827,12 @@ export default function ShoppingListsPage() {
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                   {unitConflicts[currentConflictIndex]?.newQuantity}{' '}
-                  {unitConflicts[currentConflictIndex]?.newUnit}
+                  {unitConflicts[currentConflictIndex]?.newUnit
+                    ? getUnitForm(
+                        unitConflicts[currentConflictIndex]!.newUnit,
+                        unitConflicts[currentConflictIndex]!.newQuantity
+                      )
+                    : ''}
                 </Typography>
               </Paper>
               
@@ -1838,7 +1858,9 @@ export default function ShoppingListsPage() {
                       handleConflictUnitChange(value.value);
                     }
                   }}
-                  getOptionLabel={(option) => option.label}
+                  getOptionLabel={(option) =>
+                    getUnitForm(option.value, getCurrentConflictResolution().quantity)
+                  }
                   isOptionEqualToValue={(option, value) => option.value === value.value}
                   renderInput={(params) => (
                     <TextField {...params} label="Unit" size="small" />

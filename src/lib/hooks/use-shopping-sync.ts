@@ -20,6 +20,7 @@ export interface ShoppingListSyncMessage {
 export interface UseShoppingSyncOptions {
   storeId: string | null;
   enabled?: boolean;
+  presenceUser?: ActiveUser | null;
   onPresenceUpdate?: (users: ActiveUser[]) => void;
   onItemChecked?: (foodItemId: string, checked: boolean, updatedBy: string) => void;
   onListUpdated?: (items: unknown[], updatedBy: string) => void;
@@ -33,6 +34,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
   const {
     storeId,
     enabled = true,
+    presenceUser,
     onPresenceUpdate,
     onItemChecked,
     onListUpdated,
@@ -72,6 +74,15 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
       const channelName = `shopping-store:${storeId}`;
       const channel = client.channels.get(channelName);
       channelRef.current = channel;
+
+      // Enter presence with current user info so others can see who is viewing
+      if (presenceUser) {
+        try {
+          channel.presence.enter(presenceUser);
+        } catch (err) {
+          console.error('Error entering Ably presence:', err);
+        }
+      }
 
       channel.subscribe('item_checked', (msg) => {
         const data = msg.data as ShoppingListSyncMessage;
@@ -136,6 +147,8 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     const channel = channelRef.current;
     if (channel) {
       try {
+        // Leave presence for this channel
+        channel.presence.leave();
         channel.unsubscribe();
         channel.presence.unsubscribe();
       } catch (error) {
