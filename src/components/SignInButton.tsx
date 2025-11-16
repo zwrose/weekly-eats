@@ -6,23 +6,21 @@ import { useSearchParams } from "next/navigation";
 
 export default function SignInButton() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/meal-plans';
+  const callbackUrl = searchParams.get("callbackUrl") || "/meal-plans";
 
   return (
     <Button
-      variant="outlined"
+      variant="contained"
+      color="inherit"
+      size="large"
       onClick={() => signIn("google", { callbackUrl })}
       sx={{
-        borderColor: "#dadce0",
-        color: "#3c4043",
-        fontFamily: '"Product Sans", "Roboto", "Arial", sans-serif',
-        fontSize: "14px",
-        fontWeight: 500,
-        letterSpacing: "0.25px",
+        textTransform: "none",
+        bgcolor: "background.paper",
+        color: "text.primary",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
         "&:hover": {
-          borderColor: "#dadce0",
-          backgroundColor: "#f8f9fa",
-          boxShadow: "0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 1px 2px 0 rgba(60, 64, 67, 0.15)",
+          bgcolor: "grey.100",
         },
       }}
       startIcon={
@@ -49,4 +47,4 @@ export default function SignInButton() {
       Sign in with Google
     </Button>
   );
-} 
+}
