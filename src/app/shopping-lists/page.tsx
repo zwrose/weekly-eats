@@ -32,8 +32,8 @@ import {
 import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd, Kitchen } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
-import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
-import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, type ActiveUser } from "@/lib/hooks";
+import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations, fetchShoppingList } from "../../lib/shopping-list-utils";
+import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, usePersistentDialog, type ActiveUser } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
@@ -86,7 +86,7 @@ export default function ShoppingListsPage() {
   // Dialog states
   const createStoreDialog = useDialog();
   const editStoreDialog = useDialog();
-  const viewListDialog = useDialog();
+  const viewListDialog = usePersistentDialog('shoppingList');
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
@@ -383,19 +383,64 @@ export default function ShoppingListsPage() {
     return store.userId === userId;
   };
 
-  const handleViewList = (store: StoreWithShoppingList) => {
+  const handleViewList = async (store: StoreWithShoppingList) => {
     setSelectedStore(store);
-    setShoppingListItems(store.shoppingList?.items || []);
-    setShopMode(false); // Always start in Edit Mode
-    viewListDialog.openDialog();
+    setShopMode(false); // Always start in Edit Mode when opening from list
+    viewListDialog.openDialog({ storeId: store._id, mode: 'edit' });
+
+    try {
+      const list = await fetchShoppingList(store._id);
+      setShoppingListItems(list.items || []);
+    } catch (error) {
+      console.error('Error loading shopping list:', error);
+      showSnackbar('Failed to load latest shopping list', 'error');
+      setShoppingListItems(store.shoppingList?.items || []);
+    }
   };
 
-  const handleStartShopping = (store: StoreWithShoppingList) => {
+  const handleStartShopping = async (store: StoreWithShoppingList) => {
     setSelectedStore(store);
-    setShoppingListItems(store.shoppingList?.items || []);
     setShopMode(true); // Start directly in Shop Mode
-    viewListDialog.openDialog();
+    viewListDialog.openDialog({ storeId: store._id, mode: 'shop' });
+
+    try {
+      const list = await fetchShoppingList(store._id);
+      setShoppingListItems(list.items || []);
+    } catch (error) {
+      console.error('Error loading shopping list:', error);
+      showSnackbar('Failed to load latest shopping list', 'error');
+      setShoppingListItems(store.shoppingList?.items || []);
+    }
   };
+
+  // Restore selected store and mode from URL when dialog is open
+  useEffect(() => {
+    if (!viewListDialog.open) return;
+    const storeId = viewListDialog.data?.storeId;
+    if (!storeId) return;
+
+    const store = stores.find(s => s._id === storeId);
+    if (!store) {
+      return;
+    }
+
+    setSelectedStore(store);
+    setShopMode(viewListDialog.data?.mode === 'shop');
+
+    // Always re-fetch the latest list when entering the dialog (including refresh)
+    const loadLatestList = async () => {
+      try {
+        const list = await fetchShoppingList(store._id);
+        setShoppingListItems(list.items || []);
+      } catch (error) {
+        console.error('Error loading shopping list:', error);
+        showSnackbar('Failed to load latest shopping list', 'error');
+        setShoppingListItems(store.shoppingList?.items || []);
+      }
+    };
+
+    void loadLatestList();
+  }, [viewListDialog.open, viewListDialog.data, stores]);
 
   const getSortedShoppingListItems = (): ShoppingListItem[] => {
     if (!shopMode) return shoppingListItems;
@@ -1591,14 +1636,24 @@ export default function ShoppingListsPage() {
           <Box sx={{ display: 'flex', gap: 2, mt: 3, mb: 2 }}>
             <Button
               variant={!shopMode ? "contained" : "outlined"}
-              onClick={() => setShopMode(false)}
+              onClick={() => {
+                setShopMode(false);
+                if (selectedStore) {
+                  viewListDialog.openDialog({ storeId: selectedStore._id, mode: 'edit' });
+                }
+              }}
               fullWidth
             >
               Edit Mode
             </Button>
             <Button
               variant={shopMode ? "contained" : "outlined"}
-              onClick={() => setShopMode(true)}
+              onClick={() => {
+                setShopMode(true);
+                if (selectedStore) {
+                  viewListDialog.openDialog({ storeId: selectedStore._id, mode: 'shop' });
+                }
+              }}
               fullWidth
               disabled={shoppingListItems.length === 0}
             >
