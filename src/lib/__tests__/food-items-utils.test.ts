@@ -17,6 +17,18 @@ describe('food-items-utils', () => {
     expect(getUnitForm('cup', 2)).toBe('cups');
   });
 
+  it('handles new box and loaf units with correct pluralization and normalization', () => {
+    expect(normalizeUnit('box')).toBe('box');
+    expect(normalizeUnit('boxes')).toBe('box');
+    expect(getUnitForm('box', 1)).toBe('box');
+    expect(getUnitForm('box', 3)).toBe('boxes');
+
+    expect(normalizeUnit('loaf')).toBe('loaf');
+    expect(normalizeUnit('loaves')).toBe('loaf');
+    expect(getUnitForm('loaf', 1)).toBe('loaf');
+    expect(getUnitForm('loaf', 2)).toBe('loaves');
+  });
+
   it('gets abbreviation for known unit', () => {
     expect(getUnitAbbreviation('teaspoon')).toBe('tsp');
   });

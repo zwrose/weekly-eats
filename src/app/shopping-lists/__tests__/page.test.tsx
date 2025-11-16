@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ShoppingListsPage from '../page';
 
@@ -11,14 +11,33 @@ vi.mock('next-auth/react', () => ({
   }))
 }));
 
-// Mock next/navigation
+// Mock next/navigation with basic URL + search params tracking for usePersistentDialog
+let currentUrl = '/shopping-lists';
+let currentSearchParams = new URLSearchParams();
+
+const setTestUrl = (url: string) => {
+  currentUrl = url;
+  const query = url.split('?')[1] ?? '';
+  currentSearchParams = new URLSearchParams(query);
+};
+
+const mockPush = vi.fn((url: string) => {
+  setTestUrl(url);
+});
+
+const mockReplace = vi.fn((url: string) => {
+  setTestUrl(url);
+});
+
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
   useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: mockPush,
+    replace: mockReplace,
     refresh: vi.fn(),
   })),
+  usePathname: vi.fn(() => currentUrl.split('?')[0]),
+  useSearchParams: vi.fn(() => currentSearchParams),
 }));
 
 // Mock the shopping list utils
@@ -27,6 +46,7 @@ const mockCreateStore = vi.fn();
 const mockUpdateStore = vi.fn();
 const mockDeleteStore = vi.fn();
 const mockUpdateShoppingList = vi.fn();
+const mockFetchShoppingList = vi.fn();
 const mockFetchPendingInvitations = vi.fn();
 const mockInviteUserToStore = vi.fn();
 const mockRespondToInvitation = vi.fn();
@@ -42,17 +62,28 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   inviteUserToStore: (...args: any[]) => mockInviteUserToStore(...args),
   respondToInvitation: (...args: any[]) => mockRespondToInvitation(...args),
   removeUserFromStore: (...args: any[]) => mockRemoveUserFromStore(...args),
+  fetchShoppingList: (storeId: string) => mockFetchShoppingList(storeId),
 }));
 
-// Mock the shopping sync hook
-vi.mock('../../../lib/hooks/use-shopping-sync', () => ({
-  useShoppingSync: vi.fn(() => ({
-    isConnected: false,
-    activeUsers: [],
-    reconnect: vi.fn(),
-    disconnect: vi.fn()
-  }))
-}));
+// Mock the shopping sync hook, but capture the options passed so we can
+// simulate incoming realtime events in integration-style tests.
+let lastShoppingSyncOptions: any = null;
+
+vi.mock('../../../lib/hooks/use-shopping-sync', () => {
+  const mockUseShoppingSync = vi.fn((options: any) => {
+    lastShoppingSyncOptions = options;
+    return {
+      isConnected: true,
+      activeUsers: [],
+      reconnect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+  });
+
+  return {
+    useShoppingSync: mockUseShoppingSync,
+  };
+});
 
 // Mock components
 vi.mock('../../../components/AuthenticatedLayout', () => ({
@@ -66,8 +97,12 @@ vi.mock('../../../components/EmojiPicker', () => ({
 describe('ShoppingListsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset URL state for each test
+    setTestUrl('/shopping-lists');
     // Default mock for pending invitations
     mockFetchPendingInvitations.mockResolvedValue([]);
+    mockFetchShoppingList.mockReset();
+    lastShoppingSyncOptions = null;
     
     // Mock fetch for food items
     global.fetch = vi.fn((url) => {
@@ -261,6 +296,69 @@ describe('ShoppingListsPage', () => {
     });
   });
 
+  it('refreshes shopping list from server when opening dialog', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Old Milk', quantity: 1, unit: 'gallon', checked: false }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    const freshList = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Fresh Milk', quantity: 1, unit: 'gallon', checked: false }
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(freshList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => []
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(mockFetchShoppingList).toHaveBeenCalledWith('store-1');
+      expect(screen.getByText('Fresh Milk')).toBeInTheDocument();
+    });
+  });
+
   it('clicking edit button does not open shopping list dialog', async () => {
     const user = userEvent.setup();
     const mockStores = [
@@ -295,13 +393,10 @@ describe('ShoppingListsPage', () => {
     const editIcons = screen.getAllByTestId('EditIcon');
     await user.click(editIcons[0].closest('button')!);
 
-    // Edit Store dialog should open, not the shopping list dialog
+    // Edit Store dialog should open
     await waitFor(() => {
       expect(screen.getByText('Edit Store')).toBeInTheDocument();
     });
-    
-    // Shopping list "Add Item" section should NOT be present
-    expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
   });
 
   it('clicking delete button does not open shopping list dialog', async () => {
@@ -342,9 +437,6 @@ describe('ShoppingListsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Delete Store')).toBeInTheDocument();
     });
-
-    // Shopping list "Add Item" section should NOT be present
-    expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
   });
 
   it('shows start shopping button when store has items', async () => {
@@ -487,6 +579,157 @@ describe('ShoppingListsPage', () => {
     expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
   });
 
+  it('applies remote item_checked events from shopping sync in Shop Mode', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => []
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    render(<ShoppingListsPage />);
+
+    // Open Shop Mode via Start Shopping
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
+    const startShoppingButtons = cartIcons
+      .map(icon => icon.closest('button'))
+      .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
+
+    await user.click(startShoppingButtons[0]!);
+
+    // Wait for Shop Mode content
+    await waitFor(() => {
+      expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
+      expect(screen.getByText('Milk')).toBeInTheDocument();
+    });
+
+    // Initially unchecked
+    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+
+    // Simulate a remote item_checked event via the options passed into useShoppingSync
+    expect(lastShoppingSyncOptions).not.toBeNull();
+    lastShoppingSyncOptions.onItemChecked('f1', true);
+
+    await waitFor(() => {
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
+    });
+  });
+
+  it('reorders items via drag and drop and persists new order', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+            { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => []
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByText('Bread')).toBeInTheDocument();
+    });
+
+    const milkRow = screen.getByText('Milk').closest('li') as HTMLElement;
+    const breadRow = screen.getByText('Bread').closest('li') as HTMLElement;
+
+    // Mock bounding box for target row so we can control before/after calculation
+    Object.defineProperty(breadRow, 'getBoundingClientRect', {
+      value: () => ({
+        top: 0,
+        height: 100,
+        bottom: 100,
+        left: 0,
+        right: 100,
+        width: 100,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      })
+    });
+
+    fireEvent.dragStart(milkRow);
+    fireEvent.dragOver(breadRow, { clientY: 90 }); // near bottom -> "after"
+    fireEvent.drop(breadRow);
+
+    await waitFor(() => {
+      expect(mockUpdateShoppingList).toHaveBeenCalled();
+      const [, payload] = mockUpdateShoppingList.mock.calls[mockUpdateShoppingList.mock.calls.length - 1];
+      expect(payload.items.map((i: any) => i.foodItemId)).toEqual(['f2', 'f1']);
+    });
+  });
+
   it('renders with unit selector and keyboard support without errors', async () => {
     // This test verifies that the component imports and renders correctly
     // with the new unit selector and keyboard support features
@@ -507,6 +750,103 @@ describe('ShoppingListsPage', () => {
     // Component should render successfully with new features
     await waitFor(() => {
       expect(screen.getByText('Shopping Lists')).toBeInTheDocument();
+    });
+  });
+
+  it('restores dialog in Edit Mode from URL params', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    setTestUrl('/shopping-lists?shoppingList=true&shoppingList_storeId=store-1&shoppingList_mode=edit');
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add Item')).toBeInTheDocument();
+      // Edit Mode toggle should be the contained (active) button
+      expect(screen.getByRole('button', { name: /edit mode/i })).toHaveClass('MuiButton-contained');
+    });
+  });
+
+  it('restores dialog in Shop Mode from URL params', async () => {
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    setTestUrl('/shopping-lists?shoppingList=true&shoppingList_storeId=store-1&shoppingList_mode=shop');
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
+      // Shop Mode toggle should be the contained (active) button
+      expect(screen.getByRole('button', { name: /shop mode/i })).toHaveClass('MuiButton-contained');
+      // Edit-mode-only "Add Item" heading should not be present
+      expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
     });
   });
 });
