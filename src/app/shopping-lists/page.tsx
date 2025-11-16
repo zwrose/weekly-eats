@@ -127,6 +127,9 @@ export default function ShoppingListsPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState('');
   const [shoppingListItems, setShoppingListItems] = useState<ShoppingListItem[]>([]);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<"before" | "after" | null>(null);
   const [shopMode, setShopMode] = useState(false); // false = Edit Mode, true = Shop Mode
   
   // Meal plan import states
@@ -914,6 +917,48 @@ export default function ShoppingListsPage() {
     }
   };
 
+  const handleReorderItem = async (
+    sourceItemId: string,
+    targetItemId: string,
+    position: "before" | "after"
+  ) => {
+    if (!selectedStore || sourceItemId === targetItemId) {
+      return;
+    }
+
+    const currentItems = [...shoppingListItems];
+    const sourceIndex = currentItems.findIndex(item => item.foodItemId === sourceItemId);
+    const targetIndex = currentItems.findIndex(item => item.foodItemId === targetItemId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    let insertIndex = targetIndex;
+    if (position === "after") {
+      insertIndex = targetIndex + 1;
+    }
+
+    // Adjust for removal shifting indices when moving downwards
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+
+    const updatedItems = [...currentItems];
+    const [moved] = updatedItems.splice(sourceIndex, 1);
+    updatedItems.splice(insertIndex, 0, moved);
+
+    setShoppingListItems(updatedItems);
+
+    try {
+      await updateShoppingList(selectedStore._id, { items: updatedItems });
+    } catch (error) {
+      console.error('Error reordering items:', error);
+      showSnackbar('Failed to save new order', 'error');
+      setShoppingListItems(currentItems);
+    }
+  };
+
   // Show loading state while session is being fetched
   if (status === "loading") {
     return (
@@ -1431,7 +1476,58 @@ export default function ShoppingListsPage() {
                   <List>
                     {shoppingListItems.map((item, index) => (
                       <Box key={item.foodItemId}>
-                        <ListItem sx={{ flexDirection: 'column', alignItems: 'stretch', py: 2 }}>
+                        <ListItem
+                          sx={{
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            py: 2,
+                            cursor: 'grab',
+                            borderTop:
+                              dragOverItemId === item.foodItemId && dragOverPosition === 'before'
+                                ? '2px solid'
+                                : 'none',
+                            borderBottom:
+                              dragOverItemId === item.foodItemId && dragOverPosition === 'after'
+                                ? '2px solid'
+                                : 'none',
+                            borderColor:
+                              dragOverItemId === item.foodItemId ? 'primary.main' : 'transparent',
+                          }}
+                          draggable
+                          onDragStart={() => setDraggedItemId(item.foodItemId)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            if (!draggedItemId || draggedItemId === item.foodItemId) {
+                              return;
+                            }
+
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const offsetY = e.clientY - rect.top;
+                            const position = offsetY < rect.height / 2 ? 'before' : 'after';
+
+                            setDragOverItemId(item.foodItemId);
+                            setDragOverPosition(position);
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverItemId === item.foodItemId) {
+                              setDragOverItemId(null);
+                              setDragOverPosition(null);
+                            }
+                          }}
+                          onDrop={() => {
+                            if (draggedItemId && dragOverPosition) {
+                              void handleReorderItem(draggedItemId, item.foodItemId, dragOverPosition);
+                            }
+                            setDraggedItemId(null);
+                            setDragOverItemId(null);
+                            setDragOverPosition(null);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedItemId(null);
+                            setDragOverItemId(null);
+                            setDragOverPosition(null);
+                          }}
+                        >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
                             <Typography variant="h6" sx={{ fontWeight: 'bold', flex: 1 }}>
                               {item.name}
