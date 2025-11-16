@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { broadcastToStore } from '@/lib/shopping-sync-broadcast';
+import { publishShoppingEvent } from '@/lib/realtime/ably-server';
 import { ObjectId } from 'mongodb';
 import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
 
@@ -214,31 +214,23 @@ export async function PUT(
         .map(item => item.foodItemId)
         .filter(foodItemId => !newItemIds.has(foodItemId));
 
-      deletedItemIds.forEach((foodItemId) => {
-        broadcastToStore(
-          storeId,
-          {
-            type: 'item_deleted',
+      await Promise.all(
+        deletedItemIds.map((foodItemId) =>
+          publishShoppingEvent(storeId, 'item_deleted', {
             foodItemId,
             updatedBy: session.user.email,
             timestamp,
-          },
-          session.user.id
-        );
-      });
+          })
+        )
+      );
     }
 
-    // Broadcast the update to other connected users
-    broadcastToStore(
-      storeId,
-      {
-        type: 'list_updated',
-        items: shoppingList?.items || [],
-        updatedBy: session.user.email,
-        timestamp,
-      },
-      session.user.id
-    );
+    // Broadcast the updated list
+    await publishShoppingEvent(storeId, 'list_updated', {
+      items: shoppingList?.items || [],
+      updatedBy: session.user.email,
+      timestamp,
+    });
 
     return NextResponse.json(shoppingList);
   } catch (error) {

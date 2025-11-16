@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   Container, 
   Typography, 
@@ -32,7 +32,7 @@ import {
 import { ShoppingCart, Add, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd, Kitchen } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { StoreWithShoppingList, ShoppingListItem } from "../../types/shopping-list";
-import { fetchStores, fetchShoppingList, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
+import { fetchStores, createStore, updateStore, deleteStore, updateShoppingList, inviteUserToStore, respondToInvitation, removeUserFromStore, fetchPendingInvitations } from "../../lib/shopping-list-utils";
 import { useDialog, useConfirmDialog, useSearchPagination, useShoppingSync, type ActiveUser } from "@/lib/hooks";
 import EmojiPicker from "../../components/EmojiPicker";
 import { DialogTitle } from "../../components/ui/DialogTitle";
@@ -189,54 +189,9 @@ export default function ShoppingListsPage() {
     }
   });
 
-  // Fallback polling to keep shopping list in sync across users while dialog is open
-  useEffect(() => {
-    if (!viewListDialog.open || !selectedStore?._id) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const pollShoppingList = async () => {
-      try {
-        const list = await fetchShoppingList(selectedStore._id);
-        if (isCancelled) return;
-
-        // Merge polled data with local checked state to avoid flicker
-        setShoppingListItems(prev => {
-          const currentById = new Map(prev.map(item => [item.foodItemId, item]));
-          const serverItems = (list.items || []) as ShoppingListItem[];
-
-          return serverItems.map(newItem => {
-            const current = currentById.get(newItem.foodItemId);
-            if (!current) {
-              return newItem;
-            }
-            return { ...newItem, checked: current.checked };
-          });
-        });
-
-        setStores(prev =>
-          prev.map(store =>
-            store._id === selectedStore._id
-              ? { ...store, shoppingList: list }
-              : store
-          )
-        );
-      } catch (error) {
-        console.error('Error polling shopping list:', error);
-      }
-    };
-
-    // Initial fetch plus interval
-    pollShoppingList();
-    const intervalId = setInterval(pollShoppingList, 2000);
-
-    return () => {
-      isCancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [viewListDialog.open, selectedStore?._id]);
+  // NOTE: Polling-based sync was temporarily used as a fallback while SSE reliability
+  // was being improved. With Redis-backed SSE broadcasting in place, this polling
+  // effect is disabled to allow testing pure real-time behavior.
 
   const loadData = useCallback(async () => {
     try {
@@ -1598,7 +1553,10 @@ export default function ShoppingListsPage() {
                           >
                             <Checkbox
                               checked={item.checked}
-                              onChange={() => handleToggleItemChecked(item.foodItemId)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleItemChecked(item.foodItemId);
+                              }}
                             />
                             <ListItemText
                               primary={item.name}

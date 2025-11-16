@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type * as Ably from 'ably';
+import { getAblyClient } from '../realtime/ably-client';
 
 export interface ActiveUser {
   email: string;
@@ -25,7 +27,7 @@ export interface UseShoppingSyncOptions {
 }
 
 /**
- * Hook to manage SSE connection for shopping list real-time sync
+ * Hook to manage Ably-based real-time sync for shopping lists
  */
 export function useShoppingSync(options: UseShoppingSyncOptions) {
   const {
@@ -39,10 +41,8 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
 
   const [isConnected, setIsConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const clientRef = useRef<Ably.Realtime | null>(null);
+  const channelRef = useRef<Ably.Types.RealtimeChannelCallbacks | null>(null);
 
   // Store callbacks in refs to avoid dependency issues
   const callbacksRef = useRef({
@@ -62,92 +62,86 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     };
   }, [onPresenceUpdate, onItemChecked, onListUpdated, onItemDeleted]);
 
-  const handleMessage = useCallback((event: MessageEvent) => {
-    try {
-      const data: ShoppingListSyncMessage = JSON.parse(event.data);
-
-      switch (data.type) {
-        case 'presence':
-          if (data.activeUsers) {
-            setActiveUsers(data.activeUsers);
-            callbacksRef.current.onPresenceUpdate?.(data.activeUsers);
-          }
-          break;
-
-        case 'item_checked':
-          if (data.foodItemId !== undefined && data.checked !== undefined && data.updatedBy) {
-            callbacksRef.current.onItemChecked?.(data.foodItemId, data.checked, data.updatedBy);
-          }
-          break;
-
-        case 'list_updated':
-          if (data.items && data.updatedBy) {
-            callbacksRef.current.onListUpdated?.(data.items, data.updatedBy);
-          }
-          break;
-
-        case 'item_deleted':
-          if (data.foodItemId && data.updatedBy) {
-            callbacksRef.current.onItemDeleted?.(data.foodItemId, data.updatedBy);
-          }
-          break;
-      }
-    } catch (error) {
-      console.error('Error parsing SSE message:', error);
-    }
-  }, []);
-
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!storeId || !enabled) return;
 
-    // Clean up existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
     try {
-      const eventSource = new EventSource(
-        `/api/shopping-lists/sync/stream?storeId=${storeId}`
-      );
+      const client = getAblyClient();
+      clientRef.current = client;
 
-      eventSource.onopen = () => {
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
-      };
+      const channelName = `shopping-store:${storeId}`;
+      const channel = client.channels.get(channelName);
+      channelRef.current = channel;
 
-      eventSource.onmessage = handleMessage;
-
-      eventSource.onerror = () => {
-        setIsConnected(false);
-        eventSource.close();
-
-        // Attempt to reconnect with exponential backoff
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          reconnectAttempts.current++;
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
+      channel.subscribe('item_checked', (msg) => {
+        const data = msg.data as ShoppingListSyncMessage;
+        if (data.foodItemId !== undefined && data.checked !== undefined && data.updatedBy) {
+          callbacksRef.current.onItemChecked?.(data.foodItemId, data.checked, data.updatedBy);
         }
-      };
+      });
 
-      eventSourceRef.current = eventSource;
+      channel.subscribe('list_updated', (msg) => {
+        const data = msg.data as ShoppingListSyncMessage;
+        if (data.items && data.updatedBy) {
+          callbacksRef.current.onListUpdated?.(data.items, data.updatedBy);
+        }
+      });
+
+      channel.subscribe('item_deleted', (msg) => {
+        const data = msg.data as ShoppingListSyncMessage;
+        if (data.foodItemId && data.updatedBy) {
+          callbacksRef.current.onItemDeleted?.(data.foodItemId, data.updatedBy);
+        }
+      });
+
+      // Presence: use Ably presence to track active users
+      channel.presence.subscribe(async () => {
+        try {
+          const members = await new Promise<Ably.Types.PresenceMessage[]>((resolve, reject) => {
+            channel.presence.get((err, result) => {
+              if (err) return reject(err);
+              resolve(result || []);
+            });
+          });
+
+          const users: ActiveUser[] = members
+            .map((m) => m.data as ActiveUser)
+            .filter((u) => !!u?.email && !!u?.name);
+
+          setActiveUsers(users);
+          callbacksRef.current.onPresenceUpdate?.(users);
+        } catch (err) {
+          console.error('Error getting presence members:', err);
+        }
+      });
+
+      // Enter presence with current user info (handled in consuming component via session)
+      // The consumer passes onPresenceUpdate, so we don't need to store user info here.
+
+      client.connection.on('connected', () => {
+        setIsConnected(true);
+      });
+
+      client.connection.on('disconnected', () => {
+        setIsConnected(false);
+        setActiveUsers([]);
+      });
     } catch (error) {
-      console.error('Error creating EventSource:', error);
+      console.error('Error connecting to Ably:', error);
       setIsConnected(false);
     }
-  }, [storeId, enabled, handleMessage]);
+  }, [storeId, enabled]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    const channel = channelRef.current;
+    if (channel) {
+      try {
+        channel.unsubscribe();
+        channel.presence.unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing from Ably channel:', error);
+      }
+      channelRef.current = null;
     }
 
     setIsConnected(false);
@@ -156,7 +150,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
 
   useEffect(() => {
     if (storeId && enabled) {
-      connect();
+      void connect();
     } else {
       disconnect();
     }
@@ -164,9 +158,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     return () => {
       disconnect();
     };
-    // Only depend on storeId and enabled - connect/disconnect are stable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId, enabled]);
+  }, [storeId, enabled, connect, disconnect]);
 
   return {
     isConnected,

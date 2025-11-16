@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-import { broadcastToStore } from '@/lib/shopping-sync-broadcast';
+import { publishShoppingEvent } from '@/lib/realtime/ably-server';
 
 const SHOPPING_LIST_ERRORS = {
   INVALID_STORE_ID: 'Invalid store ID',
@@ -89,14 +89,13 @@ export async function PATCH(
     // Get the updated shopping list
     const updatedList = await shoppingListsCollection.findOne({ storeId });
 
-    // Broadcast the change to other users
-    broadcastToStore(storeId, {
-      type: 'item_checked',
+    // Broadcast the change to other users via Ably
+    await publishShoppingEvent(storeId, 'item_checked', {
       foodItemId,
       checked: newChecked,
       updatedBy: session.user.email,
       timestamp: new Date().toISOString()
-    }, session.user.id);
+    });
 
     return NextResponse.json({
       success: true,

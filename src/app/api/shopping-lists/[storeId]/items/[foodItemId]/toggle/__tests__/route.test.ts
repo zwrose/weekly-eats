@@ -16,9 +16,9 @@ vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
 }));
 
-// Mock broadcastToStore
-vi.mock('@/lib/shopping-sync-broadcast', () => ({
-  broadcastToStore: vi.fn(),
+// Mock Ably server publisher
+vi.mock('@/lib/realtime/ably-server', () => ({
+  publishShoppingEvent: vi.fn(),
 }));
 
 // Mock Mongo client
@@ -45,7 +45,7 @@ vi.mock('@/lib/mongodb', () => ({
 }));
 
 const { getServerSession } = await import('next-auth/next');
-const { broadcastToStore } = await import('@/lib/shopping-sync-broadcast');
+const { publishShoppingEvent } = await import('@/lib/realtime/ably-server');
 const routes = await import('../route');
 
 const makeRequest = () => ({} as any);
@@ -55,7 +55,7 @@ beforeEach(() => {
   (getServerSession as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
-  (broadcastToStore as any).mockClear();
+  (publishShoppingEvent as any).mockClear();
 });
 
 describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
@@ -260,16 +260,15 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         params: Promise.resolve({ storeId, foodItemId })
       });
 
-      // Verify broadcastToStore was called with correct parameters
-      expect(broadcastToStore).toHaveBeenCalledWith(
+      // Verify publishShoppingEvent was called with correct parameters
+      expect(publishShoppingEvent).toHaveBeenCalledWith(
         storeId,
+        'item_checked',
         expect.objectContaining({
-          type: 'item_checked',
           foodItemId,
           checked: true,
           updatedBy: 'user@test.com'
-        }),
-        'user1' // Exclude sender
+        })
       );
     });
 
@@ -289,8 +288,8 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         params: Promise.resolve({ storeId, foodItemId: 'non-existent' })
       });
 
-      // Should not broadcast when item not found
-      expect(broadcastToStore).not.toHaveBeenCalled();
+      // Should not publish when item not found
+      expect(publishShoppingEvent).not.toHaveBeenCalled();
     });
   });
 

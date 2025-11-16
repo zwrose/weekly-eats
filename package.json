@@ -34,7 +34,8 @@
     "next": "15.3.4",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "ably": "^1.2.48"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

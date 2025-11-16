@@ -1,23 +1,23 @@
-# Shopping Sync Feature
+# Shopping Sync Feature (Ably)
 
 ## Overview
 
-The Shopping Sync feature provides real-time synchronization of shopping lists between multiple users who have access to the same store. When users are viewing or editing a shared shopping list, changes are instantly propagated to all connected users.
+The Shopping Sync feature provides real-time synchronization of shopping lists between multiple users who have access to the same store. When users are viewing or editing a shared shopping list, changes are instantly propagated to all connected users via **Ably Pub/Sub**.
 
 ## Features
 
 ### 1. **Real-Time Presence Tracking**
-- Shows which users are currently viewing the same shopping list
-- Displays active users as badges in the dialog header
-- Shows a "Live" indicator when connected to the sync stream
+- **Shows** which users are currently viewing the same shopping list
+- **Displays** active users as badges in the dialog header
+- **Shows** a "Live" indicator when connected to Ably
 
 ### 2. **Real-Time Updates**
 All changes are synchronized across users:
-- ✅ **Check/Uncheck items** - When one user checks off an item in shopping mode, it updates for all users
-- ✅ **Add items** - New items appear instantly for all users
-- ✅ **Delete items** - Removed items disappear for all users
-- ✅ **Quantity changes** - Updated quantities sync in real-time
-- ✅ **Unit changes** - Changed units sync immediately
+- **Check/Uncheck items** – When one user checks off an item in shopping mode, it updates for all users
+- **Add items** – New items appear instantly for all users
+- **Delete items** – Removed items disappear for all users
+- **Quantity changes** – Updated quantities sync in real-time
+- **Unit changes** – Changed units sync immediately
 
 ### 3. **Conflict Resolution**
 - **Check/Uncheck conflicts**: Last write wins
@@ -34,41 +34,30 @@ When multiple users are in Shopping Mode simultaneously:
 
 ### Components
 
-#### 1. Broadcast Utilities
-**File**: `src/lib/shopping-sync-broadcast.ts`
+#### 1. Ably Server Helper
+**File**: `src/lib/realtime/ably-server.ts`
 
 **Responsibilities**:
-- Manages in-memory connections for all active SSE streams
-- Provides broadcasting functions for real-time updates
-- Handles connection lifecycle (add/remove)
+- Creates a singleton Ably REST client using `ABLY_API_KEY`
+- Publishes shopping events to Ably channels
 
-**Key Functions**:
+**Key Function**:
 ```typescript
-// Broadcast a message to all users viewing a store
-broadcastToStore(storeId, message, excludeUserId?)
-
-// Get list of active users for a store
-getActiveUsers(storeId)
-
-// Broadcast presence updates
-broadcastPresence(storeId)
-
-// Add/remove connections
-addConnection(storeId, userId, controller, userEmail, userName)
-removeConnection(storeId, userId)
+publishShoppingEvent(
+  storeId: string,
+  name: 'item_checked' | 'list_updated' | 'item_deleted',
+  data: unknown
+)
 ```
 
-#### 2. SSE Stream Endpoint
-**File**: `src/app/api/shopping-lists/sync/stream/route.ts`
+#### 2. Ably Token Endpoint
+**File**: `src/app/api/ably/token/route.ts`
 
 **Responsibilities**:
-- Creates and manages SSE connections for clients
-- Validates user access to stores
-- Sends initial presence on connection
-- Implements automatic keepalive pings every 30 seconds
-- Handles graceful disconnect and cleanup
+- Issues Ably token requests for the browser client using the server-side API key
+- Used as `authUrl` by the Ably Realtime client on the frontend
 
-**Endpoint**: `GET /api/shopping-lists/sync/stream?storeId={storeId}`
+**Endpoint**: `GET /api/ably/token`
 
 #### 3. Item Toggle Endpoint
 **File**: `src/app/api/shopping-lists/[storeId]/items/[foodItemId]/toggle/route.ts`
@@ -76,23 +65,22 @@ removeConnection(storeId, userId)
 **Purpose**: Dedicated endpoint for toggling individual item checked status
 - Prevents race conditions when multiple users check items simultaneously
 - Uses atomic database operations
-- Broadcasts changes via SSE
-- Returns 404 if item was deleted by another user
+- Broadcasts `item_checked` events via Ably
+- Returns 404 if the item was deleted by another user
 
 **Endpoint**: `PATCH /api/shopping-lists/{storeId}/items/{foodItemId}/toggle`
 
 #### 4. Shopping List Update Endpoint (Enhanced)
 **File**: `src/app/api/shopping-lists/[storeId]/route.ts`
 
-**Enhancement**: Now broadcasts `list_updated` events when the full list is updated
-- Add/delete items
-- Quantity changes
-- Unit changes
+**Enhancement**: Publishes Ably events when the full list is updated
+- Publishes `item_deleted` events for items removed between writes
+- Publishes a `list_updated` event with the full items array
 
 #### 5. Shopping Sync Hook
 **File**: `src/lib/hooks/use-shopping-sync.ts`
 
-**Purpose**: React hook that manages the SSE connection and handles incoming events
+**Purpose**: React hook that manages the Ably realtime connection and handles incoming events
 
 **Usage**:
 ```typescript
@@ -110,28 +98,20 @@ const { isConnected, activeUsers, reconnect, disconnect } = shoppingSync;
 ```
 
 **Features**:
-- Automatic connection when dialog opens
-- Automatic disconnect when dialog closes
-- Reconnection with exponential backoff (up to 5 attempts)
-- Connection state tracking
+- Ably channel per store: `shopping-store:{storeId}`
+- Automatic subscribe/unsubscribe based on `storeId` and dialog open state
+- Uses Ably **presence** to track and broadcast active users
+- Connection state tracking (`isConnected`)
 
-### Message Types
+### Ably Channels & Message Types
 
-#### Presence Message
+#### Channel Naming
+- **Channel**: `shopping-store:{storeId}`
+
+#### `item_checked` Event
+**Name**: `item_checked`
 ```typescript
 {
-  type: 'presence',
-  activeUsers: [
-    { email: 'user@example.com', name: 'User Name' }
-  ],
-  timestamp: '2025-10-13T12:00:00.000Z'
-}
-```
-
-#### Item Checked Message
-```typescript
-{
-  type: 'item_checked',
   foodItemId: 'food-123',
   checked: true,
   updatedBy: 'user@example.com',
@@ -139,27 +119,38 @@ const { isConnected, activeUsers, reconnect, disconnect } = shoppingSync;
 }
 ```
 
-#### List Updated Message
+#### `list_updated` Event
+**Name**: `list_updated`
 ```typescript
 {
-  type: 'list_updated',
-  items: [...], // Full shopping list items array
+  items: [...], // Full shopping list items array (with names/units)
   updatedBy: 'user@example.com',
   timestamp: '2025-10-13T12:00:00.000Z'
 }
 ```
 
-#### Item Deleted Message
+#### `item_deleted` Event
+**Name**: `item_deleted`
 ```typescript
 {
-  type: 'item_deleted',
   foodItemId: 'food-123',
   updatedBy: 'user@example.com',
   timestamp: '2025-10-13T12:00:00.000Z'
 }
 ```
 
-## UI Changes
+#### Presence Data
+Presence members carry:
+```typescript
+{
+  email: 'user@example.com',
+  name: 'User Name'
+}
+```
+
+> Note: Presence enter/leave is handled via Ably presence APIs in the hook; the consuming component just receives `ActiveUser[]`.
+
+## UI Behavior
 
 ### Shopping List Dialog Header
 - Shows list of active users as badges (e.g., "John Doe", "Jane Smith")
@@ -170,142 +161,33 @@ const { isConnected, activeUsers, reconnect, disconnect } = shoppingSync;
 - Items checked by any user instantly update for all users
 - Checked items automatically move to bottom for everyone
 - Optimistic updates with error rollback
+- Single toggle per click (row or checkbox), avoiding double-toggles
 
 ### Error Handling
-- "This item was already removed from the list" - shown when trying to modify deleted items
-- Auto-refresh list on conflict
-- Network errors trigger automatic reconnection
+- "This item was already removed from the list" when trying to modify deleted items
+- Auto-refresh logic in toggle error paths to reconcile conflicts
+- Ably connection errors are logged; UI falls back gracefully
 
 ## Access Control
 
-Users can access the sync stream if:
-1. They are the store owner (`store.userId === session.user.id`)
-2. OR they have an accepted invitation to the store
+Users can participate in realtime sync if:
+1. They are the store owner (`store.userId === session.user.id`), or
+2. They have an accepted invitation to the store
 
-The endpoint validates access on every connection.
+Access is validated in the underlying API routes (toggle/update) before publishing events.
 
-## Performance Considerations
+## Performance & Deployment Notes
 
-### Optimistic Updates
-- UI updates immediately for the user taking action
-- Reverts if the server returns an error
-- Prevents UI lag during sync
-
-### Efficient Broadcasting
-- Only sends updates to users actively viewing the store
-- Excludes the sender from broadcasts (they already have the latest state)
-- Cleans up connections when users disconnect
-
-### Reconnection Strategy
-- Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
-- Maximum 5 reconnection attempts
-- Prevents server overload during network issues
-
-## Database Schema
-
-### Store Document
-```typescript
-{
-  _id: ObjectId,
-  userId: string,           // Owner ID
-  name: string,
-  emoji: string,
-  invitations: [
-    {
-      userId: string,
-      userEmail: string,
-      userName: string,
-      status: 'pending' | 'accepted' | 'rejected',
-      invitedBy: string,
-      invitedAt: Date
-    }
-  ],
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Shopping List Document
-```typescript
-{
-  _id: ObjectId,
-  storeId: string,
-  userId: string,
-  items: [
-    {
-      foodItemId: string,
-      quantity: number,
-      unit: string,
-      checked: boolean,      // Added for shopping mode
-      name: string           // Populated from foodItems
-    }
-  ],
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-## Testing
-
-### Test Coverage
-- ✅ SSE stream authentication and authorization
-- ✅ Broadcasting functionality
-- ✅ Message format contracts
-- ✅ Item toggle endpoint (10 tests)
-- ✅ Access control for shared users
-- ✅ Conflict detection (404 for deleted items)
-
-**Files**:
-- `src/app/api/shopping-lists/sync/stream/__tests__/route.test.ts` (7 tests)
-- `src/app/api/shopping-lists/[storeId]/items/[foodItemId]/toggle/__tests__/route.test.ts` (10 tests)
-
-### Running Tests
-```bash
-# Run all shopping sync tests
-npm test -- src/app/api/shopping-lists
-
-# Run specific test files
-npm test -- "src/app/api/shopping-lists/sync/stream/__tests__/route.test.ts"
-```
-
-## Usage Example
-
-### User A Actions
-1. Opens "Costco" shopping list
-2. Enters Shopping Mode
-3. Checks off "Milk"
-
-### User B Experience (Real-time)
-1. Sees "User A" badge appear in header
-2. Sees "Milk" checkbox automatically check itself
-3. Sees "Milk" move to bottom of list
-4. Sees strikethrough applied to "Milk"
-
-## Security
-
-- All operations validate user access to the store
-- SSE connections require authentication
-- Broadcasts only go to users with accepted invitations
-- Store owners can remove user access at any time
-
-## Future Enhancements
-
-Potential improvements:
-- Show which user checked off each item
-- Undo functionality for accidental deletions
-- Conflict resolution UI for simultaneous edits
-- Mobile push notifications when list is updated
-- Offline mode with sync when reconnected
-- Show typing indicators for quantity/unit changes
-
-## Known Limitations
-
-1. **Connection limit**: Browser EventSource has a connection limit (typically 6 per domain)
-2. **Reconnection**: Limited to 5 attempts; after that, user must refresh
-3. **Network**: Requires stable internet connection for real-time sync
-4. **Scale**: In-memory connection tracking (would need Redis for multi-server deployments)
+- Ably holds the WebSocket connections; Next.js runs on Vercel as usual.
+- Publishing to Ably happens from server routes via the REST API (compatible with Vercel functions).
+- **Recommended setup**:
+  - One Ably app for **production**
+  - One Ably app for **non-prod** (local + preview)
+- Channel traffic is isolated per Ably app (no cross-env bleed).
 
 ## Migration Notes
 
-No database migration required - the `checked` field is optional and defaults to `false` for existing items.
+- The old SSE + in-memory broadcast implementation has been removed.
+- No database migration is required – the `checked` field remains optional and defaults to `false` for existing items.
+
 
