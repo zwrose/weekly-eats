@@ -149,20 +149,72 @@ function FoodItemsPageContent() {
   const handleUpdateItem = async () => {
     if (!selectedItem?._id) return;
     
+    // Validate required fields
+    if (!editingItem.name || !editingItem.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+    
     try {
-      await addFoodItem({
-        _id: selectedItem._id,
-        name: editingItem.name || '',
-        singularName: editingItem.singularName || '',
-        pluralName: editingItem.pluralName || '',
+      const updateData: {
+        name: string;
+        singularName: string;
+        pluralName: string;
+        unit: string;
+        isGlobal?: boolean;
+      } = {
+        name: editingItem.name.trim(),
+        singularName: editingItem.singularName?.trim() || editingItem.name.trim(),
+        pluralName: editingItem.pluralName?.trim() || editingItem.name.trim(),
         unit: editingItem.unit || '',
+      };
+      
+      // Only include isGlobal if it's explicitly set
+      if (editingItem.isGlobal !== undefined) {
+        updateData.isGlobal = editingItem.isGlobal;
+      }
+      
+      console.log('Updating food item:', selectedItem._id, updateData);
+      
+      const response = await fetch(`/api/food-items/${selectedItem._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Update failed:', response.status, errorData);
+        throw new Error(errorData.error || `Failed to update food item (${response.status})`);
+      }
+
+      const updatedItem = await response.json();
+      console.log('Update successful:', updatedItem);
+      
+      // Update selectedItem with the response from the server immediately
+      setSelectedItem(updatedItem);
+      setEditingItem({
+        name: updatedItem.name,
+        singularName: updatedItem.singularName,
+        pluralName: updatedItem.pluralName,
+        unit: updatedItem.unit,
+        isGlobal: updatedItem.isGlobal
+      });
+      
       // Exit edit mode but keep dialog open in view mode
       setEditMode(false);
-      viewDialog.openDialog({ foodItemId: selectedItem._id });
-      loadFoodItems(); // Refresh the lists
+      viewDialog.removeDialogData('editMode');
+      // Use updatedItem._id to ensure we have the correct ID
+      viewDialog.openDialog({ foodItemId: updatedItem._id });
+      
+      // Refresh the lists after updating the selectedItem
+      // This ensures the list is updated but doesn't overwrite our selectedItem
+      loadFoodItems();
     } catch (error) {
       console.error('Error updating food item:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update food item');
     }
   };
 
@@ -170,9 +222,31 @@ function FoodItemsPageContent() {
     if (!selectedItem?._id) return;
     
     try {
-      await deleteConfirmDialog.openDialog();
+      console.log('Deleting food item:', selectedItem._id);
+      
+      const response = await fetch(`/api/food-items/${selectedItem._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Delete failed:', response.status, errorData);
+        throw new Error(errorData.error || `Failed to delete food item (${response.status})`);
+      }
+
+      console.log('Delete successful');
+      
+      // Close the view dialog
+      handleCloseViewDialog();
+      
+      // Refresh the lists
+      await loadFoodItems();
     } catch (error) {
       console.error('Error deleting food item:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete food item');
     }
   };
 
@@ -719,9 +793,9 @@ function FoodItemsPageContent() {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
+              onClick={async () => {
                 deleteConfirmDialog.closeDialog();
-                handleDeleteItem();
+                await handleDeleteItem();
               }} 
               color="error" 
               variant="contained"
