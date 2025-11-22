@@ -1178,8 +1178,8 @@ function ShoppingListsPageContent() {
       return listContainerRef.current;
     };
 
-    const scrollThreshold = 80; // pixels from top/bottom to trigger scroll
-    const scrollSpeed = 15; // pixels per frame (increased for better responsiveness)
+    const scrollThreshold = 100; // pixels from top/bottom to trigger scroll (increased for mobile)
+    const scrollSpeed = 20; // pixels per frame (increased for better responsiveness on mobile)
 
     const handleDragOver = (e: DragEvent | TouchEvent) => {
       const container = findScrollableContainer();
@@ -1188,10 +1188,10 @@ function ShoppingListsPageContent() {
         ? (e as TouchEvent).touches[0]?.clientY
         : (e as DragEvent).clientY;
 
-      if (
-        !container ||
-        (!draggedItemId && !touchDragStateRef.current?.isDragging)
-      ) {
+      // Check if we're dragging (either mouse drag or touch drag)
+      const isDragging = draggedItemId || touchDragStateRef.current?.isDragging;
+
+      if (!container || !isDragging) {
         if (autoScrollIntervalRef.current) {
           clearInterval(autoScrollIntervalRef.current);
           autoScrollIntervalRef.current = null;
@@ -1271,15 +1271,20 @@ function ShoppingListsPageContent() {
     document.addEventListener("drop", handleDragEnd);
 
     // Touch events (mobile) - handle auto-scroll
+    // This runs on document level to catch all touch moves during drag
+    // We use capture phase to ensure we get the event before item handlers
     const handleTouchMove = (e: TouchEvent) => {
-      if (touchDragStateRef.current?.isDragging) {
-        e.preventDefault(); // Prevent scrolling while dragging
-        handleDragOver(e);
+      if (!touchDragStateRef.current?.isDragging) {
+        return; // Not dragging, allow normal scrolling
+      }
 
-        // Update touch position
-        if (touchDragStateRef.current && e.touches[0]) {
-          touchDragStateRef.current.currentY = e.touches[0].clientY;
-        }
+      // Handle auto-scroll - this will check if we're near edges and scroll accordingly
+      // This must run even if item-level handler called preventDefault
+      handleDragOver(e);
+
+      // Update touch position for tracking
+      if (touchDragStateRef.current && e.touches[0]) {
+        touchDragStateRef.current.currentY = e.touches[0].clientY;
       }
     };
 
@@ -1291,9 +1296,14 @@ function ShoppingListsPageContent() {
       handleDragEnd();
     };
 
-    document.addEventListener("touchmove", handleTouchMove, { passive: false });
-    document.addEventListener("touchend", handleTouchEnd);
-    document.addEventListener("touchcancel", handleTouchEnd);
+    // Use capture phase to ensure we handle touchmove before item-level handlers
+    // This allows auto-scroll to work even when item handlers preventDefault
+    document.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+      capture: true,
+    });
+    document.addEventListener("touchend", handleTouchEnd, { capture: true });
+    document.addEventListener("touchcancel", handleTouchEnd, { capture: true });
 
     return () => {
       document.removeEventListener("dragover", handleDragOver);
@@ -2120,6 +2130,7 @@ function ShoppingListsPageContent() {
 
                                     setDraggedItemId(item.foodItemId);
                                     e.preventDefault(); // Prevent scrolling now that we're dragging
+                                    e.stopPropagation(); // Don't let document handler interfere yet
                                   } else {
                                     // Not dragging - allow normal scrolling
                                     return;
@@ -2130,6 +2141,7 @@ function ShoppingListsPageContent() {
                                 if (!touch) return;
 
                                 e.preventDefault(); // Now works because listener is non-passive
+                                // Don't stop propagation - let document handler run for auto-scroll
 
                                 const target = e.currentTarget as HTMLElement;
                                 const rect = target.getBoundingClientRect();
