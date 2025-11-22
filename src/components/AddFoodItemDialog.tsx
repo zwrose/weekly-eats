@@ -186,7 +186,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Typical Selling Unit"
+                    label="Typical Usage Unit"
                     margin="normal"
                     required
                   />
@@ -264,7 +264,7 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                   <strong>Plural Name:</strong> {pluralName}
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Typical Selling Unit:</strong> {unit}
+                  <strong>Typical Usage Unit:</strong> {unit}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Access Level:</strong> {isGlobal ? 'Global' : 'Personal'}

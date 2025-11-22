@@ -571,12 +571,12 @@ function FoodItemsPageContent() {
                     fullWidth
                   />
                   <FormControl fullWidth>
-                    <InputLabel id="unit-label">Typical Selling Unit</InputLabel>
+                    <InputLabel id="unit-label">Typical Usage Unit</InputLabel>
                     <Select
                       labelId="unit-label"
                       id="unit"
                       value={editingItem.unit || ''}
-                      label="Typical Selling Unit"
+                      label="Typical Usage Unit"
                       onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
                     >
                       {getUnitOptions().map((option) => (
@@ -634,7 +634,7 @@ function FoodItemsPageContent() {
                   </Box>
                   <Divider />
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Typical Selling Unit</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">Typical Usage Unit</Typography>
                     <Typography variant="body1">{selectedItem.unit || 'N/A'}</Typography>
                   </Box>
                   <Divider />
