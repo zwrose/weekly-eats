@@ -1180,7 +1180,7 @@ function ShoppingListsPageContent() {
     };
 
     const scrollThreshold = 100; // pixels from top/bottom to trigger scroll
-    const scrollSpeed = 3; // pixels per frame (slower for more controlled scrolling)
+    const scrollSpeed = 1; // pixels per frame (slow for precise control)
 
     const handleDragOver = (e: DragEvent | TouchEvent) => {
       const container = findScrollableContainer();
