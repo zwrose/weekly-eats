@@ -264,7 +264,9 @@ export default function PantryPage() {
                       <DialogTitle onClose={createDialog.closeDialog}>Add Pantry Item</DialogTitle>
           <DialogContent>
             <Autocomplete
-              options={foodItems}
+              options={foodItems.filter(item => 
+                !pantryItems.some(pantryItem => pantryItem.foodItem._id === item._id)
+              )}
               getOptionLabel={(option) => option.pluralName || option.name}
               loading={foodItemsLoading}
               value={foodItems.find(item => item._id === newItem.foodItemId) || null}
@@ -292,11 +294,16 @@ export default function PantryPage() {
                     if (
                       e.key === 'Enter' &&
                       inputText &&
-                      !foodItems.some(item =>
-                        item.name.toLowerCase() === inputText.toLowerCase() ||
-                        item.singularName.toLowerCase() === inputText.toLowerCase() ||
-                        item.pluralName.toLowerCase() === inputText.toLowerCase()
-                      )
+                      !foodItems.some(item => {
+                        // Skip items already in pantry
+                        if (pantryItems.some(pantryItem => pantryItem.foodItem._id === item._id)) {
+                          return false;
+                        }
+                        // Check if name matches
+                        return item.name.toLowerCase() === inputText.toLowerCase() ||
+                               item.singularName.toLowerCase() === inputText.toLowerCase() ||
+                               item.pluralName.toLowerCase() === inputText.toLowerCase();
+                      })
                     ) {
                       e.preventDefault();
                       openAddFoodItemDialog();
