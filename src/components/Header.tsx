@@ -16,7 +16,7 @@ import {
   Box,
 } from "@mui/material";
 import { CachedAvatar } from "./CachedAvatar";
-import {
+import { 
   Settings,
   Logout,
   Person,
@@ -83,25 +83,25 @@ export default function Header() {
   // Check if we should hide the header for unapproved users
   const shouldHideHeader =
     session?.user &&
-    !(session.user as { isApproved?: boolean }).isApproved &&
+    !(session.user as { isApproved?: boolean }).isApproved && 
     !(session.user as { isAdmin?: boolean }).isAdmin;
 
   return (
     <SessionWrapper>
       {session?.user && !shouldHideHeader && (
-        <AppBar
-          position="sticky"
-          color="default"
+        <AppBar 
+          position="sticky" 
+          color="default" 
           elevation={1}
           sx={{ display: { xs: "none", md: "block" } }}
         >
           <Toolbar>
             {/* Mobile menu button is now replaced by bottom navigation */}
 
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
+            <Box 
+              sx={{ 
+                display: "flex", 
+                alignItems: "center", 
                 gap: 1.5,
                 cursor: "pointer",
                 userSelect: "none",
@@ -119,10 +119,10 @@ export default function Header() {
                   priority
                 />
               </Box>
-              <Typography
-                variant="h4"
-                component="div"
-                sx={{
+              <Typography 
+                variant="h4" 
+                component="div" 
+                sx={{ 
                   fontWeight: "bold",
                 }}
               >
@@ -142,7 +142,7 @@ export default function Header() {
               <Button
                 onClick={() => router.push("/meal-plans")}
                 startIcon={<CalendarMonth sx={{ color: "primary.main" }} />}
-                sx={{
+                sx={{ 
                   textTransform: "none",
                   color: "text.primary",
                   fontSize: "1.1rem",
@@ -161,7 +161,7 @@ export default function Header() {
               <Button
                 onClick={() => router.push("/shopping-lists")}
                 startIcon={<ShoppingCart sx={{ color: "#2e7d32" }} />}
-                sx={{
+                sx={{ 
                   textTransform: "none",
                   color: "text.primary",
                   fontSize: "1.1rem",
@@ -182,7 +182,7 @@ export default function Header() {
               <Button
                 onClick={() => router.push("/recipes")}
                 startIcon={<Restaurant sx={{ color: "#ed6c02" }} />}
-                sx={{
+                sx={{ 
                   textTransform: "none",
                   color: "text.primary",
                   fontSize: "1.1rem",
@@ -201,7 +201,7 @@ export default function Header() {
               <Button
                 onClick={() => router.push("/pantry")}
                 startIcon={<Kitchen sx={{ color: "#9c27b0" }} />}
-                sx={{
+                sx={{ 
                   textTransform: "none",
                   color: "text.primary",
                   fontSize: "1.1rem",
@@ -218,7 +218,7 @@ export default function Header() {
                 Pantry
               </Button>
             </Box>
-
+            
             {/* Desktop user menu - hidden on mobile where bottom nav is used */}
             <Button
               onClick={handleMenu}
@@ -237,15 +237,15 @@ export default function Header() {
               }}
             >
               <CachedAvatar
-                src={session.user.image}
-                alt={session.user.name || "Profile"}
-                sx={{ width: 32, height: 32 }}
-              />
+                  src={session.user.image}
+                  alt={session.user.name || "Profile"}
+                  sx={{ width: 32, height: 32 }}
+                />
               <Typography variant="body1" color="text.secondary">
                 {session.user.name}
               </Typography>
             </Button>
-
+            
             {/* Desktop User Menu */}
             <Menu
               id="menu-appbar"
@@ -306,4 +306,4 @@ export default function Header() {
       )}
     </SessionWrapper>
   );
-}
+} 

@@ -166,7 +166,7 @@ export default function MealEditor({
               ingredient={{
                 type: item.type, // Use the actual type from the meal item
                 id: item.id,
-                quantity: item.quantity || 1,
+                quantity: item.quantity ?? 1,
                 unit: item.unit || 'cup',
                 name: item.name // ✅ Preserve the name from the meal item
               }}

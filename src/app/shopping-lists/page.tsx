@@ -46,6 +46,7 @@ import { fetchMealPlans } from "../../lib/meal-plan-utils";
 import { extractFoodItemsFromMealPlans, mergeWithShoppingList, UnitConflict } from "../../lib/meal-plan-to-shopping-list";
 import { CalendarMonth } from "@mui/icons-material";
 import { fetchPantryItems } from "../../lib/pantry-utils";
+import AddFoodItemDialog from "../../components/AddFoodItemDialog";
 
 interface FoodItem {
   _id: string;
@@ -127,6 +128,16 @@ function ShoppingListsPageContent() {
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState('');
   const [shoppingListItems, setShoppingListItems] = useState<ShoppingListItem[]>([]);
+  const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
+  const [prefillFoodItemName, setPrefillFoodItemName] = useState('');
+  const [foodItemInputValue, setFoodItemInputValue] = useState('');
+  
+  const openAddFoodItemDialog = (inputValue?: string) => {
+    // Use the provided input value, or fallback to state
+    const valueToUse = (inputValue || foodItemInputValue || '').trim();
+    setPrefillFoodItemName(valueToUse);
+    setAddFoodItemDialogOpen(true);
+  };
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<"before" | "after" | null>(null);
@@ -516,12 +527,74 @@ function ShoppingListsPageContent() {
     setSelectedFoodItem(null);
     setQuantity(1);
     setSelectedUnit('');
+    setFoodItemInputValue(''); // Clear input after adding
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && selectedFoodItem) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddItemToList();
+      
+      if (selectedFoodItem) {
+        // If a food item is selected, add it to the list
+        handleAddItemToList();
+      } else {
+        // Get the current input value directly from the input element
+        // This ensures we have the most up-to-date value even if state hasn't updated
+        const inputElement = e.currentTarget;
+        const inputValue = (inputElement as HTMLInputElement).value?.trim() || foodItemInputValue?.trim() || '';
+        
+        if (inputValue) {
+          // If there's input text but no selection, check if we should create a new food item
+          const availableOptions = foodItems.filter(item => 
+            !shoppingListItems.some(listItem => listItem.foodItemId === item._id)
+          );
+          const inputLower = inputValue.toLowerCase();
+          const matchingOptions = availableOptions.filter(item =>
+            item.name.toLowerCase().includes(inputLower) ||
+            item.singularName.toLowerCase().includes(inputLower) ||
+            item.pluralName.toLowerCase().includes(inputLower)
+          );
+          
+          if (matchingOptions.length === 0) {
+            // No matching options, start create food item flow
+            // Pass the input value directly to ensure it's used
+            openAddFoodItemDialog(inputValue);
+          }
+        }
+      }
+    }
+  };
+
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+    try {
+      const response = await fetch('/api/food-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(foodItemData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add food item');
+      }
+
+      const newFoodItem = await response.json();
+      
+      // Add the new food item to the local state
+      setFoodItems(prev => [...prev, newFoodItem]);
+      
+      // Close the dialog
+      setAddFoodItemDialogOpen(false);
+      
+      // Automatically select the newly created food item
+      setSelectedFoodItem(newFoodItem);
+      setSelectedUnit(newFoodItem.unit);
+      setPrefillFoodItemName('');
+    } catch (error) {
+      console.error('Error adding food item:', error);
+      showSnackbar(error instanceof Error ? error.message : 'Failed to add food item', 'error');
     }
   };
 
@@ -1592,10 +1665,14 @@ function ShoppingListsPageContent() {
                     )}
                     getOptionLabel={(option) => option.name}
                     value={selectedFoodItem}
+                    onInputChange={(_, value) => {
+                      setFoodItemInputValue(value);
+                    }}
                     onChange={(_, value) => {
                       setSelectedFoodItem(value);
                       if (value) {
                         setSelectedUnit(value.unit);
+                        setFoodItemInputValue(''); // Clear input when item is selected
                       } else {
                         setSelectedUnit('');
                       }
@@ -1603,6 +1680,22 @@ function ShoppingListsPageContent() {
                     renderInput={(params) => (
                       <TextField {...params} label="Food Item" size="small" onKeyDown={handleKeyDown} />
                     )}
+                    noOptionsText={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" mb={1}>
+                          No food items found
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={openAddFoodItemDialog}
+                        >
+                          {foodItemInputValue
+                            ? `Add "${foodItemInputValue}" as a Food Item`
+                            : 'Add New Food Item'}
+                        </Button>
+                      </Box>
+                    }
                     sx={{ mb: 2 }}
                   />
                   {/* Quantity, Unit, and Add button in a row */}
@@ -1610,12 +1703,23 @@ function ShoppingListsPageContent() {
                     <TextField
                       label="Quantity"
                       type="number"
-                      inputProps={{ step: 0.01, min: 0.01 }}
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(0.01, parseFloat(e.target.value) || 0.01))}
+                      inputProps={{ step: 0.01, min: 0 }}
+                      value={quantity > 0 ? quantity : ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        // Allow any non-negative value during editing (including 0 and NaN for empty field)
+                        if (!isNaN(value) && value >= 0) {
+                          setQuantity(value);
+                        } else if (e.target.value === '') {
+                          // Allow empty field for editing
+                          setQuantity(0);
+                        }
+                      }}
                       onKeyDown={handleKeyDown}
                       size="small"
                       sx={{ width: { xs: '100%', sm: 100 } }}
+                      error={quantity <= 0}
+                      helperText={quantity <= 0 ? 'Must be > 0' : ''}
                     />
                     <Autocomplete
                       options={getUnitOptions()}
@@ -2229,6 +2333,18 @@ function ShoppingListsPageContent() {
         onClose={emojiPickerDialog.closeDialog}
         onSelect={handleEmojiSelect}
         currentEmoji={newStoreEmoji}
+      />
+
+      {/* Add Food Item Dialog */}
+      <AddFoodItemDialog
+        open={addFoodItemDialogOpen}
+        onClose={() => {
+          setAddFoodItemDialogOpen(false);
+          setPrefillFoodItemName('');
+          setFoodItemInputValue(''); // Clear input when dialog closes
+        }}
+        onAdd={handleAddFoodItem}
+        prefillName={prefillFoodItemName}
       />
 
       {/* Leave Store Confirmation Dialog */}

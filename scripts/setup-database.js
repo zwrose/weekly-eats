@@ -116,7 +116,7 @@ async function createDatabaseIndexes() {
     throw error;
   } finally {
     if (connected) {
-      await client.close();
+    await client.close();
     }
   }
 }
@@ -136,7 +136,7 @@ async function main() {
     const success = await createDatabaseIndexes();
     
     if (success) {
-      console.log('Database setup completed successfully!');
+    console.log('Database setup completed successfully!');
     }
     process.exit(0);
   } catch (error) {

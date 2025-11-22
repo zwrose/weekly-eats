@@ -144,10 +144,10 @@ export default function BottomNav() {
             aria-label="Profile"
             icon={
               <CachedAvatar
-                src={session.user.image}
-                alt={session.user.name || "Profile"}
-                sx={{ width: 24, height: 24 }}
-              />
+                  src={session.user.image}
+                  alt={session.user.name || "Profile"}
+                  sx={{ width: 24, height: 24 }}
+                />
             }
             onClick={handleProfileMenu}
           />
