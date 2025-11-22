@@ -170,11 +170,12 @@ export default function MealEditor({
                 unit: item.unit || 'cup',
                 name: item.name // ✅ Preserve the name from the meal item
               }}
+              autoFocus={!item.id || item.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
-                let itemName = '';
+                let itemName = updatedIngredient.name || ''; // Start with the name from IngredientInput
                 
-                // Always look up the name to ensure it's correct
-                if (updatedIngredient.id) {
+                // If we have the data loaded, look up the name to ensure it's correct (especially for singular/plural)
+                if (updatedIngredient.id && (foodItems.length > 0 || recipes.length > 0)) {
                   const foodItem = foodItems.find(f => f._id === updatedIngredient.id);
                   const recipe = recipes.find(r => r._id === updatedIngredient.id);
                   
@@ -188,10 +189,8 @@ export default function MealEditor({
                     // Use newly created food item (before it's in foodItems state)
                     itemName = lastCreatedFoodItemRef.current.name;
                     lastCreatedFoodItemRef.current = null;
-                  } else if (updatedIngredient.name) {
-                    // Fall back to the name from updatedIngredient (might be stale but better than nothing)
-                    itemName = updatedIngredient.name;
                   }
+                  // If lookup fails but we have a name from updatedIngredient, keep it
                 }
                 
                 // Update the meal item with the ingredient data

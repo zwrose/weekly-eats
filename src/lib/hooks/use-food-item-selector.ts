@@ -251,18 +251,19 @@ export function useFoodItemSelector(
     if (e.key === 'Enter') {
       e.preventDefault();
 
+      // If there are search results, select the first one (or currently highlighted one)
+      if (searchOptions.length > 0) {
+        const selectedOption = searchOptions[selectedIndex || 0];
+        if (selectedOption) {
+          handleSelect(selectedOption);
+          return;
+        }
+      }
+
+      // If no search results and there's input, request creation
       if (inputValue && inputValue.trim() !== '') {
-        if (searchOptions.length === 0) {
-          // No options available, request creation
-          if (onCreateRequested) {
-            onCreateRequested(inputValue.trim());
-          }
-        } else {
-          // Select the currently highlighted option
-          const selectedOption = searchOptions[selectedIndex || 0];
-          if (selectedOption) {
-            handleSelect(selectedOption);
-          }
+        if (onCreateRequested) {
+          onCreateRequested(inputValue.trim());
         }
       }
     } else if (e.key === 'ArrowDown') {

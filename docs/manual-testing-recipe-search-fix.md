@@ -102,3 +102,4 @@ In the Network tab, you should see:
 - Once recipes are loaded, it switches to local filtering (faster)
 - This prevents the "empty dropdown" bug when typing before recipes finish loading
 
+
