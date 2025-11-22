@@ -2014,7 +2014,6 @@ function ShoppingListsPageContent() {
                               alignItems: "stretch",
                               py: 2,
                               cursor: "grab",
-                              touchAction: "none", // Prevent default touch behaviors for drag
                               borderTop:
                                 dragOverItemId === item.foodItemId &&
                                 dragOverPosition === "before"
@@ -2053,26 +2052,79 @@ function ShoppingListsPageContent() {
                               element.__touchSetup = true;
 
                               // Use native event listeners to avoid passive event issues
+                              // We use a delayed start to allow normal scrolling
+                              let initialTouch: {
+                                x: number;
+                                y: number;
+                                time: number;
+                              } | null = null;
+
                               const handleTouchStart = (e: TouchEvent) => {
                                 const touch = e.touches[0];
                                 if (!touch) return;
 
-                                const container = listContainerRef.current;
-
-                                touchDragStateRef.current = {
-                                  isDragging: true,
-                                  startY: touch.clientY,
-                                  currentY: touch.clientY,
-                                  draggedItemId: item.foodItemId,
-                                  startScrollTop: container?.scrollTop || 0,
+                                // Store initial touch info
+                                initialTouch = {
+                                  x: touch.clientX,
+                                  y: touch.clientY,
+                                  time: Date.now(),
                                 };
 
-                                setDraggedItemId(item.foodItemId);
+                                // Don't start dragging immediately - wait to see if user scrolls or drags
+                                // This allows normal scrolling to work
+                              };
+
+                              const checkIfDragging = (
+                                e: TouchEvent
+                              ): boolean => {
+                                const touch = e.touches[0];
+                                if (!touch || !initialTouch) return false;
+
+                                const deltaX = Math.abs(
+                                  touch.clientX - initialTouch.x
+                                );
+                                const deltaY = Math.abs(
+                                  touch.clientY - initialTouch.y
+                                );
+                                const timeElapsed =
+                                  Date.now() - initialTouch.time;
+
+                                // Start dragging if:
+                                // 1. User has moved significantly horizontally (more than vertically) - indicates drag intent
+                                // 2. OR user has held for > 200ms with minimal movement - long press
+                                const isHorizontalDrag =
+                                  deltaX > 10 && deltaX > deltaY;
+                                const isLongPress =
+                                  timeElapsed > 200 && deltaX < 5 && deltaY < 5;
+
+                                return isHorizontalDrag || isLongPress;
                               };
 
                               const handleTouchMove = (e: TouchEvent) => {
-                                if (!touchDragStateRef.current?.isDragging)
-                                  return;
+                                // If not already dragging, check if we should start
+                                if (!touchDragStateRef.current?.isDragging) {
+                                  if (checkIfDragging(e)) {
+                                    // Start dragging
+                                    const touch = e.touches[0];
+                                    if (!touch || !initialTouch) return;
+
+                                    const container = listContainerRef.current;
+
+                                    touchDragStateRef.current = {
+                                      isDragging: true,
+                                      startY: initialTouch.y,
+                                      currentY: touch.clientY,
+                                      draggedItemId: item.foodItemId,
+                                      startScrollTop: container?.scrollTop || 0,
+                                    };
+
+                                    setDraggedItemId(item.foodItemId);
+                                    e.preventDefault(); // Prevent scrolling now that we're dragging
+                                  } else {
+                                    // Not dragging - allow normal scrolling
+                                    return;
+                                  }
+                                }
 
                                 const touch = e.touches[0];
                                 if (!touch) return;
@@ -2127,8 +2179,12 @@ function ShoppingListsPageContent() {
                               };
 
                               const handleTouchEnd = () => {
-                                if (!touchDragStateRef.current?.isDragging)
+                                // Clear initial touch
+                                initialTouch = null;
+
+                                if (!touchDragStateRef.current?.isDragging) {
                                   return;
+                                }
 
                                 // Handle drop
                                 if (
