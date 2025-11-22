@@ -195,6 +195,7 @@ function ShoppingListsPageContent() {
   // Auto-scroll during drag
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
+  const autoScrollAnimationRef = useRef<number | null>(null);
 
   // Touch drag state for mobile
   const touchDragStateRef = useRef<{
@@ -1218,19 +1219,20 @@ function ShoppingListsPageContent() {
         distanceFromTop > 0 &&
         container.scrollTop > 0
       ) {
-        autoScrollIntervalRef.current = window.setInterval(() => {
-          if (container && container.scrollTop > 0) {
-            container.scrollTop = Math.max(
-              0,
-              container.scrollTop - scrollSpeed
-            );
-          } else {
-            if (autoScrollIntervalRef.current) {
-              clearInterval(autoScrollIntervalRef.current);
-              autoScrollIntervalRef.current = null;
+        // Use requestAnimationFrame for smoother scrolling
+        const performScrollUp = () => {
+          if (!container || container.scrollTop <= 0) {
+            if (autoScrollAnimationRef.current !== null) {
+              cancelAnimationFrame(autoScrollAnimationRef.current);
+              autoScrollAnimationRef.current = null;
             }
+            return;
           }
-        }, 16); // ~60fps
+          container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
+          autoScrollAnimationRef.current =
+            requestAnimationFrame(performScrollUp);
+        };
+        autoScrollAnimationRef.current = requestAnimationFrame(performScrollUp);
       }
       // Start scrolling down if near bottom
       else if (
@@ -1238,27 +1240,33 @@ function ShoppingListsPageContent() {
         distanceFromBottom > 0 &&
         container.scrollTop < container.scrollHeight - container.clientHeight
       ) {
-        autoScrollIntervalRef.current = window.setInterval(() => {
-          if (
-            container &&
-            container.scrollTop <
-              container.scrollHeight - container.clientHeight
-          ) {
-            container.scrollTop = Math.min(
-              container.scrollHeight - container.clientHeight,
-              container.scrollTop + scrollSpeed
-            );
-          } else {
-            if (autoScrollIntervalRef.current) {
-              clearInterval(autoScrollIntervalRef.current);
-              autoScrollIntervalRef.current = null;
+        // Use requestAnimationFrame for smoother scrolling
+        const performScrollDown = () => {
+          const maxScroll = container.scrollHeight - container.clientHeight;
+          if (!container || container.scrollTop >= maxScroll) {
+            if (autoScrollAnimationRef.current !== null) {
+              cancelAnimationFrame(autoScrollAnimationRef.current);
+              autoScrollAnimationRef.current = null;
             }
+            return;
           }
-        }, 16); // ~60fps
+          container.scrollTop = Math.min(
+            maxScroll,
+            container.scrollTop + scrollSpeed
+          );
+          autoScrollAnimationRef.current =
+            requestAnimationFrame(performScrollDown);
+        };
+        autoScrollAnimationRef.current =
+          requestAnimationFrame(performScrollDown);
       }
     };
 
     const handleDragEnd = () => {
+      if (autoScrollAnimationRef.current !== null) {
+        cancelAnimationFrame(autoScrollAnimationRef.current);
+        autoScrollAnimationRef.current = null;
+      }
       if (autoScrollIntervalRef.current) {
         clearInterval(autoScrollIntervalRef.current);
         autoScrollIntervalRef.current = null;
@@ -1284,7 +1292,10 @@ function ShoppingListsPageContent() {
 
       // Find scrollable container directly (don't rely on handleDragOver)
       const container = findScrollableContainer();
-      if (!container) return;
+      if (!container) {
+        console.log("[Auto-scroll] No container found");
+        return;
+      }
 
       // Calculate distance from edges
       const rect = container.getBoundingClientRect();
@@ -1292,7 +1303,29 @@ function ShoppingListsPageContent() {
       const distanceFromTop = touchY - rect.top;
       const distanceFromBottom = rect.bottom - touchY;
 
+      // Debug logging (remove after testing)
+      if (
+        distanceFromTop < scrollThreshold ||
+        distanceFromBottom < scrollThreshold
+      ) {
+        console.log("[Auto-scroll] Near edge:", {
+          distanceFromTop,
+          distanceFromBottom,
+          scrollTop: container.scrollTop,
+          scrollHeight: container.scrollHeight,
+          clientHeight: container.clientHeight,
+          canScrollUp: container.scrollTop > 0,
+          canScrollDown:
+            container.scrollTop <
+            container.scrollHeight - container.clientHeight,
+        });
+      }
+
       // Stop any existing auto-scroll
+      if (autoScrollAnimationRef.current !== null) {
+        cancelAnimationFrame(autoScrollAnimationRef.current);
+        autoScrollAnimationRef.current = null;
+      }
       if (autoScrollIntervalRef.current) {
         clearInterval(autoScrollIntervalRef.current);
         autoScrollIntervalRef.current = null;
@@ -1304,19 +1337,20 @@ function ShoppingListsPageContent() {
         distanceFromTop > 0 &&
         container.scrollTop > 0
       ) {
-        autoScrollIntervalRef.current = window.setInterval(() => {
-          if (container && container.scrollTop > 0) {
-            container.scrollTop = Math.max(
-              0,
-              container.scrollTop - scrollSpeed
-            );
-          } else {
-            if (autoScrollIntervalRef.current) {
-              clearInterval(autoScrollIntervalRef.current);
-              autoScrollIntervalRef.current = null;
+        // Use requestAnimationFrame for smoother scrolling
+        const performScrollUp = () => {
+          if (!container || container.scrollTop <= 0) {
+            if (autoScrollAnimationRef.current !== null) {
+              cancelAnimationFrame(autoScrollAnimationRef.current);
+              autoScrollAnimationRef.current = null;
             }
+            return;
           }
-        }, 16); // ~60fps
+          container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
+          autoScrollAnimationRef.current =
+            requestAnimationFrame(performScrollUp);
+        };
+        autoScrollAnimationRef.current = requestAnimationFrame(performScrollUp);
       }
       // Start scrolling down if near bottom
       else if (
@@ -1324,23 +1358,25 @@ function ShoppingListsPageContent() {
         distanceFromBottom > 0 &&
         container.scrollTop < container.scrollHeight - container.clientHeight
       ) {
-        autoScrollIntervalRef.current = window.setInterval(() => {
-          if (
-            container &&
-            container.scrollTop <
-              container.scrollHeight - container.clientHeight
-          ) {
-            container.scrollTop = Math.min(
-              container.scrollHeight - container.clientHeight,
-              container.scrollTop + scrollSpeed
-            );
-          } else {
-            if (autoScrollIntervalRef.current) {
-              clearInterval(autoScrollIntervalRef.current);
-              autoScrollIntervalRef.current = null;
+        // Use requestAnimationFrame for smoother scrolling
+        const performScrollDown = () => {
+          const maxScroll = container.scrollHeight - container.clientHeight;
+          if (!container || container.scrollTop >= maxScroll) {
+            if (autoScrollAnimationRef.current !== null) {
+              cancelAnimationFrame(autoScrollAnimationRef.current);
+              autoScrollAnimationRef.current = null;
             }
+            return;
           }
-        }, 16); // ~60fps
+          container.scrollTop = Math.min(
+            maxScroll,
+            container.scrollTop + scrollSpeed
+          );
+          autoScrollAnimationRef.current =
+            requestAnimationFrame(performScrollDown);
+        };
+        autoScrollAnimationRef.current =
+          requestAnimationFrame(performScrollDown);
       }
 
       // Update touch position for tracking
@@ -2191,7 +2227,7 @@ function ShoppingListsPageContent() {
 
                                     setDraggedItemId(item.foodItemId);
                                     e.preventDefault(); // Prevent scrolling now that we're dragging
-                                    e.stopPropagation(); // Don't let document handler interfere yet
+                                    // Don't stop propagation - let document handler run for auto-scroll
                                   } else {
                                     // Not dragging - allow normal scrolling
                                     return;
