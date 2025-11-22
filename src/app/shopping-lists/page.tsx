@@ -1179,8 +1179,8 @@ function ShoppingListsPageContent() {
       return listContainerRef.current;
     };
 
-    const scrollThreshold = 100; // pixels from top/bottom to trigger scroll (increased for mobile)
-    const scrollSpeed = 20; // pixels per frame (increased for better responsiveness on mobile)
+    const scrollThreshold = 100; // pixels from top/bottom to trigger scroll
+    const scrollSpeed = 3; // pixels per frame (slower for more controlled scrolling)
 
     const handleDragOver = (e: DragEvent | TouchEvent) => {
       const container = findScrollableContainer();
@@ -1293,7 +1293,6 @@ function ShoppingListsPageContent() {
       // Find scrollable container directly (don't rely on handleDragOver)
       const container = findScrollableContainer();
       if (!container) {
-        console.log("[Auto-scroll] No container found");
         return;
       }
 
@@ -1302,24 +1301,6 @@ function ShoppingListsPageContent() {
       const touchY = touch.clientY;
       const distanceFromTop = touchY - rect.top;
       const distanceFromBottom = rect.bottom - touchY;
-
-      // Debug logging (remove after testing)
-      if (
-        distanceFromTop < scrollThreshold ||
-        distanceFromBottom < scrollThreshold
-      ) {
-        console.log("[Auto-scroll] Near edge:", {
-          distanceFromTop,
-          distanceFromBottom,
-          scrollTop: container.scrollTop,
-          scrollHeight: container.scrollHeight,
-          clientHeight: container.clientHeight,
-          canScrollUp: container.scrollTop > 0,
-          canScrollDown:
-            container.scrollTop <
-            container.scrollHeight - container.clientHeight,
-        });
-      }
 
       // Stop any existing auto-scroll
       if (autoScrollAnimationRef.current !== null) {
