@@ -1688,7 +1688,10 @@ function ShoppingListsPageContent() {
                         <Button
                           size="small"
                           variant="outlined"
-                          onClick={openAddFoodItemDialog}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openAddFoodItemDialog();
+                          }}
                         >
                           {foodItemInputValue
                             ? `Add "${foodItemInputValue}" as a Food Item`

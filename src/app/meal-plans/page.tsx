@@ -1444,43 +1444,43 @@ function MealPlansPageContent() {
 
                                   {/* Only show MealEditor when meal is not explicitly skipped */}
                                   {!isSkipped && (
-                                    <MealEditor
-                                      mealItems={meal.items}
-                                      onChange={(newItems) => {
-                                        // Update the meal plan
-                                        const updatedMealPlan = { ...selectedMealPlan };
-                                        const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
-                                          item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
-                                        );
-                                        
-                                        // Always update the meal plan item, even if it's empty
-                                        if (existingMealPlanItemIndex !== -1) {
+                                  <MealEditor
+                                    mealItems={meal.items}
+                                    onChange={(newItems) => {
+                                      // Update the meal plan
+                                      const updatedMealPlan = { ...selectedMealPlan };
+                                      const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
+                                        item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
+                                      );
+                                      
+                                      // Always update the meal plan item, even if it's empty
+                                      if (existingMealPlanItemIndex !== -1) {
                                           updatedMealPlan.items[existingMealPlanItemIndex] = {
                                             ...updatedMealPlan.items[existingMealPlanItemIndex],
                                             items: newItems
                                           };
-                                        } else {
-                                          // Create a new meal plan item even if it's empty (to allow adding items)
-                                          updatedMealPlan.items.push({
-                                            _id: `temp-${Date.now()}`,
-                                            mealPlanId: selectedMealPlan._id,
-                                            dayOfWeek: dayOfWeek as DayOfWeek,
-                                            mealType: meal.mealType as MealType,
-                                            items: newItems
-                                          });
-                                        }
-                                        
-                                        setSelectedMealPlan(updatedMealPlan);
-                                        // Update validation immediately
-                                        const validation = validateMealPlan(updatedMealPlan.items);
-                                        setMealPlanValidationErrors(validation.errors);
-                                        // Hide validation errors if they're resolved
-                                        if (validation.isValid) {
-                                          setShowValidationErrors(false);
-                                        }
-                                      }}
-                                      onFoodItemAdded={handleAddFoodItem}
-                                    />
+                                      } else {
+                                        // Create a new meal plan item even if it's empty (to allow adding items)
+                                        updatedMealPlan.items.push({
+                                          _id: `temp-${Date.now()}`,
+                                          mealPlanId: selectedMealPlan._id,
+                                          dayOfWeek: dayOfWeek as DayOfWeek,
+                                          mealType: meal.mealType as MealType,
+                                          items: newItems
+                                        });
+                                      }
+                                      
+                                      setSelectedMealPlan(updatedMealPlan);
+                                      // Update validation immediately
+                                      const validation = validateMealPlan(updatedMealPlan.items);
+                                      setMealPlanValidationErrors(validation.errors);
+                                      // Hide validation errors if they're resolved
+                                      if (validation.isValid) {
+                                        setShowValidationErrors(false);
+                                      }
+                                    }}
+                                    onFoodItemAdded={handleAddFoodItem}
+                                  />
                                   )}
                                 </Box>
                               )})}
@@ -1612,7 +1612,7 @@ function MealPlansPageContent() {
                                   const mealPlanItem = mealItems[0];
                                   const isSkipped = mealPlanItem?.skipped ?? false;
                                   const skipReason = mealPlanItem?.skipReason ?? '';
-
+                                  
                                   return (
                                     <Box key={mealType} sx={{ mb: 3 }}>
                                       <Typography 
