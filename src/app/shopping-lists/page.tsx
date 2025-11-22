@@ -196,6 +196,15 @@ function ShoppingListsPageContent() {
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
 
+  // Touch drag state for mobile
+  const touchDragStateRef = useRef<{
+    isDragging: boolean;
+    startY: number;
+    currentY: number;
+    draggedItemId: string | null;
+    startScrollTop: number;
+  } | null>(null);
+
   // Meal plan import states
   const [availableMealPlans, setAvailableMealPlans] = useState<
     MealPlanWithTemplate[]
@@ -1120,8 +1129,11 @@ function ShoppingListsPageContent() {
   };
 
   // Auto-scroll during drag - use document-level handler
+  // Works for both mouse drag (desktop) and touch drag (mobile)
   useEffect(() => {
-    if (!draggedItemId) {
+    const isDragging = draggedItemId || touchDragStateRef.current?.isDragging;
+
+    if (!isDragging) {
       // Stop scrolling if not dragging
       if (autoScrollIntervalRef.current) {
         clearInterval(autoScrollIntervalRef.current);
@@ -1169,9 +1181,17 @@ function ShoppingListsPageContent() {
     const scrollThreshold = 80; // pixels from top/bottom to trigger scroll
     const scrollSpeed = 15; // pixels per frame (increased for better responsiveness)
 
-    const handleDragOver = (e: DragEvent) => {
+    const handleDragOver = (e: DragEvent | TouchEvent) => {
       const container = findScrollableContainer();
-      if (!container || !draggedItemId) {
+      const isTouch = "touches" in e;
+      const clientY = isTouch
+        ? (e as TouchEvent).touches[0]?.clientY
+        : (e as DragEvent).clientY;
+
+      if (
+        !container ||
+        (!draggedItemId && !touchDragStateRef.current?.isDragging)
+      ) {
         if (autoScrollIntervalRef.current) {
           clearInterval(autoScrollIntervalRef.current);
           autoScrollIntervalRef.current = null;
@@ -1179,8 +1199,10 @@ function ShoppingListsPageContent() {
         return;
       }
 
+      if (!clientY) return;
+
       const rect = container.getBoundingClientRect();
-      const mouseY = e.clientY;
+      const mouseY = clientY;
       const distanceFromTop = mouseY - rect.top;
       const distanceFromBottom = rect.bottom - mouseY;
 
@@ -1243,20 +1265,66 @@ function ShoppingListsPageContent() {
       }
     };
 
+    // Mouse drag events (desktop)
     document.addEventListener("dragover", handleDragOver);
     document.addEventListener("dragend", handleDragEnd);
     document.addEventListener("drop", handleDragEnd);
+
+    // Touch events (mobile) - handle auto-scroll
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchDragStateRef.current?.isDragging) {
+        e.preventDefault(); // Prevent scrolling while dragging
+        handleDragOver(e);
+
+        // Update touch position
+        if (touchDragStateRef.current && e.touches[0]) {
+          touchDragStateRef.current.currentY = e.touches[0].clientY;
+        }
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (touchDragStateRef.current?.isDragging) {
+        touchDragStateRef.current.isDragging = false;
+        touchDragStateRef.current.draggedItemId = null;
+      }
+      handleDragEnd();
+    };
+
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleTouchEnd);
+    document.addEventListener("touchcancel", handleTouchEnd);
 
     return () => {
       document.removeEventListener("dragover", handleDragOver);
       document.removeEventListener("dragend", handleDragEnd);
       document.removeEventListener("drop", handleDragEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
       if (autoScrollIntervalRef.current) {
         clearInterval(autoScrollIntervalRef.current);
         autoScrollIntervalRef.current = null;
       }
     };
   }, [draggedItemId]);
+
+  // Cleanup touch listeners when items change
+  useEffect(() => {
+    const container = listContainerRef.current;
+    return () => {
+      // Cleanup all touch listeners when component unmounts or items change
+      if (container) {
+        const allItems = container.querySelectorAll("[data-item-id]");
+        allItems.forEach((item) => {
+          const element = item as HTMLElement & { __touchCleanup?: () => void };
+          if (element.__touchCleanup) {
+            element.__touchCleanup();
+          }
+        });
+      }
+    };
+  }, [shoppingListItems.length]); // Re-run when item count changes
 
   const handleReorderItem = async (
     sourceItemId: string,
@@ -1946,6 +2014,7 @@ function ShoppingListsPageContent() {
                               alignItems: "stretch",
                               py: 2,
                               cursor: "grab",
+                              touchAction: "none", // Prevent default touch behaviors for drag
                               borderTop:
                                 dragOverItemId === item.foodItemId &&
                                 dragOverPosition === "before"
@@ -1965,6 +2034,166 @@ function ShoppingListsPageContent() {
                             onDragStart={() =>
                               setDraggedItemId(item.foodItemId)
                             }
+                            data-item-id={item.foodItemId}
+                            ref={(node) => {
+                              if (!node) {
+                                return;
+                              }
+
+                              // Type for element with cleanup function
+                              type ElementWithCleanup = HTMLElement & {
+                                __touchSetup?: boolean;
+                                __touchCleanup?: () => void;
+                              };
+
+                              const element = node as ElementWithCleanup;
+
+                              // Skip if already set up
+                              if (element.__touchSetup) return;
+                              element.__touchSetup = true;
+
+                              // Use native event listeners to avoid passive event issues
+                              const handleTouchStart = (e: TouchEvent) => {
+                                const touch = e.touches[0];
+                                if (!touch) return;
+
+                                const container = listContainerRef.current;
+
+                                touchDragStateRef.current = {
+                                  isDragging: true,
+                                  startY: touch.clientY,
+                                  currentY: touch.clientY,
+                                  draggedItemId: item.foodItemId,
+                                  startScrollTop: container?.scrollTop || 0,
+                                };
+
+                                setDraggedItemId(item.foodItemId);
+                              };
+
+                              const handleTouchMove = (e: TouchEvent) => {
+                                if (!touchDragStateRef.current?.isDragging)
+                                  return;
+
+                                const touch = e.touches[0];
+                                if (!touch) return;
+
+                                e.preventDefault(); // Now works because listener is non-passive
+
+                                const target = e.currentTarget as HTMLElement;
+                                const rect = target.getBoundingClientRect();
+                                const touchY = touch.clientY;
+                                const offsetY = touchY - rect.top;
+
+                                // Determine position (before/after)
+                                const position =
+                                  offsetY < rect.height / 2
+                                    ? "before"
+                                    : "after";
+
+                                // Find the item we're over by checking all list items
+                                const listContainer =
+                                  target.closest('[role="list"]');
+                                if (listContainer) {
+                                  const allItems = Array.from(
+                                    listContainer.querySelectorAll(
+                                      "[data-item-id]"
+                                    )
+                                  );
+
+                                  for (const itemEl of allItems) {
+                                    const itemRect =
+                                      itemEl.getBoundingClientRect();
+                                    if (
+                                      touchY >= itemRect.top &&
+                                      touchY <= itemRect.bottom
+                                    ) {
+                                      const overItemId =
+                                        itemEl.getAttribute("data-item-id");
+                                      if (
+                                        overItemId &&
+                                        overItemId !== item.foodItemId
+                                      ) {
+                                        setDragOverItemId(overItemId);
+                                        setDragOverPosition(position);
+                                        break;
+                                      }
+                                    }
+                                  }
+                                }
+
+                                if (touchDragStateRef.current) {
+                                  touchDragStateRef.current.currentY = touchY;
+                                }
+                              };
+
+                              const handleTouchEnd = () => {
+                                if (!touchDragStateRef.current?.isDragging)
+                                  return;
+
+                                // Handle drop
+                                if (
+                                  dragOverItemId &&
+                                  dragOverPosition &&
+                                  draggedItemId
+                                ) {
+                                  void handleReorderItem(
+                                    draggedItemId,
+                                    dragOverItemId,
+                                    dragOverPosition
+                                  );
+                                }
+
+                                // Reset state
+                                touchDragStateRef.current.isDragging = false;
+                                touchDragStateRef.current.draggedItemId = null;
+                                setDraggedItemId(null);
+                                setDragOverItemId(null);
+                                setDragOverPosition(null);
+                              };
+
+                              // Add native event listeners with { passive: false } for touchmove to allow preventDefault
+                              node.addEventListener(
+                                "touchstart",
+                                handleTouchStart,
+                                { passive: true }
+                              );
+                              node.addEventListener(
+                                "touchmove",
+                                handleTouchMove,
+                                { passive: false }
+                              );
+                              node.addEventListener(
+                                "touchend",
+                                handleTouchEnd,
+                                { passive: true }
+                              );
+                              node.addEventListener(
+                                "touchcancel",
+                                handleTouchEnd,
+                                { passive: true }
+                              );
+
+                              // Store cleanup function
+                              element.__touchCleanup = () => {
+                                node.removeEventListener(
+                                  "touchstart",
+                                  handleTouchStart
+                                );
+                                node.removeEventListener(
+                                  "touchmove",
+                                  handleTouchMove
+                                );
+                                node.removeEventListener(
+                                  "touchend",
+                                  handleTouchEnd
+                                );
+                                node.removeEventListener(
+                                  "touchcancel",
+                                  handleTouchEnd
+                                );
+                                element.__touchSetup = false;
+                              };
+                            }}
                             onDragOver={(e) => {
                               e.preventDefault();
                               if (
