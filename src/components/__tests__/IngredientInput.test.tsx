@@ -30,7 +30,6 @@ describe('IngredientInput', () => {
     );
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'app');
-    await user.keyboard('{ArrowDown}');
     // Wait for search results to appear (should have food item options + "Add New" at the bottom)
     const listbox = await waitFor(async () => {
       const lb = await screen.findByRole('listbox');
@@ -38,12 +37,14 @@ describe('IngredientInput', () => {
       expect(opts.length).toBeGreaterThan(1); // Should have at least one food item + "Add New"
       return lb;
     }, { timeout: 3000 });
-    const options = within(listbox).getAllByRole('option');
-    // The "Add New Food Item" option is at the bottom, so click the first option (the food item)
-    await user.click(options[0]); // Click the food item (first option)
-    expect(onIngredientChange).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'f1', type: 'foodItem' })
-    );
+    // Press Enter to select first option (without using arrow keys)
+    await user.keyboard('{Enter}');
+    // Should select the first option
+    await waitFor(() => {
+      expect(onIngredientChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'f1', type: 'foodItem' })
+      );
+    });
   });
 
   it('no options + Enter opens AddFoodItemDialog prefilled', async () => {
