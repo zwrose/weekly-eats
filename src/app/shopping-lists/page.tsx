@@ -1158,9 +1158,9 @@ function ShoppingListsPageContent() {
         return element;
       }
 
-      // Walk up the DOM tree to find the scrollable parent (check up to 5 levels)
+      // Walk up the DOM tree to find the scrollable parent (check up to 10 levels)
       let depth = 0;
-      while (element && element.parentElement && depth < 5) {
+      while (element && element.parentElement && depth < 10) {
         element = element.parentElement;
         depth++;
         const hasScroll = element.scrollHeight > element.clientHeight;
@@ -1278,13 +1278,74 @@ function ShoppingListsPageContent() {
         return; // Not dragging, allow normal scrolling
       }
 
-      // Handle auto-scroll - this will check if we're near edges and scroll accordingly
-      // This must run even if item-level handler called preventDefault
-      handleDragOver(e);
+      // Get touch position
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      // Find scrollable container directly (don't rely on handleDragOver)
+      const container = findScrollableContainer();
+      if (!container) return;
+
+      // Calculate distance from edges
+      const rect = container.getBoundingClientRect();
+      const touchY = touch.clientY;
+      const distanceFromTop = touchY - rect.top;
+      const distanceFromBottom = rect.bottom - touchY;
+
+      // Stop any existing auto-scroll
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+
+      // Start scrolling up if near top
+      if (
+        distanceFromTop < scrollThreshold &&
+        distanceFromTop > 0 &&
+        container.scrollTop > 0
+      ) {
+        autoScrollIntervalRef.current = window.setInterval(() => {
+          if (container && container.scrollTop > 0) {
+            container.scrollTop = Math.max(
+              0,
+              container.scrollTop - scrollSpeed
+            );
+          } else {
+            if (autoScrollIntervalRef.current) {
+              clearInterval(autoScrollIntervalRef.current);
+              autoScrollIntervalRef.current = null;
+            }
+          }
+        }, 16); // ~60fps
+      }
+      // Start scrolling down if near bottom
+      else if (
+        distanceFromBottom < scrollThreshold &&
+        distanceFromBottom > 0 &&
+        container.scrollTop < container.scrollHeight - container.clientHeight
+      ) {
+        autoScrollIntervalRef.current = window.setInterval(() => {
+          if (
+            container &&
+            container.scrollTop <
+              container.scrollHeight - container.clientHeight
+          ) {
+            container.scrollTop = Math.min(
+              container.scrollHeight - container.clientHeight,
+              container.scrollTop + scrollSpeed
+            );
+          } else {
+            if (autoScrollIntervalRef.current) {
+              clearInterval(autoScrollIntervalRef.current);
+              autoScrollIntervalRef.current = null;
+            }
+          }
+        }, 16); // ~60fps
+      }
 
       // Update touch position for tracking
-      if (touchDragStateRef.current && e.touches[0]) {
-        touchDragStateRef.current.currentY = e.touches[0].clientY;
+      if (touchDragStateRef.current) {
+        touchDragStateRef.current.currentY = touchY;
       }
     };
 
