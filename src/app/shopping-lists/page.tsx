@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import {
   Container,
   Typography,
@@ -79,6 +79,12 @@ import {
   mergeWithShoppingList,
   UnitConflict,
 } from "../../lib/meal-plan-to-shopping-list";
+import {
+  saveItemPositions,
+  getItemPosition,
+  insertItemAtPosition,
+  insertItemsWithPositions,
+} from "../../lib/shopping-list-position-utils";
 import { CalendarMonth } from "@mui/icons-material";
 import { fetchPantryItems } from "../../lib/pantry-utils";
 import AddFoodItemDialog from "../../components/AddFoodItemDialog";
@@ -185,6 +191,10 @@ function ShoppingListsPageContent() {
     "before" | "after" | null
   >(null);
   const [shopMode, setShopMode] = useState(false); // false = Edit Mode, true = Shop Mode
+
+  // Auto-scroll during drag
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollIntervalRef = useRef<number | null>(null);
 
   // Meal plan import states
   const [availableMealPlans, setAvailableMealPlans] = useState<
@@ -574,7 +584,18 @@ function ShoppingListsPageContent() {
       checked: false,
     };
 
-    const updatedItems = [...shoppingListItems, newItem];
+    // Look up remembered position for this item in this store
+    const rememberedPosition = await getItemPosition(
+      selectedStore._id,
+      selectedFoodItem._id
+    );
+
+    // Insert item at appropriate position based on remembered position
+    const updatedItems = insertItemAtPosition(
+      shoppingListItems,
+      newItem,
+      rememberedPosition
+    );
     setShoppingListItems(updatedItems);
 
     // Auto-save to database
@@ -782,17 +803,37 @@ function ShoppingListsPageContent() {
         foodItemsMap
       );
 
+      // Separate existing items from new items for position-aware insertion
+      const existingItemIds = new Set(
+        shoppingListItems.map((item) => item.foodItemId)
+      );
+      const existingItems = mergedItems.filter((item) =>
+        existingItemIds.has(item.foodItemId)
+      );
+      const newItems = mergedItems.filter(
+        (item) => !existingItemIds.has(item.foodItemId)
+      );
+
+      // Insert new items at their remembered positions
+      const itemsWithPositions = await insertItemsWithPositions(
+        existingItems,
+        newItems,
+        selectedStore._id
+      );
+
       if (conflicts.length > 0) {
         // Has unit conflicts - show resolution dialog
         setUnitConflicts(conflicts);
         setCurrentConflictIndex(0);
         setConflictResolutions(new Map());
-        setShoppingListItems(mergedItems); // Update with non-conflicted items
+        setShoppingListItems(itemsWithPositions); // Update with position-aware items
         unitConflictDialog.openDialog();
       } else {
         // No conflicts - save directly
-        setShoppingListItems(mergedItems);
-        await updateShoppingList(selectedStore._id, { items: mergedItems });
+        setShoppingListItems(itemsWithPositions);
+        await updateShoppingList(selectedStore._id, {
+          items: itemsWithPositions,
+        });
         // Refresh stores list
         const updatedStores = await fetchStores();
         setStores(updatedStores);
@@ -1078,6 +1119,145 @@ function ShoppingListsPageContent() {
     }
   };
 
+  // Auto-scroll during drag - use document-level handler
+  useEffect(() => {
+    if (!draggedItemId) {
+      // Stop scrolling if not dragging
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Find the scrollable container - could be listContainerRef or its scrollable parent
+    const findScrollableContainer = (): HTMLElement | null => {
+      if (!listContainerRef.current) return null;
+
+      let element: HTMLElement | null = listContainerRef.current;
+
+      // Check if the container itself is scrollable
+      const hasScroll = element.scrollHeight > element.clientHeight;
+      const overflowStyle = getComputedStyle(element).overflowY;
+      if (
+        hasScroll &&
+        (overflowStyle === "auto" || overflowStyle === "scroll")
+      ) {
+        return element;
+      }
+
+      // Walk up the DOM tree to find the scrollable parent (check up to 5 levels)
+      let depth = 0;
+      while (element && element.parentElement && depth < 5) {
+        element = element.parentElement;
+        depth++;
+        const hasScroll = element.scrollHeight > element.clientHeight;
+        const overflowStyle = getComputedStyle(element).overflowY;
+        if (
+          hasScroll &&
+          (overflowStyle === "auto" || overflowStyle === "scroll")
+        ) {
+          return element;
+        }
+      }
+
+      // Fallback: return the container even if not obviously scrollable
+      // (might become scrollable when content grows)
+      return listContainerRef.current;
+    };
+
+    const scrollThreshold = 80; // pixels from top/bottom to trigger scroll
+    const scrollSpeed = 15; // pixels per frame (increased for better responsiveness)
+
+    const handleDragOver = (e: DragEvent) => {
+      const container = findScrollableContainer();
+      if (!container || !draggedItemId) {
+        if (autoScrollIntervalRef.current) {
+          clearInterval(autoScrollIntervalRef.current);
+          autoScrollIntervalRef.current = null;
+        }
+        return;
+      }
+
+      const rect = container.getBoundingClientRect();
+      const mouseY = e.clientY;
+      const distanceFromTop = mouseY - rect.top;
+      const distanceFromBottom = rect.bottom - mouseY;
+
+      // Stop any existing auto-scroll
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+
+      // Start scrolling up if near top
+      if (
+        distanceFromTop < scrollThreshold &&
+        distanceFromTop > 0 &&
+        container.scrollTop > 0
+      ) {
+        autoScrollIntervalRef.current = window.setInterval(() => {
+          if (container && container.scrollTop > 0) {
+            container.scrollTop = Math.max(
+              0,
+              container.scrollTop - scrollSpeed
+            );
+          } else {
+            if (autoScrollIntervalRef.current) {
+              clearInterval(autoScrollIntervalRef.current);
+              autoScrollIntervalRef.current = null;
+            }
+          }
+        }, 16); // ~60fps
+      }
+      // Start scrolling down if near bottom
+      else if (
+        distanceFromBottom < scrollThreshold &&
+        distanceFromBottom > 0 &&
+        container.scrollTop < container.scrollHeight - container.clientHeight
+      ) {
+        autoScrollIntervalRef.current = window.setInterval(() => {
+          if (
+            container &&
+            container.scrollTop <
+              container.scrollHeight - container.clientHeight
+          ) {
+            container.scrollTop = Math.min(
+              container.scrollHeight - container.clientHeight,
+              container.scrollTop + scrollSpeed
+            );
+          } else {
+            if (autoScrollIntervalRef.current) {
+              clearInterval(autoScrollIntervalRef.current);
+              autoScrollIntervalRef.current = null;
+            }
+          }
+        }, 16); // ~60fps
+      }
+    };
+
+    const handleDragEnd = () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+    };
+
+    document.addEventListener("dragover", handleDragOver);
+    document.addEventListener("dragend", handleDragEnd);
+    document.addEventListener("drop", handleDragEnd);
+
+    return () => {
+      document.removeEventListener("dragover", handleDragOver);
+      document.removeEventListener("dragend", handleDragEnd);
+      document.removeEventListener("drop", handleDragEnd);
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+    };
+  }, [draggedItemId]);
+
   const handleReorderItem = async (
     sourceItemId: string,
     targetItemId: string,
@@ -1117,6 +1297,8 @@ function ShoppingListsPageContent() {
 
     try {
       await updateShoppingList(selectedStore._id, { items: updatedItems });
+      // Save positions after successful reorder
+      await saveItemPositions(selectedStore._id, updatedItems);
     } catch (error) {
       console.error("Error reordering items:", error);
       showSnackbar("Failed to save new order", "error");
@@ -1747,160 +1929,181 @@ function ShoppingListsPageContent() {
                     started.
                   </Alert>
                 ) : (
-                  <List>
-                    {shoppingListItems.map((item, index) => (
-                      <Box key={item.foodItemId}>
-                        <ListItem
-                          sx={{
-                            flexDirection: "column",
-                            alignItems: "stretch",
-                            py: 2,
-                            cursor: "grab",
-                            borderTop:
-                              dragOverItemId === item.foodItemId &&
-                              dragOverPosition === "before"
-                                ? "2px solid"
-                                : "none",
-                            borderBottom:
-                              dragOverItemId === item.foodItemId &&
-                              dragOverPosition === "after"
-                                ? "2px solid"
-                                : "none",
-                            borderColor:
-                              dragOverItemId === item.foodItemId
-                                ? "primary.main"
-                                : "transparent",
-                          }}
-                          draggable
-                          onDragStart={() => setDraggedItemId(item.foodItemId)}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            if (
-                              !draggedItemId ||
-                              draggedItemId === item.foodItemId
-                            ) {
-                              return;
+                  <Box
+                    ref={listContainerRef}
+                    sx={{
+                      maxHeight: "60vh",
+                      overflowY: "auto",
+                      position: "relative",
+                    }}
+                  >
+                    <List>
+                      {shoppingListItems.map((item, index) => (
+                        <Box key={item.foodItemId}>
+                          <ListItem
+                            sx={{
+                              flexDirection: "column",
+                              alignItems: "stretch",
+                              py: 2,
+                              cursor: "grab",
+                              borderTop:
+                                dragOverItemId === item.foodItemId &&
+                                dragOverPosition === "before"
+                                  ? "2px solid"
+                                  : "none",
+                              borderBottom:
+                                dragOverItemId === item.foodItemId &&
+                                dragOverPosition === "after"
+                                  ? "2px solid"
+                                  : "none",
+                              borderColor:
+                                dragOverItemId === item.foodItemId
+                                  ? "primary.main"
+                                  : "transparent",
+                            }}
+                            draggable
+                            onDragStart={() =>
+                              setDraggedItemId(item.foodItemId)
                             }
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              if (
+                                !draggedItemId ||
+                                draggedItemId === item.foodItemId
+                              ) {
+                                return;
+                              }
 
-                            const rect = (
-                              e.currentTarget as HTMLElement
-                            ).getBoundingClientRect();
-                            const offsetY = e.clientY - rect.top;
-                            const position =
-                              offsetY < rect.height / 2 ? "before" : "after";
+                              const rect = (
+                                e.currentTarget as HTMLElement
+                              ).getBoundingClientRect();
+                              const offsetY = e.clientY - rect.top;
+                              const position =
+                                offsetY < rect.height / 2 ? "before" : "after";
 
-                            setDragOverItemId(item.foodItemId);
-                            setDragOverPosition(position);
-                          }}
-                          onDragLeave={() => {
-                            if (dragOverItemId === item.foodItemId) {
+                              setDragOverItemId(item.foodItemId);
+                              setDragOverPosition(position);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverItemId === item.foodItemId) {
+                                setDragOverItemId(null);
+                                setDragOverPosition(null);
+                              }
+                            }}
+                            onDrop={() => {
+                              if (draggedItemId && dragOverPosition) {
+                                void handleReorderItem(
+                                  draggedItemId,
+                                  item.foodItemId,
+                                  dragOverPosition
+                                );
+                              }
+                              setDraggedItemId(null);
                               setDragOverItemId(null);
                               setDragOverPosition(null);
-                            }
-                          }}
-                          onDrop={() => {
-                            if (draggedItemId && dragOverPosition) {
-                              void handleReorderItem(
-                                draggedItemId,
-                                item.foodItemId,
-                                dragOverPosition
-                              );
-                            }
-                            setDraggedItemId(null);
-                            setDragOverItemId(null);
-                            setDragOverPosition(null);
-                          }}
-                          onDragEnd={() => {
-                            setDraggedItemId(null);
-                            setDragOverItemId(null);
-                            setDragOverPosition(null);
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 2,
-                              mb: 1.5,
-                            }}
-                          >
-                            <Typography
-                              variant="h6"
-                              sx={{ fontWeight: "bold", flex: 1 }}
-                            >
-                              {item.name}
-                            </Typography>
-                            <IconButton
-                              onClick={() =>
-                                handleRemoveItemFromList(item.foodItemId)
+                              // Stop auto-scroll
+                              if (autoScrollIntervalRef.current) {
+                                clearInterval(autoScrollIntervalRef.current);
+                                autoScrollIntervalRef.current = null;
                               }
-                              color="error"
-                              size="small"
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              gap: 2,
-                              alignItems: "center",
+                            }}
+                            onDragEnd={() => {
+                              setDraggedItemId(null);
+                              setDragOverItemId(null);
+                              setDragOverPosition(null);
+                              // Stop auto-scroll
+                              if (autoScrollIntervalRef.current) {
+                                clearInterval(autoScrollIntervalRef.current);
+                                autoScrollIntervalRef.current = null;
+                              }
                             }}
                           >
-                            <TextField
-                              label="Quantity"
-                              type="number"
-                              inputProps={{ step: 0.01, min: 0.01 }}
-                              value={item.quantity}
-                              onChange={(e) => {
-                                const newQty = Math.max(
-                                  0.01,
-                                  parseFloat(e.target.value) || 0.01
-                                );
-                                handleUpdateItemQuantity(
-                                  item.foodItemId,
-                                  newQty
-                                );
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2,
+                                mb: 1.5,
                               }}
-                              size="small"
-                              sx={{ width: 100 }}
-                            />
-                            <Autocomplete
-                              options={getUnitOptions()}
-                              value={
-                                getUnitOptions().find(
-                                  (option) => option.value === item.unit
-                                ) ?? null
-                              }
-                              onChange={(_, value) => {
-                                if (value) {
-                                  handleUpdateItemUnit(
-                                    item.foodItemId,
-                                    value.value
-                                  );
+                            >
+                              <Typography
+                                variant="h6"
+                                sx={{ fontWeight: "bold", flex: 1 }}
+                              >
+                                {item.name}
+                              </Typography>
+                              <IconButton
+                                onClick={() =>
+                                  handleRemoveItemFromList(item.foodItemId)
                                 }
+                                color="error"
+                                size="small"
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                gap: 2,
+                                alignItems: "center",
                               }}
-                              getOptionLabel={(option) =>
-                                getUnitForm(option.value, item.quantity)
-                              }
-                              isOptionEqualToValue={(option, value) =>
-                                option.value === value.value
-                              }
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Unit"
-                                  size="small"
-                                />
-                              )}
-                              sx={{ flex: 1, minWidth: 150 }}
-                            />
-                          </Box>
-                        </ListItem>
-                        {index < shoppingListItems.length - 1 && <Divider />}
-                      </Box>
-                    ))}
-                  </List>
+                            >
+                              <TextField
+                                label="Quantity"
+                                type="number"
+                                inputProps={{ step: 0.01, min: 0.01 }}
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const newQty = Math.max(
+                                    0.01,
+                                    parseFloat(e.target.value) || 0.01
+                                  );
+                                  handleUpdateItemQuantity(
+                                    item.foodItemId,
+                                    newQty
+                                  );
+                                }}
+                                size="small"
+                                sx={{ width: 100 }}
+                              />
+                              <Autocomplete
+                                options={getUnitOptions()}
+                                value={
+                                  getUnitOptions().find(
+                                    (option) => option.value === item.unit
+                                  ) ?? null
+                                }
+                                onChange={(_, value) => {
+                                  if (value) {
+                                    handleUpdateItemUnit(
+                                      item.foodItemId,
+                                      value.value
+                                    );
+                                  }
+                                }}
+                                getOptionLabel={(option) =>
+                                  getUnitForm(option.value, item.quantity)
+                                }
+                                isOptionEqualToValue={(option, value) =>
+                                  option.value === value.value
+                                }
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Unit"
+                                    size="small"
+                                  />
+                                )}
+                                sx={{ flex: 1, minWidth: 150 }}
+                              />
+                            </Box>
+                          </ListItem>
+                          {index < shoppingListItems.length - 1 && <Divider />}
+                        </Box>
+                      ))}
+                    </List>
+                  </Box>
                 )}
 
                 <Divider sx={{ my: 3 }} />

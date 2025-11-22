@@ -51,3 +51,11 @@ export interface StoreWithShoppingList extends Store {
   shoppingList: ShoppingList;
 }
 
+export interface StoreItemPosition {
+  _id?: string;
+  storeId: string;
+  foodItemId: string;
+  position: number; // Relative position 0.0-1.0
+  updatedAt: Date;
+}
+
