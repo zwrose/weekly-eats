@@ -1,4 +1,4 @@
-import { ShoppingListItem, StoreItemPosition } from '../types/shopping-list';
+import { ShoppingListItem } from '../types/shopping-list';
 
 /**
  * Get remembered position for a food item in a store
@@ -128,11 +128,7 @@ export async function insertItemsWithPositions(
     return items;
   }
 
-  // Get positions for all items (existing and new) to determine accurate insertion
-  const allItemIds = [
-    ...items.map((item) => item.foodItemId),
-    ...newItems.map((item) => item.foodItemId),
-  ];
+  // Get positions for all items to determine accurate insertion
   const allPositions = await getStorePositions(storeId);
 
   // Get positions for new items

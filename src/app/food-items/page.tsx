@@ -50,7 +50,7 @@ function FoodItemsPageContent() {
   const { data: session, status } = useSession();
   const user = session?.user as { id: string; isAdmin?: boolean } | undefined;
   const isAdmin = user?.isAdmin;
-  const { foodItems, loading, addFoodItem, refetch } = useFoodItems();
+  const { foodItems, loading, refetch } = useFoodItems();
 
   // User's food items: personal items + global items created by the user
   const userFoodItems = foodItems.filter(
