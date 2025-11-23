@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { DialogActions as MuiDialogActions, Box } from '@mui/material';
 

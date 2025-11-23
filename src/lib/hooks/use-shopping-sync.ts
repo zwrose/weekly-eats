@@ -88,7 +88,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
           channel.presence.enter(userForPresence);
         } catch (err) {
           console.error('Error entering Ably presence:', err);
-        }
+    }
       }
 
       channel.subscribe('item_checked', (msg) => {

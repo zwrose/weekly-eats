@@ -81,16 +81,18 @@ describe('MealEditor - Name Display in Edit Mode', () => {
     const input = screen.getAllByRole('combobox')[0];
     await user.type(input, 'appl');
     
-    // Wait for and select the first option
+    // Wait for search results to appear (should have food item options + "Add New" at the bottom)
     await waitFor(async () => {
       const listbox = await screen.findByRole('listbox');
       const options = within(listbox).getAllByRole('option');
-      expect(options.length).toBeGreaterThan(0);
-    });
+      expect(options.length).toBeGreaterThan(1); // Should have at least one food item + "Add New"
+    }, { timeout: 3000 });
     
     const listbox = screen.getByRole('listbox');
     const options = within(listbox).getAllByRole('option');
-    await user.click(options[0]);
+    
+    // The "Add New Food Item" option is at the bottom, so click the first option (the food item)
+    await user.click(options[0]); // Click the food item (first option)
     
     // Verify onChange was called with a name
     await waitFor(() => {
@@ -144,18 +146,18 @@ describe('MealEditor - Name Display in Edit Mode', () => {
     const input = screen.getAllByRole('combobox')[0];
     await user.type(input, 'past'); // Search for "past" which should match "Pasta"
     
-    // Wait for options to appear
+    // Wait for search results to appear (should have recipe options + "Add New" at the bottom)
     await waitFor(async () => {
       const listbox = await screen.findByRole('listbox');
       const options = within(listbox).getAllByRole('option');
-      expect(options.length).toBeGreaterThan(0);
+      expect(options.length).toBeGreaterThan(1); // Should have at least one recipe + "Add New"
     }, { timeout: 3000 });
     
     const listbox = screen.getByRole('listbox');
     const options = within(listbox).getAllByRole('option');
     
-    // Click the first option (should be a recipe if search works)
-    await user.click(options[0]);
+    // The "Add New Food Item" option is at the bottom, so click the first option (the recipe)
+    await user.click(options[0]); // Click the recipe (first option)
     
     // Verify onChange was called with recipe name
     await waitFor(() => {

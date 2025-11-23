@@ -119,6 +119,7 @@ export default function IngredientGroup({
         <IngredientInput
           key={ingredientIndex}
           ingredient={ingredient}
+          autoFocus={!ingredient.id || ingredient.id.trim() === ''}
           onIngredientChange={(updatedIngredient) => handleIngredientChange(ingredientIndex, updatedIngredient)}
           onRemove={() => handleRemoveIngredient(ingredientIndex)}
           foodItems={foodItems}

@@ -107,8 +107,8 @@ export default function Home() {
                   alignItems: "center",
                   color: "text.secondary",
                   fontSize: "0.9rem",
-                }}
-              >
+        }}
+      >
                 <Button
                   href="#features"
                   color="inherit"
@@ -212,7 +212,7 @@ export default function Home() {
                   }}
                 >
                   Simplify getting meals on the table.
-                </Typography>
+              </Typography>
                 <Typography
                   variant="h6"
                   sx={{
@@ -443,7 +443,7 @@ export default function Home() {
                 </Typography>
               </Paper>
             </Box>
-          </Box>
+              </Box>
 
           {/* Final CTA */}
           <Box sx={{ textAlign: "center" }}>
@@ -453,10 +453,10 @@ export default function Home() {
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
               Take the step to simplify your meal prep.
             </Typography>
-            <Suspense fallback={null}>
-              <SignInButton />
-            </Suspense>
-          </Box>
+              <Suspense fallback={null}>
+                <SignInButton />
+              </Suspense>
+            </Box>
         </Container>
       </Box>
     </ThemeProvider>

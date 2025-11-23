@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -190,6 +192,7 @@ export default function RecipeIngredients({
             <IngredientInput
               key={index}
               ingredient={ingredient}
+              autoFocus={!ingredient.id || ingredient.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
                 const newIngredients = [...ingredients];
                 newIngredients[0] = {

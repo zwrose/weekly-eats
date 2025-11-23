@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import { RecipeIngredient } from '../types/recipe';
-import { getUnitOptions } from '../lib/food-items-utils';
+import { getUnitOptions, getUnitForm } from '../lib/food-items-utils';
 import AddFoodItemDialog from './AddFoodItemDialog';
 
 interface BaseIngredientInputProps {
@@ -470,7 +470,7 @@ export default function BaseIngredientInput({
               options={getUnitOptions()}
               value={getUnitOptions().find(option => option.value === ingredient.unit) ?? undefined}
               onChange={(_, value) => onIngredientChange({ ...ingredient, unit: value?.value || 'cup' })}
-              getOptionLabel={(option) => option.label}
+              getOptionLabel={(option) => getUnitForm(option.value, ingredient.quantity)}
               isOptionEqualToValue={(option, value) => option.value === value.value}
               disableClearable={true}
               sx={{ 
