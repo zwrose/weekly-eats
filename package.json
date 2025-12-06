@@ -31,10 +31,10 @@
     "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",
     "date-fns": "^4.1.0",
     "mongodb": "^6.17.0",
-    "next": "15.3.4",
+    "next": "15.5.7",
     "next-auth": "^4.24.11",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
     "ably": "^1.2.48"
   },
   "devDependencies": {
@@ -50,7 +50,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9",
-    "eslint-config-next": "15.3.4",
+    "eslint-config-next": "15.5.7",
     "jsdom": "^26.1.0",
     "msw": "^2.10.4",
     "typescript": "^5",
