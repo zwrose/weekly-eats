@@ -171,6 +171,296 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 1, unit: 'pound' });
       expect(items).toContainEqual({ foodItemId: 'f2', quantity: 2, unit: 'cup' });
     });
+
+    it('multiplies recipe ingredient quantities by meal plan recipe quantity', async () => {
+      global.fetch = vi.fn((url) => {
+        if (url === '/api/recipes/r1') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              _id: 'r1',
+              title: 'Pasta',
+              ingredients: [
+                {
+                  title: 'Main',
+                  ingredients: [
+                    { type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' },
+                    { type: 'foodItem', id: 'f2', quantity: 2, unit: 'cup' }
+                  ]
+                }
+              ]
+            })
+          } as Response);
+        }
+        return Promise.reject(new Error('Unknown URL'));
+      }) as any;
+
+      const mealPlan: MealPlanWithTemplate = {
+        _id: 'mp1',
+        userId: 'user1',
+        name: 'Week 1',
+        startDate: '2024-01-01',
+        endDate: '2024-01-07',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+        },
+        items: [
+          {
+            _id: 'item1',
+            mealPlanId: 'mp1',
+            dayOfWeek: 'saturday',
+            mealType: 'dinner',
+            items: [
+              { type: 'recipe', id: 'r1', name: 'Pasta', quantity: 3 }
+            ]
+          }
+        ],
+        template: {
+          _id: 't1',
+          userId: 'user1',
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const items = await extractFoodItemsFromMealPlans([mealPlan]);
+      
+      expect(items).toHaveLength(2);
+      // 1 pound * 3 recipes = 3 pounds
+      expect(items).toContainEqual({ foodItemId: 'f1', quantity: 3, unit: 'pound' });
+      // 2 cups * 3 recipes = 6 cups
+      expect(items).toContainEqual({ foodItemId: 'f2', quantity: 6, unit: 'cup' });
+    });
+
+    it('multiplies nested recipe quantities correctly', async () => {
+      global.fetch = vi.fn((url) => {
+        if (url === '/api/recipes/r1') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              _id: 'r1',
+              title: 'Dinner',
+              ingredients: [
+                {
+                  title: 'Main',
+                  ingredients: [
+                    { type: 'foodItem', id: 'f1', quantity: 2, unit: 'pound' },
+                    { type: 'recipe', id: 'r2', quantity: 2 }
+                  ]
+                }
+              ]
+            })
+          } as Response);
+        }
+        if (url === '/api/recipes/r2') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              _id: 'r2',
+              title: 'Side Dish',
+              ingredients: [
+                {
+                  title: 'Ingredients',
+                  ingredients: [
+                    { type: 'foodItem', id: 'f2', quantity: 1, unit: 'cup' },
+                    { type: 'foodItem', id: 'f3', quantity: 3, unit: 'piece' }
+                  ]
+                }
+              ]
+            })
+          } as Response);
+        }
+        return Promise.reject(new Error('Unknown URL'));
+      }) as any;
+
+      const mealPlan: MealPlanWithTemplate = {
+        _id: 'mp1',
+        userId: 'user1',
+        name: 'Week 1',
+        startDate: '2024-01-01',
+        endDate: '2024-01-07',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+        },
+        items: [
+          {
+            _id: 'item1',
+            mealPlanId: 'mp1',
+            dayOfWeek: 'saturday',
+            mealType: 'dinner',
+            items: [
+              { type: 'recipe', id: 'r1', name: 'Dinner', quantity: 3 }
+            ]
+          }
+        ],
+        template: {
+          _id: 't1',
+          userId: 'user1',
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const items = await extractFoodItemsFromMealPlans([mealPlan]);
+      
+      expect(items).toHaveLength(3);
+      // f1: 2 pounds * 3 recipes = 6 pounds
+      expect(items).toContainEqual({ foodItemId: 'f1', quantity: 6, unit: 'pound' });
+      // f2: 1 cup * 2 nested recipes * 3 parent recipes = 6 cups
+      expect(items).toContainEqual({ foodItemId: 'f2', quantity: 6, unit: 'cup' });
+      // f3: 3 pieces * 2 nested recipes * 3 parent recipes = 18 pieces
+      expect(items).toContainEqual({ foodItemId: 'f3', quantity: 18, unit: 'piece' });
+    });
+
+    it('multiplies recipe quantities in ingredient groups correctly', async () => {
+      global.fetch = vi.fn((url) => {
+        if (url === '/api/recipes/r1') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              _id: 'r1',
+              title: 'Recipe',
+              ingredients: [
+                {
+                  title: 'Main',
+                  ingredients: [
+                    { type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }
+                  ]
+                }
+              ]
+            })
+          } as Response);
+        }
+        return Promise.reject(new Error('Unknown URL'));
+      }) as any;
+
+      const mealPlan: MealPlanWithTemplate = {
+        _id: 'mp1',
+        userId: 'user1',
+        name: 'Week 1',
+        startDate: '2024-01-01',
+        endDate: '2024-01-07',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+        },
+        items: [
+          {
+            _id: 'item1',
+            mealPlanId: 'mp1',
+            dayOfWeek: 'saturday',
+            mealType: 'breakfast',
+            items: [
+              {
+                type: 'ingredientGroup',
+                id: 'ig1',
+                name: 'Meal',
+                ingredients: [
+                  {
+                    title: 'Recipes',
+                    ingredients: [
+                      { type: 'recipe', id: 'r1', quantity: 2 }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        template: {
+          _id: 't1',
+          userId: 'user1',
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const items = await extractFoodItemsFromMealPlans([mealPlan]);
+      
+      expect(items).toHaveLength(1);
+      // 1 cup * 2 recipes = 2 cups
+      expect(items).toContainEqual({ foodItemId: 'f1', quantity: 2, unit: 'cup' });
+    });
+
+    it('handles missing recipe quantity in meal plan (defaults to 1)', async () => {
+      global.fetch = vi.fn((url) => {
+        if (url === '/api/recipes/r1') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              _id: 'r1',
+              title: 'Pasta',
+              ingredients: [
+                {
+                  title: 'Main',
+                  ingredients: [
+                    { type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' }
+                  ]
+                }
+              ]
+            })
+          } as Response);
+        }
+        return Promise.reject(new Error('Unknown URL'));
+      }) as any;
+
+      const mealPlan: MealPlanWithTemplate = {
+        _id: 'mp1',
+        userId: 'user1',
+        name: 'Week 1',
+        startDate: '2024-01-01',
+        endDate: '2024-01-07',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+        },
+        items: [
+          {
+            _id: 'item1',
+            mealPlanId: 'mp1',
+            dayOfWeek: 'saturday',
+            mealType: 'dinner',
+            items: [
+              { type: 'recipe', id: 'r1', name: 'Pasta' } // No quantity specified
+            ]
+          }
+        ],
+        template: {
+          _id: 't1',
+          userId: 'user1',
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const items = await extractFoodItemsFromMealPlans([mealPlan]);
+      
+      expect(items).toHaveLength(1);
+      // Should default to quantity 1 if not specified
+      expect(items).toContainEqual({ foodItemId: 'f1', quantity: 1, unit: 'pound' });
+    });
   });
 
   describe('combineExtractedItems', () => {
