@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Typography, Box, Link as MuiLink, Divider } from '@mui/material';
@@ -21,7 +22,26 @@ const RecipeInstructionsView: React.FC<RecipeInstructionsViewProps> = ({ instruc
     h6: ({ ...props }) => <Typography variant="body1" component="h6" gutterBottom sx={{ mt: 1.5, mb: 0.5, fontWeight: 500 }} {...props} />,
     
     // Paragraphs
-    p: ({ ...props }) => <Typography variant="body1" component="p" paragraph {...props} />,
+    p: ({ children, ...props }) => {
+      // Check if paragraph contains only a code element (non-inline code block)
+      // If so, don't wrap in <p> to avoid invalid HTML (<pre> inside <p>)
+      // react-markdown sometimes wraps code blocks in paragraphs
+      const childrenArray = React.Children.toArray(children);
+      const firstChild = childrenArray[0];
+      if (
+        childrenArray.length === 1 &&
+        React.isValidElement(firstChild) &&
+        firstChild.type === 'code' &&
+        typeof firstChild.props === 'object' &&
+        firstChild.props !== null &&
+        !('inline' in firstChild.props && firstChild.props.inline)
+      ) {
+        // This is a non-inline code block wrapped in a paragraph - render it directly
+        // The code component handler will render it as <pre>
+        return <>{children}</>;
+      }
+      return <Typography variant="body1" component="p" paragraph {...props}>{children}</Typography>;
+    },
     
     // Lists
     ul: ({ ...props }) => (

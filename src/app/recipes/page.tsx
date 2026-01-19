@@ -1353,6 +1353,7 @@ function RecipesPageContent() {
                                     ) + " "
                                   : ""}
                                 {getIngredientName(ingredient)}
+                                {ingredient.prepInstructions && `, ${ingredient.prepInstructions}`}
                               </Typography>
                             ))}
                           </Box>

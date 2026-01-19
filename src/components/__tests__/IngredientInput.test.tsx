@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { within } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -246,6 +246,338 @@ describe('IngredientInput', () => {
         })
       );
     }, { timeout: 5000 });
+  });
+
+  describe('Prep Instructions', () => {
+    const mockFoodItems = [
+      { _id: 'f1', name: 'Onion', singularName: 'Onion', pluralName: 'Onions', unit: 'cup' }
+    ];
+
+    beforeEach(() => {
+      // Mock fetch for food items and recipes
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/food-items')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockFoodItems
+          } as Response);
+        }
+        if (url.includes('/api/recipes')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => []
+          } as Response);
+        }
+        return Promise.reject(new Error('Unknown URL'));
+      });
+    });
+
+    it('does not show prep instructions field for recipe ingredients', () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'recipe', id: 'r1', quantity: 1, name: 'Pasta' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
+    });
+
+    it('does not show prep instructions field for food items without id', () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: '', quantity: 1, unit: 'cup' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+    });
+
+    it('shows "Add prep instructions" button for food items with id', async () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+    });
+
+    it('expands prep instructions field when "Add prep instructions" is clicked', async () => {
+      const user = userEvent.setup();
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+      
+      const addButton = screen.getByText(/add prep instructions/i);
+      await user.click(addButton);
+      
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+    });
+
+    it('auto-expands prep instructions field when ingredient has prepInstructions', async () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ 
+            type: 'foodItem', 
+            id: 'f1', 
+            quantity: 2, 
+            unit: 'cup', 
+            name: 'Onions',
+            prepInstructions: 'chopped'
+          }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      await waitFor(() => {
+        const prepField = screen.getByPlaceholderText(/e.g., chopped/i);
+        expect(prepField).toBeInTheDocument();
+        expect((prepField as HTMLInputElement).value).toBe('chopped');
+      });
+    });
+
+    it('saves prep instructions when typed', async () => {
+      const user = userEvent.setup();
+      let currentIngredient = { type: 'foodItem' as const, id: 'f1', quantity: 1, unit: 'cup' as const, name: 'Onion' };
+      const onIngredientChange = vi.fn((newIngredient) => {
+        currentIngredient = { ...currentIngredient, ...newIngredient };
+      });
+      
+      render(
+        <IngredientInput
+          ingredient={currentIngredient}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          foodItems={mockFoodItems}
+          slotId="test-slot"
+        />
+      );
+      
+      // Wait for button to appear
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+      
+      // Expand the field
+      const addButton = screen.getByText(/add prep instructions/i);
+      await user.click(addButton);
+      
+      // Wait for the prep instructions field to appear
+      const prepField = await waitFor(() => {
+        return screen.getByPlaceholderText(/e.g., chopped/i) as HTMLInputElement;
+      });
+      
+      // Use fireEvent.change to simulate typing (more reliable for controlled inputs)
+      fireEvent.change(prepField, { target: { value: 'chopped' } });
+      
+      // Wait for onChange to be called with prepInstructions
+      await waitFor(() => {
+        expect(onIngredientChange).toHaveBeenCalled();
+        const allCalls = onIngredientChange.mock.calls;
+        
+        // Check that we got at least one call with prepInstructions
+        const hasPrepInstructions = allCalls.some(call => 
+          call[0].prepInstructions && typeof call[0].prepInstructions === 'string' && call[0].prepInstructions.length > 0
+        );
+        expect(hasPrepInstructions).toBe(true);
+        
+        // Check for 'chopped' value
+        const callsWithChopped = allCalls.filter(call => 
+          call[0].prepInstructions === 'chopped'
+        );
+        expect(callsWithChopped.length).toBeGreaterThan(0);
+      }, { timeout: 3000 });
+    });
+
+    it('updates prep instructions when edited', async () => {
+      const user = userEvent.setup();
+      let currentIngredient = { 
+        type: 'foodItem' as const, 
+        id: 'f1', 
+        quantity: 1, 
+        unit: 'cup' as const, 
+        name: 'Onion',
+        prepInstructions: 'chopped'
+      };
+      const onIngredientChange = vi.fn((newIngredient) => {
+        currentIngredient = { ...currentIngredient, ...newIngredient };
+      });
+      
+      render(
+        <IngredientInput
+          ingredient={currentIngredient}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          foodItems={mockFoodItems}
+          slotId="test-slot"
+        />
+      );
+      
+      const prepField = await waitFor(() => {
+        return screen.getByPlaceholderText(/e.g., chopped/i) as HTMLInputElement;
+      });
+      
+      // Verify initial value
+      expect(prepField.value).toBe('chopped');
+      
+      // Use fireEvent.change to simulate typing new value
+      fireEvent.change(prepField, { target: { value: 'diced' } });
+      
+      // Wait for onChange to be called with 'diced'
+      await waitFor(() => {
+        expect(onIngredientChange).toHaveBeenCalled();
+        const allCalls = onIngredientChange.mock.calls;
+        
+        // Check that we got a call with 'diced'
+        const callsWithDiced = allCalls.filter(call => 
+          call[0].prepInstructions === 'diced'
+        );
+        expect(callsWithDiced.length).toBeGreaterThan(0);
+      }, { timeout: 3000 });
+    });
+
+    it('removes prep instructions when field is cleared', async () => {
+      const user = userEvent.setup();
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ 
+            type: 'foodItem', 
+            id: 'f1', 
+            quantity: 1, 
+            unit: 'cup', 
+            name: 'Onion',
+            prepInstructions: 'chopped'
+          }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      await waitFor(() => {
+        const field = screen.getByPlaceholderText(/e.g., chopped/i);
+        expect(field).toBeInTheDocument();
+      });
+      
+      const prepField = screen.getByPlaceholderText(/e.g., chopped/i);
+      await user.clear(prepField);
+      
+      // Should call with undefined prepInstructions (check last call)
+      await waitFor(() => {
+        const calls = onIngredientChange.mock.calls;
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0]).toMatchObject({
+          prepInstructions: undefined
+        });
+      });
+    });
+
+    it('collapses prep instructions field when collapse button is clicked', async () => {
+      const user = userEvent.setup();
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ 
+            type: 'foodItem', 
+            id: 'f1', 
+            quantity: 1, 
+            unit: 'cup', 
+            name: 'Onion',
+            prepInstructions: 'chopped'
+          }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
+      });
+      
+      // Find collapse button by aria-label
+      const collapseButton = screen.getByLabelText(/collapse prep instructions/i);
+      await user.click(collapseButton);
+      
+      // Field should be hidden, "Show prep instructions" button should appear
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText(/e.g., chopped/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/show prep instructions/i)).toBeInTheDocument();
+      });
+    });
+
+    it('clears prep instructions when collapsing empty field', async () => {
+      const user = userEvent.setup();
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+      
+      // Wait for button and expand
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+      
+      const addButton = screen.getByText(/add prep instructions/i);
+      await user.click(addButton);
+      
+      // Wait for field to appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
+      });
+      
+      // Collapse without entering anything
+      const collapseButton = screen.getByLabelText(/collapse prep instructions/i);
+      await user.click(collapseButton);
+      
+      // Should call with undefined prepInstructions (check last call)
+      await waitFor(() => {
+        const calls = onIngredientChange.mock.calls;
+        if (calls.length > 0) {
+          const lastCall = calls[calls.length - 1];
+          expect(lastCall[0]).toMatchObject({
+            prepInstructions: undefined
+          });
+        }
+      });
+    });
   });
 });
 
