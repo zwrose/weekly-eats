@@ -23,23 +23,41 @@ const RecipeInstructionsView: React.FC<RecipeInstructionsViewProps> = ({ instruc
     
     // Paragraphs
     p: ({ children, ...props }) => {
-      // Check if paragraph contains only a code element (non-inline code block)
+      // Check if paragraph contains any non-inline code block
       // If so, don't wrap in <p> to avoid invalid HTML (<pre> inside <p>)
       // react-markdown sometimes wraps code blocks in paragraphs
       const childrenArray = React.Children.toArray(children);
-      const firstChild = childrenArray[0];
-      if (
-        childrenArray.length === 1 &&
-        React.isValidElement(firstChild) &&
-        firstChild.type === 'code' &&
-        typeof firstChild.props === 'object' &&
-        firstChild.props !== null &&
-        !('inline' in firstChild.props && firstChild.props.inline)
-      ) {
-        // This is a non-inline code block wrapped in a paragraph - render it directly
+      
+      // Check if any child is a non-inline code block by examining props
+      const hasNonInlineCodeBlock = childrenArray.some((child) => {
+        if (!React.isValidElement(child)) return false;
+        
+        const childProps = child.props as { inline?: boolean; node?: { tagName?: string } } | undefined;
+        if (typeof childProps === 'object' && childProps !== null) {
+          // Check if it's a code element that is non-inline
+          // The code component receives 'inline' prop - if it's false or undefined, it renders as <pre>
+          if ('inline' in childProps && childProps.inline === false) {
+            return true;
+          }
+          
+          // Check node property for code tag
+          if (childProps.node && typeof childProps.node === 'object' && 'tagName' in childProps.node) {
+            if (childProps.node.tagName === 'code') {
+              // If inline is explicitly false or undefined, it's a code block (non-inline)
+              return childProps.inline !== true;
+            }
+          }
+        }
+        
+        return false;
+      });
+      
+      if (hasNonInlineCodeBlock) {
+        // This paragraph contains a non-inline code block - render children directly
         // The code component handler will render it as <pre>
-        return <>{children}</>;
+        return <Box sx={{ mb: 2 }}>{children}</Box>;
       }
+      
       return <Typography variant="body1" component="p" paragraph {...props}>{children}</Typography>;
     },
     

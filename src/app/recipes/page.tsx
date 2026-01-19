@@ -24,6 +24,13 @@ import {
   TableRow,
   Alert,
   Chip,
+  List,
+  ListItem,
+  ListItemText,
+  Snackbar,
+  Checkbox,
+  FormControlLabel,
+  Badge,
 } from "@mui/material";
 import {
   Restaurant,
@@ -34,6 +41,11 @@ import {
   Person,
   RestaurantMenu,
   Delete,
+  Share,
+  Check,
+  Close as CloseIcon,
+  PersonAdd,
+  Star,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
@@ -58,6 +70,24 @@ import { responsiveDialogStyle } from "@/lib/theme";
 import Pagination from "@/components/optimized/Pagination";
 import SearchBar from "@/components/optimized/SearchBar";
 import { DialogActions, DialogTitle } from "@/components/ui";
+import {
+  inviteUserToRecipeSharing,
+  respondToRecipeSharingInvitation,
+  removeUserFromRecipeSharing,
+  fetchPendingRecipeSharingInvitations,
+  fetchSharedRecipeUsers,
+  PendingRecipeInvitation,
+  SharedUser,
+} from "@/lib/recipe-sharing-utils";
+import {
+  fetchRecipeUserData,
+  updateRecipeTags,
+  updateRecipeRating,
+  deleteRecipeRating,
+} from "@/lib/recipe-user-data-utils";
+import RecipeTagsEditor from "@/components/RecipeTagsEditor";
+import RecipeStarRating from "@/components/RecipeStarRating";
+import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 
 function RecipesPageContent() {
   const { data: session, status } = useSession();
@@ -76,8 +106,25 @@ function RecipesPageContent() {
   const viewDialog = usePersistentDialog("viewRecipe");
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
+  const shareDialog = useDialog();
   // Selected recipe state
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  // Recipe user data state
+  const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
+  // User data for all recipes (for list display)
+  const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(new Map());
+  // Sharing state
+  const [pendingRecipeInvitations, setPendingRecipeInvitations] = useState<PendingRecipeInvitation[]>([]);
+  const [sharedRecipeUsers, setSharedRecipeUsers] = useState<SharedUser[]>([]);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareTags, setShareTags] = useState(true);
+  const [shareRatings, setShareRatings] = useState(true);
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
   // New/edit recipe state (keep as local state)
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: "",
@@ -189,12 +236,68 @@ function RecipesPageContent() {
     setFoodItemsList((prev) => [...prev, foodItemWithId]);
   };
 
+  // Load sharing data
+  const loadSharingData = useCallback(async () => {
+    try {
+      const [pendingInvites, sharedUsers] = await Promise.all([
+        fetchPendingRecipeSharingInvitations(),
+        fetchSharedRecipeUsers(),
+      ]);
+      setPendingRecipeInvitations(pendingInvites);
+      setSharedRecipeUsers(sharedUsers);
+    } catch (error) {
+      console.error('Error loading sharing data:', error);
+    }
+  }, []);
+
+  // Load user data for all recipes
+  const loadRecipesUserData = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    const allRecipes = [...userRecipes, ...globalRecipes];
+    if (allRecipes.length === 0) return;
+
+    try {
+      // Fetch user data for all recipes in parallel
+      const userDataPromises = allRecipes.map((recipe) =>
+        recipe._id
+          ? fetchRecipeUserData(recipe._id).catch(() => ({
+              tags: [],
+              rating: undefined,
+            }))
+          : Promise.resolve({ tags: [], rating: undefined })
+      );
+
+      const userDataResults = await Promise.all(userDataPromises);
+      
+      // Create a map of recipe ID to user data
+      const userDataMap = new Map<string, RecipeUserDataResponse>();
+      allRecipes.forEach((recipe, index) => {
+        if (recipe._id) {
+          userDataMap.set(recipe._id, userDataResults[index]);
+        }
+      });
+
+      setRecipesUserData(userDataMap);
+    } catch (error) {
+      console.error('Error loading recipes user data:', error);
+    }
+  }, [userRecipes, globalRecipes, session?.user?.id]);
+
+  // Load user data when recipes change
+  useEffect(() => {
+    if (status === "authenticated" && (userRecipes.length > 0 || globalRecipes.length > 0)) {
+      loadRecipesUserData();
+    }
+  }, [status, userRecipes, globalRecipes, loadRecipesUserData]);
+
   useEffect(() => {
     if (status === "authenticated") {
       loadRecipes();
       loadFoodItems();
+      loadSharingData();
     }
-  }, [status, loadRecipes]);
+  }, [status, loadRecipes, loadSharingData]);
 
   // Filter recipes based on search term
   const filteredUserRecipes = userRecipes.filter((recipe) =>
@@ -274,6 +377,14 @@ function RecipesPageContent() {
         const fullRecipe = await fetchRecipe(recipe._id!);
         setSelectedRecipe(fullRecipe);
         viewDialog.openDialog({ recipeId: recipe._id! });
+        // Load user data for this recipe
+        try {
+          const userData = await fetchRecipeUserData(recipe._id!);
+          setRecipeUserData(userData);
+        } catch (error) {
+          console.error("Error loading recipe user data:", error);
+          setRecipeUserData({ tags: [], rating: undefined });
+        }
       } catch (error) {
         console.error("Error loading recipe details:", error);
       }
@@ -319,21 +430,30 @@ function RecipesPageContent() {
     handleViewRecipe,
   ]);
 
-  const handleEditRecipe = () => {
-    if (selectedRecipe) {
-      setEditingRecipe({
-        title: selectedRecipe.title,
-        emoji: selectedRecipe.emoji || "",
-        ingredients: selectedRecipe.ingredients,
-        instructions: selectedRecipe.instructions,
-        isGlobal: selectedRecipe.isGlobal,
-      });
-      setEditMode(true);
-      // Update URL to include edit mode
-      viewDialog.openDialog({
-        recipeId: selectedRecipe._id!,
-        editMode: "true",
-      });
+  const handleEditRecipe = async () => {
+    if (!selectedRecipe?._id) return;
+    
+    setEditingRecipe({
+      title: selectedRecipe.title,
+      emoji: selectedRecipe.emoji || "",
+      ingredients: selectedRecipe.ingredients,
+      instructions: selectedRecipe.instructions,
+      isGlobal: selectedRecipe.isGlobal,
+    });
+    setEditMode(true);
+    // Update URL to include edit mode
+    viewDialog.openDialog({
+      recipeId: selectedRecipe._id!,
+      editMode: "true",
+    });
+    
+    // Load user data for editing
+    try {
+      const userData = await fetchRecipeUserData(selectedRecipe._id);
+      setRecipeUserData(userData);
+    } catch (error) {
+      console.error("Error loading recipe user data:", error);
+      setRecipeUserData({ tags: [], rating: undefined });
     }
   };
 
@@ -396,6 +516,119 @@ function RecipesPageContent() {
       setEditingRecipe({ ...editingRecipe, ingredients });
     } else {
       setNewRecipe({ ...newRecipe, ingredients });
+    }
+  };
+
+  // Sharing handlers
+  const handleInviteUser = async () => {
+    if (!shareEmail.trim()) return;
+    if (!shareTags && !shareRatings) {
+      showSnackbar('Please select at least one sharing type (tags or ratings)', 'error');
+      return;
+    }
+    
+    try {
+      const sharingTypes: ('tags' | 'ratings')[] = [];
+      if (shareTags) sharingTypes.push('tags');
+      if (shareRatings) sharingTypes.push('ratings');
+      
+      await inviteUserToRecipeSharing(shareEmail.trim(), sharingTypes);
+      setShareEmail("");
+      showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
+      loadSharingData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to invite user';
+      showSnackbar(message, 'error');
+    }
+  };
+
+  const handleAcceptRecipeInvitation = async (userId: string) => {
+    try {
+      await respondToRecipeSharingInvitation(userId, 'accept');
+      showSnackbar('Invitation accepted', 'success');
+      loadSharingData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to accept invitation';
+      showSnackbar(message, 'error');
+    }
+  };
+
+  const handleRejectRecipeInvitation = async (userId: string) => {
+    try {
+      await respondToRecipeSharingInvitation(userId, 'reject');
+      showSnackbar('Invitation rejected', 'success');
+      loadSharingData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reject invitation';
+      showSnackbar(message, 'error');
+    }
+  };
+
+  const handleRemoveRecipeUser = async (userId: string) => {
+    try {
+      await removeUserFromRecipeSharing(userId);
+      showSnackbar('User removed from sharing', 'success');
+      loadSharingData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove user';
+      showSnackbar(message, 'error');
+    }
+  };
+
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Recipe user data handlers
+  const handleTagsChange = async (tags: string[]) => {
+    if (!selectedRecipe?._id) return;
+    try {
+      await updateRecipeTags(selectedRecipe._id, tags);
+      setRecipeUserData(prev => prev ? { ...prev, tags } : { tags, rating: undefined });
+      // Update the map for list view
+      setRecipesUserData(prev => {
+        const newMap = new Map(prev);
+        const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
+        newMap.set(selectedRecipe._id!, { ...currentData, tags });
+        return newMap;
+      });
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      showSnackbar('Failed to update tags', 'error');
+    }
+  };
+
+  const handleRatingChange = async (rating: number | undefined) => {
+    if (!selectedRecipe?._id) return;
+    try {
+      if (rating === undefined) {
+        await deleteRecipeRating(selectedRecipe._id);
+        setRecipeUserData(prev => prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined });
+        // Update the map for list view
+        setRecipesUserData(prev => {
+          const newMap = new Map(prev);
+          const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
+          newMap.set(selectedRecipe._id!, { ...currentData, rating: undefined });
+          return newMap;
+        });
+      } else {
+        await updateRecipeRating(selectedRecipe._id, rating);
+        setRecipeUserData(prev => prev ? { ...prev, rating } : { tags: [], rating });
+        // Update the map for list view
+        setRecipesUserData(prev => {
+          const newMap = new Map(prev);
+          const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
+          newMap.set(selectedRecipe._id!, { ...currentData, rating });
+          return newMap;
+        });
+      }
+    } catch (error) {
+      console.error('Error updating rating:', error);
+      showSnackbar('Failed to update rating', 'error');
     }
   };
 
@@ -465,19 +698,90 @@ function RecipesPageContent() {
                 Recipes
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => createDialog.openDialog()}
-              sx={{
-                bgcolor: "#ed6c02",
-                "&:hover": { bgcolor: "#e65100" },
-                width: { xs: "100%", sm: "auto" },
-              }}
-            >
-              Add New Recipe
-            </Button>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2,
+              alignItems: 'center',
+              width: { xs: '100%', sm: 'auto' }
+            }}>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => createDialog.openDialog()}
+                sx={{
+                  bgcolor: "#ed6c02",
+                  "&:hover": { bgcolor: "#e65100" },
+                  flexGrow: 1
+                }}
+              >
+                Add New Recipe
+              </Button>
+              <Button 
+                variant="outlined"
+                onClick={() => shareDialog.openDialog()}
+                sx={{ 
+                  borderColor: "#ed6c02", 
+                  color: "#ed6c02", 
+                  "&:hover": { borderColor: "#e65100" },
+                  minWidth: 'auto',
+                  p: 1
+                }}
+              >
+                <Badge badgeContent={pendingRecipeInvitations.length} color="error">
+                  <Share />
+                </Badge>
+              </Button>
+            </Box>
           </Box>
+
+          {/* Pending Recipe Sharing Invitations */}
+          {pendingRecipeInvitations.length > 0 && (
+            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonAdd />
+                Pending Recipe Sharing Invitations ({pendingRecipeInvitations.length})
+              </Typography>
+              <List>
+                {pendingRecipeInvitations.map((inv) => (
+                  <Box key={inv.ownerId}>
+                    <ListItem>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                        <ListItemText
+                          primary={`${inv.ownerName || inv.ownerEmail}'s Recipe Data`}
+                          secondary={
+                            <>
+                              {`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
+                              <br />
+                              Sharing: {inv.invitation.sharingTypes.join(', ')}
+                            </>
+                          }
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          color="success"
+                          size="small"
+                          title="Accept"
+                          onClick={() => handleAcceptRecipeInvitation(inv.invitation.userId)}
+                        >
+                          <Check fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          title="Reject"
+                          onClick={() => handleRejectRecipeInvitation(inv.invitation.userId)}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </ListItem>
+                    <Divider />
+                  </Box>
+                ))}
+              </List>
+            </Paper>
+          )}
 
           <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
             <SearchBar
@@ -528,7 +832,7 @@ function RecipesPageContent() {
                               <TableRow>
                                 <TableCell
                                   sx={{
-                                    width: "65%",
+                                    width: "40%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -538,7 +842,27 @@ function RecipesPageContent() {
                                 <TableCell
                                   align="center"
                                   sx={{
-                                    width: "20%",
+                                    width: "15%",
+                                    fontWeight: "bold",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  Tags
+                                </TableCell>
+                                <TableCell
+                                  align="center"
+                                  sx={{
+                                    width: "10%",
+                                    fontWeight: "bold",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  Rating
+                                </TableCell>
+                                <TableCell
+                                  align="center"
+                                  sx={{
+                                    width: "15%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -548,7 +872,7 @@ function RecipesPageContent() {
                                 <TableCell
                                   align="center"
                                   sx={{
-                                    width: "15%",
+                                    width: "20%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -593,6 +917,58 @@ function RecipesPageContent() {
                                         {recipe.title}
                                       </Typography>
                                     </Box>
+                                  </TableCell>
+                                  <TableCell
+                                    align="center"
+                                    sx={{ wordWrap: "break-word" }}
+                                  >
+                                    {(() => {
+                                      const userData = recipesUserData.get(recipe._id || '');
+                                      const allTags = [...new Set([
+                                        ...(userData?.tags || []),
+                                        ...(userData?.sharedTags || [])
+                                      ])];
+                                      if (allTags.length === 0) {
+                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
+                                      }
+                                      return (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+                                          {allTags.slice(0, 3).map((tag) => (
+                                            <Chip
+                                              key={tag}
+                                              label={tag}
+                                              size="small"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          ))}
+                                          {allTags.length > 3 && (
+                                            <Chip
+                                              label={`+${allTags.length - 3}`}
+                                              size="small"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          )}
+                                        </Box>
+                                      );
+                                    })()}
+                                  </TableCell>
+                                  <TableCell
+                                    align="center"
+                                    sx={{ wordWrap: "break-word" }}
+                                  >
+                                    {(() => {
+                                      const userData = recipesUserData.get(recipe._id || '');
+                                      const rating = userData?.rating;
+                                      if (!rating) {
+                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
+                                      }
+                                      return (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.25 }}>
+                                          <Star sx={{ fontSize: 16, color: 'warning.main' }} />
+                                          <Typography variant="body2">{rating}</Typography>
+                                        </Box>
+                                      );
+                                    })()}
                                   </TableCell>
                                   <TableCell
                                     align="center"
@@ -682,6 +1058,43 @@ function RecipesPageContent() {
                                 {recipe.title}
                               </Typography>
                             </Box>
+                            {(() => {
+                              const userData = recipesUserData.get(recipe._id || '');
+                              const allTags = [...new Set([
+                                ...(userData?.tags || []),
+                                ...(userData?.sharedTags || [])
+                              ])];
+                              const rating = userData?.rating;
+                              return (allTags.length > 0 || rating) && (
+                                <Box sx={{ mb: 2, width: '100%' }}>
+                                  {allTags.length > 0 && (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                                      {allTags.slice(0, 5).map((tag) => (
+                                        <Chip
+                                          key={tag}
+                                          label={tag}
+                                          size="small"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        />
+                                      ))}
+                                      {allTags.length > 5 && (
+                                        <Chip
+                                          label={`+${allTags.length - 5}`}
+                                          size="small"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        />
+                                      )}
+                                    </Box>
+                                  )}
+                                  {rating && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <Star sx={{ fontSize: 18, color: 'warning.main' }} />
+                                      <Typography variant="body2">{rating}/5</Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              );
+                            })()}
                             <Box
                               sx={{
                                 display: "flex",
@@ -782,7 +1195,7 @@ function RecipesPageContent() {
                               <TableRow>
                                 <TableCell
                                   sx={{
-                                    width: "65%",
+                                    width: "40%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -792,7 +1205,27 @@ function RecipesPageContent() {
                                 <TableCell
                                   align="center"
                                   sx={{
-                                    width: "20%",
+                                    width: "15%",
+                                    fontWeight: "bold",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  Tags
+                                </TableCell>
+                                <TableCell
+                                  align="center"
+                                  sx={{
+                                    width: "10%",
+                                    fontWeight: "bold",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  Rating
+                                </TableCell>
+                                <TableCell
+                                  align="center"
+                                  sx={{
+                                    width: "15%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -802,7 +1235,7 @@ function RecipesPageContent() {
                                 <TableCell
                                   align="center"
                                   sx={{
-                                    width: "15%",
+                                    width: "20%",
                                     fontWeight: "bold",
                                     wordWrap: "break-word",
                                   }}
@@ -847,6 +1280,58 @@ function RecipesPageContent() {
                                         {recipe.title}
                                       </Typography>
                                     </Box>
+                                  </TableCell>
+                                  <TableCell
+                                    align="center"
+                                    sx={{ wordWrap: "break-word" }}
+                                  >
+                                    {(() => {
+                                      const userData = recipesUserData.get(recipe._id || '');
+                                      const allTags = [...new Set([
+                                        ...(userData?.tags || []),
+                                        ...(userData?.sharedTags || [])
+                                      ])];
+                                      if (allTags.length === 0) {
+                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
+                                      }
+                                      return (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+                                          {allTags.slice(0, 3).map((tag) => (
+                                            <Chip
+                                              key={tag}
+                                              label={tag}
+                                              size="small"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          ))}
+                                          {allTags.length > 3 && (
+                                            <Chip
+                                              label={`+${allTags.length - 3}`}
+                                              size="small"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          )}
+                                        </Box>
+                                      );
+                                    })()}
+                                  </TableCell>
+                                  <TableCell
+                                    align="center"
+                                    sx={{ wordWrap: "break-word" }}
+                                  >
+                                    {(() => {
+                                      const userData = recipesUserData.get(recipe._id || '');
+                                      const rating = userData?.rating;
+                                      if (!rating) {
+                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
+                                      }
+                                      return (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.25 }}>
+                                          <Star sx={{ fontSize: 16, color: 'warning.main' }} />
+                                          <Typography variant="body2">{rating}</Typography>
+                                        </Box>
+                                      );
+                                    })()}
                                   </TableCell>
                                   <TableCell
                                     align="center"
@@ -926,6 +1411,43 @@ function RecipesPageContent() {
                                 {recipe.title}
                               </Typography>
                             </Box>
+                            {(() => {
+                              const userData = recipesUserData.get(recipe._id || '');
+                              const allTags = [...new Set([
+                                ...(userData?.tags || []),
+                                ...(userData?.sharedTags || [])
+                              ])];
+                              const rating = userData?.rating;
+                              return (allTags.length > 0 || rating) && (
+                                <Box sx={{ mb: 2, width: '100%' }}>
+                                  {allTags.length > 0 && (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                                      {allTags.slice(0, 5).map((tag) => (
+                                        <Chip
+                                          key={tag}
+                                          label={tag}
+                                          size="small"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        />
+                                      ))}
+                                      {allTags.length > 5 && (
+                                        <Chip
+                                          label={`+${allTags.length - 5}`}
+                                          size="small"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        />
+                                      )}
+                                    </Box>
+                                  )}
+                                  {rating && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <Star sx={{ fontSize: 18, color: 'warning.main' }} />
+                                      <Typography variant="body2">{rating}/5</Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              );
+                            })()}
                             <Box
                               sx={{
                                 display: "flex",
@@ -1216,6 +1738,26 @@ function RecipesPageContent() {
                   </Box>
                 </Box>
 
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Tags
+                  </Typography>
+                  <RecipeTagsEditor
+                    tags={recipeUserData?.tags || []}
+                    onChange={handleTagsChange}
+                    editable={true}
+                    label=""
+                  />
+                </Box>
+
+                <Box sx={{ mb: 3 }}>
+                  <RecipeStarRating
+                    rating={recipeUserData?.rating}
+                    onChange={handleRatingChange}
+                    editable={true}
+                  />
+                </Box>
+
                 <Typography variant="h6" gutterBottom>
                   Ingredients
                 </Typography>
@@ -1299,6 +1841,32 @@ function RecipesPageContent() {
               </Box>
             ) : (
               <Box sx={{ pt: 2 }}>
+                {/* Tags and Rating in View Mode - Only editable if user can't edit the recipe */}
+                {selectedRecipe && (
+                  <>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Tags
+                      </Typography>
+                      <RecipeTagsEditor
+                        tags={recipeUserData?.tags || []}
+                        sharedTags={recipeUserData?.sharedTags}
+                        onChange={handleTagsChange}
+                        editable={!canEditRecipe(selectedRecipe)}
+                        label=""
+                      />
+                    </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <RecipeStarRating
+                        rating={recipeUserData?.rating}
+                        sharedRatings={recipeUserData?.sharedRatings}
+                        onChange={handleRatingChange}
+                        editable={!canEditRecipe(selectedRecipe)}
+                      />
+                    </Box>
+                  </>
+                )}
+                <Divider sx={{ mb: 3 }} />
                 <Box
                   sx={{
                     display: "flex",
@@ -1430,6 +1998,117 @@ function RecipesPageContent() {
           onSelect={handleEmojiSelect}
           currentEmoji={selectedRecipe?.emoji || newRecipe.emoji}
         />
+
+        {/* Share Recipe Data Dialog */}
+        <Dialog
+          open={shareDialog.open}
+          onClose={shareDialog.closeDialog}
+          maxWidth="sm"
+          fullWidth
+          sx={responsiveDialogStyle}
+        >
+          <DialogTitle onClose={shareDialog.closeDialog}>
+            Share Recipe Data
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Invite users by email. Select what to share: tags, ratings, or both.
+            </Typography>
+            
+            {/* Sharing Type Selection */}
+            <Box sx={{ mb: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shareTags}
+                    onChange={(e) => setShareTags(e.target.checked)}
+                  />
+                }
+                label="Share Tags"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shareRatings}
+                    onChange={(e) => setShareRatings(e.target.checked)}
+                  />
+                }
+                label="Share Ratings"
+              />
+            </Box>
+            
+            {/* Invite Section */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <TextField
+                label="Email Address"
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && shareEmail.trim()) {
+                    handleInviteUser();
+                  }
+                }}
+                size="small"
+                fullWidth
+                placeholder="user@example.com"
+              />
+              <Button
+                variant="contained"
+                onClick={handleInviteUser}
+                disabled={!shareEmail.trim() || (!shareTags && !shareRatings)}
+                sx={{ minWidth: 100 }}
+              >
+                Invite
+              </Button>
+            </Box>
+
+            {/* Shared Users List */}
+            {sharedRecipeUsers && sharedRecipeUsers.length > 0 && (
+              <>
+                <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                  Shared With:
+                </Typography>
+                <List>
+                  {sharedRecipeUsers.map((user) => (
+                    <ListItem key={user.userId}>
+                      <ListItemText
+                        primary={user.name || user.email}
+                        secondary={`${user.email} - Sharing: ${user.sharingTypes.join(', ')}`}
+                      />
+                      <IconButton
+                        size="small"
+                        color="error"
+                        title="Remove user"
+                        onClick={() => handleRemoveRecipeUser(user.userId)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            )}
+
+            <DialogActions primaryButtonIndex={0}>
+              <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                Done
+              </Button>
+            </DialogActions>
+          </DialogContent>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </AuthenticatedLayout>
   );
