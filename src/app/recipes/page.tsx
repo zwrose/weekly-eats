@@ -44,6 +44,7 @@ import {
 import { fetchRecipe } from "../../lib/recipe-utils";
 import EmojiPicker from "../../components/EmojiPicker";
 import RecipeIngredients from "../../components/RecipeIngredients";
+import RecipeInstructionsView from "../../components/RecipeInstructionsView";
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from "@/lib/hooks";
@@ -1380,12 +1381,9 @@ function RecipesPageContent() {
                         pr: 1,
                       }}
                     >
-                      <Typography
-                        variant="body1"
-                        sx={{ whiteSpace: "pre-wrap" }}
-                      >
-                        {selectedRecipe?.instructions}
-                      </Typography>
+                      <RecipeInstructionsView
+                        instructions={selectedRecipe?.instructions || ""}
+                      />
                     </Box>
                   </Box>
                 </Box>

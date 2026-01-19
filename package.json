@@ -29,13 +29,15 @@
     "@mui/x-date-pickers": "^8.5.3",
     "@types/mongodb": "^4.0.6",
     "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",
+    "ably": "^1.2.48",
     "date-fns": "^4.1.0",
     "mongodb": "^6.17.0",
     "next": "15.5.9",
     "next-auth": "^4.24.11",
     "react": "19.2.1",
     "react-dom": "19.2.1",
-    "ably": "^1.2.48"
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
