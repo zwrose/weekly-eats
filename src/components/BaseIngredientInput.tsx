@@ -226,14 +226,17 @@ export default function BaseIngredientInput({
     setAddDialogOpen(true);
   };
 
-  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; addToPantry?: boolean }) => {
     try {
+      // Extract addToPantry before sending to API (API doesn't need it)
+      const { addToPantry, ...foodItemPayload } = foodItemData;
+
       const response = await fetch('/api/food-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(foodItemData),
+        body: JSON.stringify(foodItemPayload),
       });
 
       if (!response.ok) {
@@ -242,6 +245,17 @@ export default function BaseIngredientInput({
       }
 
       const newFoodItem = await response.json();
+      
+      // Add to pantry if requested
+      if (addToPantry && newFoodItem._id) {
+        try {
+          const { createPantryItem } = await import('../lib/pantry-utils');
+          await createPantryItem({ foodItemId: newFoodItem._id });
+        } catch (pantryError) {
+          // Log error but don't fail the food item creation
+          console.error('Error adding food item to pantry:', pantryError);
+        }
+      }
       
       // Add the new food item to the local state
       setFoodItems(prev => [...prev, newFoodItem]);

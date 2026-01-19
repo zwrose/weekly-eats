@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { within } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../vitest.setup';
 import IngredientInput from '../IngredientInput';
 
 // Mock fetch for API calls
@@ -72,28 +74,23 @@ describe('IngredientInput', () => {
     const onIngredientChange = vi.fn();
     const onFoodItemAdded = vi.fn();
     
-    // Mock the food items API response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [
-        { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
-      ]
-    });
-    
-    // Mock the food item creation API response
+    // Override MSW handler for food item creation to return our test data
+    // Note: The dialog defaults to isGlobal: true, so the API should return true
     const newFoodItem = {
       _id: 'new-food-123',
       name: 'Fresh Spinach',
       singularName: 'Fresh Spinach',
       pluralName: 'Fresh Spinach',
       unit: 'bag',
-      isGlobal: false
+      isGlobal: true
     };
     
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => newFoodItem
-    });
+    server.use(
+      http.post('/api/food-items', async ({ request }) => {
+        const body = await request.json() as any;
+        return HttpResponse.json(newFoodItem, { status: 201 });
+      })
+    );
     
     render(
       <IngredientInput
@@ -112,49 +109,51 @@ describe('IngredientInput', () => {
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
     
-    // Wait for the dialog to appear and fill in the form (Step 1)
+    // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Fresh Spinach');
     
-    // Click Next to go to Step 2
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    await user.click(nextButton);
+    // Select unit (not "each" in this case, so no singular/plural fields)
+    const unitCombobox = screen.getByRole('combobox', { name: /typical usage unit/i });
+    await user.click(unitCombobox);
+    const listbox = await screen.findByRole('listbox');
+    // Select a non-"each" unit (like "bag" to match the mocked response)
+    // Get the first "bag" option if multiple exist
+    const bagOptions = within(listbox).getAllByRole('option', { name: /bag/i });
+    await user.click(bagOptions[0]);
     
-    // Fill in the form fields in Step 2
-    const singularField = await screen.findByLabelText(/singular name/i);
-    const pluralField = await screen.findByLabelText(/plural name/i);
-    
-    await user.clear(singularField);
-    await user.type(singularField, 'Fresh Spinach');
-    await user.clear(pluralField);
-    await user.type(pluralField, 'Fresh Spinach');
-    
-    // Submit the form
+    // Verify the submit button is enabled
     const addButton = screen.getByRole('button', { name: /add food item/i });
+    expect(addButton).not.toBeDisabled();
+    
+    // Submit the form - onAdd will be called (which is handleCreate in FoodItemAutocomplete)
+    // which calls creator.handleCreate, which makes the fetch call
     await user.click(addButton);
     
-    // Wait for the auto-selection to happen
+    // Wait for the food item to be added - this will happen after the fetch completes
+    await waitFor(() => {
+      expect(onFoodItemAdded).toHaveBeenCalledWith({
+        _id: 'new-food-123',
+        name: 'Fresh Spinach',
+        singularName: 'Fresh Spinach',
+        pluralName: 'Fresh Spinach',
+        unit: 'bag',
+        isGlobal: true
+      });
+    }, { timeout: 5000 });
+    
+    // Wait for the auto-selection to happen (via onItemCreated callback in creator)
     await waitFor(() => {
       expect(onIngredientChange).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'foodItem',
-          id: 'new-food-id',
+          id: 'new-food-123',
           quantity: 1,
-          unit: 'each'
+          unit: 'bag'
         })
       );
-    });
-    
-    // Verify that onFoodItemAdded was called with the new food item
-    expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-id',
-      name: 'Fresh Spinach',
-      singularName: 'Fresh Spinach',
-      pluralName: 'Fresh Spinach',
-      unit: 'each',
-      isGlobal: true
-    });
+    }, { timeout: 5000 });
   });
 
   it('auto-selection works when using prop foodItems', async () => {
@@ -166,20 +165,23 @@ describe('IngredientInput', () => {
       { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
     ];
     
-    // Mock the food item creation API response
+    // Override MSW handler for food item creation to return our test data
+    // Note: The dialog defaults to isGlobal: true, so the API should return true
     const newFoodItem = {
       _id: 'new-food-456',
       name: 'Organic Kale',
       singularName: 'Organic Kale',
       pluralName: 'Organic Kale',
       unit: 'bunch',
-      isGlobal: false
+      isGlobal: true
     };
     
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => newFoodItem
-    });
+    server.use(
+      http.post('/api/food-items', async ({ request }) => {
+        const body = await request.json() as any;
+        return HttpResponse.json(newFoodItem, { status: 201 });
+      })
+    );
     
     render(
       <IngredientInput
@@ -199,49 +201,51 @@ describe('IngredientInput', () => {
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
     
-    // Wait for the dialog to appear and fill in the form (Step 1)
+    // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Organic Kale');
     
-    // Click Next to go to Step 2
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    await user.click(nextButton);
+    // Select unit (not "each", so no singular/plural fields shown)
+    const unitCombobox = screen.getByRole('combobox', { name: /typical usage unit/i });
+    await user.click(unitCombobox);
+    const listbox = await screen.findByRole('listbox');
+    // Select a non-"each" unit (like "bunch" to match the mocked response)
+    // Get the first "bunch" option if multiple exist
+    const bunchOptions = within(listbox).getAllByRole('option', { name: /bunch/i });
+    await user.click(bunchOptions[0]);
     
-    // Fill in the form fields in Step 2
-    const singularField = await screen.findByLabelText(/singular name/i);
-    const pluralField = await screen.findByLabelText(/plural name/i);
-    
-    await user.clear(singularField);
-    await user.type(singularField, 'Organic Kale');
-    await user.clear(pluralField);
-    await user.type(pluralField, 'Organic Kale');
-    
-    // Submit the form
+    // Verify the submit button is enabled
     const addButton = screen.getByRole('button', { name: /add food item/i });
+    expect(addButton).not.toBeDisabled();
+    
+    // Submit the form - onAdd will be called (which is handleCreate in FoodItemAutocomplete)
+    // which calls creator.handleCreate, which makes the fetch call
     await user.click(addButton);
     
-    // Wait for the auto-selection to happen
+    // Wait for the food item to be added - this will happen after the fetch completes
+    await waitFor(() => {
+      expect(onFoodItemAdded).toHaveBeenCalledWith({
+        _id: 'new-food-456',
+        name: 'Organic Kale',
+        singularName: 'Organic Kale',
+        pluralName: 'Organic Kale',
+        unit: 'bunch',
+        isGlobal: true
+      });
+    }, { timeout: 5000 });
+    
+    // Wait for the auto-selection to happen (via onItemCreated callback in creator)
     await waitFor(() => {
       expect(onIngredientChange).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'foodItem',
-          id: 'new-food-id',
+          id: 'new-food-456',
           quantity: 1,
-          unit: 'each'
+          unit: 'bunch'
         })
       );
-    });
-    
-    // Verify that onFoodItemAdded was called with the new food item
-    expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-id',
-      name: 'Organic Kale',
-      singularName: 'Organic Kale',
-      pluralName: 'Organic Kale',
-      unit: 'each',
-      isGlobal: true
-    });
+    }, { timeout: 5000 });
   });
 });
 

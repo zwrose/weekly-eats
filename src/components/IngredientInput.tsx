@@ -64,14 +64,15 @@ export default function IngredientInput({
   const creator = useFoodItemCreator({
     onFoodItemAdded: onFoodItemAdded ? async (item) => {
       // Convert FoodItem to the expected shape
-      await onFoodItemAdded({
+      const convertedItem = {
         _id: item._id,
         name: item.name,
         singularName: item.singularName,
         pluralName: item.pluralName,
         unit: item.unit,
         isGlobal: item.isGlobal ?? false,
-      });
+      };
+      await onFoodItemAdded(convertedItem);
     } : undefined,
     onItemCreated: (newItem) => {
       // Auto-select the newly created item

@@ -125,6 +125,7 @@ export default function FoodItemAutocomplete({
     pluralName: string;
     unit: string;
     isGlobal: boolean;
+    addToPantry?: boolean;
   }) => {
     const newItem = await creator.handleCreate(foodItemData);
     if (newItem) {
