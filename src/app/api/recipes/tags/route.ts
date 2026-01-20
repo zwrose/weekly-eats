@@ -12,7 +12,9 @@ import {
  * GET /api/recipes/tags
  * Returns all unique tags for the current user across all their recipes
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
+  // Request parameter is required by Next.js route handler signature but unused
+  void _request;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {

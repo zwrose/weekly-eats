@@ -100,7 +100,7 @@ export default function RecipeTagsEditor({
               }
             }}
             onClose={() => setIsOpen(false)}
-            onInputChange={(_, newInputValue, reason) => {
+            onInputChange={(_, newInputValue) => {
               setInputValue(newInputValue);
               if (!newInputValue.trim()) {
                 setIsOpen(false);

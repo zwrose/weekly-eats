@@ -125,6 +125,10 @@ function RecipesPageContent() {
     message: '',
     severity: 'success',
   });
+  
+  // Extract userId for dependency tracking
+  const userId = (session?.user as { id?: string })?.id;
+  
   // New/edit recipe state (keep as local state)
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: "",
@@ -252,7 +256,7 @@ function RecipesPageContent() {
 
   // Load user data for all recipes
   const loadRecipesUserData = useCallback(async () => {
-    if (!session?.user?.id) return;
+    if (!userId) return;
     
     const allRecipes = [...userRecipes, ...globalRecipes];
     if (allRecipes.length === 0) return;
@@ -282,7 +286,7 @@ function RecipesPageContent() {
     } catch (error) {
       console.error('Error loading recipes user data:', error);
     }
-  }, [userRecipes, globalRecipes, session?.user?.id]);
+  }, [userRecipes, globalRecipes, userId]);
 
   // Load user data when recipes change
   useEffect(() => {
@@ -727,7 +731,7 @@ function RecipesPageContent() {
                   p: 1
                 }}
               >
-                <Badge badgeContent={pendingRecipeInvitations.length} color="error">
+                <Badge badgeContent={pendingRecipeInvitations?.length || 0} color="error">
                   <Share />
                 </Badge>
               </Button>
@@ -735,14 +739,14 @@ function RecipesPageContent() {
           </Box>
 
           {/* Pending Recipe Sharing Invitations */}
-          {pendingRecipeInvitations.length > 0 && (
+          {pendingRecipeInvitations && pendingRecipeInvitations.length > 0 && (
             <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PersonAdd />
-                Pending Recipe Sharing Invitations ({pendingRecipeInvitations.length})
+                Pending Recipe Sharing Invitations ({pendingRecipeInvitations?.length || 0})
               </Typography>
               <List>
-                {pendingRecipeInvitations.map((inv) => (
+                {pendingRecipeInvitations?.map((inv) => (
                   <Box key={inv.ownerId}>
                     <ListItem>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
