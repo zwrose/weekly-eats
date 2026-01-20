@@ -511,7 +511,7 @@ function MealPlansPageContent() {
 
 
 
-  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean } | { _id: string; name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+  const handleAddFoodItem = async (foodItemData: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; addToPantry?: boolean } | { _id: string; name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
     // Check if this is already a created food item (passed from IngredientInput after successful creation)
     // vs. raw form data that needs to be created
     if ('_id' in foodItemData) {
@@ -522,12 +522,15 @@ function MealPlansPageContent() {
 
     // This is raw form data that needs to be created (legacy direct dialog usage)
     try {
+      // Extract addToPantry before sending to API (API doesn't need it)
+      const { addToPantry, ...foodItemPayload } = foodItemData;
+
       const response = await fetch('/api/food-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(foodItemData),
+        body: JSON.stringify(foodItemPayload),
       });
 
       if (!response.ok) {
@@ -543,7 +546,18 @@ function MealPlansPageContent() {
         throw new Error(errorData.error || 'Failed to add food item');
       }
 
-      await response.json();
+      const newFoodItem = await response.json();
+
+      // Add to pantry if requested
+      if (addToPantry && newFoodItem._id) {
+        try {
+          const { createPantryItem } = await import('../../lib/pantry-utils');
+          await createPantryItem({ foodItemId: newFoodItem._id });
+        } catch (pantryError) {
+          // Log error but don't fail the food item creation
+          console.error('Error adding food item to pantry:', pantryError);
+        }
+      }
       
       // Close the dialog
       setAddFoodItemDialogOpen(false);

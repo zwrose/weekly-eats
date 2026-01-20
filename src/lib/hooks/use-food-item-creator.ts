@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from 'react';
 import { FoodItem } from './use-food-item-selector';
+import { createPantryItem } from '../pantry-utils';
 
 export interface UseFoodItemCreatorOptions {
   onFoodItemAdded?: (item: FoodItem) => Promise<void>;
@@ -24,6 +25,7 @@ export interface UseFoodItemCreatorReturn {
     pluralName: string;
     unit: string;
     isGlobal: boolean;
+    addToPantry?: boolean;
   }) => Promise<FoodItem | null>;
   clearError: () => void;
 }
@@ -59,16 +61,20 @@ export function useFoodItemCreator(
     pluralName: string;
     unit: string;
     isGlobal: boolean;
+    addToPantry?: boolean;
   }): Promise<FoodItem | null> => {
     try {
       setError(null);
+
+      // Extract addToPantry before sending to API (API doesn't need it)
+      const { addToPantry, ...foodItemPayload } = foodItemData;
 
       const response = await fetch('/api/food-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(foodItemData),
+        body: JSON.stringify(foodItemPayload),
       });
 
       if (!response.ok) {
@@ -77,6 +83,16 @@ export function useFoodItemCreator(
       }
 
       const newFoodItem: FoodItem = await response.json();
+
+      // Add to pantry if requested
+      if (addToPantry && newFoodItem._id) {
+        try {
+          await createPantryItem({ foodItemId: newFoodItem._id });
+        } catch (pantryError) {
+          // Log error but don't fail the food item creation
+          console.error('Error adding food item to pantry:', pantryError);
+        }
+      }
 
       // Notify parent component about the new food item
       if (onFoodItemAdded) {

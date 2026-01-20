@@ -73,6 +73,13 @@ async function createDatabaseIndexes() {
       { name: 'recipes_title' }
     );
 
+    // Recipe User Data Collection
+    const recipeUserDataCollection = db.collection('recipeUserData');
+    await recipeUserDataCollection.createIndex(
+      { userId: 1, recipeId: 1 },
+      { name: 'recipeUserData_userId_recipeId', unique: true }
+    );
+
     // Pantry Collection
     const pantryCollection = db.collection('pantry');
     await pantryCollection.createIndex(

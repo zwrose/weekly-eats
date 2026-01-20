@@ -7,8 +7,9 @@ import {
   Paper,
   Button,
   Alert,
+  TextField,
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, ExpandMore, ExpandLess, Add } from '@mui/icons-material';
 import { RecipeIngredient } from '../types/recipe';
 import { SearchOption, Recipe } from '../lib/hooks/use-food-item-selector';
 import { useFoodItemCreator } from '../lib/hooks/use-food-item-creator';
@@ -64,14 +65,15 @@ export default function IngredientInput({
   const creator = useFoodItemCreator({
     onFoodItemAdded: onFoodItemAdded ? async (item) => {
       // Convert FoodItem to the expected shape
-      await onFoodItemAdded({
+      const convertedItem = {
         _id: item._id,
         name: item.name,
         singularName: item.singularName,
         pluralName: item.pluralName,
         unit: item.unit,
         isGlobal: item.isGlobal ?? false,
-      });
+      };
+      await onFoodItemAdded(convertedItem);
     } : undefined,
     onItemCreated: (newItem) => {
       // Auto-select the newly created item
@@ -168,6 +170,9 @@ export default function IngredientInput({
     onQuantityChange: handleQuantityChange,
   });
 
+  // Prep instructions state - auto-expand if ingredient has prepInstructions
+  const [prepInstructionsExpanded, setPrepInstructionsExpanded] = useState(!!ingredient.prepInstructions);
+
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
       {creator.error && (
@@ -261,23 +266,94 @@ export default function IngredientInput({
           >
             <Delete />
           </IconButton>
-          
-          <Button
-            onClick={onRemove}
-            color="error"
-            variant="outlined"
-            size="small"
-            startIcon={<Delete />}
-            sx={{ 
-              display: { xs: 'flex', sm: 'none' },
-              width: '100%',
-              mt: 1
-            }}
-          >
-            {removeButtonText}
-          </Button>
         </Box>
       </Box>
+
+      {/* Prep Instructions Section - Only for food items */}
+      {/* On mobile, prep instructions appear before remove button to prevent accidental deletion */}
+      {ingredient.type === 'foodItem' && ingredient.id && (
+        <Box sx={{ mt: { xs: 1, sm: 1 }, mb: { xs: 2, sm: 0 } }}>
+          {prepInstructionsExpanded ? (
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TextField
+                  label="Prep Instructions (optional)"
+                  placeholder="e.g., chopped, diced, peeled"
+                  value={ingredient.prepInstructions || ''}
+                  onChange={(e) => {
+                    onIngredientChange({
+                      ...ingredient,
+                      prepInstructions: e.target.value || undefined
+                    });
+                  }}
+                  size="small"
+                  fullWidth
+                  sx={{ flex: 1 }}
+                />
+                <IconButton
+                  onClick={() => {
+                    setPrepInstructionsExpanded(false);
+                    // Clear prep instructions if field is empty
+                    if (!ingredient.prepInstructions) {
+                      onIngredientChange({
+                        ...ingredient,
+                        prepInstructions: undefined
+                      });
+                    }
+                  }}
+                  size="small"
+                  sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                  aria-label="Collapse prep instructions"
+                >
+                  <ExpandLess />
+                </IconButton>
+              </Box>
+            </Box>
+          ) : ingredient.prepInstructions ? (
+            <Button
+              startIcon={<ExpandMore />}
+              onClick={() => setPrepInstructionsExpanded(true)}
+              size="small"
+              variant="outlined"
+              sx={{ 
+                width: { xs: '100%', sm: 'auto' },
+                fontSize: '0.75rem'
+              }}
+            >
+              Show prep instructions ({ingredient.prepInstructions})
+            </Button>
+          ) : (
+            <Button
+              startIcon={<Add />}
+              onClick={() => setPrepInstructionsExpanded(true)}
+              size="small"
+              variant="outlined"
+              sx={{ 
+                width: { xs: '100%', sm: 'auto' },
+                fontSize: '0.75rem'
+              }}
+            >
+              Add prep instructions
+            </Button>
+          )}
+        </Box>
+      )}
+
+      {/* Remove button on mobile - appears after prep instructions to prevent accidental deletion */}
+      <Button
+        onClick={onRemove}
+        color="error"
+        variant="outlined"
+        size="small"
+        startIcon={<Delete />}
+        sx={{ 
+          display: { xs: 'flex', sm: 'none' },
+          width: '100%',
+          mt: { xs: 0, sm: 1 }
+        }}
+      >
+        {removeButtonText}
+      </Button>
     </Paper>
   );
 }

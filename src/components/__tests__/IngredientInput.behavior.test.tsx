@@ -466,25 +466,6 @@ describe('IngredientInput - Behavior Tests', () => {
     });
   });
 
-  describe('Recipe selection', () => {
-    // NOTE: Recipe selection test skipped due to MUI Autocomplete timing issues in test environment.
-    // The functionality is verified through manual testing:
-    // - When recipes start as empty array and autoLoad is true, the hook correctly uses API search
-    // - Once recipes are loaded, it switches to local filtering
-    // - Recipes appear in dropdown when typing, even immediately after page load
-    // See docs/manual-testing-recipe-search-fix.md for manual testing steps.
-    // 
-    // The test was failing due to:
-    // - MUI Autocomplete's dropdown rendering timing in jsdom
-    // - Difficulty synchronizing async recipe loading with user input in tests
-    // - React act() warnings with debounced search
-    //
-    // The core functionality is working correctly (verified manually), so this test
-    // is skipped to avoid false negatives from test environment limitations.
-    it.skip('should allow selecting recipes when available', () => {
-      // Test skipped - see comment above and docs/manual-testing-recipe-search-fix.md
-    });
-  });
 
   describe('"Add New Food Item" option behavior', () => {
     it('should show "Add New Food Item" option at bottom when input has text', async () => {
@@ -599,13 +580,6 @@ describe('IngredientInput - Behavior Tests', () => {
   });
 
   describe('Enter key behavior', () => {
-    // NOTE: Enter key selection tests are difficult to verify in jsdom due to MUI Autocomplete
-    // timing and event handling. The functionality is verified through manual testing.
-    // The core logic is tested in use-food-item-selector.test.ts
-    it.skip('should select first option when Enter pressed with search results', async () => {
-      // Test skipped - Enter key selection is verified manually and through hook tests
-      // See use-food-item-selector.test.ts for unit tests of the selection logic
-    });
 
     it('should not trigger creation when Enter pressed with item already selected', async () => {
       const user = userEvent.setup();

@@ -90,6 +90,7 @@ import { fetchPantryItems } from "../../lib/pantry-utils";
 import AddFoodItemDialog from "../../components/AddFoodItemDialog";
 import FoodItemAutocomplete from "../../components/food-item-inputs/FoodItemAutocomplete";
 import { SearchOption } from "../../lib/hooks/use-food-item-selector";
+import QuantityInput from "../../components/food-item-inputs/QuantityInput";
 
 interface FoodItem {
   _id: string;
@@ -632,14 +633,18 @@ function ShoppingListsPageContent() {
     pluralName: string;
     unit: string;
     isGlobal: boolean;
+    addToPantry?: boolean;
   }) => {
     try {
+      // Extract addToPantry before sending to API (API doesn't need it)
+      const { addToPantry, ...foodItemPayload } = foodItemData;
+
       const response = await fetch("/api/food-items", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(foodItemData),
+        body: JSON.stringify(foodItemPayload),
       });
 
       if (!response.ok) {
@@ -648,6 +653,17 @@ function ShoppingListsPageContent() {
       }
 
       const newFoodItem = await response.json();
+
+      // Add to pantry if requested
+      if (addToPantry && newFoodItem._id) {
+        try {
+          const { createPantryItem } = await import("../../lib/pantry-utils");
+          await createPantryItem({ foodItemId: newFoodItem._id });
+        } catch (pantryError) {
+          // Log error but don't fail the food item creation
+          console.error("Error adding food item to pantry:", pantryError);
+        }
+      }
 
       // Add the new food item to the local state
       setFoodItems((prev) => [...prev, newFoodItem]);
@@ -873,10 +889,9 @@ function ShoppingListsPageContent() {
     };
   };
 
-  const handleConflictQuantityChange = (value: string) => {
+  const handleConflictQuantityChange = (quantity: number) => {
     if (unitConflicts.length === 0) return;
 
-    const quantity = Math.max(0.01, parseFloat(value) || 0);
     const conflict = unitConflicts[currentConflictIndex];
     const current = getCurrentConflictResolution();
     const newResolutions = new Map(conflictResolutions);
@@ -2421,19 +2436,13 @@ function ShoppingListsPageContent() {
                               sx={{
                                 display: "flex",
                                 gap: 2,
-                                alignItems: "center",
+                                alignItems: "flex-start",
                               }}
                             >
-                              <TextField
+                              <QuantityInput
                                 label="Quantity"
-                                type="number"
-                                inputProps={{ step: 0.01, min: 0.01 }}
                                 value={item.quantity}
-                                onChange={(e) => {
-                                  const newQty = Math.max(
-                                    0.01,
-                                    parseFloat(e.target.value) || 0.01
-                                  );
+                                onChange={(newQty) => {
                                   handleUpdateItemQuantity(
                                     item.foodItemId,
                                     newQty
@@ -2540,25 +2549,14 @@ function ShoppingListsPageContent() {
                       alignItems: "flex-start",
                     }}
                   >
-                    <TextField
+                    <QuantityInput
                       label="Quantity"
-                      type="number"
-                      inputProps={{ step: 0.01, min: 0 }}
-                      value={quantity > 0 ? quantity : ""}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        // Allow any non-negative value during editing (including 0 and NaN for empty field)
-                        if (!isNaN(value) && value >= 0) {
-                          setQuantity(value);
-                        } else if (e.target.value === "") {
-                          // Allow empty field for editing
-                          setQuantity(0);
-                        }
+                      value={quantity}
+                      onChange={(newQuantity) => {
+                        setQuantity(newQuantity);
                       }}
                       size="small"
                       sx={{ width: { xs: "100%", sm: 100 } }}
-                      error={quantity <= 0}
-                      helperText={quantity <= 0 ? "Must be > 0" : ""}
                     />
                     <Autocomplete
                       options={getUnitOptions()}
@@ -3014,13 +3012,11 @@ function ShoppingListsPageContent() {
                 Set the quantity and unit for your shopping list:
               </Typography>
 
-              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-                <TextField
+              <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "flex-start" }}>
+                <QuantityInput
                   label="Quantity"
-                  type="number"
-                  inputProps={{ step: 0.01, min: 0.01 }}
                   value={getCurrentConflictResolution().quantity}
-                  onChange={(e) => handleConflictQuantityChange(e.target.value)}
+                  onChange={handleConflictQuantityChange}
                   size="small"
                   sx={{ width: 150 }}
                 />
@@ -3247,19 +3243,17 @@ function ShoppingListsPageContent() {
                         />
                       </Box>
                       {!item.checked && (
-                        <Box sx={{ display: "flex", gap: 1, ml: 6 }}>
-                          <TextField
+                        <Box sx={{ display: "flex", gap: 1, ml: 6, alignItems: "flex-start" }}>
+                          <QuantityInput
                             label="New Quantity"
-                            type="number"
-                            size="small"
-                            inputProps={{ step: 0.01, min: 0 }}
                             value={item.newQuantity}
-                            onChange={(e) =>
+                            onChange={(newQuantity) =>
                               handlePantryItemQuantityChange(
                                 item.foodItemId,
-                                Math.max(0, parseFloat(e.target.value) || 0)
+                                newQuantity
                               )
                             }
+                            size="small"
                             sx={{ width: 150 }}
                           />
                           <TextField

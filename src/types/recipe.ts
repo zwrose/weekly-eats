@@ -4,6 +4,7 @@ export interface RecipeIngredient {
   quantity: number;
   unit?: string; // Only for food items, not for recipes
   name?: string; // Populated from API when fetching
+  prepInstructions?: string; // Optional prep instructions (e.g., "chopped", "peeled and diced")
 }
 
 export interface RecipeIngredientList {

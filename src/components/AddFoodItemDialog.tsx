@@ -12,11 +12,8 @@ import {
   Box,
   Typography,
   Alert,
-  Divider,
-  Stepper,
-  Step,
-  StepLabel,
   Autocomplete,
+  Checkbox,
 } from '@mui/material';
 import { getUnitOptions } from '../lib/food-items-utils';
 import pluralize from '@wei/pluralize';
@@ -26,42 +23,51 @@ import { responsiveDialogStyle } from '../lib/theme';
 interface AddFoodItemDialogProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (foodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => void;
+  onAdd: (foodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; addToPantry: boolean }) => void | Promise<void>;
   prefillName?: string;
 }
 
 export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = '' }: AddFoodItemDialogProps) {
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('each');
+  const [unit, setUnit] = useState<string | null>(null);
   const [isGlobal, setIsGlobal] = useState(true);
+  const [addToPantry, setAddToPantry] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState(0);
   const [singularName, setSingularName] = useState('');
   const [pluralName, setPluralName] = useState('');
-  const [originalName, setOriginalName] = useState('');
 
   // Update name when prefillName changes or dialog opens
   useEffect(() => {
     if (open) {
       setName(prefillName);
-      setUnit('each');
+      setUnit(null);
       setIsGlobal(true);
+      setAddToPantry(false);
       setError('');
-      setStep(0);
+      setSingularName('');
+      setPluralName('');
     }
   }, [open, prefillName]);
 
-  const calculateNames = () => {
-    const trimmedName = name.trim();
-    const isInputSingular = pluralize.isSingular(trimmedName);
-    const calculatedSingular = isInputSingular ? trimmedName : pluralize.singular(trimmedName);
-    const calculatedPlural = isInputSingular ? pluralize.plural(trimmedName) : trimmedName;
-    
-    setSingularName(calculatedSingular);
-    setPluralName(calculatedPlural);
-  };
+  // Calculate singular/plural names when name changes and unit is "each"
+  useEffect(() => {
+    if (unit === 'each' && name.trim()) {
+      const trimmedName = name.trim();
+      const isInputSingular = pluralize.isSingular(trimmedName);
+      const calculatedSingular = isInputSingular ? trimmedName : pluralize.singular(trimmedName);
+      const calculatedPlural = isInputSingular ? pluralize.plural(trimmedName) : trimmedName;
+      
+      setSingularName(calculatedSingular);
+      setPluralName(calculatedPlural);
+    } else if (unit !== 'each') {
+      // Clear singular/plural when switching away from "each"
+      setSingularName('');
+      setPluralName('');
+    }
+  }, [name, unit]);
 
-  const handleNext = () => {
+  const handleSubmit = async () => {
+    // Validate required fields
     if (!name.trim()) {
       setError('Food item name is required');
       return;
@@ -71,55 +77,57 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
       return;
     }
 
-    setOriginalName(name.trim());
-    calculateNames();
-    setStep(1);
-    setError('');
-  };
+    // If unit is "each", validate singular/plural names
+    if (unit === 'each') {
+      if (!singularName.trim() || !pluralName.trim()) {
+        setError('Both singular and plural names are required');
+        return;
+      }
 
-  const handleBack = () => {
-    setStep(0);
-  };
-
-  const handleSubmit = () => {
-    if (!singularName.trim() || !pluralName.trim()) {
-      setError('Both singular and plural names are required');
-      return;
+      await onAdd({
+        name: singularName.trim(),
+        singularName: singularName.trim(),
+        pluralName: pluralName.trim(),
+        unit,
+        isGlobal,
+        addToPantry
+      });
+    } else {
+      // For non-"each" units, use the default name for both singular and plural
+      const trimmedName = name.trim();
+      await onAdd({
+        name: trimmedName,
+        singularName: trimmedName,
+        pluralName: trimmedName,
+        unit,
+        isGlobal,
+        addToPantry
+      });
     }
-
-    onAdd({
-      name: singularName.trim(),
-      singularName: singularName.trim(),
-      pluralName: pluralName.trim(),
-      unit,
-      isGlobal
-    });
 
     // Reset form
     setName('');
-    setUnit('each');
+    setUnit(null);
     setIsGlobal(true);
+    setAddToPantry(false);
     setError('');
-    setStep(0);
     setSingularName('');
     setPluralName('');
-    setOriginalName('');
   };
 
   const handleClose = () => {
     // Reset form
     setName('');
-    setUnit('each');
+    setUnit(null);
     setIsGlobal(true);
+    setAddToPantry(false);
     setError('');
-    setStep(0);
     setSingularName('');
     setPluralName('');
-    setOriginalName('');
     onClose();
   };
 
-  const steps = ['Basic Information', 'Confirm Names'];
+  const isEachUnit = unit === 'each';
 
   return (
           <Dialog 
@@ -130,27 +138,9 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
         sx={responsiveDialogStyle}
       >
       <DialogTitle onClose={handleClose}>
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Add New Food Item
-          </Typography>
-          <Stepper 
-            activeStep={step} 
-            sx={{ mt: 2 }}
-          >
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel sx={{ 
-                  '& .MuiStepLabel-label': {
-                    fontSize: { xs: '0.875rem', sm: '1rem' }
-                  }
-                }}>
-                  {label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
+        <Typography variant="h6" gutterBottom>
+          Add New Food Item
+        </Typography>
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
@@ -160,67 +150,39 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
             </Alert>
           )}
 
-          {step === 0 ? (
-            // Step 1: Basic Information
-            <Box>
+          <TextField
+            label="Default Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+            margin="normal"
+            required
+            autoFocus
+            helperText={isEachUnit ? "Enter the name as you would normally say it (e.g., &apos;apples&apos; or &apos;apple&apos;)" : "Enter the name of the food item"}
+          />
+
+          <Autocomplete
+            options={getUnitOptions()}
+            value={getUnitOptions().find(option => option.value === unit) ?? null}
+            onChange={(_, newValue) => setUnit(newValue?.value ?? null)}
+            getOptionLabel={(option) => option.label}
+            isOptionEqualToValue={(option, value) => option.value === value.value}
+            clearOnBlur={false}
+            autoHighlight
+            fullWidth
+            renderInput={(params) => (
               <TextField
-                label="Default Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
+                {...params}
+                label="Typical Usage Unit"
                 margin="normal"
                 required
-                autoFocus
-                helperText="Enter the name as you would normally say it (e.g., &apos;apples&apos; or &apos;apple&apos;)"
               />
+            )}
+          />
 
-              <Autocomplete
-                options={getUnitOptions()}
-                value={getUnitOptions().find(option => option.value === unit) ?? undefined}
-                onChange={(_, newValue) => setUnit(newValue?.value || 'each')}
-                getOptionLabel={(option) => option.label}
-                isOptionEqualToValue={(option, value) => option.value === value.value}
-                disableClearable
-                autoHighlight
-                fullWidth
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Typical Usage Unit"
-                    margin="normal"
-                    required
-                  />
-                )}
-              />
-
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Access Level
-                </Typography>
-                <RadioGroup
-                  value={isGlobal}
-                  onChange={(e) => setIsGlobal(e.target.value === 'true')}
-                >
-                  <FormControlLabel
-                    value={true}
-                    control={<Radio />}
-                    label="Global (visible to all users)"
-                  />
-                  <FormControlLabel
-                    value={false}
-                    control={<Radio />}
-                    label="Personal (only visible to you)"
-                  />
-                </RadioGroup>
-              </Box>
-            </Box>
-          ) : (
-            // Step 2: Confirm Names
-            <Box>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                We&apos;ve calculated the singular and plural forms of your food item. You can adjust these if needed.
-              </Typography>
-
+          {/* Show singular/plural fields only when "each" unit is selected */}
+          {isEachUnit && (
+            <Box sx={{ mt: 1 }}>
               <TextField
                 label="Singular Name"
                 value={singularName}
@@ -240,63 +202,53 @@ export default function AddFoodItemDialog({ open, onClose, onAdd, prefillName = 
                 required
                 helperText="Used when referring to multiple items (e.g., &apos;2 apples&apos;)"
               />
-
-              <Divider sx={{ my: 3 }} />
-
-              <Typography variant="subtitle2" gutterBottom>
-                Food Item To Be Added
-              </Typography>
-              <Box sx={{ 
-                bgcolor: 'background.paper', 
-                p: 2, 
-                borderRadius: 1, 
-                border: '1px solid', 
-                borderColor: 'divider',
-                boxShadow: 1
-              }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Default Name:</strong> {originalName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Singular Name:</strong> {singularName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Plural Name:</strong> {pluralName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Typical Usage Unit:</strong> {unit}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Access Level:</strong> {isGlobal ? 'Global' : 'Personal'}
-                </Typography>
-              </Box>
             </Box>
           )}
 
-          <DialogActions primaryButtonIndex={step === 0 ? 1 : 2}>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Access Level
+            </Typography>
+            <RadioGroup
+              value={isGlobal}
+              onChange={(e) => setIsGlobal(e.target.value === 'true')}
+            >
+              <FormControlLabel
+                value={true}
+                control={<Radio />}
+                label="Global (visible to all users)"
+              />
+              <FormControlLabel
+                value={false}
+                control={<Radio />}
+                label="Personal (only visible to you)"
+              />
+            </RadioGroup>
+          </Box>
+
+          <Box sx={{ mt: 3 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={addToPantry}
+                  onChange={(e) => setAddToPantry(e.target.checked)}
+                />
+              }
+              label="Also add to my pantry list"
+            />
+          </Box>
+
+          <DialogActions primaryButtonIndex={1}>
             <Button onClick={handleClose}>
               Cancel
             </Button>
-            {step === 0 ? (
-              <Button 
-                onClick={handleNext} 
-                variant="contained"
-              >
-                Next
-              </Button>
-            ) : (
-              <>
-                <Button onClick={handleBack}>
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSubmit} 
-                  variant="contained"
-                >
-                  Add Food Item
-                </Button>
-              </>
-            )}
+            <Button 
+              onClick={handleSubmit} 
+              variant="contained"
+              disabled={!name.trim() || !unit || (isEachUnit && (!singularName.trim() || !pluralName.trim()))}
+            >
+              Add Food Item
+            </Button>
           </DialogActions>
         </Box>
       </DialogContent>

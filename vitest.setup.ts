@@ -68,6 +68,8 @@ const handlers = [
 
 const server = setupServer(...handlers);
 
+export { server };
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'bypass' });
 });

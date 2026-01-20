@@ -20,9 +20,14 @@ const MAX_RECURSION_DEPTH = 50;
 
 /**
  * Recursively extracts food items from a recipe
+ * @param recipeId - The ID of the recipe to extract from
+ * @param multiplier - Quantity multiplier to apply to all extracted items (default: 1)
+ * @param depth - Current recursion depth
+ * @param visitedRecipes - Set of visited recipe IDs to prevent circular references
  */
 async function extractFoodItemsFromRecipe(
   recipeId: string,
+  multiplier: number = 1,
   depth: number = 0,
   visitedRecipes: Set<string> = new Set()
 ): Promise<ExtractedItem[]> {
@@ -55,16 +60,19 @@ async function extractFoodItemsFromRecipe(
         if (group.ingredients && Array.isArray(group.ingredients)) {
           for (const ingredient of group.ingredients) {
             if (ingredient.type === 'foodItem' && ingredient.id) {
-              // Add food item
+              // Add food item with multiplier applied
               items.push({
                 foodItemId: ingredient.id,
-                quantity: ingredient.quantity || 1,
+                quantity: (ingredient.quantity || 1) * multiplier,
                 unit: ingredient.unit || 'piece'
               });
             } else if (ingredient.type === 'recipe' && ingredient.id) {
               // Recursively extract from nested recipe
+              // Multiply by both the current multiplier and the ingredient quantity
+              const ingredientQuantity = ingredient.quantity || 1;
               const nestedItems = await extractFoodItemsFromRecipe(
                 ingredient.id,
+                multiplier * ingredientQuantity,
                 depth + 1,
                 new Set(visitedRecipes)
               );
@@ -102,7 +110,9 @@ export async function extractFoodItemsFromMealPlans(
           });
         } else if (mealItem.type === 'recipe' && mealItem.id) {
           // Recursively extract from recipe
-          const recipeItems = await extractFoodItemsFromRecipe(mealItem.id);
+          // Multiply by meal item quantity (default to 1 if not specified)
+          const mealItemQuantity = mealItem.quantity || 1;
+          const recipeItems = await extractFoodItemsFromRecipe(mealItem.id, mealItemQuantity);
           items.push(...recipeItems);
         } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
           // Extract from ingredient group
@@ -117,7 +127,9 @@ export async function extractFoodItemsFromMealPlans(
                   });
                 } else if (ingredient.type === 'recipe' && ingredient.id) {
                   // Recursively extract from nested recipe
-                  const recipeItems = await extractFoodItemsFromRecipe(ingredient.id);
+                  // Multiply by ingredient quantity (default to 1 if not specified)
+                  const ingredientQuantity = ingredient.quantity || 1;
+                  const recipeItems = await extractFoodItemsFromRecipe(ingredient.id, ingredientQuantity);
                   items.push(...recipeItems);
                 }
               }

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { within } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../vitest.setup';
 import MealEditor from '../MealEditor';
 
 // Mock fetch for API calls
@@ -91,21 +94,27 @@ describe('MealEditor', () => {
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
     
-    // Wait for the dialog to appear and fill in the form (Step 1)
+    // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Fresh Avocado');
     
-    // Click Next to go to Step 2
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    await user.click(nextButton);
+    // Select unit (using "each" so singular/plural fields will appear)
+    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: /each/i }));
     
-    // Fill in the form fields in Step 2
-    const singularField = await screen.findByLabelText(/singular name/i);
-    const pluralField = await screen.findByLabelText(/plural name/i);
+    // Wait for singular/plural fields to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
+    });
     
+    // Fill in singular/plural fields
+    const singularField = screen.getByLabelText(/singular name/i);
     await user.clear(singularField);
     await user.type(singularField, 'Fresh Avocado');
+    
+    const pluralField = screen.getByLabelText(/plural name/i);
     await user.clear(pluralField);
     await user.type(pluralField, 'Fresh Avocados');
     
@@ -157,20 +166,23 @@ describe('MealEditor', () => {
       json: async () => [] // No recipes
     });
     
-    // Mock the food item creation API response
+    // Override MSW handler for food item creation to return our test data
+    // Note: The unit should match what the dialog sends (cup in this case)
     const newFoodItem = {
       _id: 'new-food-timing-test',
       name: 'Organic Blueberries',
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',
-      unit: 'package',
-      isGlobal: false
+      unit: 'cup',  // Matches what the test selects
+      isGlobal: true  // Dialog defaults to global
     };
     
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => newFoodItem
-    });
+    server.use(
+      http.post('/api/food-items', async ({ request }) => {
+        const body = await request.json() as any;
+        return HttpResponse.json(newFoodItem, { status: 201 });
+      })
+    );
     
     render(
       <MealEditor
@@ -203,25 +215,18 @@ describe('MealEditor', () => {
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
     
-    // Fill in the form (Step 1)
+    // Fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Organic Blueberries');
     
-    // Click Next to go to Step 2
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    await user.click(nextButton);
+    // Select unit (not "each", so no singular/plural fields needed)
+    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
+    const listbox = await screen.findByRole('listbox');
+    // Select a non-"each" unit (e.g., "cup")
+    await user.click(within(listbox).getByRole('option', { name: /cup/i }));
     
-    // Fill in the form fields in Step 2
-    const singularField = await screen.findByLabelText(/singular name/i);
-    const pluralField = await screen.findByLabelText(/plural name/i);
-    
-    await user.clear(singularField);
-    await user.type(singularField, 'Organic Blueberries');
-    await user.clear(pluralField);
-    await user.type(pluralField, 'Organic Blueberries');
-    
-    // Submit the form
+    // Submit the form (no Step 2 needed - single page form)
     const addButton = screen.getByRole('button', { name: /add food item/i });
     await user.click(addButton);
     
@@ -232,21 +237,21 @@ describe('MealEditor', () => {
       expect(updatedItems[0]).toEqual(
         expect.objectContaining({
           type: 'foodItem',
-          id: 'new-food-id',
+          id: 'new-food-timing-test',
           name: 'Organic Blueberries',
           quantity: 1,
-          unit: 'each'
+          unit: 'cup'  // Matches what was selected in the dialog
         })
       );
     });
     
     // Verify that the ref-based fallback worked correctly
     expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-id',
+      _id: 'new-food-timing-test',
       name: 'Organic Blueberries',
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',
-      unit: 'each',
+      unit: 'cup',
       isGlobal: true
     });
   });

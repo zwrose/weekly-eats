@@ -13,9 +13,24 @@ export interface MealPlanSharing {
   invitations?: MealPlanSharingInvitation[];
 }
 
+export interface RecipeSharingInvitation {
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  invitedBy: string; // userId of the inviter
+  invitedAt: Date;
+  sharingTypes: ('tags' | 'ratings')[]; // What is being shared (can be both)
+}
+
+export interface RecipeSharing {
+  invitations?: RecipeSharingInvitation[];
+}
+
 export interface UserSettings {
   themeMode: ThemeMode;
   mealPlanSharing?: MealPlanSharing;
+  recipeSharing?: RecipeSharing;
   defaultMealPlanOwner?: string; // User ID of the default owner for creating meal plans
 }
 
