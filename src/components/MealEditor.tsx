@@ -167,7 +167,7 @@ export default function MealEditor({
                 type: item.type, // Use the actual type from the meal item
                 id: item.id,
                 quantity: item.quantity ?? 1,
-                unit: item.unit || 'cup',
+                unit: item.type === 'foodItem' ? (item.unit || 'cup') : undefined,
                 name: item.name // ✅ Preserve the name from the meal item
               }}
               autoFocus={!item.id || item.id.trim() === ''}
@@ -199,7 +199,10 @@ export default function MealEditor({
                   id: updatedIngredient.id,
                   name: itemName,
                   quantity: updatedIngredient.quantity,
-                  unit: updatedIngredient.unit
+                  unit:
+                    updatedIngredient.type === 'foodItem'
+                      ? updatedIngredient.unit || 'cup'
+                      : undefined,
                 });
               }}
               onRemove={() => handleRemoveItem(index)}

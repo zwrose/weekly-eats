@@ -488,9 +488,35 @@ function MealPlansPageContent() {
     
     // Validation is already checked via button disabled state
     try {
+      // Sanitize: recipes never have units (some older data may have persisted a default).
+      const sanitizedItems: MealPlanItem[] = selectedMealPlan.items.map((mpi) => ({
+        ...mpi,
+        items: mpi.items.map((mealItem) => {
+          if (mealItem.type === 'recipe') {
+            return { ...mealItem, unit: undefined };
+          }
+
+          if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
+            return {
+              ...mealItem,
+              ingredients: mealItem.ingredients.map((group) => ({
+                ...group,
+                ingredients: group.ingredients.map((ingredient) =>
+                  ingredient.type === 'recipe'
+                    ? { ...ingredient, unit: undefined }
+                    : ingredient
+                ),
+              })),
+            };
+          }
+
+          return mealItem;
+        }),
+      }));
+
       // Update the meal plan with the current items
       await updateMealPlan(selectedMealPlan._id, {
-        items: selectedMealPlan.items
+        items: sanitizedItems
       });
       // Fetch the updated meal plan with populated names
       const updatedMealPlan = await fetchMealPlan(selectedMealPlan._id);
@@ -1557,7 +1583,13 @@ function MealPlansPageContent() {
                                             <Box sx={{ pl: 2 }}>
                                               {group.ingredients.map((ingredient, ingIndex) => (
                                                 <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                  • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                  • {ingredient.quantity}{' '}
+                                                  {ingredient.type === 'foodItem' &&
+                                                  ingredient.unit &&
+                                                  ingredient.unit !== 'each'
+                                                    ? getUnitForm(ingredient.unit, ingredient.quantity) + ' '
+                                                    : ''}
+                                                  {ingredient.name || 'Unknown'}
                                                 </Typography>
                                               ))}
                                             </Box>
@@ -1570,9 +1602,14 @@ function MealPlansPageContent() {
                                     return (
                                       <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
                                         • {staple.name}
-                                        {staple.quantity && staple.unit && (
+                                        {staple.type === 'foodItem' && staple.quantity && staple.unit && (
                                           <span style={{ color: 'text.secondary' }}>
                                             {' '}({staple.quantity} {getUnitForm(staple.unit, staple.quantity)})
+                                          </span>
+                                        )}
+                                        {staple.type === 'recipe' && staple.quantity && (
+                                          <span style={{ color: 'text.secondary' }}>
+                                            {' '}({staple.quantity}x)
                                           </span>
                                         )}
                                       </Typography>
@@ -1666,7 +1703,13 @@ function MealPlansPageContent() {
                                                           <Box sx={{ pl: 2 }}>
                                                             {group.ingredients.map((ingredient, ingIndex) => (
                                                               <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                                • {ingredient.quantity} {ingredient.unit && ingredient.unit !== 'each' ? getUnitForm(ingredient.unit, ingredient.quantity) + ' ' : ''}{ingredient.name || 'Unknown'}
+                                                                • {ingredient.quantity}{' '}
+                                                                {ingredient.type === 'foodItem' &&
+                                                                ingredient.unit &&
+                                                                ingredient.unit !== 'each'
+                                                                  ? getUnitForm(ingredient.unit, ingredient.quantity) + ' '
+                                                                  : ''}
+                                                                {ingredient.name || 'Unknown'}
                                                               </Typography>
                                                             ))}
                                                           </Box>
@@ -1679,9 +1722,14 @@ function MealPlansPageContent() {
                                                   return (
                                                     <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
                                                       • {mealItem.name}
-                                                      {mealItem.quantity && mealItem.unit && (
+                                                      {mealItem.type === 'foodItem' && mealItem.quantity && mealItem.unit && (
                                                         <span style={{ color: 'text.secondary' }}>
                                                           {' '}({mealItem.quantity} {getUnitForm(mealItem.unit, mealItem.quantity)})
+                                                        </span>
+                                                      )}
+                                                      {mealItem.type === 'recipe' && mealItem.quantity && (
+                                                        <span style={{ color: 'text.secondary' }}>
+                                                          {' '}({mealItem.quantity}x)
                                                         </span>
                                                       )}
                                                     </Typography>
