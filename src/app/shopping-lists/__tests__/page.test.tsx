@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ShoppingListsPage from '../page';
 
@@ -65,6 +65,12 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   fetchShoppingList: (storeId: string) => mockFetchShoppingList(storeId),
 }));
 
+// Mock meal plan utils (used by "Add Items from Meal Plans" flow)
+const mockFetchMealPlans = vi.fn();
+vi.mock('../../../lib/meal-plan-utils', () => ({
+  fetchMealPlans: () => mockFetchMealPlans(),
+}));
+
 // Mock the shopping sync hook, but capture the options passed so we can
 // simulate incoming realtime events in integration-style tests.
 let lastShoppingSyncOptions: any = null;
@@ -102,6 +108,9 @@ describe('ShoppingListsPage', () => {
     // Default mock for pending invitations
     mockFetchPendingInvitations.mockResolvedValue([]);
     mockFetchShoppingList.mockReset();
+    // Provide a safe default: reject so the page falls back to the embedded
+    // store.shoppingList.items (and doesn't crash on undefined).
+    mockFetchShoppingList.mockRejectedValue(new Error('No mocked shopping list'));
     lastShoppingSyncOptions = null;
     
     // Mock fetch for food items
@@ -116,8 +125,22 @@ describe('ShoppingListsPage', () => {
     }) as any;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
+    // MUI Dialog/Modal can leave global body styles behind if unmounted mid-transition,
+    // which can make subsequent tests flaky.
+    document.body.style.removeProperty('padding-right');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('overflow-x');
+    document.body.style.removeProperty('overflow-y');
+
+    document.querySelectorAll('.MuiModal-root').forEach((node) => node.remove());
+    document.querySelectorAll('.MuiBackdrop-root').forEach((node) => node.remove());
+
+    // usePersistentDialog schedules router updates via setTimeout (100–200ms).
+    // Let those timers flush so they don't fire during the next test and
+    // mutate the shared URL/searchParams test state.
+    await new Promise((resolve) => setTimeout(resolve, 300));
   });
 
   it('renders without crashing', async () => {
@@ -296,6 +319,72 @@ describe('ShoppingListsPage', () => {
     });
   });
 
+  it('allows selecting a meal plan via the checkbox (not just the row)', async () => {
+    const user = userEvent.setup();
+
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+
+    mockFetchMealPlans.mockResolvedValue([
+      {
+        _id: 'mp-1',
+        name: 'Meal Plan 1',
+        startDate: new Date().toISOString(),
+      },
+    ]);
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    // Open the shopping list dialog
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add Item')).toBeInTheDocument();
+    });
+
+    // Open meal plan selection
+    await user.click(
+      screen.getByRole('button', { name: /add items from meal plans/i })
+    );
+
+    const dialog = await waitFor(() => {
+      return screen.getByRole('dialog', { name: /select meal plans/i });
+    });
+
+    const nextButton = within(dialog).getByRole('button', { name: /^next$/i });
+    expect(nextButton).toBeDisabled();
+
+    const checkbox = within(dialog).getByRole('checkbox');
+    await user.click(checkbox);
+
+    expect(checkbox).toBeChecked();
+    expect(nextButton).not.toBeDisabled();
+  });
+
   it('refreshes shopping list from server when opening dialog', async () => {
     const user = userEvent.setup();
     const mockStores = [
@@ -341,7 +430,11 @@ describe('ShoppingListsPage', () => {
           json: async () => []
         } as Response);
       }
-      return Promise.reject(new Error('Unknown URL'));
+      // Return empty payload for any other fetches this page might do during the test.
+      return Promise.resolve({
+        ok: true,
+        json: async () => []
+      } as Response);
     });
 
     render(<ShoppingListsPage />);
@@ -573,7 +666,7 @@ describe('ShoppingListsPage', () => {
     await waitFor(() => {
       // Look for the helper text that appears in shop mode
       expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     // Edit Mode's "Add Item" section should NOT be visible in Shop Mode
     expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
@@ -634,7 +727,7 @@ describe('ShoppingListsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
       expect(screen.getByText('Milk')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     // Initially unchecked
     const checkbox = screen.getByRole('checkbox') as HTMLInputElement;

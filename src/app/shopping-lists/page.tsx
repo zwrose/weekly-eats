@@ -2859,6 +2859,11 @@ function ShoppingListsPageContent() {
                 >
                   <Checkbox
                     checked={selectedMealPlanIds.includes(mealPlan._id)}
+                    onClick={(event) => {
+                      // Prevent the parent ListItem onClick from firing too,
+                      // otherwise a checkbox click toggles twice (net no change).
+                      event.stopPropagation();
+                    }}
                     onChange={() => {
                       setSelectedMealPlanIds((prev) =>
                         prev.includes(mealPlan._id)
