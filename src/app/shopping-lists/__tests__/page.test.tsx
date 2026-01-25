@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ShoppingListsPage from '../page';
 
@@ -315,7 +315,8 @@ describe('ShoppingListsPage', () => {
 
     // Wait for dialog to open
     await waitFor(() => {
-      expect(screen.getByText('Add Item')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     });
   });
 
@@ -363,13 +364,12 @@ describe('ShoppingListsPage', () => {
     await user.click(storeName);
 
     await waitFor(() => {
-      expect(screen.getByText('Add Item')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
     });
 
-    // Open meal plan selection
-    await user.click(
-      screen.getByRole('button', { name: /add items from meal plans/i })
-    );
+    // Open actions menu, then meal plan selection
+    await user.click(screen.getByRole('button', { name: /more actions/i }));
+    await user.click(screen.getByText(/add items from meal plans/i));
 
     const dialog = await waitFor(() => {
       return screen.getByRole('dialog', { name: /select meal plans/i });
@@ -662,17 +662,14 @@ describe('ShoppingListsPage', () => {
     
     await user.click(startShoppingButtons[0]!);
 
-    // Wait for dialog to open - shop mode shows a different message
+    // Wait for dialog to open (unified list)
     await waitFor(() => {
-      // Look for the helper text that appears in shop mode
-      expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
+      expect(screen.getByText('Milk')).toBeInTheDocument();
     }, { timeout: 3000 });
-
-    // Edit Mode's "Add Item" section should NOT be visible in Shop Mode
-    expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
   });
 
-  it('applies remote item_checked events from shopping sync in Shop Mode', async () => {
+  it('applies remote item_checked events from shopping sync', async () => {
     const user = userEvent.setup();
     const mockStores = [
       {
@@ -711,7 +708,7 @@ describe('ShoppingListsPage', () => {
 
     render(<ShoppingListsPage />);
 
-    // Open Shop Mode via Start Shopping
+    // Open the shopping list dialog
     await waitFor(() => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
@@ -723,10 +720,9 @@ describe('ShoppingListsPage', () => {
 
     await user.click(startShoppingButtons[0]!);
 
-    // Wait for Shop Mode content
     await waitFor(() => {
-      expect(screen.getByText(/Check off items as you shop/i)).toBeInTheDocument();
       expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     }, { timeout: 3000 });
 
     // Initially unchecked
@@ -735,14 +731,16 @@ describe('ShoppingListsPage', () => {
 
     // Simulate a remote item_checked event via the options passed into useShoppingSync
     expect(lastShoppingSyncOptions).not.toBeNull();
-    lastShoppingSyncOptions.onItemChecked('f1', true);
+    act(() => {
+      lastShoppingSyncOptions.onItemChecked('f1', true);
+    });
 
     await waitFor(() => {
       expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
     });
   });
 
-  it('reorders items via drag and drop without crashing', async () => {
+  it('renders drag handles for items', async () => {
     const user = userEvent.setup();
     const mockStores = [
       {
@@ -794,34 +792,83 @@ describe('ShoppingListsPage', () => {
       expect(screen.getByText('Bread')).toBeInTheDocument();
     });
 
-    const milkRow = screen.getByText('Milk').closest('li') as HTMLElement;
-    const breadRow = screen.getByText('Bread').closest('li') as HTMLElement;
+    // Drag-and-drop is handled by dnd-kit and is difficult to simulate reliably in JSDOM.
+    // This smoke test asserts the drag handles exist (handle-only pattern).
+    const handles = screen.getAllByRole('button', { name: /reorder/i });
+    expect(handles.length).toBeGreaterThan(0);
+  });
 
-    // Mock bounding box for target row so we can control before/after calculation
-    Object.defineProperty(breadRow, 'getBoundingClientRect', {
-      value: () => ({
-        top: 0,
-        height: 100,
-        bottom: 100,
-        left: 0,
-        right: 100,
-        width: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({})
-      })
+  it('shows finish shop button only when items are checked, and clears them', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockUpdateShoppingList.mockResolvedValue({});
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      // Toggle endpoint should succeed so checkbox stays checked.
+      if (typeof url === 'string' && url.includes('/api/shopping-lists/store-1/items/f1/toggle')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, foodItemId: 'f1', checked: true, items: [] }),
+        } as Response);
+      }
+      return Promise.reject(new Error('Unknown URL'));
     });
 
-    fireEvent.dragStart(milkRow);
-    fireEvent.dragOver(breadRow, { clientY: 90 }); // near bottom -> "after"
-    fireEvent.drop(breadRow);
+    render(<ShoppingListsPage />);
 
-    // Assert that the list still renders both items after the drag-and-drop sequence.
-    // JSDOM's drag-and-drop implementation is limited, so we treat this as a smoke test
-    // to ensure the handlers run without throwing and the UI remains stable.
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
     await waitFor(() => {
       expect(screen.getByText('Milk')).toBeInTheDocument();
-      expect(screen.getByText('Bread')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('checkbox'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /finish shop/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateShoppingList).toHaveBeenCalled();
+      expect(screen.queryByText('Milk')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
     });
   });
 
@@ -848,7 +895,7 @@ describe('ShoppingListsPage', () => {
     });
   });
 
-  it('restores dialog in Edit Mode from URL params', async () => {
+  it('restores shopping list dialog from URL params', async () => {
     const user = userEvent.setup();
     const mockStores = [
       {
@@ -885,18 +932,18 @@ describe('ShoppingListsPage', () => {
       return Promise.reject(new Error('Unknown URL'));
     });
 
-    setTestUrl('/shopping-lists?shoppingList=true&shoppingList_storeId=store-1&shoppingList_mode=edit');
+    setTestUrl('/shopping-lists?shoppingList=true&shoppingList_storeId=store-1');
 
     render(<ShoppingListsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Add Item')).toBeInTheDocument();
-      // Edit Mode toggle should be the contained (active) button
-      expect(screen.getByRole('button', { name: /edit mode/i })).toHaveClass('MuiButton-contained');
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     });
   });
 
-  it('restores dialog in Shop Mode from URL params', async () => {
+  it('ignores legacy mode param in URL', async () => {
     const mockStores = [
       {
         _id: 'store-1',
@@ -940,63 +987,9 @@ describe('ShoppingListsPage', () => {
       // Dialog should be open and showing content for the Target store
       const targets = screen.queryAllByText('Target');
       expect(targets.length).toBeGreaterThan(0);
-      // Shop Mode button should be present (we don't assert styling/classes here)
-      expect(screen.getByRole('button', { name: /shop mode/i })).toBeInTheDocument();
+      // No separate mode toggle buttons anymore
+      expect(screen.queryByRole('button', { name: /shop mode/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /edit mode/i })).not.toBeInTheDocument();
     });
   });
 });
-
-describe('ShoppingListsPage - Edit and Shop Modes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
-
-  it('opens in Edit Mode by default', async () => {
-    // Test verifies that shopping lists always open in Edit Mode
-    // The actual testing of dialog opening requires complex mocking,
-    // so this is a smoke test for the mode state
-    mockFetchStores.mockResolvedValue([]);
-
-    global.fetch = vi.fn((url) => {
-      if (url === '/api/food-items?limit=1000') {
-        return Promise.resolve({
-          ok: true,
-          json: async () => []
-        } as Response);
-      }
-      return Promise.reject(new Error('Unknown URL'));
-    }) as any;
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Shopping Lists')).toBeInTheDocument();
-    });
-  });
-
-  it('Shop Mode button is disabled when list is empty', async () => {
-    // Verifies that Shop Mode requires items to be present
-    mockFetchStores.mockResolvedValue([]);
-
-    global.fetch = vi.fn((url) => {
-      if (url === '/api/food-items?limit=1000') {
-        return Promise.resolve({
-          ok: true,
-          json: async () => []
-        } as Response);
-      }
-      return Promise.reject(new Error('Unknown URL'));
-    }) as any;
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Shopping Lists')).toBeInTheDocument();
-    });
-  });
-});
-
