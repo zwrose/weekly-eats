@@ -208,6 +208,7 @@ export default function MealEditor({
               selectedIds={getAllSelectedIds().filter(id => id !== item.id)}
               slotId={`meal-item-${index}`}
               removeButtonText="Remove Meal Item"
+              allowPrepInstructions={false}
             />
           )}
 
@@ -221,6 +222,7 @@ export default function MealEditor({
               addIngredientButtonText="Add Ingredient"
               emptyGroupText="No ingredients in this group. Click 'Add Ingredient' to begin."
               removeIngredientButtonText={removeItemButtonText}
+              allowPrepInstructions={false}
             />
           )}
         </Box>

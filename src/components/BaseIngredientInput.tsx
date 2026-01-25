@@ -28,6 +28,7 @@ interface BaseIngredientInputProps {
   autoFocus?: boolean; // Whether to auto-focus the input when component mounts
   // Custom text overrides
   removeButtonText?: string;
+  allowPrepInstructions?: boolean; // Whether to show prep instructions editing (default: true)
 }
 
 interface FoodItem {
@@ -56,7 +57,8 @@ export default function BaseIngredientInput({
   currentRecipeId,
   selectedIds = [],
   autoFocus = false,
-  removeButtonText = "Remove Ingredient"
+  removeButtonText = "Remove Ingredient",
+  allowPrepInstructions = true
 }: BaseIngredientInputProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [error, setError] = useState('');
@@ -524,9 +526,9 @@ export default function BaseIngredientInput({
         </Box>
       </Box>
 
-      {/* Prep Instructions Section - Only for food items */}
+      {/* Prep Instructions Section - Only for food items and when allowed */}
       {/* On mobile, prep instructions appear before remove button to prevent accidental deletion */}
-      {ingredient.type === 'foodItem' && ingredient.id && (
+      {allowPrepInstructions && ingredient.type === 'foodItem' && ingredient.id && (
         <Box sx={{ mt: { xs: 1, sm: 1 }, mb: { xs: 2, sm: 0 } }}>
           {prepInstructionsExpanded ? (
             <Box>

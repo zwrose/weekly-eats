@@ -29,6 +29,7 @@ interface IngredientInputProps {
   slotId: string;
   autoFocus?: boolean;
   removeButtonText?: string;
+  allowPrepInstructions?: boolean; // Whether to show prep instructions editing (default: true)
 }
 
 // Recipe type matches the one from use-food-item-selector
@@ -42,7 +43,8 @@ export default function IngredientInput({
   currentRecipeId,
   selectedIds = [],
   autoFocus = false,
-  removeButtonText = "Remove Ingredient"
+  removeButtonText = "Remove Ingredient",
+  allowPrepInstructions = true
 }: IngredientInputProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
@@ -269,9 +271,9 @@ export default function IngredientInput({
         </Box>
       </Box>
 
-      {/* Prep Instructions Section - Only for food items */}
+      {/* Prep Instructions Section - Only for food items and when allowed */}
       {/* On mobile, prep instructions appear before remove button to prevent accidental deletion */}
-      {ingredient.type === 'foodItem' && ingredient.id && (
+      {allowPrepInstructions && ingredient.type === 'foodItem' && ingredient.id && (
         <Box sx={{ mt: { xs: 1, sm: 1 }, mb: { xs: 2, sm: 0 } }}>
           {prepInstructionsExpanded ? (
             <Box>

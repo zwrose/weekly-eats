@@ -272,6 +272,53 @@ describe('IngredientInput', () => {
       });
     });
 
+    it('does not show prep instructions UI when allowPrepInstructions is false', async () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+          allowPrepInstructions={false}
+        />
+      );
+
+      // This UI should never render in this mode (even after async data loads)
+      await waitFor(() => {
+        expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/show prep instructions/i)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText(/e.g., chopped/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('does not show prep instructions field even if ingredient has prepInstructions when allowPrepInstructions is false', async () => {
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{
+            type: 'foodItem',
+            id: 'f1',
+            quantity: 1,
+            unit: 'cup',
+            name: 'Onion',
+            prepInstructions: 'chopped',
+          }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+          allowPrepInstructions={false}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText(/e.g., chopped/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/show prep instructions/i)).not.toBeInTheDocument();
+      });
+    });
+
     it('does not show prep instructions field for recipe ingredients', () => {
       const onIngredientChange = vi.fn();
       render(
