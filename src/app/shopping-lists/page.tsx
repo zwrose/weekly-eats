@@ -138,7 +138,6 @@ function ShoppingListsPageContent() {
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
-  const mealPlanConfirmDialog = useDialog();
   const unitConflictDialog = useDialog();
   const shareDialog = useDialog();
   const leaveStoreConfirmDialog = useConfirmDialog();
@@ -789,17 +788,10 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handleConfirmMealPlanSelection = () => {
-    if (selectedMealPlanIds.length === 0) return;
-
-    mealPlanSelectionDialog.closeDialog();
-    mealPlanConfirmDialog.openDialog();
-  };
-
   const handleAddItemsFromMealPlans = async () => {
     if (!selectedStore) return;
 
-    mealPlanConfirmDialog.closeDialog();
+    mealPlanSelectionDialog.closeDialog();
 
     try {
       // Get selected meal plans
@@ -2883,6 +2875,11 @@ function ShoppingListsPageContent() {
             </List>
           )}
 
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            This will extract all food items from the selected meal plans
+            (including from recipes) and add them to your shopping list.
+          </Typography>
+
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={mealPlanSelectionDialog.closeDialog}
@@ -2891,54 +2888,9 @@ function ShoppingListsPageContent() {
               Cancel
             </Button>
             <Button
-              onClick={handleConfirmMealPlanSelection}
-              variant="contained"
-              disabled={selectedMealPlanIds.length === 0}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              Next
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
-
-      {/* Meal Plan Confirmation Dialog */}
-      <Dialog
-        open={mealPlanConfirmDialog.open}
-        onClose={mealPlanConfirmDialog.closeDialog}
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={mealPlanConfirmDialog.closeDialog}>
-          Confirm Add Items
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" gutterBottom>
-            Add items from:
-          </Typography>
-          <List>
-            {availableMealPlans
-              .filter((mp) => selectedMealPlanIds.includes(mp._id))
-              .map((mp) => (
-                <ListItem key={mp._id}>
-                  <ListItemText primary={mp.name} />
-                </ListItem>
-              ))}
-          </List>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This will extract all food items from these meal plans (including
-            from recipes) and add them to your shopping list.
-          </Typography>
-
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={mealPlanConfirmDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              Cancel
-            </Button>
-            <Button
               onClick={handleAddItemsFromMealPlans}
               variant="contained"
+              disabled={selectedMealPlanIds.length === 0}
               sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               Add Items

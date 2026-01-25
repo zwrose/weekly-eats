@@ -375,14 +375,14 @@ describe('ShoppingListsPage', () => {
       return screen.getByRole('dialog', { name: /select meal plans/i });
     });
 
-    const nextButton = within(dialog).getByRole('button', { name: /^next$/i });
-    expect(nextButton).toBeDisabled();
+    const addItemsButton = within(dialog).getByRole('button', { name: /^add items$/i });
+    expect(addItemsButton).toBeDisabled();
 
     const checkbox = within(dialog).getByRole('checkbox');
     await user.click(checkbox);
 
     expect(checkbox).toBeChecked();
-    expect(nextButton).not.toBeDisabled();
+    expect(addItemsButton).not.toBeDisabled();
   });
 
   it('refreshes shopping list from server when opening dialog', async () => {
