@@ -78,6 +78,7 @@ export default function ItemEditorDialog({
   const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
   const [prefillFoodItemName, setPrefillFoodItemName] = useState("");
   const pendingSaveRef = useRef<null | { quantity: number; unit: string }>(null);
+  const [keyboardInsetPx, setKeyboardInsetPx] = useState(0);
 
   const selectableFoodItems = useMemo(() => {
     const exclude = new Set(excludeFoodItemIds);
@@ -101,6 +102,36 @@ export default function ItemEditorDialog({
     const nextUnit = initialDraft?.unit ?? initialFoodItem?.unit ?? "each";
     setUnit(nextUnit);
   }, [open, initialDraft, initialFoodItem]);
+
+  useEffect(() => {
+    if (!open) {
+      setKeyboardInsetPx(0);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+
+    const update = () => {
+      // Approximate keyboard height / bottom inset.
+      const inset = Math.max(
+        0,
+        window.innerHeight - (visualViewport.height + visualViewport.offsetTop)
+      );
+      // Avoid tiny values that can cause jitter.
+      setKeyboardInsetPx(inset >= 16 ? inset : 0);
+    };
+
+    update();
+    visualViewport.addEventListener("resize", update);
+    visualViewport.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      visualViewport.removeEventListener("resize", update);
+      visualViewport.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, [open]);
 
   const handleClose = () => {
     pendingSaveRef.current = null;
@@ -292,6 +323,11 @@ export default function ItemEditorDialog({
             // Match DialogContent padding so buttons don't hug the edges.
             px: { xs: 2, sm: 3 },
             pb: { xs: 2, sm: 3 },
+            // Mobile: keep Save visible above the on-screen keyboard.
+            position: { xs: "sticky", sm: "static" },
+            bottom: { xs: keyboardInsetPx, sm: "auto" },
+            bgcolor: "background.paper",
+            zIndex: 1,
           }}
         >
           <Box

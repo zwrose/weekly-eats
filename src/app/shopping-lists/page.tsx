@@ -1986,10 +1986,21 @@ function ShoppingListsPageContent() {
             }}
           >
             {shoppingListItems.length === 0 ? (
-              <Alert severity="info" sx={{ mb: 3 }}>
-                No items in this shopping list yet. Add items below to get
-                started.
-              </Alert>
+              <>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  No items in this shopping list yet. Add an item to get started.
+                </Alert>
+                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={handleOpenAddItemEditor}
+                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                  >
+                    Add item
+                  </Button>
+                </Box>
+              </>
             ) : (
               <>
                 <Box
