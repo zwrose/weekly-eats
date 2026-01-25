@@ -686,3 +686,173 @@ describe('MealPlansPage - Delete Functionality', () => {
   });
 });
 
+describe('MealPlansPage - View Mode Quantity Display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Mock global fetch for user settings
+    global.fetch = vi.fn((url) => {
+      if (url === '/api/user/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              settings: {
+                themeMode: 'system',
+                mealPlanSharing: { invitations: [] },
+                defaultMealPlanOwner: undefined,
+              },
+            }),
+        } as Response);
+      }
+      return Promise.reject(new Error('Not mocked'));
+    }) as any;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('shows recipe quantity as (3x) without units in view mode', async () => {
+    const mockMealPlan = {
+      _id: 'meal-plan-qty-1',
+      name: 'Week of Jan 24, 2026',
+      userId: 'user-123',
+      startDate: '2026-01-24',
+      items: [
+        {
+          _id: 'item-1',
+          mealPlanId: 'meal-plan-qty-1',
+          dayOfWeek: 'saturday' as const,
+          mealType: 'dinner' as const,
+          items: [
+            {
+              type: 'recipe' as const,
+              id: 'r1',
+              name: 'Diced Carrots',
+              quantity: 3,
+              // Old/bad data may have a unit, but UI should not show it for recipes.
+              unit: 'cup',
+            },
+          ],
+        },
+      ],
+      template: {
+        startDay: 'saturday' as const,
+        meals: {
+          breakfast: false,
+          lunch: false,
+          dinner: true,
+          staples: false,
+        },
+        weeklyStaples: [],
+      },
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    };
+
+    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
+    mockFetchMealPlan.mockResolvedValue(mockMealPlan);
+    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
+
+    const { usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-qty-1' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn(),
+    }));
+
+    render(<MealPlansPage />);
+
+    // Find the specific line that includes both the recipe name and the quantity suffix.
+    const recipeMatches = await screen.findAllByText((_, node) => {
+      const text = node?.textContent ?? '';
+      return text.includes('Diced Carrots') && text.includes('(3x)');
+    });
+
+    // Prefer the Typography line itself (avoid matching large container nodes).
+    const recipeLine =
+      recipeMatches.find((node) => {
+        const el = node as HTMLElement;
+        return (
+          el.tagName.toLowerCase() === 'p' &&
+          el.className.includes('MuiTypography-root')
+        );
+      }) ?? recipeMatches[0];
+
+    expect(recipeLine).toBeInTheDocument();
+    expect(recipeLine.textContent).not.toMatch(/cup/i);
+  });
+
+  it('still shows food item quantity with units in view mode', async () => {
+    const mockMealPlan = {
+      _id: 'meal-plan-qty-2',
+      name: 'Week of Jan 24, 2026',
+      userId: 'user-123',
+      startDate: '2026-01-24',
+      items: [
+        {
+          _id: 'item-1',
+          mealPlanId: 'meal-plan-qty-2',
+          dayOfWeek: 'saturday' as const,
+          mealType: 'dinner' as const,
+          items: [
+            {
+              type: 'foodItem' as const,
+              id: 'f1',
+              name: 'Onion',
+              quantity: 2,
+              unit: 'cup',
+            },
+          ],
+        },
+      ],
+      template: {
+        startDay: 'saturday' as const,
+        meals: {
+          breakfast: false,
+          lunch: false,
+          dinner: true,
+          staples: false,
+        },
+        weeklyStaples: [],
+      },
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    };
+
+    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
+    mockFetchMealPlan.mockResolvedValue(mockMealPlan);
+    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
+
+    const { usePersistentDialog } = await import('@/lib/hooks');
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: true,
+      data: { mealPlanId: 'meal-plan-qty-2' },
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn(),
+    }));
+
+    render(<MealPlansPage />);
+
+    const foodItemMatches = await screen.findAllByText((_, node) => {
+      const text = node?.textContent ?? '';
+      return text.includes('Onion') && text.includes('(2') && text.toLowerCase().includes('cup');
+    });
+
+    const foodItemLine =
+      foodItemMatches.find((node) => {
+        const el = node as HTMLElement;
+        return (
+          el.tagName.toLowerCase() === 'p' &&
+          el.className.includes('MuiTypography-root')
+        );
+      }) ?? foodItemMatches[0];
+
+    expect(foodItemLine).toBeInTheDocument();
+  });
+});
+

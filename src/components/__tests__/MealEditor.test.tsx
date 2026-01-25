@@ -19,6 +19,78 @@ describe('MealEditor', () => {
     cleanup();
   });
 
+  it('suppresses prep instructions UI for meal items', async () => {
+    // MealEditor loads food items + recipes on mount, IngredientInput also loads recipes on mount.
+    // Make all fetches resolve quickly to avoid hanging tests.
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/food-items')) {
+        return Promise.resolve({ ok: true, json: async () => [] } as Response);
+      }
+      if (url.includes('/api/recipes')) {
+        return Promise.resolve({ ok: true, json: async () => [] } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    });
+
+    render(
+      <MealEditor
+        mealItems={[
+          { type: 'foodItem', id: 'f1', name: 'Onion', quantity: 1, unit: 'cup' },
+        ]}
+        onChange={vi.fn()}
+        onFoodItemAdded={vi.fn()}
+      />
+    );
+
+    // Should not render at all in meal plan editing context
+    await waitFor(() => {
+      expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/show prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('suppresses prep instructions UI for ingredient group items', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/food-items')) {
+        return Promise.resolve({ ok: true, json: async () => [] } as Response);
+      }
+      if (url.includes('/api/recipes')) {
+        return Promise.resolve({ ok: true, json: async () => [] } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    });
+
+    render(
+      <MealEditor
+        mealItems={[
+          {
+            type: 'ingredientGroup',
+            id: '',
+            name: '',
+            ingredients: [
+              {
+                title: 'Group 1',
+                ingredients: [
+                  { type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion', prepInstructions: 'chopped' } as any,
+                ],
+              },
+            ],
+          },
+        ]}
+        onChange={vi.fn()}
+        onFoodItemAdded={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/show prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/e.g., chopped/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('auto-selects newly created food item in meal editor', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

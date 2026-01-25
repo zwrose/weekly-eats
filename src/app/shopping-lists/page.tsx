@@ -2,7 +2,14 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  Suspense,
+} from "react";
 import {
   Container,
   Typography,
@@ -14,6 +21,9 @@ import {
   DialogContent,
   TextField,
   IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
   List,
   ListItem,
   ListItemText,
@@ -30,8 +40,29 @@ import {
   Snackbar,
 } from "@mui/material";
 import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  restrictToFirstScrollableAncestor,
+  restrictToVerticalAxis,
+} from "@dnd-kit/modifiers";
+import {
   ShoppingCart,
   Add,
+  DragIndicator,
   Edit,
   Delete,
   Share,
@@ -39,6 +70,9 @@ import {
   Close as CloseIcon,
   PersonAdd,
   Kitchen,
+  MoreVert,
+  Refresh,
+  DoneAll,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
@@ -87,10 +121,11 @@ import {
 } from "../../lib/shopping-list-position-utils";
 import { CalendarMonth } from "@mui/icons-material";
 import { fetchPantryItems } from "../../lib/pantry-utils";
-import AddFoodItemDialog from "../../components/AddFoodItemDialog";
-import FoodItemAutocomplete from "../../components/food-item-inputs/FoodItemAutocomplete";
-import { SearchOption } from "../../lib/hooks/use-food-item-selector";
 import QuantityInput from "../../components/food-item-inputs/QuantityInput";
+import ItemEditorDialog, {
+  type ItemEditorDraft,
+  type ItemEditorMode,
+} from "@/components/shopping-list/ItemEditorDialog";
 
 interface FoodItem {
   _id: string;
@@ -138,7 +173,6 @@ function ShoppingListsPageContent() {
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
-  const mealPlanConfirmDialog = useDialog();
   const unitConflictDialog = useDialog();
   const shareDialog = useDialog();
   const leaveStoreConfirmDialog = useConfirmDialog();
@@ -157,9 +191,21 @@ function ShoppingListsPageContent() {
 
   const showSnackbar = (
     message: string,
-    severity: "success" | "error" | "info" | "warning" = "info"
+    severity: "success" | "error" | "info" | "warning" = "info",
   ) => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const lastManualReconnectAtRef = useRef<number>(0);
+  const handleManualReconnect = () => {
+    const now = Date.now();
+    // Prevent spam-clicking from hammering Ably.
+    if (now - lastManualReconnectAtRef.current < 1000) {
+      return;
+    }
+    lastManualReconnectAtRef.current = now;
+    void shoppingSync.reconnect();
+    showSnackbar("Reconnecting…", "info");
   };
 
   const handleCloseSnackbar = () => {
@@ -176,36 +222,21 @@ function ShoppingListsPageContent() {
     useState<StoreWithShoppingList | null>(null);
 
   // Shopping list states
-  const [selectedFoodItem, setSelectedFoodItem] = useState<SearchOption | null>(
-    null
-  );
-  const [quantity, setQuantity] = useState(1);
-  const [selectedUnit, setSelectedUnit] = useState("");
   const [shoppingListItems, setShoppingListItems] = useState<
     ShoppingListItem[]
   >([]);
-  const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
-  const [prefillFoodItemName, setPrefillFoodItemName] = useState("");
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<
-    "before" | "after" | null
-  >(null);
-  const [shopMode, setShopMode] = useState(false); // false = Edit Mode, true = Shop Mode
 
-  // Auto-scroll during drag
+  // Scroll container for shopping list items
   const listContainerRef = useRef<HTMLDivElement | null>(null);
-  const autoScrollIntervalRef = useRef<number | null>(null);
-  const autoScrollAnimationRef = useRef<number | null>(null);
-
-  // Touch drag state for mobile
-  const touchDragStateRef = useRef<{
-    isDragging: boolean;
-    startY: number;
-    currentY: number;
-    draggedItemId: string | null;
-    startScrollTop: number;
-  } | null>(null);
+  const [listActionsAnchorEl, setListActionsAnchorEl] =
+    useState<null | HTMLElement>(null);
+  const [itemEditorMode, setItemEditorMode] = useState<ItemEditorMode>("add");
+  const [itemEditorOpen, setItemEditorOpen] = useState(false);
+  const [itemEditorInitialDraft, setItemEditorInitialDraft] =
+    useState<ItemEditorDraft | null>(null);
+  const [editingOriginalFoodItemId, setEditingOriginalFoodItemId] = useState<
+    string | null
+  >(null);
 
   // Meal plan import states
   const [availableMealPlans, setAvailableMealPlans] = useState<
@@ -249,8 +280,8 @@ function ShoppingListsPageContent() {
       // Remote toggle: update the local state for that item
       setShoppingListItems((prev) =>
         prev.map((item) =>
-          item.foodItemId === foodItemId ? { ...item, checked } : item
-        )
+          item.foodItemId === foodItemId ? { ...item, checked } : item,
+        ),
       );
     },
     onListUpdated: (items) => {
@@ -260,7 +291,7 @@ function ShoppingListsPageContent() {
 
         // Index current items by foodItemId for quick lookup
         const currentById = new Map(
-          prev.map((item) => [item.foodItemId, item])
+          prev.map((item) => [item.foodItemId, item]),
         );
 
         return newItems.map((newItem) => {
@@ -277,7 +308,7 @@ function ShoppingListsPageContent() {
     },
     onItemDeleted: (foodItemId, updatedBy) => {
       setShoppingListItems((prev) =>
-        prev.filter((item) => item.foodItemId !== foodItemId)
+        prev.filter((item) => item.foodItemId !== foodItemId),
       );
       showSnackbar(`${updatedBy} removed an item from the list`, "info");
     },
@@ -310,6 +341,20 @@ function ShoppingListsPageContent() {
       loadData();
     }
   }, [status, loadData]);
+
+  useEffect(() => {
+    if (!viewListDialog.open) {
+      setListActionsAnchorEl(null);
+    }
+  }, [viewListDialog.open]);
+
+  const handleOpenListActionsMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setListActionsAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseListActionsMenu = () => {
+    setListActionsAnchorEl(null);
+  };
 
   const handleCreateStore = async () => {
     if (!newStoreName.trim()) return;
@@ -397,7 +442,7 @@ function ShoppingListsPageContent() {
       await loadData();
       const updatedStores = await fetchStores();
       const updatedStore = updatedStores.find(
-        (s) => s._id === sharingStore._id
+        (s) => s._id === sharingStore._id,
       );
       if (updatedStore) {
         setSharingStore(updatedStore);
@@ -476,8 +521,7 @@ function ShoppingListsPageContent() {
 
   const handleViewList = async (store: StoreWithShoppingList) => {
     setSelectedStore(store);
-    setShopMode(false); // Always start in Edit Mode when opening from list
-    viewListDialog.openDialog({ storeId: store._id, mode: "edit" });
+    viewListDialog.openDialog({ storeId: store._id });
 
     try {
       const list = await fetchShoppingList(store._id);
@@ -490,18 +534,8 @@ function ShoppingListsPageContent() {
   };
 
   const handleStartShopping = async (store: StoreWithShoppingList) => {
-    setSelectedStore(store);
-    setShopMode(true); // Start directly in Shop Mode
-    viewListDialog.openDialog({ storeId: store._id, mode: "shop" });
-
-    try {
-      const list = await fetchShoppingList(store._id);
-      setShoppingListItems(list.items || []);
-    } catch (error) {
-      console.error("Error loading shopping list:", error);
-      showSnackbar("Failed to load latest shopping list", "error");
-      setShoppingListItems(store.shoppingList?.items || []);
-    }
+    // No separate Shop Mode anymore: open the same unified list.
+    await handleViewList(store);
   };
 
   // Restore selected store and mode from URL when dialog is open
@@ -516,7 +550,6 @@ function ShoppingListsPageContent() {
     }
 
     setSelectedStore(store);
-    setShopMode(viewListDialog.data?.mode === "shop");
 
     // Always re-fetch the latest list when entering the dialog (including refresh)
     const loadLatestList = async () => {
@@ -533,166 +566,138 @@ function ShoppingListsPageContent() {
     void loadLatestList();
   }, [viewListDialog.open, viewListDialog.data, stores]);
 
-  const getSortedShoppingListItems = (): ShoppingListItem[] => {
-    if (!shopMode) return shoppingListItems;
-
-    // In shop mode, sort unchecked items first, checked items last
-    return [...shoppingListItems].sort((a, b) => {
-      if (a.checked === b.checked) return 0;
-      return a.checked ? 1 : -1;
-    });
-  };
-
-  const handleCompleteShoppingSession = async () => {
-    if (!selectedStore) return;
-
-    // Remove checked items from the list
-    const uncheckedItems = shoppingListItems.filter((item) => !item.checked);
-
-    try {
-      await updateShoppingList(selectedStore._id, { items: uncheckedItems });
-      setShoppingListItems(uncheckedItems);
-      setShopMode(false);
-      viewListDialog.closeDialog();
-      // Refresh stores list to update item counts
-      const updatedStores = await fetchStores();
-      setStores(updatedStores);
-    } catch (error) {
-      console.error("Error completing shopping session:", error);
-      showSnackbar("Failed to complete shopping session", "error");
-    }
-  };
-
   const handleEmojiSelect = (emoji: string) => {
     setNewStoreEmoji(emoji);
   };
 
-  const handleAddItemToList = async () => {
-    if (
-      !selectedFoodItem ||
-      !selectedStore ||
-      selectedFoodItem.type !== "foodItem"
-    )
-      return;
+  const handleOpenAddItemEditor = () => {
+    setItemEditorMode("add");
+    setItemEditorInitialDraft(null);
+    setEditingOriginalFoodItemId(null);
+    setItemEditorOpen(true);
+  };
 
-    // Check if item already exists
-    const exists = shoppingListItems.some(
-      (item) => item.foodItemId === selectedFoodItem._id
-    );
-    if (exists) {
-      showSnackbar("This item is already in your shopping list", "warning");
+  const handleOpenEditItemEditor = (item: ShoppingListItem) => {
+    setItemEditorMode("edit");
+    setItemEditorInitialDraft({
+      foodItemId: item.foodItemId,
+      quantity: item.quantity,
+      unit: item.unit,
+    });
+    setEditingOriginalFoodItemId(item.foodItemId);
+    setItemEditorOpen(true);
+  };
+
+  const resolveNameForFoodItemId = (
+    foodItemId: string,
+    qty: number,
+  ): string => {
+    const foodItem = foodItems.find((f) => f._id === foodItemId);
+    if (!foodItem) {
+      return "Unknown";
+    }
+    return qty === 1 ? foodItem.singularName : foodItem.pluralName;
+  };
+
+  const handleSaveItemFromEditor = async (draft: ItemEditorDraft) => {
+    if (!selectedStore) return;
+
+    const { foodItemId, quantity: qty, unit } = draft;
+
+    if (itemEditorMode === "add") {
+      const exists = shoppingListItems.some((i) => i.foodItemId === foodItemId);
+      if (exists) {
+        showSnackbar("This item is already in your shopping list", "warning");
+        return;
+      }
+
+      const newItem: ShoppingListItem = {
+        foodItemId,
+        name: resolveNameForFoodItemId(foodItemId, qty),
+        quantity: qty,
+        unit,
+        checked: false,
+      };
+
+      const rememberedPosition = await getItemPosition(
+        selectedStore._id,
+        foodItemId,
+      );
+      const updatedItems = insertItemAtPosition(
+        shoppingListItems,
+        newItem,
+        rememberedPosition,
+      );
+
+      setShoppingListItems(updatedItems);
+      try {
+        await updateShoppingList(selectedStore._id, { items: updatedItems });
+        const updatedStores = await fetchStores();
+        setStores(updatedStores);
+        setItemEditorOpen(false);
+      } catch (error) {
+        console.error("Error saving shopping list:", error);
+        showSnackbar("Failed to save item to shopping list", "error");
+        setShoppingListItems(shoppingListItems);
+      }
+
       return;
     }
 
-    const newItem: ShoppingListItem = {
-      foodItemId: selectedFoodItem._id,
-      name:
-        quantity === 1
-          ? selectedFoodItem.singularName
-          : selectedFoodItem.pluralName,
-      quantity,
-      unit: selectedUnit || selectedFoodItem.unit,
-      checked: false,
-    };
+    // edit mode
+    if (!editingOriginalFoodItemId) return;
 
-    // Look up remembered position for this item in this store
-    const rememberedPosition = await getItemPosition(
-      selectedStore._id,
-      selectedFoodItem._id
+    const previousItems = [...shoppingListItems];
+    const existingItem = previousItems.find(
+      (i) => i.foodItemId === editingOriginalFoodItemId,
     );
+    if (!existingItem) return;
 
-    // Insert item at appropriate position based on remembered position
-    const updatedItems = insertItemAtPosition(
-      shoppingListItems,
-      newItem,
-      rememberedPosition
-    );
+    if (foodItemId !== editingOriginalFoodItemId) {
+      const wouldDuplicate = previousItems.some(
+        (i) => i.foodItemId === foodItemId,
+      );
+      if (wouldDuplicate) {
+        showSnackbar("That item is already in your shopping list", "warning");
+        return;
+      }
+    }
+
+    const updatedItems = previousItems.map((i) => {
+      if (i.foodItemId !== editingOriginalFoodItemId) return i;
+      return {
+        ...i,
+        foodItemId,
+        quantity: qty,
+        unit,
+        name: resolveNameForFoodItemId(foodItemId, qty),
+      };
+    });
+
     setShoppingListItems(updatedItems);
-
-    // Auto-save to database
     try {
       await updateShoppingList(selectedStore._id, { items: updatedItems });
-      // Refresh the stores list to update item count
       const updatedStores = await fetchStores();
       setStores(updatedStores);
+      setItemEditorOpen(false);
     } catch (error) {
       console.error("Error saving shopping list:", error);
       showSnackbar("Failed to save item to shopping list", "error");
-      // Revert on error
-      setShoppingListItems(shoppingListItems);
+      setShoppingListItems(previousItems);
     }
-
-    setSelectedFoodItem(null);
-    setQuantity(1);
-    setSelectedUnit("");
   };
 
-  const handleAddFoodItem = async (foodItemData: {
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-    isGlobal: boolean;
-    addToPantry?: boolean;
-  }) => {
-    try {
-      // Extract addToPantry before sending to API (API doesn't need it)
-      const { addToPantry, ...foodItemPayload } = foodItemData;
-
-      const response = await fetch("/api/food-items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(foodItemPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to add food item");
-      }
-
-      const newFoodItem = await response.json();
-
-      // Add to pantry if requested
-      if (addToPantry && newFoodItem._id) {
-        try {
-          const { createPantryItem } = await import("../../lib/pantry-utils");
-          await createPantryItem({ foodItemId: newFoodItem._id });
-        } catch (pantryError) {
-          // Log error but don't fail the food item creation
-          console.error("Error adding food item to pantry:", pantryError);
-        }
-      }
-
-      // Add the new food item to the local state
-      setFoodItems((prev) => [...prev, newFoodItem]);
-
-      // Close the dialog
-      setAddFoodItemDialogOpen(false);
-
-      // Automatically select the newly created food item
-      const searchOption: SearchOption = {
-        ...newFoodItem,
-        type: "foodItem" as const,
-      };
-      setSelectedFoodItem(searchOption);
-      setSelectedUnit(newFoodItem.unit);
-      setPrefillFoodItemName("");
-    } catch (error) {
-      console.error("Error adding food item:", error);
-      showSnackbar(
-        error instanceof Error ? error.message : "Failed to add food item",
-        "error"
-      );
-    }
+  const handleDeleteItemFromEditor = async () => {
+    if (!editingOriginalFoodItemId) return;
+    await handleRemoveItemFromList(editingOriginalFoodItemId);
+    setItemEditorOpen(false);
   };
 
   const handleRemoveItemFromList = async (foodItemId: string) => {
     if (!selectedStore) return;
 
     const updatedItems = shoppingListItems.filter(
-      (item) => item.foodItemId !== foodItemId
+      (item) => item.foodItemId !== foodItemId,
     );
     setShoppingListItems(updatedItems);
 
@@ -719,8 +724,8 @@ function ShoppingListsPageContent() {
       shoppingListItems.map((item) =>
         item.foodItemId === foodItemId
           ? { ...item, checked: !item.checked }
-          : item
-      )
+          : item,
+      ),
     );
 
     try {
@@ -731,7 +736,7 @@ function ShoppingListsPageContent() {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -743,11 +748,11 @@ function ShoppingListsPageContent() {
           // Item was deleted by another user
           showSnackbar(
             "This item was already removed from the list",
-            "warning"
+            "warning",
           );
           // Refresh the list
           const store = await fetchStores().then((stores) =>
-            stores.find((s) => s._id === selectedStore._id)
+            stores.find((s) => s._id === selectedStore._id),
           );
           if (store) {
             setShoppingListItems(store.shoppingList?.items || []);
@@ -761,6 +766,28 @@ function ShoppingListsPageContent() {
       setShoppingListItems(previousItems);
       console.error("Error toggling item checked:", error);
       showSnackbar("Failed to update item", "error");
+    }
+  };
+
+  const handleClearCheckedItems = async () => {
+    if (!selectedStore) return;
+    if (!shoppingListItems.some((i) => i.checked)) return;
+
+    const previousItems = [...shoppingListItems];
+    const uncheckedItems = shoppingListItems.filter((i) => !i.checked);
+
+    setShoppingListItems(uncheckedItems);
+
+    try {
+      await updateShoppingList(selectedStore._id, { items: uncheckedItems });
+      // Refresh counts/badges on the store list
+      const updatedStores = await fetchStores();
+      setStores(updatedStores);
+      showSnackbar("Cleared checked items", "success");
+    } catch (error) {
+      console.error("Error clearing checked items:", error);
+      showSnackbar("Failed to clear checked items", "error");
+      setShoppingListItems(previousItems);
     }
   };
 
@@ -789,22 +816,15 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handleConfirmMealPlanSelection = () => {
-    if (selectedMealPlanIds.length === 0) return;
-
-    mealPlanSelectionDialog.closeDialog();
-    mealPlanConfirmDialog.openDialog();
-  };
-
   const handleAddItemsFromMealPlans = async () => {
     if (!selectedStore) return;
 
-    mealPlanConfirmDialog.closeDialog();
+    mealPlanSelectionDialog.closeDialog();
 
     try {
       // Get selected meal plans
       const selectedPlans = availableMealPlans.filter((mp) =>
-        selectedMealPlanIds.includes(mp._id)
+        selectedMealPlanIds.includes(mp._id),
       );
 
       // Extract food items from meal plans
@@ -819,32 +839,32 @@ function ShoppingListsPageContent() {
             pluralName: f.pluralName,
             unit: f.unit,
           },
-        ])
+        ]),
       );
 
       // Merge with existing shopping list
       const { mergedItems, conflicts } = mergeWithShoppingList(
         shoppingListItems,
         extractedItems,
-        foodItemsMap
+        foodItemsMap,
       );
 
       // Separate existing items from new items for position-aware insertion
       const existingItemIds = new Set(
-        shoppingListItems.map((item) => item.foodItemId)
+        shoppingListItems.map((item) => item.foodItemId),
       );
       const existingItems = mergedItems.filter((item) =>
-        existingItemIds.has(item.foodItemId)
+        existingItemIds.has(item.foodItemId),
       );
       const newItems = mergedItems.filter(
-        (item) => !existingItemIds.has(item.foodItemId)
+        (item) => !existingItemIds.has(item.foodItemId),
       );
 
       // Insert new items at their remembered positions
       const itemsWithPositions = await insertItemsWithPositions(
         existingItems,
         newItems,
-        selectedStore._id
+        selectedStore._id,
       );
 
       if (conflicts.length > 0) {
@@ -964,7 +984,7 @@ function ShoppingListsPageContent() {
     } catch (error) {
       console.error(
         "Error saving shopping list after conflict resolution:",
-        error
+        error,
       );
       showSnackbar("Failed to save shopping list", "error");
     }
@@ -983,7 +1003,7 @@ function ShoppingListsPageContent() {
       // Find shopping list items that are in pantry
       const matches = shoppingListItems
         .filter((item) =>
-          pantryItems.some((p) => p.foodItemId === item.foodItemId)
+          pantryItems.some((p) => p.foodItemId === item.foodItemId),
         )
         .map((item) => ({
           foodItemId: item.foodItemId,
@@ -1009,19 +1029,19 @@ function ShoppingListsPageContent() {
   const handlePantryItemCheck = (foodItemId: string, checked: boolean) => {
     setMatchingPantryItems((prev) =>
       prev.map((item) =>
-        item.foodItemId === foodItemId ? { ...item, checked } : item
-      )
+        item.foodItemId === foodItemId ? { ...item, checked } : item,
+      ),
     );
   };
 
   const handlePantryItemQuantityChange = (
     foodItemId: string,
-    newQuantity: number
+    newQuantity: number,
   ) => {
     setMatchingPantryItems((prev) =>
       prev.map((item) =>
-        item.foodItemId === foodItemId ? { ...item, newQuantity } : item
-      )
+        item.foodItemId === foodItemId ? { ...item, newQuantity } : item,
+      ),
     );
   };
 
@@ -1033,7 +1053,7 @@ function ShoppingListsPageContent() {
       const updatedItems = shoppingListItems
         .map((item) => {
           const match = matchingPantryItems.find(
-            (m) => m.foodItemId === item.foodItemId
+            (m) => m.foodItemId === item.foodItemId,
           );
           if (match) {
             // If checked off or quantity is 0, remove it (will be filtered out below)
@@ -1069,7 +1089,7 @@ function ShoppingListsPageContent() {
 
       const removedCount = shoppingListItems.length - updatedItems.length;
       const changedCount = matchingPantryItems.filter(
-        (m) => !m.checked && m.newQuantity !== m.currentQuantity
+        (m) => !m.checked && m.newQuantity !== m.currentQuantity,
       ).length;
 
       if (removedCount > 0 || changedCount > 0) {
@@ -1077,7 +1097,7 @@ function ShoppingListsPageContent() {
           `Pantry check complete! ${
             removedCount > 0 ? `Removed ${removedCount} item(s). ` : ""
           }${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ""}`,
-          "success"
+          "success",
         );
       } else {
         showSnackbar("No changes made", "info");
@@ -1088,393 +1108,134 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handleUpdateItemQuantity = async (
-    foodItemId: string,
-    newQuantity: number
-  ) => {
-    if (!selectedStore) return;
+  const handleReorderUncheckedItems = useCallback(
+    async (activeId: string, overId: string) => {
+      if (!selectedStore || activeId === overId) return;
 
-    const updatedItems = shoppingListItems.map((item) => {
-      if (item.foodItemId === foodItemId) {
-        // Update the name based on new quantity (singular/plural)
-        const foodItem = foodItems.find((f) => f._id === foodItemId);
-        const newName = foodItem
-          ? newQuantity === 1
-            ? foodItem.singularName
-            : foodItem.pluralName
-          : item.name;
-        return { ...item, quantity: newQuantity, name: newName };
+      const previousItems = [...shoppingListItems];
+      const unchecked = previousItems.filter((i) => !i.checked);
+      const checked = previousItems.filter((i) => i.checked);
+
+      const fromIndex = unchecked.findIndex((i) => i.foodItemId === activeId);
+      const toIndex = unchecked.findIndex((i) => i.foodItemId === overId);
+      if (fromIndex === -1 || toIndex === -1) return;
+
+      const newUnchecked = arrayMove(unchecked, fromIndex, toIndex);
+      const updatedItems = [...newUnchecked, ...checked];
+
+      setShoppingListItems(updatedItems);
+
+      try {
+        await updateShoppingList(selectedStore._id, { items: updatedItems });
+        // Preserve “list position memory”
+        await saveItemPositions(selectedStore._id, updatedItems);
+      } catch (error) {
+        console.error("Error reordering items:", error);
+        showSnackbar("Failed to save new order", "error");
+        setShoppingListItems(previousItems);
       }
-      return item;
-    });
+    },
+    [selectedStore, shoppingListItems],
+  );
 
-    setShoppingListItems(updatedItems);
+  const dndSensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(TouchSensor, {
+      // Long-press-ish feel, but still responsive
+      activationConstraint: { delay: 150, tolerance: 8 },
+    }),
+  );
 
-    // Auto-save to database
-    try {
-      await updateShoppingList(selectedStore._id, { items: updatedItems });
-      // Refresh the stores list
-      const updatedStores = await fetchStores();
-      setStores(updatedStores);
-    } catch (error) {
-      console.error("Error updating item quantity:", error);
-      showSnackbar("Failed to update item quantity", "error");
-      // Revert on error
-      setShoppingListItems(shoppingListItems);
-    }
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    void handleReorderUncheckedItems(String(active.id), String(over.id));
   };
 
-  const handleUpdateItemUnit = async (foodItemId: string, newUnit: string) => {
-    if (!selectedStore) return;
+  const orderedShoppingItems = useMemo(() => {
+    const unchecked = shoppingListItems.filter((i) => !i.checked);
+    const checked = shoppingListItems.filter((i) => i.checked);
+    return { unchecked, checked };
+  }, [shoppingListItems]);
 
-    const updatedItems = shoppingListItems.map((item) =>
-      item.foodItemId === foodItemId ? { ...item, unit: newUnit } : item
-    );
-
-    setShoppingListItems(updatedItems);
-
-    // Auto-save to database
-    try {
-      await updateShoppingList(selectedStore._id, { items: updatedItems });
-    } catch (error) {
-      console.error("Error updating item unit:", error);
-      showSnackbar("Failed to update item unit", "error");
-      // Revert on error
-      setShoppingListItems(shoppingListItems);
-    }
-  };
-
-  // Auto-scroll during drag - use document-level handler
-  // Works for both mouse drag (desktop) and touch drag (mobile)
-  useEffect(() => {
-    const isDragging = draggedItemId || touchDragStateRef.current?.isDragging;
-
-    if (!isDragging) {
-      // Stop scrolling if not dragging
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Find the scrollable container - could be listContainerRef or its scrollable parent
-    const findScrollableContainer = (): HTMLElement | null => {
-      if (!listContainerRef.current) return null;
-
-      let element: HTMLElement | null = listContainerRef.current;
-
-      // Check if the container itself is scrollable
-      const hasScroll = element.scrollHeight > element.clientHeight;
-      const overflowStyle = getComputedStyle(element).overflowY;
-      if (
-        hasScroll &&
-        (overflowStyle === "auto" || overflowStyle === "scroll")
-      ) {
-        return element;
-      }
-
-      // Walk up the DOM tree to find the scrollable parent (check up to 10 levels)
-      let depth = 0;
-      while (element && element.parentElement && depth < 10) {
-        element = element.parentElement;
-        depth++;
-        const hasScroll = element.scrollHeight > element.clientHeight;
-        const overflowStyle = getComputedStyle(element).overflowY;
-        if (
-          hasScroll &&
-          (overflowStyle === "auto" || overflowStyle === "scroll")
-        ) {
-          return element;
-        }
-      }
-
-      // Fallback: return the container even if not obviously scrollable
-      // (might become scrollable when content grows)
-      return listContainerRef.current;
-    };
-
-    const scrollThreshold = 100; // pixels from top/bottom to trigger scroll
-    const scrollSpeed = 0.25; // pixels per frame (very slow for precise control)
-
-    const handleDragOver = (e: DragEvent | TouchEvent) => {
-      const container = findScrollableContainer();
-      const isTouch = "touches" in e;
-      const clientY = isTouch
-        ? (e as TouchEvent).touches[0]?.clientY
-        : (e as DragEvent).clientY;
-
-      // Check if we're dragging (either mouse drag or touch drag)
-      const isDragging = draggedItemId || touchDragStateRef.current?.isDragging;
-
-      if (!container || !isDragging) {
-        if (autoScrollIntervalRef.current) {
-          clearInterval(autoScrollIntervalRef.current);
-          autoScrollIntervalRef.current = null;
-        }
-        return;
-      }
-
-      if (!clientY) return;
-
-      const rect = container.getBoundingClientRect();
-      const mouseY = clientY;
-      const distanceFromTop = mouseY - rect.top;
-      const distanceFromBottom = rect.bottom - mouseY;
-
-      // Stop any existing auto-scroll
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-
-      // Start scrolling up if near top
-      if (
-        distanceFromTop < scrollThreshold &&
-        distanceFromTop > 0 &&
-        container.scrollTop > 0
-      ) {
-        // Use requestAnimationFrame for smoother scrolling
-        const performScrollUp = () => {
-          if (!container || container.scrollTop <= 0) {
-            if (autoScrollAnimationRef.current !== null) {
-              cancelAnimationFrame(autoScrollAnimationRef.current);
-              autoScrollAnimationRef.current = null;
-            }
-            return;
-          }
-          container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
-          autoScrollAnimationRef.current =
-            requestAnimationFrame(performScrollUp);
-        };
-        autoScrollAnimationRef.current = requestAnimationFrame(performScrollUp);
-      }
-      // Start scrolling down if near bottom
-      else if (
-        distanceFromBottom < scrollThreshold &&
-        distanceFromBottom > 0 &&
-        container.scrollTop < container.scrollHeight - container.clientHeight
-      ) {
-        // Use requestAnimationFrame for smoother scrolling
-        const performScrollDown = () => {
-          const maxScroll = container.scrollHeight - container.clientHeight;
-          if (!container || container.scrollTop >= maxScroll) {
-            if (autoScrollAnimationRef.current !== null) {
-              cancelAnimationFrame(autoScrollAnimationRef.current);
-              autoScrollAnimationRef.current = null;
-            }
-            return;
-          }
-          container.scrollTop = Math.min(
-            maxScroll,
-            container.scrollTop + scrollSpeed
-          );
-          autoScrollAnimationRef.current =
-            requestAnimationFrame(performScrollDown);
-        };
-        autoScrollAnimationRef.current =
-          requestAnimationFrame(performScrollDown);
-      }
-    };
-
-    const handleDragEnd = () => {
-      if (autoScrollAnimationRef.current !== null) {
-        cancelAnimationFrame(autoScrollAnimationRef.current);
-        autoScrollAnimationRef.current = null;
-      }
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-    };
-
-    // Mouse drag events (desktop)
-    document.addEventListener("dragover", handleDragOver);
-    document.addEventListener("dragend", handleDragEnd);
-    document.addEventListener("drop", handleDragEnd);
-
-    // Touch events (mobile) - handle auto-scroll
-    // This runs on document level to catch all touch moves during drag
-    // We use capture phase to ensure we get the event before item handlers
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!touchDragStateRef.current?.isDragging) {
-        return; // Not dragging, allow normal scrolling
-      }
-
-      // Get touch position
-      const touch = e.touches[0];
-      if (!touch) return;
-
-      // Find scrollable container directly (don't rely on handleDragOver)
-      const container = findScrollableContainer();
-      if (!container) {
-        return;
-      }
-
-      // Calculate distance from edges
-      const rect = container.getBoundingClientRect();
-      const touchY = touch.clientY;
-      const distanceFromTop = touchY - rect.top;
-      const distanceFromBottom = rect.bottom - touchY;
-
-      // Stop any existing auto-scroll
-      if (autoScrollAnimationRef.current !== null) {
-        cancelAnimationFrame(autoScrollAnimationRef.current);
-        autoScrollAnimationRef.current = null;
-      }
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-
-      // Start scrolling up if near top
-      if (
-        distanceFromTop < scrollThreshold &&
-        distanceFromTop > 0 &&
-        container.scrollTop > 0
-      ) {
-        // Use requestAnimationFrame for smoother scrolling
-        const performScrollUp = () => {
-          if (!container || container.scrollTop <= 0) {
-            if (autoScrollAnimationRef.current !== null) {
-              cancelAnimationFrame(autoScrollAnimationRef.current);
-              autoScrollAnimationRef.current = null;
-            }
-            return;
-          }
-          container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
-          autoScrollAnimationRef.current =
-            requestAnimationFrame(performScrollUp);
-        };
-        autoScrollAnimationRef.current = requestAnimationFrame(performScrollUp);
-      }
-      // Start scrolling down if near bottom
-      else if (
-        distanceFromBottom < scrollThreshold &&
-        distanceFromBottom > 0 &&
-        container.scrollTop < container.scrollHeight - container.clientHeight
-      ) {
-        // Use requestAnimationFrame for smoother scrolling
-        const performScrollDown = () => {
-          const maxScroll = container.scrollHeight - container.clientHeight;
-          if (!container || container.scrollTop >= maxScroll) {
-            if (autoScrollAnimationRef.current !== null) {
-              cancelAnimationFrame(autoScrollAnimationRef.current);
-              autoScrollAnimationRef.current = null;
-            }
-            return;
-          }
-          container.scrollTop = Math.min(
-            maxScroll,
-            container.scrollTop + scrollSpeed
-          );
-          autoScrollAnimationRef.current =
-            requestAnimationFrame(performScrollDown);
-        };
-        autoScrollAnimationRef.current =
-          requestAnimationFrame(performScrollDown);
-      }
-
-      // Update touch position for tracking
-      if (touchDragStateRef.current) {
-        touchDragStateRef.current.currentY = touchY;
-      }
-    };
-
-    const handleTouchEnd = () => {
-      if (touchDragStateRef.current?.isDragging) {
-        touchDragStateRef.current.isDragging = false;
-        touchDragStateRef.current.draggedItemId = null;
-      }
-      handleDragEnd();
-    };
-
-    // Use capture phase to ensure we handle touchmove before item-level handlers
-    // This allows auto-scroll to work even when item handlers preventDefault
-    document.addEventListener("touchmove", handleTouchMove, {
-      passive: false,
-      capture: true,
+  const SortableShoppingListRow = ({
+    item,
+    isLast,
+  }: {
+    item: ShoppingListItem;
+    isLast: boolean;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: item.foodItemId,
     });
-    document.addEventListener("touchend", handleTouchEnd, { capture: true });
-    document.addEventListener("touchcancel", handleTouchEnd, { capture: true });
 
-    return () => {
-      document.removeEventListener("dragover", handleDragOver);
-      document.removeEventListener("dragend", handleDragEnd);
-      document.removeEventListener("drop", handleDragEnd);
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleTouchEnd);
-      document.removeEventListener("touchcancel", handleTouchEnd);
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-    };
-  }, [draggedItemId]);
-
-  // Cleanup touch listeners when items change
-  useEffect(() => {
-    const container = listContainerRef.current;
-    return () => {
-      // Cleanup all touch listeners when component unmounts or items change
-      if (container) {
-        const allItems = container.querySelectorAll("[data-item-id]");
-        allItems.forEach((item) => {
-          const element = item as HTMLElement & { __touchCleanup?: () => void };
-          if (element.__touchCleanup) {
-            element.__touchCleanup();
+    return (
+      <Box>
+        <ListItem
+          ref={setNodeRef}
+          disableGutters
+          secondaryAction={
+            <IconButton
+              edge="end"
+              aria-label="Reorder"
+              size="small"
+              {...attributes}
+              {...listeners}
+              sx={{ touchAction: "none" }}
+            >
+              <DragIndicator fontSize="small" />
+            </IconButton>
           }
-        });
-      }
-    };
-  }, [shoppingListItems.length]); // Re-run when item count changes
-
-  const handleReorderItem = async (
-    sourceItemId: string,
-    targetItemId: string,
-    position: "before" | "after"
-  ) => {
-    if (!selectedStore || sourceItemId === targetItemId) {
-      return;
-    }
-
-    const currentItems = [...shoppingListItems];
-    const sourceIndex = currentItems.findIndex(
-      (item) => item.foodItemId === sourceItemId
+          sx={{
+            px: 1,
+            py: 0.25,
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.6 : 1,
+            width: "100%",
+            maxWidth: "100%",
+            overflowX: "hidden",
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <Checkbox
+              checked={item.checked}
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleToggleItemChecked(item.foodItemId);
+              }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primary={item.name}
+            secondary={`${item.quantity} ${
+              item.unit && item.unit !== "each"
+                ? getUnitForm(item.unit, item.quantity)
+                : item.unit === "each"
+                  ? "each"
+                  : ""
+            }`}
+            onClick={() => handleOpenEditItemEditor(item)}
+            sx={{
+              cursor: "pointer",
+              textDecoration: item.checked ? "line-through" : "none",
+              opacity: item.checked ? 0.6 : 1,
+              pr: 4,
+            }}
+          />
+        </ListItem>
+        {!isLast && <Divider />}
+      </Box>
     );
-    const targetIndex = currentItems.findIndex(
-      (item) => item.foodItemId === targetItemId
-    );
-
-    if (sourceIndex === -1 || targetIndex === -1) {
-      return;
-    }
-
-    let insertIndex = targetIndex;
-    if (position === "after") {
-      insertIndex = targetIndex + 1;
-    }
-
-    // Adjust for removal shifting indices when moving downwards
-    if (sourceIndex < insertIndex) {
-      insertIndex -= 1;
-    }
-
-    const updatedItems = [...currentItems];
-    const [moved] = updatedItems.splice(sourceIndex, 1);
-    updatedItems.splice(insertIndex, 0, moved);
-
-    setShoppingListItems(updatedItems);
-
-    try {
-      await updateShoppingList(selectedStore._id, { items: updatedItems });
-      // Save positions after successful reorder
-      await saveItemPositions(selectedStore._id, updatedItems);
-    } catch (error) {
-      console.error("Error reordering items:", error);
-      showSnackbar("Failed to save new order", "error");
-      setShoppingListItems(currentItems);
-    }
   };
 
   // Show loading state while session is being fetched
@@ -1556,7 +1317,7 @@ function ShoppingListsPageContent() {
                         <ListItemText
                           primary={inv.storeName}
                           secondary={`Invited ${new Date(
-                            inv.invitation.invitedAt
+                            inv.invitation.invitedAt,
                           ).toLocaleDateString()}`}
                         />
                       </Box>
@@ -1568,7 +1329,7 @@ function ShoppingListsPageContent() {
                           onClick={() =>
                             handleAcceptInvitation(
                               inv.storeId,
-                              inv.invitation.userId
+                              inv.invitation.userId,
                             )
                           }
                         >
@@ -1581,7 +1342,7 @@ function ShoppingListsPageContent() {
                           onClick={() =>
                             handleRejectInvitation(
                               inv.storeId,
-                              inv.invitation.userId
+                              inv.invitation.userId,
                             )
                           }
                         >
@@ -2018,15 +1779,126 @@ function ShoppingListsPageContent() {
         onClose={viewListDialog.closeDialog}
         maxWidth="md"
         fullWidth
-        sx={responsiveDialogStyle}
+        sx={{
+          ...responsiveDialogStyle,
+          "& .MuiDialog-paper": {
+            ...(() => {
+              const paper = (responsiveDialogStyle as Record<string, unknown>)[
+                "& .MuiDialog-paper"
+              ];
+              return paper && typeof paper === "object"
+                ? (paper as Record<string, unknown>)
+                : {};
+            })(),
+            // Only full-height/flex on mobile. Desktop should size to content.
+            display: { xs: "flex", sm: "block" },
+            flexDirection: { xs: "column" },
+          },
+        }}
       >
-        <DialogTitle onClose={viewListDialog.closeDialog}>
+        <DialogTitle
+          onClose={viewListDialog.closeDialog}
+          actions={
+            <IconButton
+              aria-label="More actions"
+              onClick={handleOpenListActionsMenu}
+              size="small"
+            >
+              <MoreVert />
+            </IconButton>
+          }
+        >
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="h4">{selectedStore?.emoji}</Typography>
-              <Typography variant="h6">{selectedStore?.name}</Typography>
+            {/* Single-line header: emoji + name (ellipsis) + live pill */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              <Typography variant="h4" sx={{ flex: "0 0 auto" }}>
+                {selectedStore?.emoji}
+              </Typography>
+              <Typography
+                variant="h6"
+                noWrap
+                sx={{
+                  flex: "1 1 auto",
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {selectedStore?.name}
+              </Typography>
+              <Box
+                role={shoppingSync.isConnected ? undefined : "button"}
+                onClick={
+                  shoppingSync.isConnected ? undefined : handleManualReconnect
+                }
+                sx={{
+                  flex: "0 0 auto",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 1,
+                  py: 0.5,
+                  mr: 1,
+                  borderRadius: 1,
+                  bgcolor: shoppingSync.isConnected
+                    ? "success.main"
+                    : shoppingSync.connectionState === "connecting"
+                      ? "warning.main"
+                      : (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "grey.700"
+                            : "grey.300",
+                  color: shoppingSync.isConnected
+                    ? "success.contrastText"
+                    : shoppingSync.connectionState === "connecting"
+                      ? "warning.contrastText"
+                      : (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "grey.100"
+                            : "grey.800",
+                  fontSize: "0.7rem",
+                  whiteSpace: "nowrap",
+                  cursor: shoppingSync.isConnected ? "default" : "pointer",
+                  userSelect: "none",
+                }}
+                title={
+                  shoppingSync.isConnected
+                    ? "Live"
+                    : shoppingSync.connectionState === "connecting"
+                      ? "Reconnecting…"
+                      : "Offline (tap to reconnect)"
+                }
+              >
+                {shoppingSync.isConnected ? (
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      bgcolor: "success.contrastText",
+                    }}
+                  />
+                ) : (
+                  <Refresh sx={{ fontSize: 14 }} />
+                )}
+                {shoppingSync.isConnected
+                  ? "Live"
+                  : shoppingSync.connectionState === "connecting"
+                    ? "Reconnecting"
+                    : "Offline"}
+              </Box>
             </Box>
-            {(activeUsers.length > 0 || shoppingSync.isConnected) && (
+
+            {/* Secondary line can wrap: active viewers */}
+            {activeUsers.length > 0 && (
               <Box
                 sx={{
                   display: "flex",
@@ -2035,739 +1907,287 @@ function ShoppingListsPageContent() {
                   flexWrap: "wrap",
                 }}
               >
-                {activeUsers.length > 0 && (
-                  <>
-                    <Typography variant="caption" color="text.secondary">
-                      Also viewing:
-                    </Typography>
-                    {activeUsers.map((user, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          bgcolor: "primary.main",
-                          color: "primary.contrastText",
-                          fontSize: "0.75rem",
-                        }}
-                      >
-                        {user.name}
-                      </Box>
-                    ))}
-                  </>
-                )}
-                {shoppingSync.isConnected && (
+                <Typography variant="caption" color="text.secondary">
+                  Also viewing:
+                </Typography>
+                {activeUsers.map((user, index) => (
                   <Box
+                    key={index}
                     sx={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 0.5,
                       px: 1,
                       py: 0.5,
                       borderRadius: 1,
-                      bgcolor: "success.main",
-                      color: "success.contrastText",
-                      fontSize: "0.7rem",
+                      bgcolor: "primary.main",
+                      color: "primary.contrastText",
+                      fontSize: "0.75rem",
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        bgcolor: "success.contrastText",
-                      }}
-                    />
-                    Live
+                    {user.name}
                   </Box>
-                )}
+                ))}
               </Box>
             )}
           </Box>
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            {/* Edit Mode */}
-            {!shopMode && (
+        <Menu
+          anchorEl={listActionsAnchorEl}
+          open={Boolean(listActionsAnchorEl)}
+          onClose={handleCloseListActionsMenu}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleCloseListActionsMenu();
+              void handleOpenMealPlanSelection();
+            }}
+          >
+            <ListItemIcon>
+              <CalendarMonth fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Add items from meal plans</ListItemText>
+          </MenuItem>
+          <MenuItem
+            disabled={loadingPantryCheck}
+            onClick={() => {
+              handleCloseListActionsMenu();
+              void handleOpenPantryCheck();
+            }}
+          >
+            <ListItemIcon>
+              {loadingPantryCheck ? (
+                <CircularProgress size={16} />
+              ) : (
+                <Kitchen fontSize="small" />
+              )}
+            </ListItemIcon>
+            <ListItemText>Pantry check</ListItemText>
+          </MenuItem>
+        </Menu>
+        <DialogContent
+          sx={{
+            overflowX: "hidden",
+            // Only stretch on mobile. Desktop should size naturally.
+            flex: { xs: 1, sm: "initial" },
+            minHeight: { xs: 0 },
+            display: { xs: "flex", sm: "block" },
+            flexDirection: { xs: "column" },
+          }}
+        >
+          <Box
+            sx={{
+              mt: 0,
+              display: { xs: "flex", sm: "block" },
+              flexDirection: { xs: "column" },
+              minHeight: { xs: 0 },
+              flex: { xs: 1, sm: "initial" },
+            }}
+          >
+            {shoppingListItems.length === 0 ? (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                No items in this shopping list yet. Add items below to get
+                started.
+              </Alert>
+            ) : (
               <>
-                {/* Edit Mode - Items List */}
-                {shoppingListItems.length === 0 ? (
-                  <Alert severity="info" sx={{ mb: 3 }}>
-                    No items in this shopping list yet. Add items below to get
-                    started.
-                  </Alert>
-                ) : (
-                  <Box
-                    ref={listContainerRef}
-                    sx={{
-                      maxHeight: "60vh",
-                      overflowY: "auto",
-                      position: "relative",
-                    }}
-                  >
-                    <List>
-                      {shoppingListItems.map((item, index) => (
-                        <Box key={item.foodItemId}>
-                          <ListItem
-                            sx={{
-                              flexDirection: "column",
-                              alignItems: "stretch",
-                              py: 2,
-                              cursor: "grab",
-                              borderTop:
-                                dragOverItemId === item.foodItemId &&
-                                dragOverPosition === "before"
-                                  ? "2px solid"
-                                  : "none",
-                              borderBottom:
-                                dragOverItemId === item.foodItemId &&
-                                dragOverPosition === "after"
-                                  ? "2px solid"
-                                  : "none",
-                              borderColor:
-                                dragOverItemId === item.foodItemId
-                                  ? "primary.main"
-                                  : "transparent",
-                            }}
-                            draggable
-                            onDragStart={() =>
-                              setDraggedItemId(item.foodItemId)
-                            }
-                            data-item-id={item.foodItemId}
-                            ref={(node) => {
-                              if (!node) {
-                                return;
-                              }
-
-                              // Type for element with cleanup function
-                              type ElementWithCleanup = HTMLElement & {
-                                __touchSetup?: boolean;
-                                __touchCleanup?: () => void;
-                              };
-
-                              const element = node as ElementWithCleanup;
-
-                              // Skip if already set up
-                              if (element.__touchSetup) return;
-                              element.__touchSetup = true;
-
-                              // Use native event listeners to avoid passive event issues
-                              // We use a delayed start to allow normal scrolling
-                              let initialTouch: {
-                                x: number;
-                                y: number;
-                                time: number;
-                              } | null = null;
-
-                              const handleTouchStart = (e: TouchEvent) => {
-                                const touch = e.touches[0];
-                                if (!touch) return;
-
-                                // Store initial touch info
-                                initialTouch = {
-                                  x: touch.clientX,
-                                  y: touch.clientY,
-                                  time: Date.now(),
-                                };
-
-                                // Don't start dragging immediately - wait to see if user scrolls or drags
-                                // This allows normal scrolling to work
-                              };
-
-                              const checkIfDragging = (
-                                e: TouchEvent
-                              ): boolean => {
-                                const touch = e.touches[0];
-                                if (!touch || !initialTouch) return false;
-
-                                const deltaX = Math.abs(
-                                  touch.clientX - initialTouch.x
-                                );
-                                const deltaY = Math.abs(
-                                  touch.clientY - initialTouch.y
-                                );
-                                const timeElapsed =
-                                  Date.now() - initialTouch.time;
-
-                                // Start dragging if:
-                                // 1. User has moved significantly horizontally (more than vertically) - indicates drag intent
-                                // 2. OR user has held for > 200ms with minimal movement - long press
-                                const isHorizontalDrag =
-                                  deltaX > 10 && deltaX > deltaY;
-                                const isLongPress =
-                                  timeElapsed > 200 && deltaX < 5 && deltaY < 5;
-
-                                return isHorizontalDrag || isLongPress;
-                              };
-
-                              const handleTouchMove = (e: TouchEvent) => {
-                                // If not already dragging, check if we should start
-                                if (!touchDragStateRef.current?.isDragging) {
-                                  if (checkIfDragging(e)) {
-                                    // Start dragging
-                                    const touch = e.touches[0];
-                                    if (!touch || !initialTouch) return;
-
-                                    const container = listContainerRef.current;
-
-                                    touchDragStateRef.current = {
-                                      isDragging: true,
-                                      startY: initialTouch.y,
-                                      currentY: touch.clientY,
-                                      draggedItemId: item.foodItemId,
-                                      startScrollTop: container?.scrollTop || 0,
-                                    };
-
-                                    setDraggedItemId(item.foodItemId);
-                                    e.preventDefault(); // Prevent scrolling now that we're dragging
-                                    // Don't stop propagation - let document handler run for auto-scroll
-                                  } else {
-                                    // Not dragging - allow normal scrolling
-                                    return;
-                                  }
-                                }
-
-                                const touch = e.touches[0];
-                                if (!touch) return;
-
-                                e.preventDefault(); // Now works because listener is non-passive
-                                // Don't stop propagation - let document handler run for auto-scroll
-
-                                const target = e.currentTarget as HTMLElement;
-                                const rect = target.getBoundingClientRect();
-                                const touchY = touch.clientY;
-                                const offsetY = touchY - rect.top;
-
-                                // Determine position (before/after)
-                                const position =
-                                  offsetY < rect.height / 2
-                                    ? "before"
-                                    : "after";
-
-                                // Find the item we're over by checking all list items
-                                const listContainer =
-                                  target.closest('[role="list"]');
-                                if (listContainer) {
-                                  const allItems = Array.from(
-                                    listContainer.querySelectorAll(
-                                      "[data-item-id]"
-                                    )
-                                  );
-
-                                  for (const itemEl of allItems) {
-                                    const itemRect =
-                                      itemEl.getBoundingClientRect();
-                                    if (
-                                      touchY >= itemRect.top &&
-                                      touchY <= itemRect.bottom
-                                    ) {
-                                      const overItemId =
-                                        itemEl.getAttribute("data-item-id");
-                                      if (
-                                        overItemId &&
-                                        overItemId !== item.foodItemId
-                                      ) {
-                                        setDragOverItemId(overItemId);
-                                        setDragOverPosition(position);
-                                        break;
-                                      }
-                                    }
-                                  }
-                                }
-
-                                if (touchDragStateRef.current) {
-                                  touchDragStateRef.current.currentY = touchY;
-                                }
-                              };
-
-                              const handleTouchEnd = () => {
-                                // Clear initial touch
-                                initialTouch = null;
-
-                                if (!touchDragStateRef.current?.isDragging) {
-                                  return;
-                                }
-
-                                // Handle drop
-                                if (
-                                  dragOverItemId &&
-                                  dragOverPosition &&
-                                  draggedItemId
-                                ) {
-                                  void handleReorderItem(
-                                    draggedItemId,
-                                    dragOverItemId,
-                                    dragOverPosition
-                                  );
-                                }
-
-                                // Reset state
-                                touchDragStateRef.current.isDragging = false;
-                                touchDragStateRef.current.draggedItemId = null;
-                                setDraggedItemId(null);
-                                setDragOverItemId(null);
-                                setDragOverPosition(null);
-                              };
-
-                              // Add native event listeners with { passive: false } for touchmove to allow preventDefault
-                              node.addEventListener(
-                                "touchstart",
-                                handleTouchStart,
-                                { passive: true }
-                              );
-                              node.addEventListener(
-                                "touchmove",
-                                handleTouchMove,
-                                { passive: false }
-                              );
-                              node.addEventListener(
-                                "touchend",
-                                handleTouchEnd,
-                                { passive: true }
-                              );
-                              node.addEventListener(
-                                "touchcancel",
-                                handleTouchEnd,
-                                { passive: true }
-                              );
-
-                              // Store cleanup function
-                              element.__touchCleanup = () => {
-                                node.removeEventListener(
-                                  "touchstart",
-                                  handleTouchStart
-                                );
-                                node.removeEventListener(
-                                  "touchmove",
-                                  handleTouchMove
-                                );
-                                node.removeEventListener(
-                                  "touchend",
-                                  handleTouchEnd
-                                );
-                                node.removeEventListener(
-                                  "touchcancel",
-                                  handleTouchEnd
-                                );
-                                element.__touchSetup = false;
-                              };
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              if (
-                                !draggedItemId ||
-                                draggedItemId === item.foodItemId
-                              ) {
-                                return;
-                              }
-
-                              const rect = (
-                                e.currentTarget as HTMLElement
-                              ).getBoundingClientRect();
-                              const offsetY = e.clientY - rect.top;
-                              const position =
-                                offsetY < rect.height / 2 ? "before" : "after";
-
-                              setDragOverItemId(item.foodItemId);
-                              setDragOverPosition(position);
-                            }}
-                            onDragLeave={() => {
-                              if (dragOverItemId === item.foodItemId) {
-                                setDragOverItemId(null);
-                                setDragOverPosition(null);
-                              }
-                            }}
-                            onDrop={() => {
-                              if (draggedItemId && dragOverPosition) {
-                                void handleReorderItem(
-                                  draggedItemId,
-                                  item.foodItemId,
-                                  dragOverPosition
-                                );
-                              }
-                              setDraggedItemId(null);
-                              setDragOverItemId(null);
-                              setDragOverPosition(null);
-                              // Stop auto-scroll
-                              if (autoScrollIntervalRef.current) {
-                                clearInterval(autoScrollIntervalRef.current);
-                                autoScrollIntervalRef.current = null;
-                              }
-                            }}
-                            onDragEnd={() => {
-                              setDraggedItemId(null);
-                              setDragOverItemId(null);
-                              setDragOverPosition(null);
-                              // Stop auto-scroll
-                              if (autoScrollIntervalRef.current) {
-                                clearInterval(autoScrollIntervalRef.current);
-                                autoScrollIntervalRef.current = null;
-                              }
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 2,
-                                mb: 1.5,
-                              }}
-                            >
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: "bold", flex: 1 }}
-                              >
-                                {item.name}
-                              </Typography>
-                              <IconButton
-                                onClick={() =>
-                                  handleRemoveItemFromList(item.foodItemId)
-                                }
-                                color="error"
-                                size="small"
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Box>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: 2,
-                                alignItems: "flex-start",
-                              }}
-                            >
-                              <QuantityInput
-                                label="Quantity"
-                                value={item.quantity}
-                                onChange={(newQty) => {
-                                  handleUpdateItemQuantity(
-                                    item.foodItemId,
-                                    newQty
-                                  );
-                                }}
-                                size="small"
-                                sx={{ width: 100 }}
-                              />
-                              <Autocomplete
-                                options={getUnitOptions()}
-                                value={
-                                  getUnitOptions().find(
-                                    (option) => option.value === item.unit
-                                  ) ?? null
-                                }
-                                onChange={(_, value) => {
-                                  if (value) {
-                                    handleUpdateItemUnit(
-                                      item.foodItemId,
-                                      value.value
-                                    );
-                                  }
-                                }}
-                                getOptionLabel={(option) =>
-                                  getUnitForm(option.value, item.quantity)
-                                }
-                                isOptionEqualToValue={(option, value) =>
-                                  option.value === value.value
-                                }
-                                renderInput={(params) => (
-                                  <TextField
-                                    {...params}
-                                    label="Unit"
-                                    size="small"
-                                  />
-                                )}
-                                sx={{ flex: 1, minWidth: 150 }}
-                              />
-                            </Box>
-                          </ListItem>
-                          {index < shoppingListItems.length - 1 && <Divider />}
-                        </Box>
-                      ))}
-                    </List>
-                  </Box>
-                )}
-
-                <Divider sx={{ my: 3 }} />
-
-                {/* Add Item Section - Moved to bottom */}
-                <Paper elevation={0} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Add Item
-                  </Typography>
-                  {/* Food Item - Full width on mobile */}
-                  <FoodItemAutocomplete
-                    allowRecipes={false}
-                    excludeIds={shoppingListItems.map(
-                      (item) => item.foodItemId
-                    )}
-                    foodItems={foodItems}
-                    autoLoad={false}
-                    value={selectedFoodItem}
-                    onChange={(item) => {
-                      setSelectedFoodItem(item);
-                      if (item && item.type === "foodItem") {
-                        setSelectedUnit(item.unit);
-                      } else {
-                        setSelectedUnit("");
-                      }
-                    }}
-                    onFoodItemAdded={async (newFoodItem) => {
-                      // Add to local state
-                      setFoodItems((prev) => [...prev, newFoodItem]);
-                      // Auto-select the newly created item
-                      const searchOption: SearchOption = {
-                        ...newFoodItem,
-                        type: "foodItem" as const,
-                      };
-                      setSelectedFoodItem(searchOption);
-                      setSelectedUnit(newFoodItem.unit);
-                    }}
-                    onCreateItem={(newFoodItem) => {
-                      // When a new food item is created, auto-select it
-                      const searchOption: SearchOption = {
-                        ...newFoodItem,
-                        type: "foodItem" as const,
-                      };
-                      setSelectedFoodItem(searchOption);
-                      setSelectedUnit(newFoodItem.unit);
-                    }}
-                    label="Food Item"
-                    size="small"
-                    fullWidth
-                    autoFocus={true}
-                  />
-                  <Box sx={{ mb: 2 }} />
-                  {/* Quantity, Unit, and Add button in a row */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      gap: 2,
-                      flexDirection: { xs: "column", sm: "row" },
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <QuantityInput
-                      label="Quantity"
-                      value={quantity}
-                      onChange={(newQuantity) => {
-                        setQuantity(newQuantity);
-                      }}
-                      size="small"
-                      sx={{ width: { xs: "100%", sm: 100 } }}
-                    />
-                    <Autocomplete
-                      options={getUnitOptions()}
-                      value={
-                        getUnitOptions().find(
-                          (option) => option.value === selectedUnit
-                        ) ?? null
-                      }
-                      onChange={(_, value) =>
-                        setSelectedUnit(value?.value || "")
-                      }
-                      getOptionLabel={(option) =>
-                        getUnitForm(option.value, quantity)
-                      }
-                      isOptionEqualToValue={(option, value) =>
-                        option.value === value.value
-                      }
-                      disabled={!selectedFoodItem}
-                      renderInput={(params) => (
-                        <TextField {...params} label="Unit" size="small" />
-                      )}
-                      sx={{ width: { xs: "100%", sm: 150 } }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={handleAddItemToList}
-                      disabled={!selectedFoodItem}
-                      startIcon={<Add />}
-                      sx={{ width: { xs: "100%", sm: "auto" } }}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-                </Paper>
-
-                <Divider sx={{ my: 3 }} />
-
-                {/* Add from Meal Plans and Pantry Check Buttons */}
                 <Box
                   sx={{
                     display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: 2,
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 2,
                   }}
                 >
-                  <Button
-                    variant="outlined"
-                    startIcon={<CalendarMonth />}
-                    onClick={handleOpenMealPlanSelection}
-                    fullWidth
-                    sx={{ flex: { sm: 1 } }}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ flex: "1 1 auto", minWidth: 0 }}
                   >
-                    Add Items from Meal Plans
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={
-                      loadingPantryCheck ? (
-                        <CircularProgress size={20} sx={{ color: "#9c27b0" }} />
-                      ) : (
-                        <Kitchen />
-                      )
-                    }
-                    onClick={handleOpenPantryCheck}
-                    disabled={loadingPantryCheck}
-                    fullWidth
-                    sx={{
-                      flex: { sm: 1 },
-                      borderColor: "#9c27b0",
-                      color: "#9c27b0",
-                      "&:hover": {
-                        borderColor: "#7b1fa2",
-                        bgcolor: "rgba(156, 39, 176, 0.04)",
-                      },
-                    }}
-                  >
-                    {loadingPantryCheck ? "Loading..." : "Pantry Check"}
-                  </Button>
-                </Box>
-
-                <Divider sx={{ my: 3 }} />
-              </>
-            )}
-
-            {/* Shop Mode */}
-            {shopMode && (
-              <>
-                {shoppingListItems.length === 0 ? (
-                  <Alert severity="info">
-                    No items in this shopping list. Switch to Edit Mode to add
-                    items.
-                  </Alert>
-                ) : (
-                  <>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
+                    Tap an item to edit it.
+                  </Typography>
+                  {orderedShoppingItems.checked.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="success"
+                      startIcon={<DoneAll />}
+                      onClick={() => void handleClearCheckedItems()}
+                      sx={{ flex: "0 0 auto" }}
                     >
-                      Check off items as you shop. Checked items will move to
-                      the bottom.
-                    </Typography>
-                    <List>
-                      {getSortedShoppingListItems().map((item, index) => (
-                        <Box key={item.foodItemId}>
-                          <ListItem
-                            onClick={() =>
-                              handleToggleItemChecked(item.foodItemId)
+                      Finish Shop
+                    </Button>
+                  )}
+                  <IconButton
+                    aria-label="Add item"
+                    onClick={handleOpenAddItemEditor}
+                    size="small"
+                  >
+                    <Add />
+                  </IconButton>
+                </Box>
+                <Box
+                  ref={listContainerRef}
+                  sx={{
+                    // Mobile: fill the dialog so no dead space.
+                    // Desktop: keep the prior bounded list height.
+                    flex: { xs: 1, sm: "initial" },
+                    minHeight: { xs: 0 },
+                    // On desktop, use a fixed list region so the dialog doesn't
+                    // keep growing as items are added; the list itself scrolls.
+                    height: { sm: "60vh" },
+                    maxHeight: { xs: "none", sm: "60vh" },
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    touchAction: "pan-y",
+                    overscrollBehaviorX: "none",
+                    // Desktop-only: sleeker scrollbars. Mobile keeps native look.
+                    // Note: include (pointer:fine) to avoid clobbering MUI's own
+                    // sm breakpoint media query merge (which is also min-width:600px).
+                    "@media (pointer: fine) and (min-width:600px)": {
+                      scrollbarWidth: "thin", // Firefox
+                      scrollbarColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,0.5) transparent"
+                          : "rgba(0,0,0,0.35) transparent",
+                      "&::-webkit-scrollbar": {
+                        width: 6,
+                      },
+                      "&::-webkit-scrollbar-track": {
+                        background: "transparent",
+                      },
+                      "&::-webkit-scrollbar-thumb": {
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.35)"
+                            : "rgba(0,0,0,0.25)",
+                        borderRadius: 999,
+                        border: "2px solid transparent",
+                        backgroundClip: "content-box",
+                      },
+                      "&:hover::-webkit-scrollbar-thumb": {
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.5)"
+                            : "rgba(0,0,0,0.4)",
+                      },
+                    },
+                  }}
+                >
+                  <List sx={{ overflowX: "hidden" }}>
+                    <DndContext
+                      sensors={dndSensors}
+                      collisionDetection={closestCenter}
+                      modifiers={[
+                        restrictToVerticalAxis,
+                        restrictToFirstScrollableAncestor,
+                      ]}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={orderedShoppingItems.unchecked.map(
+                          (i) => i.foodItemId,
+                        )}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {orderedShoppingItems.unchecked.map((item, index) => (
+                          <SortableShoppingListRow
+                            key={item.foodItemId}
+                            item={item}
+                            isLast={
+                              index ===
+                                orderedShoppingItems.unchecked.length - 1 &&
+                              orderedShoppingItems.checked.length === 0
                             }
-                            sx={{
-                              cursor: "pointer",
-                              "&:hover": { backgroundColor: "action.hover" },
-                            }}
-                          >
-                            <Checkbox
-                              checked={item.checked}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleItemChecked(item.foodItemId);
-                              }}
-                            />
-                            <ListItemText
-                              primary={item.name}
-                              secondary={`${item.quantity} ${
-                                item.unit && item.unit !== "each"
-                                  ? getUnitForm(item.unit, item.quantity)
-                                  : ""
-                              }`}
-                              sx={{
-                                textDecoration: item.checked
-                                  ? "line-through"
-                                  : "none",
-                                opacity: item.checked ? 0.6 : 1,
-                              }}
-                            />
-                          </ListItem>
-                          {index < shoppingListItems.length - 1 && <Divider />}
-                        </Box>
-                      ))}
-                    </List>
-                  </>
-                )}
+                          />
+                        ))}
+                      </SortableContext>
+
+                      {orderedShoppingItems.checked.length > 0 && (
+                        <>
+                          {orderedShoppingItems.unchecked.length > 0 && (
+                            <Divider />
+                          )}
+                          {orderedShoppingItems.checked.map((item, index) => (
+                            <Box key={item.foodItemId}>
+                              <ListItem
+                                disableGutters
+                                secondaryAction={
+                                  <IconButton
+                                    edge="end"
+                                    aria-label="Reorder (disabled)"
+                                    size="small"
+                                    disabled
+                                  >
+                                    <DragIndicator fontSize="small" />
+                                  </IconButton>
+                                }
+                                sx={{ px: 1, py: 0.25 }}
+                              >
+                                <ListItemIcon sx={{ minWidth: 40 }}>
+                                  <Checkbox
+                                    checked={item.checked}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void handleToggleItemChecked(
+                                        item.foodItemId,
+                                      );
+                                    }}
+                                  />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={item.name}
+                                  secondary={`${item.quantity} ${
+                                    item.unit && item.unit !== "each"
+                                      ? getUnitForm(item.unit, item.quantity)
+                                      : item.unit === "each"
+                                        ? "each"
+                                        : ""
+                                  }`}
+                                  onClick={() => handleOpenEditItemEditor(item)}
+                                  sx={{
+                                    cursor: "pointer",
+                                    textDecoration: item.checked
+                                      ? "line-through"
+                                      : "none",
+                                    opacity: item.checked ? 0.6 : 1,
+                                    pr: 4,
+                                  }}
+                                />
+                              </ListItem>
+                              {index <
+                                orderedShoppingItems.checked.length - 1 && (
+                                <Divider />
+                              )}
+                            </Box>
+                          ))}
+                        </>
+                      )}
+                    </DndContext>
+                  </List>
+                </Box>
               </>
             )}
           </Box>
-
-          {/* Mode Toggle - Moved to bottom */}
-          <Box sx={{ display: "flex", gap: 2, mt: 3, mb: 2 }}>
-            <Button
-              variant={!shopMode ? "contained" : "outlined"}
-              onClick={() => {
-                setShopMode(false);
-                if (selectedStore) {
-                  viewListDialog.openDialog({
-                    storeId: selectedStore._id,
-                    mode: "edit",
-                  });
-                }
-              }}
-              fullWidth
-            >
-              Edit Mode
-            </Button>
-            <Button
-              variant={shopMode ? "contained" : "outlined"}
-              onClick={() => {
-                setShopMode(true);
-                if (selectedStore) {
-                  viewListDialog.openDialog({
-                    storeId: selectedStore._id,
-                    mode: "shop",
-                  });
-                }
-              }}
-              fullWidth
-              disabled={shoppingListItems.length === 0}
-            >
-              Shop Mode
-            </Button>
-          </Box>
-
-          <DialogActions primaryButtonIndex={0}>
-            {!shopMode ? (
-              <Button
-                onClick={viewListDialog.closeDialog}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
-              >
-                Close
-              </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={handleCompleteShoppingSession}
-                  variant="contained"
-                  color="success"
-                  disabled={!shoppingListItems.some((item) => item.checked)}
-                  sx={{ width: { xs: "100%", sm: "auto" } }}
-                >
-                  Complete Shopping
-                </Button>
-                <Button
-                  onClick={viewListDialog.closeDialog}
-                  sx={{ width: { xs: "100%", sm: "auto" } }}
-                >
-                  Close
-                </Button>
-              </>
-            )}
-          </DialogActions>
         </DialogContent>
       </Dialog>
+
+      <ItemEditorDialog
+        open={itemEditorOpen}
+        mode={itemEditorMode}
+        foodItems={foodItems}
+        excludeFoodItemIds={shoppingListItems.map((item) => item.foodItemId)}
+        initialDraft={itemEditorInitialDraft}
+        onClose={() => setItemEditorOpen(false)}
+        onSave={handleSaveItemFromEditor}
+        onDelete={
+          itemEditorMode === "edit" ? handleDeleteItemFromEditor : undefined
+        }
+        onFoodItemCreated={(newFoodItem) => {
+          setFoodItems((prev) => [...prev, newFoodItem]);
+        }}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -2786,13 +2206,13 @@ function ShoppingListsPageContent() {
           </Typography>
 
           {selectedStore?.invitations?.some(
-            (inv) => inv.status === "accepted"
+            (inv) => inv.status === "accepted",
           ) && (
             <Alert severity="warning" sx={{ mt: 2 }}>
               This store is shared with{" "}
               {
                 selectedStore.invitations.filter(
-                  (inv) => inv.status === "accepted"
+                  (inv) => inv.status === "accepted",
                 ).length
               }{" "}
               user(s). They will lose access when you delete it.
@@ -2849,7 +2269,7 @@ function ShoppingListsPageContent() {
                     setSelectedMealPlanIds((prev) =>
                       prev.includes(mealPlan._id)
                         ? prev.filter((id) => id !== mealPlan._id)
-                        : [...prev, mealPlan._id]
+                        : [...prev, mealPlan._id],
                     );
                   }}
                   sx={{
@@ -2859,24 +2279,34 @@ function ShoppingListsPageContent() {
                 >
                   <Checkbox
                     checked={selectedMealPlanIds.includes(mealPlan._id)}
+                    onClick={(event) => {
+                      // Prevent the parent ListItem onClick from firing too,
+                      // otherwise a checkbox click toggles twice (net no change).
+                      event.stopPropagation();
+                    }}
                     onChange={() => {
                       setSelectedMealPlanIds((prev) =>
                         prev.includes(mealPlan._id)
                           ? prev.filter((id) => id !== mealPlan._id)
-                          : [...prev, mealPlan._id]
+                          : [...prev, mealPlan._id],
                       );
                     }}
                   />
                   <ListItemText
                     primary={mealPlan.name}
                     secondary={new Date(
-                      mealPlan.startDate
+                      mealPlan.startDate,
                     ).toLocaleDateString()}
                   />
                 </ListItem>
               ))}
             </List>
           )}
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            This will extract all food items from the selected meal plans
+            (including from recipes) and add them to your shopping list.
+          </Typography>
 
           <DialogActions primaryButtonIndex={1}>
             <Button
@@ -2886,54 +2316,9 @@ function ShoppingListsPageContent() {
               Cancel
             </Button>
             <Button
-              onClick={handleConfirmMealPlanSelection}
-              variant="contained"
-              disabled={selectedMealPlanIds.length === 0}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              Next
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
-
-      {/* Meal Plan Confirmation Dialog */}
-      <Dialog
-        open={mealPlanConfirmDialog.open}
-        onClose={mealPlanConfirmDialog.closeDialog}
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={mealPlanConfirmDialog.closeDialog}>
-          Confirm Add Items
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" gutterBottom>
-            Add items from:
-          </Typography>
-          <List>
-            {availableMealPlans
-              .filter((mp) => selectedMealPlanIds.includes(mp._id))
-              .map((mp) => (
-                <ListItem key={mp._id}>
-                  <ListItemText primary={mp.name} />
-                </ListItem>
-              ))}
-          </List>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This will extract all food items from these meal plans (including
-            from recipes) and add them to your shopping list.
-          </Typography>
-
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={mealPlanConfirmDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              Cancel
-            </Button>
-            <Button
               onClick={handleAddItemsFromMealPlans}
               variant="contained"
+              disabled={selectedMealPlanIds.length === 0}
               sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               Add Items
@@ -2983,7 +2368,7 @@ function ShoppingListsPageContent() {
                   {unitConflicts[currentConflictIndex]?.existingUnit
                     ? getUnitForm(
                         unitConflicts[currentConflictIndex]!.existingUnit,
-                        unitConflicts[currentConflictIndex]!.existingQuantity
+                        unitConflicts[currentConflictIndex]!.existingQuantity,
                       )
                     : ""}
                 </Typography>
@@ -3002,7 +2387,7 @@ function ShoppingListsPageContent() {
                   {unitConflicts[currentConflictIndex]?.newUnit
                     ? getUnitForm(
                         unitConflicts[currentConflictIndex]!.newUnit,
-                        unitConflicts[currentConflictIndex]!.newQuantity
+                        unitConflicts[currentConflictIndex]!.newQuantity,
                       )
                     : ""}
                 </Typography>
@@ -3012,7 +2397,14 @@ function ShoppingListsPageContent() {
                 Set the quantity and unit for your shopping list:
               </Typography>
 
-              <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "flex-start" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  mb: 3,
+                  alignItems: "flex-start",
+                }}
+              >
                 <QuantityInput
                   label="Quantity"
                   value={getCurrentConflictResolution().quantity}
@@ -3025,7 +2417,7 @@ function ShoppingListsPageContent() {
                   value={
                     getUnitOptions().find(
                       (option) =>
-                        option.value === getCurrentConflictResolution().unit
+                        option.value === getCurrentConflictResolution().unit,
                     ) ?? null
                   }
                   onChange={(_, value) => {
@@ -3036,7 +2428,7 @@ function ShoppingListsPageContent() {
                   getOptionLabel={(option) =>
                     getUnitForm(
                       option.value,
-                      getCurrentConflictResolution().quantity
+                      getCurrentConflictResolution().quantity,
                     )
                   }
                   isOptionEqualToValue={(option, value) =>
@@ -3126,7 +2518,7 @@ function ShoppingListsPageContent() {
                 {sharingStore.invitations
                   .filter(
                     (inv) =>
-                      inv.status === "accepted" || inv.status === "pending"
+                      inv.status === "accepted" || inv.status === "pending",
                   )
                   .map((inv) => (
                     <ListItem key={inv.userId}>
@@ -3222,7 +2614,7 @@ function ShoppingListsPageContent() {
                           onChange={(e) =>
                             handlePantryItemCheck(
                               item.foodItemId,
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           sx={{ mr: 1 }}
@@ -3243,14 +2635,21 @@ function ShoppingListsPageContent() {
                         />
                       </Box>
                       {!item.checked && (
-                        <Box sx={{ display: "flex", gap: 1, ml: 6, alignItems: "flex-start" }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            gap: 1,
+                            ml: 6,
+                            alignItems: "flex-start",
+                          }}
+                        >
                           <QuantityInput
                             label="New Quantity"
                             value={item.newQuantity}
                             onChange={(newQuantity) =>
                               handlePantryItemQuantityChange(
                                 item.foodItemId,
-                                newQuantity
+                                newQuantity,
                               )
                             }
                             size="small"
@@ -3302,17 +2701,6 @@ function ShoppingListsPageContent() {
         onClose={emojiPickerDialog.closeDialog}
         onSelect={handleEmojiSelect}
         currentEmoji={newStoreEmoji}
-      />
-
-      {/* Add Food Item Dialog */}
-      <AddFoodItemDialog
-        open={addFoodItemDialogOpen}
-        onClose={() => {
-          setAddFoodItemDialogOpen(false);
-          setPrefillFoodItemName("");
-        }}
-        onAdd={handleAddFoodItem}
-        prefillName={prefillFoodItemName}
       />
 
       {/* Leave Store Confirmation Dialog */}

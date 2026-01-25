@@ -29,7 +29,8 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
       <Box sx={{ 
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
-        gap: { xs: 1, sm: 0 },
+        // Ensure visible spacing between action buttons on all breakpoints.
+        gap: { xs: 1.5, sm: 1 },
         justifyContent: { xs: 'stretch', sm: 'flex-end' },
         width: '100%'
       }}>

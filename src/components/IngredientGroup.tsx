@@ -25,6 +25,7 @@ interface IngredientGroupProps {
   emptyGroupText?: string;
   removeIngredientButtonText?: string;
   showRemoveButton?: boolean;
+  allowPrepInstructions?: boolean; // Whether to show prep instructions editing (default: true)
 }
 
 export default function IngredientGroup({ 
@@ -36,7 +37,8 @@ export default function IngredientGroup({
   addIngredientButtonText = "Add Ingredient",
   emptyGroupText = "No ingredients in this group. Click \"Add Ingredient\" to get started.",
   removeIngredientButtonText = "Remove Ingredient",
-  showRemoveButton = true
+  showRemoveButton = true,
+  allowPrepInstructions = true
 }: IngredientGroupProps) {
   const [error, setError] = useState('');
 
@@ -127,6 +129,7 @@ export default function IngredientGroup({
           selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
           slotId={`group-${ingredientIndex}`}
           removeButtonText={removeIngredientButtonText}
+          allowPrepInstructions={allowPrepInstructions}
         />
       ))}
 
