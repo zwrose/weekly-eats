@@ -690,6 +690,101 @@ describe('RecipesPage - Tags and Ratings', () => {
     unmount();
   });
 
+  it('auto-focuses Recipe Title field when create dialog opens', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // useDialog is called 3 times per render: createDialog, emojiPickerDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 0) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // createDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
+
+    const { unmount } = render(<RecipesPage />);
+
+    await waitFor(() => {
+      const titleInput = screen.getByLabelText(/recipe title/i);
+      expect(titleInput).toHaveFocus();
+    });
+
+    unmount();
+  });
+
+  it('auto-focuses Email Address field when share recipes dialog opens', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // useDialog is called 3 times per render: createDialog, emojiPickerDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
+
+    mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
+    mockFetchSharedRecipeUsers.mockResolvedValue([]);
+    mockFetchRecipeSharingOwners.mockResolvedValue([]);
+
+    const { unmount } = render(<RecipesPage />);
+
+    await waitFor(() => {
+      const emailInput = screen.getByLabelText(/email address/i);
+      expect(emailInput).toHaveFocus();
+    });
+
+    unmount();
+  });
+
+  it('does not auto-focus any field when edit mode is toggled on', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog, useRecipes } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (useDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // Open the view dialog in edit mode
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: true, data: { recipeId: 'recipe-123', editMode: 'true' },
+      openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useRecipes as any).mockImplementation(() => ({
+      userRecipes: [mockRecipe], globalRecipes: [], loading: false,
+      userLoading: false, globalLoading: false,
+      createRecipe: mockCreateRecipe, updateRecipe: mockUpdateRecipe, deleteRecipe: mockDeleteRecipe
+    }));
+
+    const { unmount } = render(<RecipesPage />);
+
+    await waitFor(() => {
+      // The edit mode Recipe Title field should be rendered but NOT focused
+      const titleInputs = screen.getAllByLabelText(/recipe title/i);
+      const editTitleInput = titleInputs.find(input => (input as HTMLInputElement).value === 'Test Recipe');
+      expect(editTitleInput).toBeInTheDocument();
+      expect(editTitleInput).not.toHaveFocus();
+    });
+
+    unmount();
+  });
+
   it('calls updateRecipeTags when tags are changed in view mode for non-owned recipes', async () => {
     const user = userEvent.setup();
     const mockPersistentDialog = vi.fn(() => ({

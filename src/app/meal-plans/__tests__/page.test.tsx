@@ -686,6 +686,62 @@ describe('MealPlansPage - Delete Functionality', () => {
   });
 });
 
+describe('MealPlansPage - Auto-focus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    global.fetch = vi.fn((url) => {
+      if (url === '/api/user/settings') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              settings: {
+                themeMode: 'system',
+                mealPlanSharing: { invitations: [] },
+                defaultMealPlanOwner: undefined,
+              },
+            }),
+        } as Response);
+      }
+      return Promise.reject(new Error('Not mocked'));
+    }) as any;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('auto-focuses Email Address field when share meal plans dialog opens', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // useDialog is called 3 times per render: createDialog, templateDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
+
+    const { unmount } = render(<MealPlansPage />);
+
+    await waitFor(() => {
+      const emailInput = screen.getByLabelText(/email address/i);
+      expect(emailInput).toHaveFocus();
+    });
+
+    unmount();
+  });
+});
+
 describe('MealPlansPage - View Mode Quantity Display', () => {
   beforeEach(() => {
     vi.clearAllMocks();

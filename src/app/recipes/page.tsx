@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import {
   Container,
   Typography,
@@ -119,6 +119,9 @@ function RecipesPageContent() {
   const [shareEmail, setShareEmail] = useState("");
   const [shareTags, setShareTags] = useState(true);
   const [shareRatings, setShareRatings] = useState(true);
+  // Auto-focus refs for dialog inputs
+  const createTitleRef = useRef<HTMLInputElement>(null);
+  const shareEmailRef = useRef<HTMLInputElement>(null);
   // Snackbar state
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -1520,6 +1523,7 @@ function RecipesPageContent() {
           maxWidth="lg"
           fullWidth
           sx={responsiveDialogStyle}
+          TransitionProps={{ onEntered: () => createTitleRef.current?.focus() }}
         >
           <DialogTitle onClose={() => createDialog.closeDialog()}>
             Create New Recipe
@@ -1548,6 +1552,7 @@ function RecipesPageContent() {
                   {newRecipe.emoji || <EmojiEmotions />}
                 </IconButton>
                 <TextField
+                  inputRef={createTitleRef}
                   label="Recipe Title"
                   value={newRecipe.title}
                   onChange={(e) =>
@@ -2010,6 +2015,7 @@ function RecipesPageContent() {
           maxWidth="sm"
           fullWidth
           sx={responsiveDialogStyle}
+          TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
         >
           <DialogTitle onClose={shareDialog.closeDialog}>
             Share Recipe Data
@@ -2044,6 +2050,7 @@ function RecipesPageContent() {
             {/* Invite Section */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
               <TextField
+                inputRef={shareEmailRef}
                 label="Email Address"
                 type="email"
                 value={shareEmail}
