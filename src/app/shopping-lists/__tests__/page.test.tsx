@@ -863,6 +863,16 @@ describe('ShoppingListsPage', () => {
       expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
     });
 
+    // After finishing, the handler calls fetchStores() then a useEffect
+    // re-fetches the shopping list. Update mocks so refetched data reflects
+    // the cleared state (no checked items).
+    const clearedStores = mockStores.map((s) => ({
+      ...s,
+      shoppingList: { ...s.shoppingList!, items: [] },
+    }));
+    mockFetchStores.mockResolvedValue(clearedStores);
+    mockFetchShoppingList.mockResolvedValue({ ...mockStores[0].shoppingList, items: [] } as any);
+
     await user.click(screen.getByRole('button', { name: /finish shop/i }));
 
     await waitFor(() => {
