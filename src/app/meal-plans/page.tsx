@@ -1446,6 +1446,7 @@ function MealPlansPageContent() {
                                       </Box>
                                       {isSkipped && (
                                         <TextField
+                                          autoFocus
                                           label="Skip reason"
                                           size="small"
                                           fullWidth

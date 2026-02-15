@@ -279,6 +279,7 @@ export default function IngredientInput({
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TextField
+                  autoFocus
                   label="Prep Instructions (optional)"
                   placeholder="e.g., chopped, diced, peeled"
                   value={ingredient.prepInstructions || ''}

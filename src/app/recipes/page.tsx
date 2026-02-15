@@ -1692,6 +1692,7 @@ function RecipesPageContent() {
                     {editingRecipe.emoji || <EmojiEmotions />}
                   </IconButton>
                   <TextField
+                    autoFocus
                     label="Recipe Title"
                     value={editingRecipe.title}
                     onChange={(e) =>

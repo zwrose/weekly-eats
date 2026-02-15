@@ -389,6 +389,31 @@ describe('IngredientInput', () => {
       expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
     });
 
+    it('auto-focuses prep instructions field when "Add prep instructions" is clicked', async () => {
+      const user = userEvent.setup();
+      const onIngredientChange = vi.fn();
+      render(
+        <IngredientInput
+          ingredient={{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion' }}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          slotId="test-slot"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+
+      const addButton = screen.getByText(/add prep instructions/i);
+      await user.click(addButton);
+
+      await waitFor(() => {
+        const prepField = screen.getByPlaceholderText(/e.g., chopped/i);
+        expect(prepField).toHaveFocus();
+      });
+    });
+
     it('auto-expands prep instructions field when ingredient has prepInstructions', async () => {
       const onIngredientChange = vi.fn();
       render(
