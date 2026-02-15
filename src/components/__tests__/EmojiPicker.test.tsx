@@ -62,6 +62,13 @@ describe('EmojiPicker', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('auto-focuses the search field when dialog opens', () => {
+    render(<EmojiPicker {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText(/search emojis/i);
+    expect(searchInput).toHaveFocus();
+  });
+
   it('shows no results message when search has no matches', async () => {
     const user = userEvent.setup();
     render(<EmojiPicker {...defaultProps} />);

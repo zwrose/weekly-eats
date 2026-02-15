@@ -227,6 +227,7 @@ export default function EmojiPicker({
       <DialogContent>
         <TextField
           fullWidth
+          autoFocus
           placeholder="Search emojis..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
