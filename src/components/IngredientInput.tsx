@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   IconButton,
@@ -174,6 +174,7 @@ export default function IngredientInput({
 
   // Prep instructions state - auto-expand if ingredient has prepInstructions
   const [prepInstructionsExpanded, setPrepInstructionsExpanded] = useState(!!ingredient.prepInstructions);
+  const userExpandedPrep = useRef(false);
 
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
@@ -279,7 +280,7 @@ export default function IngredientInput({
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TextField
-                  autoFocus
+                  autoFocus={userExpandedPrep.current}
                   label="Prep Instructions (optional)"
                   placeholder="e.g., chopped, diced, peeled"
                   value={ingredient.prepInstructions || ''}
@@ -315,10 +316,10 @@ export default function IngredientInput({
           ) : ingredient.prepInstructions ? (
             <Button
               startIcon={<ExpandMore />}
-              onClick={() => setPrepInstructionsExpanded(true)}
+              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
               size="small"
               variant="outlined"
-              sx={{ 
+              sx={{
                 width: { xs: '100%', sm: 'auto' },
                 fontSize: '0.75rem'
               }}
@@ -328,7 +329,7 @@ export default function IngredientInput({
           ) : (
             <Button
               startIcon={<Add />}
-              onClick={() => setPrepInstructionsExpanded(true)}
+              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
               size="small"
               variant="outlined"
               sx={{ 

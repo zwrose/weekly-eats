@@ -67,6 +67,7 @@ export default function BaseIngredientInput({
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [prepInstructionsExpanded, setPrepInstructionsExpanded] = useState(false);
+  const userExpandedPrep = useRef(false);
   
   // Search state for this slot
   const [searchData, setSearchData] = useState<{ input: string; options: SearchOption[]; loading: boolean; selectedIndex: number }>({
@@ -534,7 +535,7 @@ export default function BaseIngredientInput({
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TextField
-                  autoFocus
+                  autoFocus={userExpandedPrep.current}
                   label="Prep Instructions (optional)"
                   placeholder="e.g., chopped, diced, peeled"
                   value={ingredient.prepInstructions || ''}
@@ -570,10 +571,10 @@ export default function BaseIngredientInput({
           ) : ingredient.prepInstructions ? (
             <Button
               startIcon={<ExpandMore />}
-              onClick={() => setPrepInstructionsExpanded(true)}
+              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
               size="small"
               variant="outlined"
-              sx={{ 
+              sx={{
                 width: { xs: '100%', sm: 'auto' },
                 fontSize: '0.75rem'
               }}
@@ -583,7 +584,7 @@ export default function BaseIngredientInput({
           ) : (
             <Button
               startIcon={<Add />}
-              onClick={() => setPrepInstructionsExpanded(true)}
+              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
               size="small"
               variant="outlined"
               sx={{ 

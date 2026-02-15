@@ -752,7 +752,7 @@ describe('RecipesPage - Tags and Ratings', () => {
     unmount();
   });
 
-  it('auto-focuses Recipe Title field when edit mode is toggled on', async () => {
+  it('does not auto-focus any field when edit mode is toggled on', async () => {
     const { useDialog, usePersistentDialog, useConfirmDialog, useRecipes } = await import('@/lib/hooks');
     // Reset all hook implementations to ensure clean state
     (useDialog as any).mockImplementation(() => ({
@@ -775,10 +775,11 @@ describe('RecipesPage - Tags and Ratings', () => {
     const { unmount } = render(<RecipesPage />);
 
     await waitFor(() => {
-      // The edit mode Recipe Title field should have focus
+      // The edit mode Recipe Title field should be rendered but NOT focused
       const titleInputs = screen.getAllByLabelText(/recipe title/i);
       const editTitleInput = titleInputs.find(input => (input as HTMLInputElement).value === 'Test Recipe');
-      expect(editTitleInput).toHaveFocus();
+      expect(editTitleInput).toBeInTheDocument();
+      expect(editTitleInput).not.toHaveFocus();
     });
 
     unmount();
