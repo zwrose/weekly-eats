@@ -178,6 +178,10 @@ function ShoppingListsPageContent() {
   const leaveStoreConfirmDialog = useConfirmDialog();
   const pantryCheckDialog = useDialog();
 
+  // Auto-focus refs for dialog inputs
+  const storeNameRef = useRef<HTMLInputElement>(null);
+  const shareEmailRef = useRef<HTMLInputElement>(null);
+
   // Notification state
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -1665,6 +1669,7 @@ function ShoppingListsPageContent() {
         open={createStoreDialog.open}
         onClose={createStoreDialog.closeDialog}
         sx={responsiveDialogStyle}
+        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
       >
         <DialogTitle onClose={createStoreDialog.closeDialog}>
           Add Store
@@ -1692,7 +1697,7 @@ function ShoppingListsPageContent() {
               value={newStoreName}
               onChange={(e) => setNewStoreName(e.target.value)}
               fullWidth
-              autoFocus
+              inputRef={storeNameRef}
               onKeyPress={(e) => {
                 if (e.key === "Enter" && newStoreName.trim()) {
                   handleCreateStore();
@@ -1724,6 +1729,7 @@ function ShoppingListsPageContent() {
         open={editStoreDialog.open}
         onClose={editStoreDialog.closeDialog}
         sx={responsiveDialogStyle}
+        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
       >
         <DialogTitle onClose={editStoreDialog.closeDialog}>
           Edit Store
@@ -1751,7 +1757,7 @@ function ShoppingListsPageContent() {
               value={newStoreName}
               onChange={(e) => setNewStoreName(e.target.value)}
               fullWidth
-              autoFocus
+              inputRef={storeNameRef}
             />
           </Box>
           <DialogActions primaryButtonIndex={1}>
@@ -2483,6 +2489,7 @@ function ShoppingListsPageContent() {
         maxWidth="sm"
         fullWidth
         sx={responsiveDialogStyle}
+        TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
       >
         <DialogTitle onClose={shareDialog.closeDialog}>
           Share &quot;{sharingStore?.name}&quot;
@@ -2496,7 +2503,7 @@ function ShoppingListsPageContent() {
           {/* Invite Section */}
           <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
             <TextField
-              autoFocus
+              inputRef={shareEmailRef}
               label="Email Address"
               type="email"
               value={shareEmail}

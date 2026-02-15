@@ -721,11 +721,15 @@ describe('MealPlansPage - Auto-focus', () => {
     (useConfirmDialog as any).mockImplementation(() => ({
       open: false, openDialog: vi.fn(), closeDialog: vi.fn()
     }));
-    // useDialog is called 3 times: createDialog, templateDialog, shareDialog
-    (useDialog as any)
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // createDialog
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // templateDialog
-      .mockImplementationOnce(() => ({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() }));  // shareDialog: open
+    // useDialog is called 3 times per render: createDialog, templateDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
 
     const { unmount } = render(<MealPlansPage />);
 

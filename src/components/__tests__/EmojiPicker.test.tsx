@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EmojiPicker from '../EmojiPicker';
 
@@ -62,11 +62,13 @@ describe('EmojiPicker', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('auto-focuses the search field when dialog opens', () => {
+  it('auto-focuses the search field when dialog opens', async () => {
     render(<EmojiPicker {...defaultProps} />);
 
-    const searchInput = screen.getByPlaceholderText(/search emojis/i);
-    expect(searchInput).toHaveFocus();
+    await waitFor(() => {
+      const searchInput = screen.getByPlaceholderText(/search emojis/i);
+      expect(searchInput).toHaveFocus();
+    });
   });
 
   it('shows no results message when search has no matches', async () => {

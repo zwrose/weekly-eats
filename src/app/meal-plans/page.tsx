@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import { Add, CalendarMonth, Settings, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { 
   MealPlanWithTemplate, 
@@ -113,6 +113,7 @@ function MealPlansPageContent() {
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]); // Users YOU invited (for sharing dialog)
   const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]); // Users who invited YOU (for "Create For" dropdown)
   const [shareEmail, setShareEmail] = useState("");
+  const shareEmailRef = useRef<HTMLInputElement>(null);
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null); // For creating meal plans
   const [userSettings, setUserSettings] = useState<{ defaultMealPlanOwner?: string } | null>(null);
   
@@ -1898,6 +1899,7 @@ function MealPlansPageContent() {
             maxWidth="sm"
             fullWidth
             sx={responsiveDialogStyle}
+            TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
           >
             <DialogTitle onClose={shareDialog.closeDialog}>
               Share Meal Plans
@@ -1910,7 +1912,7 @@ function MealPlansPageContent() {
               {/* Invite Section */}
               <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <TextField
-                  autoFocus
+                  inputRef={shareEmailRef}
                   label="Email Address"
                   type="email"
                   value={shareEmail}

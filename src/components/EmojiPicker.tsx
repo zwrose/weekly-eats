@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -199,6 +199,7 @@ export default function EmojiPicker({
   currentEmoji,
 }: EmojiPickerProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const filteredEmojis = FOOD_EMOJIS.filter(
     (item) =>
@@ -220,6 +221,7 @@ export default function EmojiPicker({
       maxWidth="md"
       fullWidth
       sx={responsiveDialogStyle}
+      TransitionProps={{ onEntered: () => searchInputRef.current?.focus() }}
     >
       <DialogTitle onClose={onClose}>
         <Typography variant="h6">Choose an Emoji</Typography>
@@ -227,7 +229,7 @@ export default function EmojiPicker({
       <DialogContent>
         <TextField
           fullWidth
-          autoFocus
+          inputRef={searchInputRef}
           placeholder="Search emojis..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

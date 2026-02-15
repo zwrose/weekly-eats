@@ -699,11 +699,15 @@ describe('RecipesPage - Tags and Ratings', () => {
     (useConfirmDialog as any).mockImplementation(() => ({
       open: false, openDialog: vi.fn(), closeDialog: vi.fn()
     }));
-    // useDialog is called 3 times: createDialog, emojiPickerDialog, shareDialog
-    (useDialog as any)
-      .mockImplementationOnce(() => ({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() }))   // createDialog: open
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // emojiPickerDialog: closed
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() })); // shareDialog: closed
+    // useDialog is called 3 times per render: createDialog, emojiPickerDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 0) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // createDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
 
     const { unmount } = render(<RecipesPage />);
 
@@ -724,11 +728,15 @@ describe('RecipesPage - Tags and Ratings', () => {
     (useConfirmDialog as any).mockImplementation(() => ({
       open: false, openDialog: vi.fn(), closeDialog: vi.fn()
     }));
-    // useDialog is called 3 times: createDialog, emojiPickerDialog, shareDialog
-    (useDialog as any)
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // createDialog: closed
-      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // emojiPickerDialog: closed
-      .mockImplementationOnce(() => ({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() }));  // shareDialog: open
+    // useDialog is called 3 times per render: createDialog, emojiPickerDialog, shareDialog
+    // Use counter-based mock so it survives React re-renders
+    let callCount = 0;
+    (useDialog as any).mockImplementation(() => {
+      const index = callCount % 3;
+      callCount++;
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
+    });
 
     mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
     mockFetchSharedRecipeUsers.mockResolvedValue([]);
