@@ -1,9 +1,0 @@
-{
-  "track_id": "auto-focus-text-fields_20260214",
-  "type": "feature",
-  "status": "in-progress",
-  "created": "2026-02-14",
-  "branch": "feature/autofocus-text-fields",
-  "description": "Auto-focus text fields when they dynamically appear",
-  "updated_at": "2026-02-15T03:33:50.224021Z"
-}
