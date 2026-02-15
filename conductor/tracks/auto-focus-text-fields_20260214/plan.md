@@ -12,7 +12,7 @@
 - [x] Task 1.6: Implement `autoFocus` on Share Store email TextField — verify tests pass
 - [x] Task 1.8: Implement `autoFocus` on Share Meal Plans email TextField — verify tests pass
 - [x] Task 1.10: Implement `autoFocus` on Share Recipes email TextField — verify tests pass
-- [ ] Task: Conductor - User Manual Verification 'Phase 1'
+- [x] Task: Conductor - User Manual Verification 'Phase 1'
 
 ## Phase 2: Conditionally rendered / mode-toggle auto-focus fields
 
@@ -24,10 +24,10 @@
 - [x] Task 2.6: Implement auto-focus on Edit Recipe title TextField (`recipes/page.tsx`)
 - [x] Task 2.7: Write failing tests for skip reason auto-focus when checkbox is checked
 - [x] Task 2.8: Implement auto-focus on skip reason TextField (`meal-plans/page.tsx`)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2'
+- [x] Task: Conductor - User Manual Verification 'Phase 2'
 
 ## Phase 3: Regression verification
 
 - [x] Task 3.1: Run full test suite and verify no regressions to existing auto-focus behavior
 - [x] Task 3.2: Verify code coverage meets >80% threshold for modified files
-- [ ] Task: Conductor - User Manual Verification 'Phase 3'
+- [x] Task: Conductor - User Manual Verification 'Phase 3'
