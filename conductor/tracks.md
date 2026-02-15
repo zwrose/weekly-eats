@@ -4,12 +4,12 @@
 
 ## Active Tracks
 
+_No active tracks._
 
-- [~] **Track: Auto-focus text fields when they dynamically appear**
-  *Link: [auto-focus-text-fields_20260214](./conductor/tracks/auto-focus-text-fields_20260214/)*
 ---
 
 ## Completed Tracks
 
-_No completed tracks._
+- [x] **Track: Auto-focus text fields when they dynamically appear**
+  *Link: [auto-focus-text-fields_20260214](./conductor/tracks/archive/auto-focus-text-fields_20260214/)*
 
