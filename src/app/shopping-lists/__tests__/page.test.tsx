@@ -943,6 +943,47 @@ describe('ShoppingListsPage', () => {
     });
   });
 
+  it('auto-focuses Email Address field when share store dialog opens', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchPendingInvitations.mockResolvedValue([]);
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    // Click the share button (title="Share Store")
+    const shareButtons = screen.getAllByTitle('Share Store');
+    await user.click(shareButtons[0]);
+
+    await waitFor(() => {
+      const emailInput = screen.getByLabelText(/email address/i);
+      expect(emailInput).toHaveFocus();
+    });
+  });
+
   it('ignores legacy mode param in URL', async () => {
     const mockStores = [
       {

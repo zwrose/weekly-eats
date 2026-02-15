@@ -2496,6 +2496,7 @@ function ShoppingListsPageContent() {
           {/* Invite Section */}
           <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
             <TextField
+              autoFocus
               label="Email Address"
               type="email"
               value={shareEmail}

@@ -1548,6 +1548,7 @@ function RecipesPageContent() {
                   {newRecipe.emoji || <EmojiEmotions />}
                 </IconButton>
                 <TextField
+                  autoFocus
                   label="Recipe Title"
                   value={newRecipe.title}
                   onChange={(e) =>
@@ -2044,6 +2045,7 @@ function RecipesPageContent() {
             {/* Invite Section */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
               <TextField
+                autoFocus
                 label="Email Address"
                 type="email"
                 value={shareEmail}

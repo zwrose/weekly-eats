@@ -690,6 +690,60 @@ describe('RecipesPage - Tags and Ratings', () => {
     unmount();
   });
 
+  it('auto-focuses Recipe Title field when create dialog opens', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // useDialog is called 3 times: createDialog, emojiPickerDialog, shareDialog
+    (useDialog as any)
+      .mockImplementationOnce(() => ({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() }))   // createDialog: open
+      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // emojiPickerDialog: closed
+      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() })); // shareDialog: closed
+
+    const { unmount } = render(<RecipesPage />);
+
+    await waitFor(() => {
+      const titleInput = screen.getByLabelText(/recipe title/i);
+      expect(titleInput).toHaveFocus();
+    });
+
+    unmount();
+  });
+
+  it('auto-focuses Email Address field when share recipes dialog opens', async () => {
+    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
+    // Reset all hook implementations to ensure clean state
+    (usePersistentDialog as any).mockImplementation(() => ({
+      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+    }));
+    (useConfirmDialog as any).mockImplementation(() => ({
+      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+    }));
+    // useDialog is called 3 times: createDialog, emojiPickerDialog, shareDialog
+    (useDialog as any)
+      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // createDialog: closed
+      .mockImplementationOnce(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() }))  // emojiPickerDialog: closed
+      .mockImplementationOnce(() => ({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() }));  // shareDialog: open
+
+    mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
+    mockFetchSharedRecipeUsers.mockResolvedValue([]);
+    mockFetchRecipeSharingOwners.mockResolvedValue([]);
+
+    const { unmount } = render(<RecipesPage />);
+
+    await waitFor(() => {
+      const emailInput = screen.getByLabelText(/email address/i);
+      expect(emailInput).toHaveFocus();
+    });
+
+    unmount();
+  });
+
   it('calls updateRecipeTags when tags are changed in view mode for non-owned recipes', async () => {
     const user = userEvent.setup();
     const mockPersistentDialog = vi.fn(() => ({
