@@ -1,6 +1,6 @@
 # Plan: Smart Unit Deconfliction for Shopping List Meal Plan Population
 
-## Phase 1: Unit Conversion Utility Module
+## Phase 1: Unit Conversion Utility Module [checkpoint: 3455203]
 
 - [x] Task: Install `convert` npm package [f8b385c]
   - Run `npm install convert` in the worktree
@@ -23,7 +23,7 @@
 
 ## Phase 2: Smart Pre-Merge of Extracted Items
 
-- [ ] Task: Rewrite `combineExtractedItems` with conversion intelligence (TDD)
+- [x] Task: Rewrite `combineExtractedItems` with conversion intelligence (TDD) [ec0690f]
   - **Test first** (update `src/lib/__tests__/meal-plan-to-shopping-list.test.ts`):
     - Same unit, same food item → sum quantities (existing behavior, keep passing)
     - Convertible units, same food item (e.g., 2 cups + 1 pint of f1) → converts to best unit and sums
@@ -37,7 +37,7 @@
     - If not same family: flag as conflict (return in conflicts map)
     - Update return type: conflicts now contain pre-combined entries with their original breakdown for display
 
-- [ ] Task: Wire `combineExtractedItems` into the production flow
+- [x] Task: Wire `combineExtractedItems` into the production flow [6dfe049]
   - **Test first** (update test for `handleAddItemsFromMealPlans` flow or add integration-style test):
     - Mock extracted items with convertible duplicates → verify they arrive at `mergeWithShoppingList` already combined
   - **Implement**: in `src/app/shopping-lists/page.tsx` `handleAddItemsFromMealPlans`:
