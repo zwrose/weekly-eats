@@ -323,7 +323,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
               {/* Ingredients Section */}
               <Box
                 sx={{
-                  flex: { xs: "none", md: "0 0 35%" },
+                  flex: { xs: "none", md: "0 0 25%" },
                   maxHeight: { xs: "none", md: "100%" },
                   overflow: "hidden",
                   display: "flex",
@@ -377,7 +377,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
               {/* Instructions Section */}
               <Box
                 sx={{
-                  flex: { xs: "none", md: "0 0 65%" },
+                  flex: { xs: "none", md: "1 1 auto" },
                   maxHeight: { xs: "none", md: "100%" },
                   overflow: "hidden",
                   display: "flex",
