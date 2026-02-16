@@ -37,11 +37,11 @@
 
 ## Phase 5: App Router Conventions & Metadata (HIGH impact, MEDIUM effort)
 
-- [ ] Task 5.1: Add `loading.tsx` with skeleton UIs for key routes: `recipes/`, `meal-plans/`, `shopping-lists/` (`async-suspense-boundaries`)
-- [ ] Task 5.2: Add `error.tsx` error boundary components for key routes: `recipes/`, `meal-plans/`, `shopping-lists/`
-- [ ] Task 5.3: Add `not-found.tsx` for custom 404 page
-- [ ] Task 5.4: Add dynamic metadata to feature pages — use `metadata` export with `title` for each page (e.g., "Recipes - Weekly Eats", "Meal Plans - Weekly Eats") and set `title.template` in root layout
-- [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
+- [x] Task 5.1: Add `loading.tsx` with skeleton UIs for key routes: `recipes/`, `meal-plans/`, `shopping-lists/` (`async-suspense-boundaries`) [6fe1a7b]
+- [x] Task 5.2: Add `error.tsx` error boundary components for key routes: `recipes/`, `meal-plans/`, `shopping-lists/` [59a1481]
+- [x] Task 5.3: Add `not-found.tsx` for custom 404 page [85f288c]
+- [x] Task 5.4: Add dynamic metadata to feature pages — use `metadata` export with `title` for each page (e.g., "Recipes - Weekly Eats", "Meal Plans - Weekly Eats") and set `title.template` in root layout [52f632b]
+- [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
 ## Phase 6: Auth & Type Safety Fixes (HIGH impact, MEDIUM effort)
 
