@@ -11,6 +11,8 @@ const findMock = vi.fn();
 const sortMock = vi.fn();
 const skipMock = vi.fn();
 const limitMock = vi.fn();
+const aggregateToArrayMock = vi.fn();
+const aggregateMock = vi.fn();
 
 // Wire up chainable API: find -> sort -> skip -> limit -> toArray
 function resetChain() {
@@ -18,28 +20,37 @@ function resetChain() {
   skipMock.mockReturnValue({ limit: limitMock });
   sortMock.mockReturnValue({ skip: skipMock });
   findMock.mockReturnValue({ sort: sortMock });
+  aggregateMock.mockReturnValue({ toArray: aggregateToArrayMock });
 }
 
+let collectionName = '';
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
-      collection: () => ({
-        find: (...args: unknown[]) => {
-          findMock(...args);
-          return { sort: (...sArgs: unknown[]) => {
-            sortMock(...sArgs);
-            return { skip: (...skArgs: unknown[]) => {
-              skipMock(...skArgs);
-              return { limit: (...lArgs: unknown[]) => {
-                limitMock(...lArgs);
-                return { toArray: toArrayMock };
+      collection: (name: string) => {
+        collectionName = name;
+        return {
+          find: (...args: unknown[]) => {
+            findMock(...args);
+            return { sort: (...sArgs: unknown[]) => {
+              sortMock(...sArgs);
+              return { skip: (...skArgs: unknown[]) => {
+                skipMock(...skArgs);
+                return { limit: (...lArgs: unknown[]) => {
+                  limitMock(...lArgs);
+                  return { toArray: toArrayMock };
+                }};
               }};
             }};
-          }};
-        },
-        countDocuments: countDocumentsMock,
-        insertOne: insertOneMock,
-      }),
+          },
+          aggregate: (...args: unknown[]) => {
+            aggregateMock(...args);
+            return { toArray: aggregateToArrayMock };
+          },
+          countDocuments: countDocumentsMock,
+          insertOne: insertOneMock,
+        };
+      },
     }),
   })),
 }));
@@ -62,6 +73,8 @@ beforeEach(() => {
   toArrayMock.mockReset();
   countDocumentsMock.mockReset();
   insertOneMock.mockReset();
+  aggregateMock.mockReset();
+  aggregateToArrayMock.mockReset();
   resetChain();
 });
 
@@ -210,6 +223,99 @@ describe('GET /api/recipes', () => {
     expect(filter.$or).toBeDefined();
     expect(filter.$or).toContainEqual({ isGlobal: true });
     expect(filter.$or).toContainEqual({ createdBy: 'user1' });
+  });
+
+  it('uses aggregation pipeline when tags param is provided', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([
+      { total: 1, data: [{ _id: 'r1', title: 'Tagged', createdBy: 'user1', isGlobal: false, userData: { tags: ['italian'], rating: 4 } }] },
+    ]);
+
+    const res = await routes.GET(
+      makeReq('http://localhost/api/recipes?tags=italian')
+    );
+    const json = await res.json();
+
+    expect(aggregateMock).toHaveBeenCalled();
+    expect(json.data).toHaveLength(1);
+    expect(json.data[0].accessLevel).toBe('personal');
+  });
+
+  it('uses aggregation pipeline when minRating param is provided', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([
+      { total: 1, data: [{ _id: 'r1', title: 'Rated', createdBy: 'user1', isGlobal: true, userData: { tags: [], rating: 5 } }] },
+    ]);
+
+    const res = await routes.GET(
+      makeReq('http://localhost/api/recipes?minRating=4')
+    );
+    const json = await res.json();
+
+    expect(aggregateMock).toHaveBeenCalled();
+    expect(json.data).toHaveLength(1);
+  });
+
+  it('filters by multiple tags (comma-separated)', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([
+      { total: 0, data: [] },
+    ]);
+
+    await routes.GET(
+      makeReq('http://localhost/api/recipes?tags=italian,quick')
+    );
+
+    const pipeline = aggregateMock.mock.calls[0][0];
+    const pipelineStr = JSON.stringify(pipeline);
+    expect(pipelineStr).toContain('italian');
+    expect(pipelineStr).toContain('quick');
+  });
+
+  it('combines tags, minRating, and accessLevel filters', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([
+      { total: 0, data: [] },
+    ]);
+
+    await routes.GET(
+      makeReq('http://localhost/api/recipes?tags=dinner&minRating=3&accessLevel=personal')
+    );
+
+    expect(aggregateMock).toHaveBeenCalled();
+    const pipeline = aggregateMock.mock.calls[0][0];
+    const pipelineStr = JSON.stringify(pipeline);
+    expect(pipelineStr).toContain('dinner');
+    expect(pipelineStr).toContain('user1');
+  });
+
+  it('returns empty aggregation results correctly', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([]);
+
+    const res = await routes.GET(
+      makeReq('http://localhost/api/recipes?tags=nonexistent')
+    );
+    const json = await res.json();
+
+    expect(json.data).toEqual([]);
+    expect(json.total).toBe(0);
+    expect(json.totalPages).toBe(0);
+  });
+
+  it('sorts by rating when sortBy=rating with aggregation', async () => {
+    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    aggregateToArrayMock.mockResolvedValue([
+      { total: 0, data: [] },
+    ]);
+
+    await routes.GET(
+      makeReq('http://localhost/api/recipes?tags=any&sortBy=rating&sortOrder=desc')
+    );
+
+    const pipeline = aggregateMock.mock.calls[0][0];
+    const pipelineStr = JSON.stringify(pipeline);
+    expect(pipelineStr).toContain('rating');
   });
 
   it('handles server errors', async () => {

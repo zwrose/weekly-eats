@@ -19,6 +19,36 @@ function computeAccessLevel(recipe: { createdBy: string; isGlobal: boolean }, us
   return 'global';
 }
 
+function buildBaseFilter(accessLevel: string | null, userId: string): Record<string, unknown> {
+  switch (accessLevel) {
+    case 'personal':
+      return { createdBy: userId, isGlobal: false };
+    case 'shared-by-you':
+      return { createdBy: userId, isGlobal: true };
+    case 'global':
+      return { isGlobal: true, createdBy: { $ne: userId } };
+    default:
+      return {
+        $or: [
+          { isGlobal: true },
+          { createdBy: userId },
+        ],
+      };
+  }
+}
+
+function addTextSearch(filter: Record<string, unknown>, query: string | null): Record<string, unknown> {
+  if (!query || !query.trim()) return filter;
+
+  const searchFilter = {
+    $or: [
+      { title: { $regex: query, $options: 'i' } },
+      { emoji: { $regex: query, $options: 'i' } },
+    ],
+  };
+  return { $and: [filter, searchFilter] };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,45 +61,107 @@ export async function GET(request: NextRequest) {
 
     const query = searchParams.get('query');
     const accessLevel = searchParams.get('accessLevel');
+    const tagsParam = searchParams.get('tags');
+    const minRatingParam = searchParams.get('minRating');
 
     const client = await getMongoClient();
     const db = client.db();
     const recipesCollection = db.collection('recipes');
 
-    // Build base filter based on accessLevel
-    let filter: Record<string, unknown> = {};
+    let filter = buildBaseFilter(accessLevel, session.user.id);
+    filter = addTextSearch(filter, query);
 
-    switch (accessLevel) {
-      case 'personal':
-        filter = { createdBy: session.user.id, isGlobal: false };
-        break;
-      case 'shared-by-you':
-        filter = { createdBy: session.user.id, isGlobal: true };
-        break;
-      case 'global':
-        filter = { isGlobal: true, createdBy: { $ne: session.user.id } };
-        break;
-      default:
-        // All accessible recipes: global OR user's own
-        filter = {
-          $or: [
-            { isGlobal: true },
-            { createdBy: session.user.id },
-          ],
-        };
+    const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const minRating = minRatingParam ? parseInt(minRatingParam, 10) : null;
+    const useAggregation = tags.length > 0 || (minRating !== null && !Number.isNaN(minRating));
+
+    if (useAggregation) {
+      // Use aggregation pipeline to join with recipeUserData for tag/rating filtering
+      const skip = (page - 1) * limit;
+
+      const pipeline: Record<string, unknown>[] = [
+        { $match: filter },
+        {
+          $lookup: {
+            from: 'recipeUserData',
+            let: { recipeId: { $toString: '$_id' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$recipeId', '$$recipeId'] },
+                      { $eq: ['$userId', session.user.id] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'userDataArr',
+          },
+        },
+        {
+          $addFields: {
+            userData: { $arrayElemAt: ['$userDataArr', 0] },
+          },
+        },
+        { $unset: 'userDataArr' },
+      ];
+
+      // Add tag filter
+      if (tags.length > 0) {
+        pipeline.push({
+          $match: { 'userData.tags': { $in: tags } },
+        });
+      }
+
+      // Add rating filter
+      if (minRating !== null && !Number.isNaN(minRating)) {
+        pipeline.push({
+          $match: { 'userData.rating': { $gte: minRating } },
+        });
+      }
+
+      // Sort — use userData.rating for rating sort
+      const sortField = sortBy === 'rating' ? 'userData.rating' : sortBy;
+      pipeline.push(
+        { $sort: { [sortField]: sortOrder } },
+        {
+          $facet: {
+            data: [{ $skip: skip }, { $limit: limit }],
+            total: [{ $count: 'count' }],
+          },
+        },
+        {
+          $project: {
+            data: 1,
+            total: { $ifNull: [{ $arrayElemAt: ['$total.count', 0] }, 0] },
+          },
+        },
+      );
+
+      const results = await recipesCollection.aggregate(pipeline).toArray();
+      const result = results[0] || { data: [], total: 0 };
+      const total = result.total as number;
+
+      const dataWithAccessLevel = (result.data as Array<Record<string, unknown>>).map((recipe) => ({
+        ...recipe,
+        accessLevel: computeAccessLevel(
+          recipe as unknown as { createdBy: string; isGlobal: boolean },
+          session.user.id
+        ),
+      }));
+
+      return NextResponse.json({
+        data: dataWithAccessLevel,
+        total,
+        page,
+        limit,
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      });
     }
 
-    // Add text search filter
-    if (query && query.trim()) {
-      const searchFilter = {
-        $or: [
-          { title: { $regex: query, $options: 'i' } },
-          { emoji: { $regex: query, $options: 'i' } },
-        ],
-      };
-      filter = { $and: [filter, searchFilter] };
-    }
-
+    // Simple find path (no tags/rating filtering)
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
