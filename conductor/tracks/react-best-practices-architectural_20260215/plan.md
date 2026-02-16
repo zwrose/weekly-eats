@@ -62,7 +62,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 7' (Protocol in workflow.md)
   - `npm run check` passed: lint clean, 536 tests passing, build successful
 
-## Phase 8: Database & Missing Index Optimizations (MEDIUM impact, LOW effort)
+## Phase 8: Database & Missing Index Optimizations (MEDIUM impact, LOW effort) [checkpoint: 1b44d50]
 
 - [x] Task 8.1: Add missing MongoDB indexes to `src/lib/database-indexes.ts`: `shoppingLists.storeId`, `mealPlans.templateId` [06741da]
 - [x] Task 8.2: Run `npm run setup-db` and verify indexes are applied [06741da]
