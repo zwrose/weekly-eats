@@ -49,6 +49,7 @@ async function seed() {
       {
         _id: milkId,
         userId,
+        createdBy: userId,
         name: 'Milk',
         singularName: 'milk',
         pluralName: 'milk',
@@ -59,6 +60,7 @@ async function seed() {
       {
         _id: flourId,
         userId,
+        createdBy: userId,
         name: 'Flour',
         singularName: 'flour',
         pluralName: 'flour',
@@ -69,6 +71,7 @@ async function seed() {
       {
         _id: tomatoesId,
         userId,
+        createdBy: userId,
         name: 'Canned Tomatoes',
         singularName: 'canned tomato',
         pluralName: 'canned tomatoes',
@@ -90,6 +93,7 @@ async function seed() {
       {
         _id: recipeAId,
         userId,
+        createdBy: userId,
         title: 'Pancakes',
         ingredients: [
           {
@@ -108,6 +112,7 @@ async function seed() {
       {
         _id: recipeBId,
         userId,
+        createdBy: userId,
         title: 'Bechamel Sauce',
         ingredients: [
           {
@@ -126,6 +131,7 @@ async function seed() {
       {
         _id: recipeCId,
         userId,
+        createdBy: userId,
         title: 'Pasta Sauce',
         ingredients: [
           {

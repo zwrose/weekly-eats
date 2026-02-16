@@ -227,6 +227,8 @@ export function combineExtractedItems(
     } else {
       // Non-convertible units — flag as conflict
       conflicts.set(foodItemId, items);
+      // Still add the first entry as a placeholder so the item reaches the shopping list
+      combinedItems.push(items[0]);
     }
   }
 

@@ -497,7 +497,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(combined.quantity).toBeGreaterThan(0);
     });
 
-    it('identifies non-convertible unit conflicts', () => {
+    it('identifies non-convertible unit conflicts and keeps item in combinedItems', () => {
       // cans vs pounds — different families, cannot auto-convert
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'can' },
@@ -509,6 +509,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflicts.size).toBe(1);
       expect(conflicts.has('f1')).toBe(true);
       expect(conflicts.get('f1')).toHaveLength(2);
+      // Item should still appear in combinedItems as a placeholder
+      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      expect(f1).toBeDefined();
+      expect(f1!.quantity).toBe(2);
+      expect(f1!.unit).toBe('can');
     });
 
     it('handles mixed: some items convertible, some not, some single-entry', () => {
@@ -529,9 +534,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
       const f1 = combinedItems.find(i => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
 
-      // f2 should be a conflict (non-convertible)
+      // f2 should be a conflict (non-convertible) but still in combinedItems as placeholder
       expect(conflicts.size).toBe(1);
       expect(conflicts.has('f2')).toBe(true);
+      const f2 = combinedItems.find(i => i.foodItemId === 'f2');
+      expect(f2).toBeDefined();
 
       // f3 passes through as-is
       expect(combinedItems).toContainEqual({ foodItemId: 'f3', quantity: 3, unit: 'piece' });
