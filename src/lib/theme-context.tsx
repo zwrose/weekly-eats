@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { lightTheme, darkTheme } from './theme';
 import { useSession } from 'next-auth/react';
@@ -86,8 +86,13 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
 
   const theme = isDark ? darkTheme : lightTheme;
 
+  const contextValue = useMemo<ThemeContextType>(
+    () => ({ mode, setMode, isDark }),
+    [mode, setMode, isDark]
+  );
+
   return (
-    <ThemeContext.Provider value={{ mode, setMode, isDark }}>
+    <ThemeContext.Provider value={contextValue}>
       <ThemeProvider theme={theme}>
         {children}
       </ThemeProvider>
