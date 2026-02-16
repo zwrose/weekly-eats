@@ -62,6 +62,7 @@ vi.mock('@/lib/hooks', () => ({
   useSearchPagination: vi.fn(() => ({
     searchTerm: '',
     setSearchTerm: vi.fn(),
+    isSearchPending: false,
     currentPage: 1,
     setCurrentPage: vi.fn(),
     totalPages: 1,
