@@ -1,5 +1,6 @@
 import { MealPlanWithTemplate } from '../types/meal-plan';
 import { ShoppingListItem } from '../types/shopping-list';
+import { areSameFamily, tryConvert, pickBestUnit } from './unit-conversion';
 
 interface ExtractedItem {
   foodItemId: string;
@@ -144,8 +145,9 @@ export async function extractFoodItemsFromMealPlans(
 }
 
 /**
- * Combines extracted items, summing quantities for items with the same unit
- * Returns combined items and any unit conflicts
+ * Combines extracted items, summing quantities for items with the same unit.
+ * Uses unit conversion to merge items with convertible units (same family).
+ * Returns combined items and any non-convertible unit conflicts.
  */
 export function combineExtractedItems(
   extractedItems: ExtractedItem[]
@@ -163,28 +165,65 @@ export function combineExtractedItems(
   const combinedItems: ExtractedItem[] = [];
   const conflicts = new Map<string, ExtractedItem[]>();
 
-  // Combine items with same unit, identify conflicts
   for (const [foodItemId, items] of itemsByFoodId.entries()) {
     if (items.length === 1) {
       combinedItems.push(items[0]);
-    } else {
-      // Group by unit
-      const byUnit = new Map<string, number>();
-      for (const item of items) {
-        const currentQty = byUnit.get(item.unit) || 0;
-        byUnit.set(item.unit, currentQty + item.quantity);
+      continue;
+    }
+
+    // Group by unit first
+    const byUnit = new Map<string, number>();
+    for (const item of items) {
+      const currentQty = byUnit.get(item.unit) || 0;
+      byUnit.set(item.unit, currentQty + item.quantity);
+    }
+
+    if (byUnit.size === 1) {
+      // All same unit — sum directly
+      const [unit, quantity] = Array.from(byUnit.entries())[0];
+      combinedItems.push({ foodItemId, quantity, unit });
+      continue;
+    }
+
+    // Multiple units — check if all are in the same convertible family
+    const units = Array.from(byUnit.keys());
+    const allSameFamily = units.every((u, i) =>
+      i === 0 ? true : areSameFamily(units[0], u)
+    );
+
+    if (allSameFamily) {
+      // Convert all to the first unit, then sum
+      const targetUnit = units[0];
+      let totalInTarget = 0;
+
+      for (const [unit, qty] of byUnit.entries()) {
+        if (unit === targetUnit) {
+          totalInTarget += qty;
+        } else {
+          const converted = tryConvert(qty, unit, targetUnit);
+          if (converted !== null) {
+            totalInTarget += converted;
+          } else {
+            // Fallback: shouldn't happen if areSameFamily passed, but be safe
+            conflicts.set(foodItemId, items);
+            totalInTarget = 0;
+            break;
+          }
+        }
       }
 
-      if (byUnit.size === 1) {
-        // All same unit - combine
-        const [unit, quantity] = Array.from(byUnit.entries())[0];
-        combinedItems.push({ foodItemId, quantity, unit });
-      } else {
-        // Multiple units - conflict
-        conflicts.set(foodItemId, items);
-        // For now, just take the first one
-        combinedItems.push(items[0]);
+      if (!conflicts.has(foodItemId)) {
+        // Pick the best human-readable unit for the total
+        const best = pickBestUnit(totalInTarget, targetUnit);
+        combinedItems.push({
+          foodItemId,
+          quantity: best.quantity,
+          unit: best.unit,
+        });
       }
+    } else {
+      // Non-convertible units — flag as conflict
+      conflicts.set(foodItemId, items);
     }
   }
 

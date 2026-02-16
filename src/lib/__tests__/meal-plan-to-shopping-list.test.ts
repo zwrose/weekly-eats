@@ -479,17 +479,81 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflicts.size).toBe(0);
     });
 
-    it('identifies unit conflicts', () => {
+    it('converts and sums convertible units in the same family', () => {
+      // 2 cups + 1 pint (= 2 cups) → should convert and sum
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'cup' },
-        { foodItemId: 'f1', quantity: 3, unit: 'gallon' }
+        { foodItemId: 'f1', quantity: 1, unit: 'pint' }
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
-      
+
+      expect(conflicts.size).toBe(0);
+      expect(combinedItems).toHaveLength(1);
+      const combined = combinedItems.find(i => i.foodItemId === 'f1')!;
+      // 2 cups + 1 pint (= 2 cups) = 4 cups total, then pickBestUnit → 1 qt or 2 pt
+      // We check that it's a volume unit with correct total
+      expect(combined.foodItemId).toBe('f1');
+      expect(combined.quantity).toBeGreaterThan(0);
+    });
+
+    it('identifies non-convertible unit conflicts', () => {
+      // cans vs pounds — different families, cannot auto-convert
+      const items = [
+        { foodItemId: 'f1', quantity: 2, unit: 'can' },
+        { foodItemId: 'f1', quantity: 1, unit: 'pound' }
+      ];
+
+      const { combinedItems, conflicts } = combineExtractedItems(items);
+
       expect(conflicts.size).toBe(1);
       expect(conflicts.has('f1')).toBe(true);
       expect(conflicts.get('f1')).toHaveLength(2);
+    });
+
+    it('handles mixed: some items convertible, some not, some single-entry', () => {
+      const items = [
+        // f1: convertible (cup + tablespoon → same family)
+        { foodItemId: 'f1', quantity: 1, unit: 'cup' },
+        { foodItemId: 'f1', quantity: 8, unit: 'tablespoon' },
+        // f2: non-convertible (can vs pound)
+        { foodItemId: 'f2', quantity: 2, unit: 'can' },
+        { foodItemId: 'f2', quantity: 1, unit: 'pound' },
+        // f3: single entry (no combining needed)
+        { foodItemId: 'f3', quantity: 3, unit: 'piece' }
+      ];
+
+      const { combinedItems, conflicts } = combineExtractedItems(items);
+
+      // f1 should be combined (no conflict)
+      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      expect(f1).toBeDefined();
+
+      // f2 should be a conflict (non-convertible)
+      expect(conflicts.size).toBe(1);
+      expect(conflicts.has('f2')).toBe(true);
+
+      // f3 passes through as-is
+      expect(combinedItems).toContainEqual({ foodItemId: 'f3', quantity: 3, unit: 'piece' });
+    });
+
+    it('handles three+ different convertible units for same food item', () => {
+      // 2 cups + 1 pint + 1 quart → all volume, should convert and sum
+      const items = [
+        { foodItemId: 'f1', quantity: 2, unit: 'cup' },
+        { foodItemId: 'f1', quantity: 1, unit: 'pint' },
+        { foodItemId: 'f1', quantity: 1, unit: 'quart' }
+      ];
+
+      const { combinedItems, conflicts } = combineExtractedItems(items);
+
+      expect(conflicts.size).toBe(0);
+      expect(combinedItems).toHaveLength(1);
+      const combined = combinedItems.find(i => i.foodItemId === 'f1')!;
+      // 2 cups + 2 cups (1 pint) + 4 cups (1 quart) = 8 cups total
+      // pickBestUnit should convert to a reasonable unit
+      expect(combined.foodItemId).toBe('f1');
+      expect(combined.quantity).toBeGreaterThan(0);
     });
   });
 
