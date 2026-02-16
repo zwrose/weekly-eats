@@ -247,7 +247,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     isConnectingRef.current = true;
 
     try {
-      const client = getAblyClient();
+      const client = await getAblyClient();
       clientRef.current = client;
       installConnectionHandlers(client);
 
