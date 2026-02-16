@@ -69,6 +69,7 @@ import {
 } from "@/lib/recipe-sharing-utils";
 import {
   fetchRecipeUserData,
+  fetchRecipeUserDataBatch,
   updateRecipeTags,
   updateRecipeRating,
   deleteRecipeRating,
@@ -346,34 +347,18 @@ function RecipesPageContent() {
     }
   }, []);
 
-  // Load user data for all recipes
+  // Load user data for all recipes in a single batch request
   const loadRecipesUserData = useCallback(async () => {
     if (!userId) return;
-    
+
     const allRecipes = [...userRecipes, ...globalRecipes];
     if (allRecipes.length === 0) return;
 
     try {
-      // Fetch user data for all recipes in parallel
-      const userDataPromises = allRecipes.map((recipe) =>
-        recipe._id
-          ? fetchRecipeUserData(recipe._id).catch(() => ({
-              tags: [],
-              rating: undefined,
-            }))
-          : Promise.resolve({ tags: [], rating: undefined })
-      );
-
-      const userDataResults = await Promise.all(userDataPromises);
-      
-      // Create a map of recipe ID to user data
-      const userDataMap = new Map<string, RecipeUserDataResponse>();
-      allRecipes.forEach((recipe, index) => {
-        if (recipe._id) {
-          userDataMap.set(recipe._id, userDataResults[index]);
-        }
-      });
-
+      const recipeIds = allRecipes
+        .map((recipe) => recipe._id)
+        .filter((id): id is string => !!id);
+      const userDataMap = await fetchRecipeUserDataBatch(recipeIds);
       setRecipesUserData(userDataMap);
     } catch (error) {
       console.error('Error loading recipes user data:', error);
