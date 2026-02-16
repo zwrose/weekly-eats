@@ -2,12 +2,12 @@
 
 ## Phase 1: Data Layer — Types, Collection & Indexes `[ ]`
 
-- [ ] Task: Add `PurchaseHistoryRecord` interface to `src/types/shopping-list.ts`
+- [x] Task: Add `PurchaseHistoryRecord` interface to `src/types/shopping-list.ts` [f682be7]
   - Fields: `_id`, `storeId`, `foodItemId`, `name`, `quantity`, `unit`, `lastPurchasedAt`
-- [ ] Task: Add `purchaseHistory` collection indexes to `src/lib/database-indexes.ts`
+- [x] Task: Add `purchaseHistory` collection indexes to `src/lib/database-indexes.ts` [ef7dc28]
   - Unique compound index on `{ storeId, foodItemId }`
   - Sort index on `{ storeId, lastPurchasedAt: -1 }`
-- [ ] Task: Add error constants for purchase history to `src/lib/errors.ts`
+- [x] Task: Add error constants for purchase history to `src/lib/errors.ts` [e7fd2e7]
 
 ## Phase 2: API Routes `[ ]`
 
