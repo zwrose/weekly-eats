@@ -33,7 +33,7 @@ export interface MealPlanCreateDialogProps {
   mealPlanOwners: MealPlanOwner[];
   selectedOwner: string | null;
   onSelectedOwnerChange: (owner: string) => void;
-  currentUserId: string | null;
+  currentUserId: string | null | undefined;
   newMealPlan: CreateMealPlanRequest;
   onNewMealPlanChange: (plan: CreateMealPlanRequest) => void;
   validationError: string | null;

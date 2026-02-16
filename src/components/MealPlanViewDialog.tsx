@@ -46,7 +46,8 @@ export interface MealPlanViewDialogProps {
     singularName: string;
     pluralName: string;
     unit: string;
-  }) => Promise<{ _id: string; name: string; singularName: string; pluralName: string; unit: string }>;
+    isGlobal: boolean;
+  }) => Promise<void>;
   getDaysInOrder: () => string[];
   getDateForDay: (dayOfWeek: string) => string;
   getMealTypeName: (mealType: string) => string;

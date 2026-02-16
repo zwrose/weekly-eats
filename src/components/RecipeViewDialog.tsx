@@ -56,7 +56,7 @@ export interface RecipeViewDialogProps {
   onRatingChange: (rating: number | undefined) => void;
   onIngredientsChange: (ingredients: RecipeIngredientList[]) => void;
   foodItemsList: FoodItemOption[];
-  onFoodItemAdded: (item: FoodItemOption) => Promise<void>;
+  onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
   getIngredientName: (ingredient: { type: "foodItem" | "recipe"; id: string; quantity: number }) => string;
 }
