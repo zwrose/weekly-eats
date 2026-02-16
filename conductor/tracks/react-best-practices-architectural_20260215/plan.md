@@ -43,7 +43,7 @@
 - [x] Task 5.4: Add dynamic metadata to feature pages — use `metadata` export with `title` for each page (e.g., "Recipes - Weekly Eats", "Meal Plans - Weekly Eats") and set `title.template` in root layout [52f632b]
 - [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
-## Phase 6: Auth & Type Safety Fixes (HIGH impact, MEDIUM effort)
+## Phase 6: Auth & Type Safety Fixes (HIGH impact, MEDIUM effort) [checkpoint: b2daa71]
 
 - [x] Task 6.1: Fix `src/lib/auth.ts` type safety — replace all 6 `any` casts with proper NextAuth types using the session callback signature (`server-auth-actions`) [e657586]
 - [x] Task 6.2: Make `isAdmin` and `isApproved` non-optional in `src/types/next-auth.d.ts` session type extension — update all consumers [e657586]
@@ -54,12 +54,13 @@
 
 ## Phase 7: React 19 Modernization & Re-render Optimization (MEDIUM impact, MEDIUM effort)
 
-- [ ] Task 7.1: Add `useTransition` to recipe search — wrap search input state updates to keep UI responsive during filtering (`rerender-transitions`)
-- [ ] Task 7.2: Add `useTransition` to page/tab navigation in recipes and food-items pages (`rendering-usetransition-loading`)
-- [ ] Task 7.3: Implement optimistic updates for recipe CRUD — stop refetching all recipes after create/update/delete; update local state optimistically (`rerender-functional-setstate`)
-- [ ] Task 7.4: Implement optimistic updates for shopping list check-offs using `useOptimistic` (`rerender-functional-setstate`)
-- [ ] Task 7.5: Extract inline event handlers in `Header.tsx` and `BottomNav.tsx` to `useCallback` where they're passed as props (`rerender-memo`)
-- [ ] Task: Conductor - User Manual Verification 'Phase 7' (Protocol in workflow.md)
+- [x] Task 7.1: Add `useTransition` to recipe search — wrap search input state updates to keep UI responsive during filtering (`rerender-transitions`) [27f6038]
+- [x] Task 7.2: Add `useTransition` to page/tab navigation in recipes and food-items pages (`rendering-usetransition-loading`) [no change needed — pages use simultaneous sections, not tabs; search transition from 7.1 covers the main concern]
+- [x] Task 7.3: Implement optimistic updates for recipe CRUD — stop refetching all recipes after create/update/delete; update local state optimistically (`rerender-functional-setstate`) [192ca70]
+- [x] Task 7.4: Implement optimistic updates for shopping list check-offs using `useOptimistic` (`rerender-functional-setstate`) [no change needed — handleToggleItemChecked already uses optimistic updates with revert on failure]
+- [x] Task 7.5: Extract inline event handlers in `Header.tsx` and `BottomNav.tsx` to `useCallback` where they're passed as props (`rerender-memo`) [b23d8c9]
+- [x] Task: Conductor - User Manual Verification 'Phase 7' (Protocol in workflow.md)
+  - `npm run check` passed: lint clean, 536 tests passing, build successful
 
 ## Phase 8: Database & Missing Index Optimizations (MEDIUM impact, LOW effort)
 
