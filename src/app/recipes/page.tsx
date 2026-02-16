@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Container,
   Typography,
@@ -13,9 +13,6 @@ import {
   Dialog,
   DialogContent,
   DialogContentText,
-  TextField,
-  IconButton,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -24,12 +21,7 @@ import {
   TableRow,
   Alert,
   Chip,
-  List,
-  ListItem,
-  ListItemText,
   Snackbar,
-  Checkbox,
-  FormControlLabel,
   Badge,
 } from "@mui/material";
 import {
@@ -38,11 +30,7 @@ import {
   Public,
   Person,
   RestaurantMenu,
-  Delete,
   Share,
-  Check,
-  Close as CloseIcon,
-  PersonAdd,
   Star,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -56,6 +44,7 @@ import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
 const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
 const RecipeEditorDialog = dynamic(() => import("@/components/RecipeEditorDialog"), { ssr: false });
+const RecipeSharingSection = dynamic(() => import("@/components/RecipeSharingSection"), { ssr: false });
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems } from "../../lib/food-items-utils";
 import { useRecipes } from "@/lib/hooks";
@@ -221,7 +210,7 @@ function RecipesPageContent() {
   const [shareRatings, setShareRatings] = useState(true);
   // Auto-focus refs for dialog inputs
 
-  const shareEmailRef = useRef<HTMLInputElement>(null);
+
   // Snackbar state
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -841,54 +830,22 @@ function RecipesPageContent() {
             </Box>
           </Box>
 
-          {/* Pending Recipe Sharing Invitations */}
-          {pendingRecipeInvitations && pendingRecipeInvitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonAdd />
-                Pending Recipe Sharing Invitations ({pendingRecipeInvitations?.length || 0})
-              </Typography>
-              <List>
-                {pendingRecipeInvitations?.map((inv) => (
-                  <Box key={inv.ownerId}>
-                    <ListItem>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                        <ListItemText
-                          primary={`${inv.ownerName || inv.ownerEmail}'s Recipe Data`}
-                          secondary={
-                            <>
-                              {`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
-                              <br />
-                              Sharing: {inv.invitation.sharingTypes.join(', ')}
-                            </>
-                          }
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          color="success"
-                          size="small"
-                          title="Accept"
-                          onClick={() => handleAcceptRecipeInvitation(inv.invitation.userId)}
-                        >
-                          <Check fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          title="Reject"
-                          onClick={() => handleRejectRecipeInvitation(inv.invitation.userId)}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                    <Divider />
-                  </Box>
-                ))}
-              </List>
-            </Paper>
-          )}
+          <RecipeSharingSection
+            pendingInvitations={pendingRecipeInvitations}
+            onAcceptInvitation={handleAcceptRecipeInvitation}
+            onRejectInvitation={handleRejectRecipeInvitation}
+            shareDialogOpen={shareDialog.open}
+            onShareDialogClose={shareDialog.closeDialog}
+            shareEmail={shareEmail}
+            onShareEmailChange={setShareEmail}
+            shareTags={shareTags}
+            onShareTagsChange={setShareTags}
+            shareRatings={shareRatings}
+            onShareRatingsChange={setShareRatings}
+            onInviteUser={handleInviteUser}
+            sharedUsers={sharedRecipeUsers}
+            onRemoveUser={handleRemoveRecipeUser}
+          />
 
           <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
             <SearchBar
@@ -1542,107 +1499,6 @@ function RecipesPageContent() {
           onSelect={handleEmojiSelect}
           currentEmoji={selectedRecipe?.emoji || newRecipe.emoji}
         />
-
-        {/* Share Recipe Data Dialog */}
-        <Dialog
-          open={shareDialog.open}
-          onClose={shareDialog.closeDialog}
-          maxWidth="sm"
-          fullWidth
-          sx={responsiveDialogStyle}
-          TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
-        >
-          <DialogTitle onClose={shareDialog.closeDialog}>
-            Share Recipe Data
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Invite users by email. Select what to share: tags, ratings, or both.
-            </Typography>
-            
-            {/* Sharing Type Selection */}
-            <Box sx={{ mb: 3 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={shareTags}
-                    onChange={(e) => setShareTags(e.target.checked)}
-                  />
-                }
-                label="Share Tags"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={shareRatings}
-                    onChange={(e) => setShareRatings(e.target.checked)}
-                  />
-                }
-                label="Share Ratings"
-              />
-            </Box>
-            
-            {/* Invite Section */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-              <TextField
-                inputRef={shareEmailRef}
-                label="Email Address"
-                type="email"
-                value={shareEmail}
-                onChange={(e) => setShareEmail(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && shareEmail.trim()) {
-                    handleInviteUser();
-                  }
-                }}
-                size="small"
-                fullWidth
-                placeholder="user@example.com"
-              />
-              <Button
-                variant="contained"
-                onClick={handleInviteUser}
-                disabled={!shareEmail.trim() || (!shareTags && !shareRatings)}
-                sx={{ minWidth: 100 }}
-              >
-                Invite
-              </Button>
-            </Box>
-
-            {/* Shared Users List */}
-            {sharedRecipeUsers && sharedRecipeUsers.length > 0 && (
-              <>
-                <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                  Shared With:
-                </Typography>
-                <List>
-                  {sharedRecipeUsers.map((user) => (
-                    <ListItem key={user.userId}>
-                      <ListItemText
-                        primary={user.name || user.email}
-                        secondary={`${user.email} - Sharing: ${user.sharingTypes.join(', ')}`}
-                      />
-                      <IconButton
-                        size="small"
-                        color="error"
-                        title="Remove user"
-                        onClick={() => handleRemoveRecipeUser(user.userId)}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </ListItem>
-                  ))}
-                </List>
-              </>
-            )}
-
-            <DialogActions primaryButtonIndex={0}>
-              <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                Done
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        </Dialog>
 
         {/* Snackbar for notifications */}
         <Snackbar
