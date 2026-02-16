@@ -38,6 +38,7 @@ import {
   TableHead,
   TableRow,
   Snackbar,
+  Chip,
 } from "@mui/material";
 import {
   DndContext,
@@ -1023,7 +1024,19 @@ function ShoppingListsPageContent() {
 
     if (existing) return existing;
 
-    // Default to existing values
+    // For auto-converted conflicts, default to suggested values
+    if (
+      conflict?.isAutoConverted &&
+      conflict.suggestedQuantity !== undefined &&
+      conflict.suggestedUnit
+    ) {
+      return {
+        quantity: Math.round(conflict.suggestedQuantity * 100) / 100,
+        unit: conflict.suggestedUnit,
+      };
+    }
+
+    // Default to existing values for manual conflicts
     return {
       quantity: conflict?.existingQuantity || 1,
       unit: conflict?.existingUnit || "piece",
@@ -2517,10 +2530,39 @@ function ShoppingListsPageContent() {
                 {unitConflicts[currentConflictIndex]?.foodItemName}
               </Typography>
 
-              <Alert severity="info" sx={{ mb: 2 }}>
-                This item has different units in your shopping list and the meal
-                plans.
-              </Alert>
+              {unitConflicts[currentConflictIndex]?.isAutoConverted ? (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <Chip label="Auto-converted" size="small" color="success" variant="outlined" />
+                    <Typography variant="body2">
+                      {unitConflicts[currentConflictIndex]?.existingQuantity}{" "}
+                      {getUnitForm(
+                        unitConflicts[currentConflictIndex]!.existingUnit,
+                        unitConflicts[currentConflictIndex]!.existingQuantity,
+                      )}{" "}
+                      + {unitConflicts[currentConflictIndex]?.newQuantity}{" "}
+                      {getUnitForm(
+                        unitConflicts[currentConflictIndex]!.newUnit,
+                        unitConflicts[currentConflictIndex]!.newQuantity,
+                      )}{" "}
+                      ={" "}
+                      {Math.round(
+                        (unitConflicts[currentConflictIndex]?.suggestedQuantity ?? 0) * 100
+                      ) / 100}{" "}
+                      {unitConflicts[currentConflictIndex]?.suggestedUnit
+                        ? getUnitForm(
+                            unitConflicts[currentConflictIndex]!.suggestedUnit!,
+                            unitConflicts[currentConflictIndex]!.suggestedQuantity!,
+                          )
+                        : ""}
+                    </Typography>
+                  </Box>
+                </Alert>
+              ) : (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  This item has different units that can&apos;t be auto-converted.
+                </Alert>
+              )}
 
               <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
                 <Typography
