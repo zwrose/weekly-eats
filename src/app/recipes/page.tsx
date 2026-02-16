@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import {
   Container,
   Typography,
@@ -32,6 +32,7 @@ import {
   RestaurantMenu,
   Share,
   Star,
+  IosShare,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
@@ -39,7 +40,7 @@ import {
   CreateRecipeRequest,
   UpdateRecipeRequest,
 } from "../../types/recipe";
-import { fetchRecipe } from "../../lib/recipe-utils";
+import { fetchRecipe, createRecipe, updateRecipe, deleteRecipe } from "../../lib/recipe-utils";
 import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
 const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
@@ -47,16 +48,16 @@ const RecipeEditorDialog = dynamic(() => import("@/components/RecipeEditorDialog
 const RecipeSharingSection = dynamic(() => import("@/components/RecipeSharingSection"), { ssr: false });
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems } from "../../lib/food-items-utils";
-import { useRecipes } from "@/lib/hooks";
 import {
-  useSearchPagination,
   useDialog,
   useConfirmDialog,
   usePersistentDialog,
 } from "@/lib/hooks";
+import { useServerPagination } from "@/lib/hooks/use-server-pagination";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
+import RecipeFilterBar, { type AccessLevelFilter } from "@/components/RecipeFilterBar";
 import { responsiveDialogStyle } from "@/lib/theme";
 import Pagination from "@/components/optimized/Pagination";
-import SearchBar from "@/components/optimized/SearchBar";
 import { DialogActions, DialogTitle } from "@/components/ui";
 import {
   inviteUserToRecipeSharing,
@@ -73,20 +74,18 @@ import {
   updateRecipeTags,
   updateRecipeRating,
   deleteRecipeRating,
+  fetchUserTags,
 } from "@/lib/recipe-user-data-utils";
 
 import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 
-// ── Module-level sx constants (hoisted to avoid per-render allocations) ──
+// ── Extended recipe type with server-computed accessLevel ──
 
-const sectionHeaderSx = {
-  display: "flex",
-  flexDirection: { xs: "column", sm: "row" },
-  justifyContent: "space-between",
-  alignItems: { xs: "flex-start", sm: "center" },
-  gap: { xs: 1, sm: 0 },
-  mb: 2,
-} as const;
+interface RecipeWithAccessLevel extends Recipe {
+  accessLevel: 'personal' | 'shared-by-you' | 'global';
+}
+
+// ── Module-level sx constants (hoisted to avoid per-render allocations) ──
 
 const tableRowHoverSx = {
   cursor: "pointer",
@@ -179,50 +178,89 @@ const tableHeaderCellSx = (width: string) => ({
   wordWrap: "break-word",
 }) as const;
 
+const accessLevelChipProps: Record<string, { label: string; color: 'primary' | 'secondary' | 'default'; icon: React.ReactElement }> = {
+  personal: { label: 'Personal', color: 'default', icon: <Person fontSize="small" /> },
+  'shared-by-you': { label: 'Shared by You', color: 'secondary', icon: <IosShare fontSize="small" /> },
+  global: { label: 'Global', color: 'primary', icon: <Public fontSize="small" /> },
+};
+
 function RecipesPageContent() {
   const { data: session, status } = useSession();
+
+  // ── Filter state ──
+  const [accessLevel, setAccessLevel] = useState<AccessLevelFilter>('all');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<number | null>(null);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // ── Debounced search ──
+  const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+
+  // ── Server pagination ──
+  const filterKey = useMemo(
+    () => JSON.stringify({ q: debouncedSearchTerm, al: accessLevel, t: selectedTags, mr: minRating }),
+    [debouncedSearchTerm, accessLevel, selectedTags, minRating]
+  );
+
+  const fetchRecipes = useCallback(async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
+    const sp = new URLSearchParams({
+      page: String(params.page),
+      limit: String(params.limit),
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    });
+    if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
+    if (accessLevel !== 'all') sp.set('accessLevel', accessLevel);
+    if (selectedTags.length > 0) sp.set('tags', selectedTags.join(','));
+    if (minRating !== null) sp.set('minRating', String(minRating));
+
+    const response = await fetch(`/api/recipes?${sp.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch recipes');
+    return response.json();
+  }, [debouncedSearchTerm, accessLevel, selectedTags, minRating]);
+
   const {
-    userRecipes,
-    globalRecipes,
+    data: recipes,
+    total,
+    page,
+    totalPages,
     loading,
-    userLoading,
-    globalLoading,
-    createRecipe,
-    updateRecipe,
-    deleteRecipe,
-  } = useRecipes();
-  // Dialogs
+    sortBy,
+    sortOrder,
+    setPage,
+    setSort,
+    refetch,
+  } = useServerPagination<RecipeWithAccessLevel>({ fetchFn: fetchRecipes, filterKey });
+
+  // ── Dialogs ──
   const createDialog = useDialog();
   const viewDialog = usePersistentDialog("viewRecipe");
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const shareDialog = useDialog();
-  // Selected recipe state
+
+  // ── Selected recipe state ──
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  // Recipe user data state
   const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
-  // User data for all recipes (for list display)
   const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(new Map());
-  // Sharing state
+
+  // ── Sharing state ──
   const [pendingRecipeInvitations, setPendingRecipeInvitations] = useState<PendingRecipeInvitation[]>([]);
   const [sharedRecipeUsers, setSharedRecipeUsers] = useState<SharedUser[]>([]);
   const [shareEmail, setShareEmail] = useState("");
   const [shareTags, setShareTags] = useState(true);
   const [shareRatings, setShareRatings] = useState(true);
-  // Auto-focus refs for dialog inputs
 
-
-  // Snackbar state
+  // ── Snackbar ──
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
     severity: 'success',
   });
-  
-  // Extract userId for dependency tracking
+
   const userId = session?.user?.id;
-  
-  // New/edit recipe state (keep as local state)
+
+  // ── New/edit recipe state ──
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
     title: "",
     emoji: "",
@@ -237,7 +275,9 @@ function RecipesPageContent() {
     instructions: "",
     isGlobal: false,
   });
-  // Food items state (keep as local state)
+  const [editMode, setEditMode] = useState(false);
+
+  // ── Food items state ──
   const [foodItems, setFoodItems] = useState<{
     [key: string]: { singularName: string; pluralName: string };
   }>({});
@@ -250,45 +290,8 @@ function RecipesPageContent() {
       unit: string;
     }>
   >([]);
-  // Search and pagination
-  const userPagination = useSearchPagination({
-    data: userRecipes,
-    itemsPerPage: 25,
-    searchFields: ["title"],
-  });
-  const globalPagination = useSearchPagination({
-    data: globalRecipes,
-    itemsPerPage: 25,
-    searchFields: ["title"],
-  });
-  const [editMode, setEditMode] = useState(false);
 
-  const itemsPerPage = 25;
-
-  const loadUserRecipes = useCallback(async () => {
-    try {
-      // ... your user recipe loading logic ...
-    } catch (error) {
-      console.error("Error loading user recipes:", error);
-    }
-  }, []);
-
-  const loadGlobalRecipes = useCallback(async () => {
-    try {
-      // ... your global recipe loading logic ...
-    } catch (error) {
-      console.error("Error loading global recipes:", error);
-    }
-  }, []);
-
-  const loadRecipes = useCallback(async () => {
-    try {
-      await Promise.all([loadUserRecipes(), loadGlobalRecipes()]);
-    } catch (error) {
-      console.error("Error loading recipes:", error);
-    }
-  }, [loadUserRecipes, loadGlobalRecipes]);
-
+  // ── Load supporting data ──
   const loadFoodItems = async () => {
     try {
       const items = await fetchFoodItems();
@@ -308,32 +311,6 @@ function RecipesPageContent() {
     }
   };
 
-  const handleFoodItemAdded = async (newFoodItem: {
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-    isGlobal: boolean;
-  }) => {
-    // For now, we'll need to create the food item via API and get the _id
-    // This is a simplified version - in practice you'd want to handle the API call properly
-    const foodItemWithId = {
-      _id: `temp-${Date.now()}`, // This should come from the API response
-      ...newFoodItem,
-    };
-
-    // Update both the map and the list
-    setFoodItems((prev) => ({
-      ...prev,
-      [foodItemWithId._id]: {
-        singularName: newFoodItem.singularName,
-        pluralName: newFoodItem.pluralName,
-      },
-    }));
-    setFoodItemsList((prev) => [...prev, foodItemWithId]);
-  };
-
-  // Load sharing data
   const loadSharingData = useCallback(async () => {
     try {
       const [pendingInvites, sharedUsers] = await Promise.all([
@@ -347,15 +324,20 @@ function RecipesPageContent() {
     }
   }, []);
 
-  // Load user data for all recipes in a single batch request
-  const loadRecipesUserData = useCallback(async () => {
-    if (!userId) return;
-
-    const allRecipes = [...userRecipes, ...globalRecipes];
-    if (allRecipes.length === 0) return;
-
+  const loadAvailableTags = useCallback(async () => {
     try {
-      const recipeIds = allRecipes
+      const tags = await fetchUserTags();
+      setAvailableTags(tags);
+    } catch (error) {
+      console.error('Error loading user tags:', error);
+    }
+  }, []);
+
+  // ── Load user data for current page of recipes ──
+  const loadRecipesUserData = useCallback(async () => {
+    if (!userId || recipes.length === 0) return;
+    try {
+      const recipeIds = recipes
         .map((recipe) => recipe._id)
         .filter((id): id is string => !!id);
       const userDataMap = await fetchRecipeUserDataBatch(recipeIds);
@@ -363,51 +345,45 @@ function RecipesPageContent() {
     } catch (error) {
       console.error('Error loading recipes user data:', error);
     }
-  }, [userRecipes, globalRecipes, userId]);
-
-  // Load user data when recipes change
-  useEffect(() => {
-    if (status === "authenticated" && (userRecipes.length > 0 || globalRecipes.length > 0)) {
-      loadRecipesUserData();
-    }
-  }, [status, userRecipes, globalRecipes, loadRecipesUserData]);
+  }, [recipes, userId]);
 
   useEffect(() => {
     if (status === "authenticated") {
-      loadRecipes();
+      loadRecipesUserData();
+    }
+  }, [status, loadRecipesUserData]);
+
+  useEffect(() => {
+    if (status === "authenticated") {
       loadFoodItems();
       loadSharingData();
+      loadAvailableTags();
     }
-  }, [status, loadRecipes, loadSharingData]);
+  }, [status, loadSharingData, loadAvailableTags]);
 
-  // Filter recipes based on search term
-  const filteredUserRecipes = userRecipes.filter((recipe) =>
-    recipe.title.toLowerCase().includes(userPagination.searchTerm.toLowerCase())
-  );
+  // ── Food item added handler ──
+  const handleFoodItemAdded = async (newFoodItem: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => {
+    const foodItemWithId = {
+      _id: `temp-${Date.now()}`,
+      ...newFoodItem,
+    };
+    setFoodItems((prev) => ({
+      ...prev,
+      [foodItemWithId._id]: {
+        singularName: newFoodItem.singularName,
+        pluralName: newFoodItem.pluralName,
+      },
+    }));
+    setFoodItemsList((prev) => [...prev, foodItemWithId]);
+  };
 
-  const filteredGlobalRecipes = globalRecipes.filter((recipe) =>
-    recipe.title
-      .toLowerCase()
-      .includes(globalPagination.searchTerm.toLowerCase())
-  );
-
-  // Pagination
-  const paginatedUserRecipes = filteredUserRecipes.slice(
-    (userPagination.currentPage - 1) * itemsPerPage,
-    userPagination.currentPage * itemsPerPage
-  );
-
-  const paginatedGlobalRecipes = filteredGlobalRecipes.slice(
-    (globalPagination.currentPage - 1) * itemsPerPage,
-    globalPagination.currentPage * itemsPerPage
-  );
-
-  // Reset pagination when search term changes
-  useEffect(() => {
-    userPagination.setCurrentPage(1);
-    globalPagination.setCurrentPage(1);
-  }, [userPagination, globalPagination]);
-
+  // ── Ingredient name helper ──
   const getIngredientName = (ingredient: {
     type: "foodItem" | "recipe";
     id: string;
@@ -415,21 +391,17 @@ function RecipesPageContent() {
   }): string => {
     if (ingredient.type === "foodItem") {
       const foodItem = foodItems[ingredient.id];
-      if (!foodItem) {
-        return "Unknown food item";
-      }
+      if (!foodItem) return "Unknown food item";
       return ingredient.quantity === 1
         ? foodItem.singularName
         : foodItem.pluralName;
     } else {
-      // For recipes, we need to find the recipe in our lists
-      const recipe = [...userRecipes, ...globalRecipes].find(
-        (r) => r._id === ingredient.id
-      );
+      const recipe = recipes.find((r) => r._id === ingredient.id);
       return recipe ? recipe.title : "Unknown recipe";
     }
   };
 
+  // ── CRUD handlers ──
   const handleCreateRecipe = async () => {
     try {
       const filteredRecipe = {
@@ -445,7 +417,7 @@ function RecipesPageContent() {
         instructions: "",
         isGlobal: true,
       });
-      loadRecipes();
+      refetch();
     } catch (error) {
       console.error("Error creating recipe:", error);
     }
@@ -454,11 +426,9 @@ function RecipesPageContent() {
   const handleViewRecipe = useCallback(
     async (recipe: Recipe) => {
       try {
-        // Fetch the full recipe data
         const fullRecipe = await fetchRecipe(recipe._id!);
         setSelectedRecipe(fullRecipe);
         viewDialog.openDialog({ recipeId: recipe._id! });
-        // Load user data for this recipe
         try {
           const userData = await fetchRecipeUserData(recipe._id!);
           setRecipeUserData(userData);
@@ -476,8 +446,7 @@ function RecipesPageContent() {
   // Handle persistent dialog data
   useEffect(() => {
     if (viewDialog.open && viewDialog.data?.recipeId && !selectedRecipe) {
-      // Find the recipe in our loaded data
-      const recipe = [...userRecipes, ...globalRecipes].find(
+      const recipe = recipes.find(
         (r) => r._id === viewDialog.data?.recipeId
       );
       if (recipe) {
@@ -485,7 +454,6 @@ function RecipesPageContent() {
       }
     }
 
-    // Handle edit mode persistence
     if (
       viewDialog.open &&
       viewDialog.data?.editMode === "true" &&
@@ -505,15 +473,14 @@ function RecipesPageContent() {
     viewDialog.open,
     viewDialog.data,
     selectedRecipe,
-    userRecipes,
-    globalRecipes,
+    recipes,
     editMode,
     handleViewRecipe,
   ]);
 
   const handleEditRecipe = async () => {
     if (!selectedRecipe?._id) return;
-    
+
     setEditingRecipe({
       title: selectedRecipe.title,
       emoji: selectedRecipe.emoji || "",
@@ -522,13 +489,11 @@ function RecipesPageContent() {
       isGlobal: selectedRecipe.isGlobal,
     });
     setEditMode(true);
-    // Update URL to include edit mode
     viewDialog.openDialog({
       recipeId: selectedRecipe._id!,
       editMode: "true",
     });
-    
-    // Load user data for editing
+
     try {
       const userData = await fetchRecipeUserData(selectedRecipe._id);
       setRecipeUserData(userData);
@@ -547,11 +512,9 @@ function RecipesPageContent() {
         ingredients: filterBlankIngredients(editingRecipe.ingredients || []),
       };
       await updateRecipe(selectedRecipe._id, filteredRecipe);
-      // Refresh the recipe data
       const updatedRecipe = await fetchRecipe(selectedRecipe._id);
       setSelectedRecipe(updatedRecipe);
-      loadRecipes(); // Refresh the lists
-      // Exit edit mode but keep dialog open in view mode
+      refetch();
       setEditMode(false);
       viewDialog.openDialog({ recipeId: selectedRecipe._id });
     } catch (error) {
@@ -568,7 +531,7 @@ function RecipesPageContent() {
       viewDialog.closeDialog();
       setSelectedRecipe(null);
       setEditMode(false);
-      loadRecipes();
+      refetch();
     } catch (error) {
       console.error("Error deleting recipe:", error);
     }
@@ -582,7 +545,6 @@ function RecipesPageContent() {
     }
   };
 
-  // Filter out blank ingredients before saving
   const filterBlankIngredients = (ingredients: RecipeIngredientList[]) => {
     return ingredients.map((list) => ({
       ...list,
@@ -600,19 +562,19 @@ function RecipesPageContent() {
     }
   };
 
-  // Sharing handlers
+  // ── Sharing handlers ──
   const handleInviteUser = async () => {
     if (!shareEmail.trim()) return;
     if (!shareTags && !shareRatings) {
       showSnackbar('Please select at least one sharing type (tags or ratings)', 'error');
       return;
     }
-    
+
     try {
       const sharingTypes: ('tags' | 'ratings')[] = [];
       if (shareTags) sharingTypes.push('tags');
       if (shareRatings) sharingTypes.push('ratings');
-      
+
       await inviteUserToRecipeSharing(shareEmail.trim(), sharingTypes);
       setShareEmail("");
       showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
@@ -664,13 +626,12 @@ function RecipesPageContent() {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  // Recipe user data handlers
+  // ── Recipe user data handlers ──
   const handleTagsChange = async (tags: string[]) => {
     if (!selectedRecipe?._id) return;
     try {
       await updateRecipeTags(selectedRecipe._id, tags);
       setRecipeUserData(prev => prev ? { ...prev, tags } : { tags, rating: undefined });
-      // Update the map for list view
       setRecipesUserData(prev => {
         const newMap = new Map(prev);
         const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
@@ -689,7 +650,6 @@ function RecipesPageContent() {
       if (rating === undefined) {
         await deleteRecipeRating(selectedRecipe._id);
         setRecipeUserData(prev => prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined });
-        // Update the map for list view
         setRecipesUserData(prev => {
           const newMap = new Map(prev);
           const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
@@ -699,7 +659,6 @@ function RecipesPageContent() {
       } else {
         await updateRecipeRating(selectedRecipe._id, rating);
         setRecipeUserData(prev => prev ? { ...prev, rating } : { tags: [], rating });
-        // Update the map for list view
         setRecipesUserData(prev => {
           const newMap = new Map(prev);
           const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
@@ -719,29 +678,28 @@ function RecipesPageContent() {
     setEditMode(false);
   };
 
-  // Helper function to check if all ingredient groups have at least one ingredient and valid titles
   const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
-    // Check if there's at least one ingredient across all groups
     const totalIngredients = ingredients.reduce(
       (total, group) => total + (group.ingredients?.length || 0),
       0
     );
-
     if (totalIngredients === 0) return false;
-
-    // Check that each group is valid (standalone groups don't need titles, but regular groups do)
     return ingredients.every(
       (group) =>
         group.isStandalone || (group.title && group.title.trim() !== "")
     );
   };
 
-  // Check if user can edit a recipe (only the creator can edit)
   const canEditRecipe = (recipe: Recipe) => {
     return recipe.createdBy === (session?.user as Session["user"])?.id;
   };
 
-  // Show loading state while session is being fetched
+  // ── Filter bar sort handler ──
+  const handleSortChange = (newSortBy: string, newSortOrder: 'asc' | 'desc') => {
+    setSort(newSortBy, newSortOrder);
+  };
+
+  // ── Render ──
   if (status === "loading") {
     return (
       <AuthenticatedLayout>
@@ -754,9 +712,8 @@ function RecipesPageContent() {
     );
   }
 
-  // Only redirect if session is definitely not available
   if (status === "unauthenticated") {
-    return null; // Will be handled by AuthenticatedLayout
+    return null;
   }
 
   return (
@@ -779,8 +736,8 @@ function RecipesPageContent() {
                 Recipes
               </Typography>
             </Box>
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               gap: 2,
               alignItems: 'center',
               width: { xs: '100%', sm: 'auto' }
@@ -797,12 +754,12 @@ function RecipesPageContent() {
               >
                 Add New Recipe
               </Button>
-              <Button 
+              <Button
                 variant="outlined"
                 onClick={() => shareDialog.openDialog()}
-                sx={{ 
-                  borderColor: "#ed6c02", 
-                  color: "#ed6c02", 
+                sx={{
+                  borderColor: "#ed6c02",
+                  color: "#ed6c02",
                   "&:hover": { borderColor: "#e65100" },
                   minWidth: 'auto',
                   p: 1
@@ -832,574 +789,199 @@ function RecipesPageContent() {
             onRemoveUser={handleRemoveRecipeUser}
           />
 
-          <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
-            <SearchBar
-              value={userPagination.searchTerm}
-              onChange={(value) => {
-                userPagination.setSearchTerm(value);
-                globalPagination.setSearchTerm(value);
-              }}
-              placeholder="Start typing to filter recipes by title..."
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <RecipeFilterBar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              accessLevel={accessLevel}
+              onAccessLevelChange={setAccessLevel}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              availableTags={availableTags}
+              minRating={minRating}
+              onMinRatingChange={setMinRating}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
             />
 
             {loading ? (
               <Box sx={centeredLoadingSx}>
                 <CircularProgress />
               </Box>
-            ) : (
+            ) : recipes.length > 0 ? (
               <>
-                {/* User Recipes Section */}
-                <Box sx={{ mb: 4 }}>
-                  <Box sx={sectionHeaderSx}>
-                    <Typography variant="h6" gutterBottom>
-                      <Person sx={{ mr: 1, verticalAlign: "middle" }} />
-                      Your Recipes (
-                      {userPagination.searchTerm
-                        ? `${userPagination.totalItems}/${userRecipes.length}`
-                        : userRecipes.length}
-                      )
-                    </Typography>
-                    {userLoading && <CircularProgress size={20} />}
-                  </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {total} recipe{total !== 1 ? 's' : ''} found
+                </Typography>
 
-                  {filteredUserRecipes.length > 0 ? (
-                    <>
-                      {/* Desktop Table View */}
-                      <Box sx={{ display: { xs: "none", md: "block" } }}>
-                        <TableContainer>
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell
-                                  sx={tableHeaderCellSx("40%")}
-                                >
-                                  Recipe
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("15%")}
-                                >
-                                  Tags
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("10%")}
-                                >
-                                  Rating
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("15%")}
-                                >
-                                  Access Level
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("20%")}
-                                >
-                                  Updated
-                                </TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {paginatedUserRecipes.map((recipe) => (
-                                <TableRow
-                                  key={recipe._id}
-                                  onClick={() => handleViewRecipe(recipe)}
-                                  sx={tableRowHoverSx}
-                                >
-                                  <TableCell sx={{ wordWrap: "break-word" }}>
-                                    <Box
-                                      sx={recipeTitleFlexSx}
-                                    >
-                                      {recipe.emoji ? (
-                                        <Typography variant="h6">
-                                          {recipe.emoji}
-                                        </Typography>
-                                      ) : (
-                                        <RestaurantMenu
-                                          sx={recipeIconSmallSx}
-                                        />
-                                      )}
-                                      <Typography variant="body1">
-                                        {recipe.title}
-                                      </Typography>
-                                    </Box>
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {(() => {
-                                      const userData = recipesUserData.get(recipe._id || '');
-                                      const allTags = [...new Set([
-                                        ...(userData?.tags || []),
-                                        ...(userData?.sharedTags || [])
-                                      ])];
-                                      if (allTags.length === 0) {
-                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
-                                      }
-                                      return (
-                                        <Box sx={tagContainerDesktopSx}>
-                                          {allTags.slice(0, 3).map((tag) => (
-                                            <Chip
-                                              key={tag}
-                                              label={tag}
-                                              size="small"
-                                              sx={chipDesktopSx}
-                                            />
-                                          ))}
-                                          {allTags.length > 3 && (
-                                            <Chip
-                                              label={`+${allTags.length - 3}`}
-                                              size="small"
-                                              sx={chipDesktopSx}
-                                            />
-                                          )}
-                                        </Box>
-                                      );
-                                    })()}
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {(() => {
-                                      const userData = recipesUserData.get(recipe._id || '');
-                                      const rating = userData?.rating;
-                                      if (!rating) {
-                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
-                                      }
-                                      return (
-                                        <Box sx={ratingDesktopSx}>
-                                          <Star sx={{ fontSize: 16, color: 'warning.main' }} />
-                                          <Typography variant="body2">{rating}</Typography>
-                                        </Box>
-                                      );
-                                    })()}
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {recipe.isGlobal ? (
-                                      <Chip
-                                        label="Global"
-                                        size="small"
-                                        color="primary"
-                                        variant="outlined"
-                                        icon={<Public fontSize="small" />}
-                                      />
-                                    ) : (
-                                      <Chip
-                                        label="Personal"
-                                        size="small"
-                                        color="default"
-                                        variant="outlined"
-                                        icon={<Person fontSize="small" />}
-                                      />
+                {/* Desktop Table View */}
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={tableHeaderCellSx("40%")}>Recipe</TableCell>
+                          <TableCell align="center" sx={tableHeaderCellSx("15%")}>Tags</TableCell>
+                          <TableCell align="center" sx={tableHeaderCellSx("10%")}>Rating</TableCell>
+                          <TableCell align="center" sx={tableHeaderCellSx("15%")}>Access Level</TableCell>
+                          <TableCell align="center" sx={tableHeaderCellSx("20%")}>Updated</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {recipes.map((recipe) => {
+                          const userData = recipesUserData.get(recipe._id || '');
+                          const allTags = [...new Set([
+                            ...(userData?.tags || []),
+                            ...(userData?.sharedTags || [])
+                          ])];
+                          const rating = userData?.rating;
+                          const chipProps = accessLevelChipProps[recipe.accessLevel] || accessLevelChipProps.global;
+
+                          return (
+                            <TableRow
+                              key={recipe._id}
+                              onClick={() => handleViewRecipe(recipe)}
+                              sx={tableRowHoverSx}
+                            >
+                              <TableCell sx={{ wordWrap: "break-word" }}>
+                                <Box sx={recipeTitleFlexSx}>
+                                  {recipe.emoji ? (
+                                    <Typography variant="h6">{recipe.emoji}</Typography>
+                                  ) : (
+                                    <RestaurantMenu sx={recipeIconSmallSx} />
+                                  )}
+                                  <Typography variant="body1">{recipe.title}</Typography>
+                                </Box>
+                              </TableCell>
+                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                                {allTags.length === 0 ? (
+                                  <Typography variant="body2" color="text.secondary">—</Typography>
+                                ) : (
+                                  <Box sx={tagContainerDesktopSx}>
+                                    {allTags.slice(0, 3).map((tag) => (
+                                      <Chip key={tag} label={tag} size="small" sx={chipDesktopSx} />
+                                    ))}
+                                    {allTags.length > 3 && (
+                                      <Chip label={`+${allTags.length - 3}`} size="small" sx={chipDesktopSx} />
                                     )}
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {new Date(
-                                      recipe.updatedAt
-                                    ).toLocaleDateString()}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </Box>
-
-                      {/* Mobile Card View */}
-                      <Box sx={{ display: { xs: "block", md: "none" } }}>
-                        {paginatedUserRecipes.map((recipe) => (
-                          <Paper
-                            key={recipe._id}
-                            onClick={() => handleViewRecipe(recipe)}
-                            sx={mobileCardSx}
-                          >
-                            <Box sx={mobileCardTitleSx}>
-                              <Box sx={{ mb: 1 }}>
-                                {recipe.emoji ? (
-                                  <Typography variant="h4">
-                                    {recipe.emoji}
-                                  </Typography>
-                                ) : (
-                                  <RestaurantMenu
-                                    sx={recipeIconLargeSx}
-                                  />
+                                  </Box>
                                 )}
-                              </Box>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: "medium" }}
-                              >
-                                {recipe.title}
-                              </Typography>
-                            </Box>
-                            {(() => {
-                              const userData = recipesUserData.get(recipe._id || '');
-                              const allTags = [...new Set([
-                                ...(userData?.tags || []),
-                                ...(userData?.sharedTags || [])
-                              ])];
-                              const rating = userData?.rating;
-                              return (allTags.length > 0 || rating) && (
-                                <Box sx={{ mb: 2, width: '100%' }}>
-                                  {allTags.length > 0 && (
-                                    <Box sx={tagContainerMobileSx}>
-                                      {allTags.slice(0, 5).map((tag) => (
-                                        <Chip
-                                          key={tag}
-                                          label={tag}
-                                          size="small"
-                                          sx={chipMobileSx}
-                                        />
-                                      ))}
-                                      {allTags.length > 5 && (
-                                        <Chip
-                                          label={`+${allTags.length - 5}`}
-                                          size="small"
-                                          sx={chipMobileSx}
-                                        />
-                                      )}
-                                    </Box>
-                                  )}
-                                  {rating && (
-                                    <Box sx={ratingMobileSx}>
-                                      <Star sx={{ fontSize: 18, color: 'warning.main' }} />
-                                      <Typography variant="body2">{rating}/5</Typography>
-                                    </Box>
-                                  )}
-                                </Box>
-                              );
-                            })()}
-                            <Box sx={mobileCardFooterSx}>
-                              <Box>
-                                {recipe.isGlobal ? (
-                                  <Chip
-                                    label="Global"
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    icon={<Public fontSize="small" />}
-                                  />
+                              </TableCell>
+                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                                {!rating ? (
+                                  <Typography variant="body2" color="text.secondary">—</Typography>
                                 ) : (
-                                  <Chip
-                                    label="Personal"
-                                    size="small"
-                                    color="default"
-                                    variant="outlined"
-                                    icon={<Person fontSize="small" />}
-                                  />
+                                  <Box sx={ratingDesktopSx}>
+                                    <Star sx={{ fontSize: 16, color: 'warning.main' }} />
+                                    <Typography variant="body2">{rating}</Typography>
+                                  </Box>
                                 )}
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                Updated:{" "}
-                                {new Date(
-                                  recipe.updatedAt
-                                ).toLocaleDateString()}
-                              </Typography>
-                            </Box>
-                          </Paper>
-                        ))}
-                      </Box>
-
-                      {filteredUserRecipes.length > itemsPerPage && (
-                        <Box sx={paginationContainerSx}>
-                          <Pagination
-                            count={Math.ceil(
-                              filteredUserRecipes.length / itemsPerPage
-                            )}
-                            page={userPagination.currentPage}
-                            onChange={userPagination.setCurrentPage}
-                          />
-                        </Box>
-                      )}
-                    </>
-                  ) : (
-                    <Alert severity="info">
-                      {userPagination.searchTerm
-                        ? "No user recipes match your search criteria"
-                        : "No user recipes found"}
-                    </Alert>
-                  )}
-                </Box>
-
-                {/* Global Recipes Section */}
-                <Box>
-                  <Box sx={sectionHeaderSx}>
-                    <Typography variant="h6" gutterBottom>
-                      <Public sx={{ mr: 1, verticalAlign: "middle" }} />
-                      Global Recipes (
-                      {globalPagination.searchTerm
-                        ? `${globalPagination.totalItems}/${globalRecipes.length}`
-                        : globalRecipes.length}
-                      )
-                    </Typography>
-                    {globalLoading && <CircularProgress size={20} />}
-                  </Box>
-
-                  {filteredGlobalRecipes.length > 0 ? (
-                    <>
-                      {/* Desktop Table View */}
-                      <Box sx={{ display: { xs: "none", md: "block" } }}>
-                        <TableContainer>
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell
-                                  sx={tableHeaderCellSx("40%")}
-                                >
-                                  Recipe
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("15%")}
-                                >
-                                  Tags
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("10%")}
-                                >
-                                  Rating
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("15%")}
-                                >
-                                  Access Level
-                                </TableCell>
-                                <TableCell
-                                  align="center"
-                                  sx={tableHeaderCellSx("20%")}
-                                >
-                                  Updated
-                                </TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {paginatedGlobalRecipes.map((recipe) => (
-                                <TableRow
-                                  key={recipe._id}
-                                  onClick={() => handleViewRecipe(recipe)}
-                                  sx={tableRowHoverSx}
-                                >
-                                  <TableCell sx={{ wordWrap: "break-word" }}>
-                                    <Box
-                                      sx={recipeTitleFlexSx}
-                                    >
-                                      {recipe.emoji ? (
-                                        <Typography variant="h6">
-                                          {recipe.emoji}
-                                        </Typography>
-                                      ) : (
-                                        <RestaurantMenu
-                                          sx={recipeIconSmallSx}
-                                        />
-                                      )}
-                                      <Typography variant="body1">
-                                        {recipe.title}
-                                      </Typography>
-                                    </Box>
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {(() => {
-                                      const userData = recipesUserData.get(recipe._id || '');
-                                      const allTags = [...new Set([
-                                        ...(userData?.tags || []),
-                                        ...(userData?.sharedTags || [])
-                                      ])];
-                                      if (allTags.length === 0) {
-                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
-                                      }
-                                      return (
-                                        <Box sx={tagContainerDesktopSx}>
-                                          {allTags.slice(0, 3).map((tag) => (
-                                            <Chip
-                                              key={tag}
-                                              label={tag}
-                                              size="small"
-                                              sx={chipDesktopSx}
-                                            />
-                                          ))}
-                                          {allTags.length > 3 && (
-                                            <Chip
-                                              label={`+${allTags.length - 3}`}
-                                              size="small"
-                                              sx={chipDesktopSx}
-                                            />
-                                          )}
-                                        </Box>
-                                      );
-                                    })()}
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {(() => {
-                                      const userData = recipesUserData.get(recipe._id || '');
-                                      const rating = userData?.rating;
-                                      if (!rating) {
-                                        return <Typography variant="body2" color="text.secondary">—</Typography>;
-                                      }
-                                      return (
-                                        <Box sx={ratingDesktopSx}>
-                                          <Star sx={{ fontSize: 16, color: 'warning.main' }} />
-                                          <Typography variant="body2">{rating}</Typography>
-                                        </Box>
-                                      );
-                                    })()}
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    <Chip
-                                      label="Global"
-                                      size="small"
-                                      color="primary"
-                                      variant="outlined"
-                                      icon={<Public fontSize="small" />}
-                                    />
-                                  </TableCell>
-                                  <TableCell
-                                    align="center"
-                                    sx={{ wordWrap: "break-word" }}
-                                  >
-                                    {new Date(
-                                      recipe.updatedAt
-                                    ).toLocaleDateString()}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </Box>
-
-                      {/* Mobile Card View */}
-                      <Box sx={{ display: { xs: "block", md: "none" } }}>
-                        {paginatedGlobalRecipes.map((recipe) => (
-                          <Paper
-                            key={recipe._id}
-                            onClick={() => handleViewRecipe(recipe)}
-                            sx={mobileCardSx}
-                          >
-                            <Box sx={mobileCardTitleSx}>
-                              <Box sx={{ mb: 1 }}>
-                                {recipe.emoji ? (
-                                  <Typography variant="h4">
-                                    {recipe.emoji}
-                                  </Typography>
-                                ) : (
-                                  <RestaurantMenu
-                                    sx={recipeIconLargeSx}
-                                  />
-                                )}
-                              </Box>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: "medium" }}
-                              >
-                                {recipe.title}
-                              </Typography>
-                            </Box>
-                            {(() => {
-                              const userData = recipesUserData.get(recipe._id || '');
-                              const allTags = [...new Set([
-                                ...(userData?.tags || []),
-                                ...(userData?.sharedTags || [])
-                              ])];
-                              const rating = userData?.rating;
-                              return (allTags.length > 0 || rating) && (
-                                <Box sx={{ mb: 2, width: '100%' }}>
-                                  {allTags.length > 0 && (
-                                    <Box sx={tagContainerMobileSx}>
-                                      {allTags.slice(0, 5).map((tag) => (
-                                        <Chip
-                                          key={tag}
-                                          label={tag}
-                                          size="small"
-                                          sx={chipMobileSx}
-                                        />
-                                      ))}
-                                      {allTags.length > 5 && (
-                                        <Chip
-                                          label={`+${allTags.length - 5}`}
-                                          size="small"
-                                          sx={chipMobileSx}
-                                        />
-                                      )}
-                                    </Box>
-                                  )}
-                                  {rating && (
-                                    <Box sx={ratingMobileSx}>
-                                      <Star sx={{ fontSize: 18, color: 'warning.main' }} />
-                                      <Typography variant="body2">{rating}/5</Typography>
-                                    </Box>
-                                  )}
-                                </Box>
-                              );
-                            })()}
-                            <Box sx={mobileCardFooterSx}>
-                              <Box>
+                              </TableCell>
+                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
                                 <Chip
-                                  label="Global"
+                                  label={chipProps.label}
                                   size="small"
-                                  color="primary"
+                                  color={chipProps.color}
                                   variant="outlined"
-                                  icon={<Public fontSize="small" />}
+                                  icon={chipProps.icon}
                                 />
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                Updated:{" "}
-                                {new Date(
-                                  recipe.updatedAt
-                                ).toLocaleDateString()}
-                              </Typography>
-                            </Box>
-                          </Paper>
-                        ))}
-                      </Box>
-
-                      {filteredGlobalRecipes.length > itemsPerPage && (
-                        <Box sx={paginationContainerSx}>
-                          <Pagination
-                            count={Math.ceil(
-                              filteredGlobalRecipes.length / itemsPerPage
-                            )}
-                            page={globalPagination.currentPage}
-                            onChange={globalPagination.setCurrentPage}
-                          />
-                        </Box>
-                      )}
-                    </>
-                  ) : (
-                    <Alert severity="info">
-                      {globalPagination.searchTerm
-                        ? "No global recipes match your search criteria"
-                        : "No global recipes found"}
-                    </Alert>
-                  )}
+                              </TableCell>
+                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                                {new Date(recipe.updatedAt).toLocaleDateString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Box>
+
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: "block", md: "none" } }}>
+                  {recipes.map((recipe) => {
+                    const userData = recipesUserData.get(recipe._id || '');
+                    const allTags = [...new Set([
+                      ...(userData?.tags || []),
+                      ...(userData?.sharedTags || [])
+                    ])];
+                    const rating = userData?.rating;
+                    const chipProps = accessLevelChipProps[recipe.accessLevel] || accessLevelChipProps.global;
+
+                    return (
+                      <Paper
+                        key={recipe._id}
+                        onClick={() => handleViewRecipe(recipe)}
+                        sx={mobileCardSx}
+                      >
+                        <Box sx={mobileCardTitleSx}>
+                          <Box sx={{ mb: 1 }}>
+                            {recipe.emoji ? (
+                              <Typography variant="h4">{recipe.emoji}</Typography>
+                            ) : (
+                              <RestaurantMenu sx={recipeIconLargeSx} />
+                            )}
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+                            {recipe.title}
+                          </Typography>
+                        </Box>
+                        {(allTags.length > 0 || rating) && (
+                          <Box sx={{ mb: 2, width: '100%' }}>
+                            {allTags.length > 0 && (
+                              <Box sx={tagContainerMobileSx}>
+                                {allTags.slice(0, 5).map((tag) => (
+                                  <Chip key={tag} label={tag} size="small" sx={chipMobileSx} />
+                                ))}
+                                {allTags.length > 5 && (
+                                  <Chip label={`+${allTags.length - 5}`} size="small" sx={chipMobileSx} />
+                                )}
+                              </Box>
+                            )}
+                            {rating && (
+                              <Box sx={ratingMobileSx}>
+                                <Star sx={{ fontSize: 18, color: 'warning.main' }} />
+                                <Typography variant="body2">{rating}/5</Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+                        <Box sx={mobileCardFooterSx}>
+                          <Box>
+                            <Chip
+                              label={chipProps.label}
+                              size="small"
+                              color={chipProps.color}
+                              variant="outlined"
+                              icon={chipProps.icon}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Updated: {new Date(recipe.updatedAt).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+
+                {totalPages > 1 && (
+                  <Box sx={paginationContainerSx}>
+                    <Pagination
+                      count={totalPages}
+                      page={page}
+                      onChange={setPage}
+                    />
+                  </Box>
+                )}
               </>
+            ) : (
+              <Alert severity="info">
+                {debouncedSearchTerm || accessLevel !== 'all' || selectedTags.length > 0 || minRating !== null
+                  ? "No recipes match your filters"
+                  : "No recipes found"}
+              </Alert>
             )}
           </Paper>
         </Box>

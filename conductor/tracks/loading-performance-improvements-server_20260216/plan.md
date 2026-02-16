@@ -1,6 +1,6 @@
 # Implementation Plan: Loading Performance & Unified List Views
 
-## Phase 1: Server-Side Pagination Infrastructure [ ]
+## Phase 1: Server-Side Pagination Infrastructure [x] [checkpoint: 9fed296]
 
 Build the shared utilities that all subsequent phases depend on.
 
@@ -24,27 +24,27 @@ Build the shared utilities that all subsequent phases depend on.
 
 ### API Changes
 
-- [ ] Task 2.1: Update recipes API for server-side pagination and unified query
-  - [ ] Write tests for `GET /api/recipes` with new params: `page`, `limit`, `sortBy`, `sortOrder`, `query`, `accessLevel`, `tags`, `minRating`
-  - [ ] Update the API route to accept these params, perform a unified query (no more `userOnly`/`globalOnly` split), and return paginated results with total count
-  - [ ] Add `accessLevel` field computation in the API response (personal / shared-by-you / global)
-  - [ ] Verify tests pass
+- [x] Task 2.1: Update recipes API for server-side pagination and unified query [31e7113]
+  - [x] Write tests for `GET /api/recipes` with new params: `page`, `limit`, `sortBy`, `sortOrder`, `query`, `accessLevel`, `tags`, `minRating`
+  - [x] Update the API route to accept these params, perform a unified query (no more `userOnly`/`globalOnly` split), and return paginated results with total count
+  - [x] Add `accessLevel` field computation in the API response (personal / shared-by-you / global)
+  - [x] Verify tests pass
 
-- [ ] Task 2.2: Add tag and rating filtering to recipes API
-  - [ ] Write tests for filtering by tags (join with `recipeUserData` to match selected tags)
-  - [ ] Write tests for filtering by minimum rating and sorting by rating
-  - [ ] Implement the MongoDB aggregation pipeline to join `recipeUserData` and apply filters
-  - [ ] Add necessary indexes for the new query patterns
-  - [ ] Verify tests pass
+- [x] Task 2.2: Add tag and rating filtering to recipes API [d828325]
+  - [x] Write tests for filtering by tags (join with `recipeUserData` to match selected tags)
+  - [x] Write tests for filtering by minimum rating and sorting by rating
+  - [x] Implement the MongoDB aggregation pipeline to join `recipeUserData` and apply filters
+  - [x] Add necessary indexes for the new query patterns
+  - [x] Verify tests pass
 
 ### UI Changes
 
-- [ ] Task 2.3: Build filter bar component for recipes
-  - [ ] Write tests for a `RecipeFilterBar` component with: search input, access level dropdown, tag multi-select, rating filter, sort dropdown
-  - [ ] Implement the component using MUI controls
-  - [ ] Verify tests pass
+- [x] Task 2.3: Build filter bar component for recipes [5fd89ab]
+  - [x] Write tests for a `RecipeFilterBar` component with: search input, access level dropdown, tag multi-select, rating filter, sort dropdown
+  - [x] Implement the component using MUI controls
+  - [x] Verify tests pass
 
-- [ ] Task 2.4: Refactor recipes page to unified server-paginated list
+- [~] Task 2.4: Refactor recipes page to unified server-paginated list
   - [ ] Write tests for the updated recipes page: single list, server pagination, filter bar integration
   - [ ] Refactor `src/app/recipes/page.tsx` to remove dual-section layout and use `useServerPagination` with the updated API
   - [ ] Add access-level badges (Personal / Shared by You / Global) to each recipe row/card

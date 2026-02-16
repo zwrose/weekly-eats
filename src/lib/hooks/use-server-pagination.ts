@@ -22,6 +22,7 @@ export interface UseServerPaginationOptions<T> {
   defaultLimit?: number;
   defaultSortBy?: string;
   defaultSortOrder?: 'asc' | 'desc';
+  filterKey?: string;
 }
 
 export interface UseServerPaginationReturn<T> {
@@ -44,6 +45,7 @@ export function useServerPagination<T>({
   defaultLimit = 25,
   defaultSortBy = 'updatedAt',
   defaultSortOrder = 'desc',
+  filterKey,
 }: UseServerPaginationOptions<T>): UseServerPaginationReturn<T> {
   const [data, setData] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
@@ -74,9 +76,19 @@ export function useServerPagination<T>({
     }
   }, []);
 
+  const prevFilterKeyRef = useRef(filterKey);
+
   useEffect(() => {
+    const filterChanged = filterKey !== undefined && prevFilterKeyRef.current !== filterKey;
+    prevFilterKeyRef.current = filterKey;
+
+    if (filterChanged && page !== 1) {
+      setPage(1);
+      return; // page change will re-trigger this effect
+    }
+
     fetchData({ page, limit, sortBy, sortOrder });
-  }, [page, limit, sortBy, sortOrder, fetchData]);
+  }, [page, limit, sortBy, sortOrder, fetchData, filterKey]);
 
   const setSort = useCallback((newSortBy: string, newSortOrder: 'asc' | 'desc') => {
     setSortBy(newSortBy);
