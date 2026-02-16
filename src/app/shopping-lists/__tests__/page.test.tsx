@@ -51,6 +51,7 @@ const mockFetchPendingInvitations = vi.fn();
 const mockInviteUserToStore = vi.fn();
 const mockRespondToInvitation = vi.fn();
 const mockRemoveUserFromStore = vi.fn();
+const mockFinishShop = vi.fn();
 
 vi.mock('../../../lib/shopping-list-utils', () => ({
   fetchStores: () => mockFetchStores(),
@@ -63,6 +64,7 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   respondToInvitation: (...args: any[]) => mockRespondToInvitation(...args),
   removeUserFromStore: (...args: any[]) => mockRemoveUserFromStore(...args),
   fetchShoppingList: (storeId: string) => mockFetchShoppingList(storeId),
+  finishShop: (...args: any[]) => mockFinishShop(...args),
 }));
 
 // Mock meal plan utils (used by "Add Items from Meal Plans" flow)
@@ -824,7 +826,7 @@ describe('ShoppingListsPage', () => {
 
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
-    mockUpdateShoppingList.mockResolvedValue({});
+    mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -876,7 +878,7 @@ describe('ShoppingListsPage', () => {
     await user.click(screen.getByRole('button', { name: /finish shop/i }));
 
     await waitFor(() => {
-      expect(mockUpdateShoppingList).toHaveBeenCalled();
+      expect(mockFinishShop).toHaveBeenCalled();
       expect(screen.queryByText('Milk')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
     });

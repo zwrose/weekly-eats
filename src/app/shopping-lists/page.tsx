@@ -90,6 +90,7 @@ import {
   removeUserFromStore,
   fetchPendingInvitations,
   fetchShoppingList,
+  finishShop,
 } from "../../lib/shopping-list-utils";
 import {
   useDialog,
@@ -776,7 +777,8 @@ function ShoppingListsPageContent() {
 
   const handleClearCheckedItems = async () => {
     if (!selectedStore) return;
-    if (!shoppingListItems.some((i) => i.checked)) return;
+    const checkedItems = shoppingListItems.filter((i) => i.checked);
+    if (checkedItems.length === 0) return;
 
     const previousItems = [...shoppingListItems];
     const uncheckedItems = shoppingListItems.filter((i) => !i.checked);
@@ -784,14 +786,22 @@ function ShoppingListsPageContent() {
     setShoppingListItems(uncheckedItems);
 
     try {
-      await updateShoppingList(selectedStore._id, { items: uncheckedItems });
+      await finishShop(
+        selectedStore._id,
+        checkedItems.map((i) => ({
+          foodItemId: i.foodItemId,
+          name: i.name,
+          quantity: i.quantity,
+          unit: i.unit,
+        }))
+      );
       // Refresh counts/badges on the store list
       const updatedStores = await fetchStores();
       setStores(updatedStores);
-      showSnackbar("Cleared checked items", "success");
+      showSnackbar("Shopping trip saved!", "success");
     } catch (error) {
-      console.error("Error clearing checked items:", error);
-      showSnackbar("Failed to clear checked items", "error");
+      console.error("Error finishing shop:", error);
+      showSnackbar("Failed to finish shop", "error");
       setShoppingListItems(previousItems);
     }
   };
