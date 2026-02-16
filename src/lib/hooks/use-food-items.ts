@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchFoodItems } from '../food-items-utils';
 
 export interface FoodItem {
@@ -50,7 +50,7 @@ export const useFoodItems = (): UseFoodItemsReturn => {
   }, []);
 
   // Create a memoized map for efficient lookups
-  const foodItemsMap = useCallback(() => {
+  const foodItemsMap = useMemo(() => {
     const map: { [key: string]: { singularName: string; pluralName: string } } = {};
     foodItems.forEach(item => {
       map[item._id] = {
@@ -59,7 +59,7 @@ export const useFoodItems = (): UseFoodItemsReturn => {
       };
     });
     return map;
-  }, [foodItems])();
+  }, [foodItems]);
 
   return {
     foodItems,
