@@ -6,12 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-env-edit.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-env-edit.cjs\"",
             "statusMessage": "Checking for .env file edits..."
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-lock-edit.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-lock-edit.cjs\"",
             "statusMessage": "Checking for lock file edits..."
           }
         ]
@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-on-edit.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-on-edit.cjs\"",
             "statusMessage": "Linting edited file..."
           }
         ]
