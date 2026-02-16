@@ -1,8 +1,9 @@
 {
   "trackId": "store-purchase-history-adding_20260216",
   "type": "feature",
-  "status": "planning",
+  "status": "completed",
   "branch": "feature/store-history",
   "createdAt": "2026-02-16",
-  "description": "Store purchase history for re-adding previously bought items"
+  "description": "Store purchase history for re-adding previously bought items",
+  "updated_at": "2026-02-16T16:47:49.075426Z"
 }
