@@ -31,6 +31,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
+    "@mui/material-nextjs": "^7.3.8",
     "@mui/x-date-pickers": "^8.5.3",
     "@types/mongodb": "^4.0.6",
     "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",

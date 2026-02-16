@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import { cookies } from "next/headers";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import "./globals.css";
 import Providers from "../components/Providers";
 import type { ThemeMode } from "../lib/user-settings";
@@ -40,9 +41,11 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={figtree.variable}>
-        <Providers initialMode={initialMode} initialIsDark={initialIsDark}>
-          {children}
-        </Providers>
+        <AppRouterCacheProvider>
+          <Providers initialMode={initialMode} initialIsDark={initialIsDark}>
+            {children}
+          </Providers>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );
