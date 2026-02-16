@@ -22,10 +22,20 @@ export function useTheme() {
   return context;
 }
 
-export function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
+function setThemeCookie(isDark: boolean) {
+  document.cookie = `theme-isDark=${isDark ? '1' : '0'};path=/;max-age=31536000;SameSite=Lax`;
+}
+
+export function ThemeProviderWrapper({
+  children,
+  initialIsDark = false,
+}: {
+  children: React.ReactNode;
+  initialIsDark?: boolean;
+}) {
   const { data: session } = useSession();
   const [mode, setMode] = useState<ThemeMode>(DEFAULT_USER_SETTINGS.themeMode);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(initialIsDark);
 
   // Load settings from database when user is authenticated
   useEffect(() => {
@@ -61,15 +71,20 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Determine if dark mode should be active
     let shouldBeDark = false;
-    
+
     if (mode === 'system') {
       shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     } else {
       shouldBeDark = mode === 'dark';
     }
-    
+
     setIsDark(shouldBeDark);
   }, [mode]);
+
+  // Persist resolved isDark to cookie so the server can read it on next page load
+  useEffect(() => {
+    setThemeCookie(isDark);
+  }, [isDark]);
 
   useEffect(() => {
     // Listen for system theme changes
@@ -78,7 +93,7 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
       const handleChange = (e: MediaQueryListEvent) => {
         setIsDark(e.matches);
       };
-      
+
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
@@ -98,4 +113,4 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
       </ThemeProvider>
     </ThemeContext.Provider>
   );
-} 
+}

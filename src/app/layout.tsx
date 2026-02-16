@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Providers from "../components/Providers";
 
@@ -26,15 +27,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const initialIsDark = cookieStore.get("theme-isDark")?.value === "1";
+
   return (
     <html lang="en">
       <body className={figtree.variable}>
-        <Providers>
+        <Providers initialIsDark={initialIsDark}>
           {children}
         </Providers>
       </body>

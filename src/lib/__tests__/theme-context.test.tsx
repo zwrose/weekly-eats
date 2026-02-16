@@ -120,4 +120,5 @@ describe('ThemeProviderWrapper', () => {
     // Without useMemo, a new object is created every render
     expect(contextValueRef).toBe(firstRef);
   });
+
 });
