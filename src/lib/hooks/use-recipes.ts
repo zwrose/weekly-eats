@@ -73,33 +73,56 @@ export const useRecipes = (): UseRecipesReturn => {
 
   const handleCreateRecipe = useCallback(async (recipe: CreateRecipeRequest) => {
     try {
-      await createRecipe(recipe);
-      await loadRecipes(); // Refresh both lists
+      const newRecipe = await createRecipe(recipe);
+      setUserRecipes(prev => [newRecipe, ...prev]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create recipe');
       throw err;
     }
-  }, [loadRecipes]);
+  }, []);
 
   const handleUpdateRecipe = useCallback(async (id: string, recipe: UpdateRecipeRequest) => {
+    const updateInList = (list: Recipe[]) =>
+      list.map(r => r._id === id ? { ...r, ...recipe } as Recipe : r);
+    const prevUser = userRecipes;
+    const prevGlobal = globalRecipes;
+
+    // Optimistic update
+    setUserRecipes(updateInList);
+    setGlobalRecipes(updateInList);
+
     try {
-      await updateRecipe(id, recipe);
-      await loadRecipes(); // Refresh both lists
+      const updated = await updateRecipe(id, recipe);
+      // Replace with server response to ensure consistency
+      setUserRecipes(prev => prev.map(r => r._id === id ? updated : r));
+      setGlobalRecipes(prev => prev.map(r => r._id === id ? updated : r));
     } catch (err) {
+      // Revert on failure
+      setUserRecipes(prevUser);
+      setGlobalRecipes(prevGlobal);
       setError(err instanceof Error ? err.message : 'Failed to update recipe');
       throw err;
     }
-  }, [loadRecipes]);
+  }, [userRecipes, globalRecipes]);
 
   const handleDeleteRecipe = useCallback(async (id: string) => {
+    const prevUser = userRecipes;
+    const prevGlobal = globalRecipes;
+
+    // Optimistic removal
+    setUserRecipes(prev => prev.filter(r => r._id !== id));
+    setGlobalRecipes(prev => prev.filter(r => r._id !== id));
+
     try {
       await deleteRecipe(id);
-      await loadRecipes(); // Refresh both lists
     } catch (err) {
+      // Revert on failure
+      setUserRecipes(prevUser);
+      setGlobalRecipes(prevGlobal);
       setError(err instanceof Error ? err.message : 'Failed to delete recipe');
       throw err;
     }
-  }, [loadRecipes]);
+  }, [userRecipes, globalRecipes]);
 
   return {
     userRecipes,
