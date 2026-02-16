@@ -56,8 +56,8 @@ import {
 import { fetchRecipe } from "../../lib/recipe-utils";
 import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
-import RecipeIngredients from "../../components/RecipeIngredients";
-import RecipeInstructionsView from "../../components/RecipeInstructionsView";
+const RecipeIngredients = dynamic(() => import("../../components/RecipeIngredients"), { ssr: false });
+const RecipeInstructionsView = dynamic(() => import("../../components/RecipeInstructionsView"), { ssr: false });
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems, getUnitForm } from "../../lib/food-items-utils";
 import { useRecipes } from "@/lib/hooks";
@@ -86,8 +86,8 @@ import {
   updateRecipeRating,
   deleteRecipeRating,
 } from "@/lib/recipe-user-data-utils";
-import RecipeTagsEditor from "@/components/RecipeTagsEditor";
-import RecipeStarRating from "@/components/RecipeStarRating";
+const RecipeTagsEditor = dynamic(() => import("@/components/RecipeTagsEditor"), { ssr: false });
+const RecipeStarRating = dynamic(() => import("@/components/RecipeStarRating"), { ssr: false });
 import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 
 // ── Module-level sx constants (hoisted to avoid per-render allocations) ──
