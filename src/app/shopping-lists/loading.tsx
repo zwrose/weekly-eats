@@ -19,35 +19,23 @@ export default function ShoppingListsLoading() {
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={220} height={48} />
+              <Skeleton variant="text" width={200} height={48} />
             </Box>
             <Skeleton variant="rounded" width={120} height={36} />
           </Box>
 
-          {/* Search bar + content */}
+          {/* Search + content */}
           <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
             <Skeleton variant="rounded" height={56} sx={{ mb: 3 }} />
-
-            {/* Desktop table rows */}
-            <Box sx={{ display: { xs: "none", md: "block" } }}>
-              <Skeleton variant="rounded" height={48} sx={{ mb: 1 }} />
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} variant="rounded" height={52} sx={{ mb: 0.5 }} />
-              ))}
-            </Box>
-
-            {/* Mobile store cards */}
-            <Box sx={{ display: { xs: "block", md: "none" } }}>
-              {[...Array(3)].map((_, i) => (
-                <Box key={i} sx={{ mb: 2 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                    <Skeleton variant="circular" width={32} height={32} />
-                    <Skeleton variant="text" width="50%" height={28} />
-                  </Box>
-                  <Skeleton variant="text" width="30%" height={20} />
+            {[...Array(4)].map((_, i) => (
+              <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                <Skeleton variant="circular" width={32} height={32} />
+                <Box sx={{ flex: 1 }}>
+                  <Skeleton variant="text" width="55%" height={24} />
+                  <Skeleton variant="text" width="30%" height={18} />
                 </Box>
-              ))}
-            </Box>
+              </Box>
+            ))}
           </Paper>
         </Box>
       </Container>

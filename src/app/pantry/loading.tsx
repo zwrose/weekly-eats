@@ -1,7 +1,7 @@
 import { Container, Box, Skeleton, Paper } from "@mui/material";
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 
-export default function RecipesLoading() {
+export default function PantryLoading() {
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl">
@@ -19,12 +19,9 @@ export default function RecipesLoading() {
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={140} height={48} />
+              <Skeleton variant="text" width={200} height={48} />
             </Box>
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <Skeleton variant="rounded" width={160} height={36} />
-              <Skeleton variant="rounded" width={40} height={36} />
-            </Box>
+            <Skeleton variant="rounded" width={120} height={36} />
           </Box>
 
           {/* Search + content */}
