@@ -73,11 +73,13 @@ import {
   MoreVert,
   Refresh,
   DoneAll,
+  History,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
   StoreWithShoppingList,
   ShoppingListItem,
+  PurchaseHistoryRecord,
 } from "../../types/shopping-list";
 import {
   fetchStores,
@@ -91,6 +93,7 @@ import {
   fetchPendingInvitations,
   fetchShoppingList,
   finishShop,
+  fetchPurchaseHistory,
 } from "../../lib/shopping-list-utils";
 import {
   useDialog,
@@ -102,6 +105,7 @@ import {
 } from "@/lib/hooks";
 import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
+const StoreHistoryDialog = dynamic(() => import("../../components/shopping-list/StoreHistoryDialog"), { ssr: false });
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
 import { responsiveDialogStyle } from "@/lib/theme";
@@ -267,6 +271,12 @@ function ShoppingListsPageContent() {
     }>
   >([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
+
+  // Purchase history states
+  const [historyDialogStore, setHistoryDialogStore] =
+    useState<StoreWithShoppingList | null>(null);
+  const [historyItems, setHistoryItems] = useState<PurchaseHistoryRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
 
   // Shopping Sync SSE connection
@@ -802,6 +812,72 @@ function ShoppingListsPageContent() {
     } catch (error) {
       console.error("Error finishing shop:", error);
       showSnackbar("Failed to finish shop", "error");
+      setShoppingListItems(previousItems);
+    }
+  };
+
+  // Purchase history handlers
+  const handleOpenHistory = async (store: StoreWithShoppingList) => {
+    setHistoryDialogStore(store);
+    setLoadingHistory(true);
+    try {
+      const items = await fetchPurchaseHistory(store._id);
+      setHistoryItems(items);
+    } catch (error) {
+      console.error("Error loading purchase history:", error);
+      showSnackbar("Failed to load purchase history", "error");
+      setHistoryItems([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryDialogStore(null);
+    setHistoryItems([]);
+  };
+
+  const handleAddHistoryItems = async (
+    items: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
+  ) => {
+    if (!selectedStore) return;
+
+    const newItems = items.filter(
+      (item) => !shoppingListItems.some((i) => i.foodItemId === item.foodItemId)
+    );
+    if (newItems.length === 0) {
+      showSnackbar("All selected items are already in your list", "info");
+      return;
+    }
+
+    const newListItems: ShoppingListItem[] = newItems.map((item) => ({
+      foodItemId: item.foodItemId,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      checked: false,
+    }));
+
+    const mergedItems = await insertItemsWithPositions(
+      shoppingListItems,
+      newListItems,
+      selectedStore._id
+    );
+
+    const previousItems = [...shoppingListItems];
+    setShoppingListItems(mergedItems);
+
+    try {
+      await updateShoppingList(selectedStore._id, { items: mergedItems });
+      const updatedStores = await fetchStores();
+      setStores(updatedStores);
+      showSnackbar(
+        `Added ${newItems.length} item${newItems.length > 1 ? "s" : ""} from history`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Error adding items from history:", error);
+      showSnackbar("Failed to add items from history", "error");
       setShoppingListItems(previousItems);
     }
   };
@@ -1489,6 +1565,16 @@ function ShoppingListsPageContent() {
                                 >
                                   <ShoppingCart fontSize="small" />
                                 </IconButton>
+                                <IconButton
+                                  size="small"
+                                  title="Purchase History"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenHistory(store);
+                                  }}
+                                >
+                                  <History fontSize="small" />
+                                </IconButton>
 
                                 {isStoreOwner(store) ? (
                                   <>
@@ -1608,6 +1694,16 @@ function ShoppingListsPageContent() {
                           }}
                         >
                           <ShoppingCart fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          title="Purchase History"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenHistory(store);
+                          }}
+                        >
+                          <History fontSize="small" />
                         </IconButton>
 
                         {isStoreOwner(store) ? (
@@ -1981,6 +2077,19 @@ function ShoppingListsPageContent() {
               )}
             </ListItemIcon>
             <ListItemText>Pantry check</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseListActionsMenu();
+              if (selectedStore) {
+                void handleOpenHistory(selectedStore);
+              }
+            }}
+          >
+            <ListItemIcon>
+              <History fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Purchase history</ListItemText>
           </MenuItem>
         </Menu>
         <DialogContent
@@ -2765,6 +2874,16 @@ function ShoppingListsPageContent() {
           </DialogActions>
         </DialogContent>
       </Dialog>
+
+      {/* Purchase History Dialog */}
+      <StoreHistoryDialog
+        open={!!historyDialogStore}
+        onClose={handleCloseHistory}
+        historyItems={historyItems}
+        currentItems={shoppingListItems}
+        onAddItems={handleAddHistoryItems}
+        loading={loadingHistory}
+      />
 
       {/* Snackbar for notifications */}
       <Snackbar

@@ -52,6 +52,7 @@ const mockInviteUserToStore = vi.fn();
 const mockRespondToInvitation = vi.fn();
 const mockRemoveUserFromStore = vi.fn();
 const mockFinishShop = vi.fn();
+const mockFetchPurchaseHistory = vi.fn();
 
 vi.mock('../../../lib/shopping-list-utils', () => ({
   fetchStores: () => mockFetchStores(),
@@ -65,6 +66,7 @@ vi.mock('../../../lib/shopping-list-utils', () => ({
   removeUserFromStore: (...args: any[]) => mockRemoveUserFromStore(...args),
   fetchShoppingList: (storeId: string) => mockFetchShoppingList(storeId),
   finishShop: (...args: any[]) => mockFinishShop(...args),
+  fetchPurchaseHistory: (...args: any[]) => mockFetchPurchaseHistory(...args),
 }));
 
 // Mock meal plan utils (used by "Add Items from Meal Plans" flow)
@@ -102,6 +104,11 @@ vi.mock('../../../components/EmojiPicker', () => ({
   default: () => <div>Emoji Picker</div>
 }));
 
+vi.mock('../../../components/shopping-list/StoreHistoryDialog', () => ({
+  default: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
+    open ? <div data-testid="store-history-dialog"><button onClick={onClose}>Close History</button></div> : null
+}));
+
 describe('ShoppingListsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -114,7 +121,8 @@ describe('ShoppingListsPage', () => {
     // store.shoppingList.items (and doesn't crash on undefined).
     mockFetchShoppingList.mockRejectedValue(new Error('No mocked shopping list'));
     lastShoppingSyncOptions = null;
-    
+    mockFetchPurchaseHistory.mockResolvedValue([]);
+
     // Mock fetch for food items
     global.fetch = vi.fn((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -1043,6 +1051,142 @@ describe('ShoppingListsPage', () => {
       // No separate mode toggle buttons anymore
       expect(screen.queryByRole('button', { name: /shop mode/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /edit mode/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows purchase history buttons on store cards', async () => {
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    // History icon buttons should be present (desktop + mobile renders)
+    const historyButtons = screen.getAllByTitle('Purchase History');
+    expect(historyButtons.length).toBeGreaterThan(0);
+  });
+
+  it('opens history dialog when clicking purchase history button', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchPurchaseHistory.mockResolvedValue([]);
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    const historyButtons = screen.getAllByTitle('Purchase History');
+    await user.click(historyButtons[0]);
+
+    await waitFor(() => {
+      expect(mockFetchPurchaseHistory).toHaveBeenCalledWith('store-1');
+      expect(screen.getByTestId('store-history-dialog')).toBeInTheDocument();
+    });
+  });
+
+  it('shows purchase history option in overflow menu', async () => {
+    const user = userEvent.setup();
+    const mockStores = [
+      {
+        _id: 'store-1',
+        userId: 'user-123',
+        name: 'Target',
+        emoji: '🎯',
+        invitations: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        shoppingList: {
+          _id: 'list-1',
+          storeId: 'store-1',
+          userId: 'user-123',
+          items: [
+            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    ];
+
+    mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+
+    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => []
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => []
+      } as Response);
+    });
+
+    render(<ShoppingListsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
+    });
+
+    // Open shopping list dialog
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+    });
+
+    // Open overflow menu
+    await user.click(screen.getByRole('button', { name: /more actions/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Purchase history')).toBeInTheDocument();
     });
   });
 });

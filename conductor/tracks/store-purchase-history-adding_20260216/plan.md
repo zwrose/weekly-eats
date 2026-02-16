@@ -28,7 +28,7 @@
 - [x] Task: Add `fetchPurchaseHistory` and `finishShop` functions to `src/lib/shopping-list-utils.ts` [07d612e]
 - [x] Task: Update `handleClearCheckedItems` in the shopping list page to call the new `finishShop` API instead of directly updating the list [2c44efb]
 
-## Phase 4: History Dialog Component `[ ]`
+## Phase 4: History Dialog Component `[x]` [checkpoint: a37aef1]
 
 - [x] Task: Write tests for `StoreHistoryDialog` component [ab87d61]
   - Test rendering history items, search/filter, single add, multi-select add, quantity editing, empty state
