@@ -120,6 +120,7 @@ import {
   combineExtractedItems,
   mergeWithShoppingList,
   UnitConflict,
+  PreMergeConflict,
 } from "../../lib/meal-plan-to-shopping-list";
 import {
   saveItemPositions,
@@ -953,21 +954,24 @@ function ShoppingListsPageContent() {
         foodItemsMap,
       );
 
-      // Combine pre-merge conflicts (from combineExtractedItems) with merge conflicts
-      const preMergeUnitConflicts: UnitConflict[] = Array.from(
-        preMergeConflicts.entries(),
-      ).map(([foodItemId, items]) => {
-        const foodItem = foodItemsMap.get(foodItemId);
-        return {
-          foodItemId,
-          foodItemName: foodItem?.pluralName || "Unknown",
-          existingQuantity: items[0].quantity,
-          existingUnit: items[0].unit,
-          newQuantity: items.slice(1).reduce((sum, i) => sum + i.quantity, 0),
-          newUnit: items[1]?.unit || items[0].unit,
-          isAutoConverted: false,
-        };
-      });
+      // Convert pre-merge conflicts to UnitConflict format
+      const preMergeUnitConflicts: UnitConflict[] =
+        preMergeConflicts.map((conflict: PreMergeConflict) => {
+          const foodItem = foodItemsMap.get(conflict.foodItemId);
+          return {
+            foodItemId: conflict.foodItemId,
+            foodItemName: foodItem?.pluralName || "Unknown",
+            existingQuantity: conflict.items[0].quantity,
+            existingUnit: conflict.items[0].unit,
+            newQuantity: conflict.items
+              .slice(1)
+              .reduce((sum, i) => sum + i.quantity, 0),
+            newUnit: conflict.items[1]?.unit || conflict.items[0].unit,
+            isAutoConverted: conflict.isAutoConverted,
+            suggestedQuantity: conflict.suggestedQuantity,
+            suggestedUnit: conflict.suggestedUnit,
+          };
+        });
 
       const conflicts = [...preMergeUnitConflicts, ...mergeConflicts];
 

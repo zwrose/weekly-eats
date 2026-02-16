@@ -8,6 +8,14 @@ interface ExtractedItem {
   unit: string;
 }
 
+interface PreMergeConflict {
+  foodItemId: string;
+  items: ExtractedItem[];
+  isAutoConverted: boolean;
+  suggestedQuantity?: number;
+  suggestedUnit?: string;
+}
+
 interface UnitConflict {
   foodItemId: string;
   foodItemName: string;
@@ -149,12 +157,13 @@ export async function extractFoodItemsFromMealPlans(
 
 /**
  * Combines extracted items, summing quantities for items with the same unit.
- * Uses unit conversion to merge items with convertible units (same family).
- * Returns combined items and any non-convertible unit conflicts.
+ * Items with different units are always flagged as conflicts for user review.
+ * Convertible conflicts include pre-computed suggested values.
+ * Returns combined items (same-unit sums only) and all multi-unit conflicts.
  */
 export function combineExtractedItems(
   extractedItems: ExtractedItem[]
-): { combinedItems: ExtractedItem[]; conflicts: Map<string, ExtractedItem[]> } {
+): { combinedItems: ExtractedItem[]; conflicts: PreMergeConflict[] } {
   const itemsByFoodId = new Map<string, ExtractedItem[]>();
 
   // Group by food item ID
@@ -166,7 +175,7 @@ export function combineExtractedItems(
   }
 
   const combinedItems: ExtractedItem[] = [];
-  const conflicts = new Map<string, ExtractedItem[]>();
+  const conflicts: PreMergeConflict[] = [];
 
   for (const [foodItemId, items] of itemsByFoodId.entries()) {
     if (items.length === 1) {
@@ -182,22 +191,27 @@ export function combineExtractedItems(
     }
 
     if (byUnit.size === 1) {
-      // All same unit — sum directly
+      // All same unit — sum directly (AC-5: silent sum)
       const [unit, quantity] = Array.from(byUnit.entries())[0];
       combinedItems.push({ foodItemId, quantity, unit });
       continue;
     }
 
-    // Multiple units — check if all are in the same convertible family
+    // Multiple different units — always flag as conflict for user review.
+    // Add first entry as placeholder so item reaches the shopping list.
+    combinedItems.push(items[0]);
+
+    // Check if all units are in the same convertible family
     const units = Array.from(byUnit.keys());
     const allSameFamily = units.every((u, i) =>
       i === 0 ? true : areSameFamily(units[0], u)
     );
 
     if (allSameFamily) {
-      // Convert all to the first unit, then sum
+      // Convertible — compute suggested combined value
       const targetUnit = units[0];
       let totalInTarget = 0;
+      let conversionFailed = false;
 
       for (const [unit, qty] of byUnit.entries()) {
         if (unit === targetUnit) {
@@ -207,28 +221,27 @@ export function combineExtractedItems(
           if (converted !== null) {
             totalInTarget += converted;
           } else {
-            // Fallback: shouldn't happen if areSameFamily passed, but be safe
-            conflicts.set(foodItemId, items);
-            totalInTarget = 0;
+            conversionFailed = true;
             break;
           }
         }
       }
 
-      if (!conflicts.has(foodItemId)) {
-        // Pick the best human-readable unit for the total
+      if (!conversionFailed) {
         const best = pickBestUnit(totalInTarget, targetUnit);
-        combinedItems.push({
+        conflicts.push({
           foodItemId,
-          quantity: best.quantity,
-          unit: best.unit,
+          items,
+          isAutoConverted: true,
+          suggestedQuantity: best.quantity,
+          suggestedUnit: best.unit,
         });
+      } else {
+        conflicts.push({ foodItemId, items, isAutoConverted: false });
       }
     } else {
-      // Non-convertible units — flag as conflict
-      conflicts.set(foodItemId, items);
-      // Still add the first entry as a placeholder so the item reaches the shopping list
-      combinedItems.push(items[0]);
+      // Non-convertible units
+      conflicts.push({ foodItemId, items, isAutoConverted: false });
     }
   }
 
@@ -331,5 +344,5 @@ export function mergeWithShoppingList(
   };
 }
 
-export type { UnitConflict };
+export type { UnitConflict, PreMergeConflict };
 
