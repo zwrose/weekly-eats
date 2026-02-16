@@ -1,0 +1,10 @@
+{
+  "trackId": "loading-performance-improvements-server_20260216",
+  "type": "feature",
+  "description": "Loading performance improvements with server-side pagination, unified list views, and smart data loading",
+  "branch": "feature/perf-pagination-unified-views",
+  "status": "planning",
+  "createdAt": "2026-02-16",
+  "phases": 6,
+  "tasks": 18
+}
