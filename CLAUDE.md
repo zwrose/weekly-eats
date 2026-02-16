@@ -8,6 +8,7 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 - **Tests**: `npm test` (single run) or `npm run test:watch` (watch mode)
 - **Full validation**: `npm run check` (lint + test + build — run before pushing)
 - **Lint**: `npm run lint`
+- **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main` and `develop`
 
 ## Project Structure
 
@@ -15,11 +16,14 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 src/
   app/
     api/          # API routes (Next.js route handlers)
-    meal-plans/   # Feature pages
-    recipes/
-    shopping-lists/
+    food-items/   # Feature pages
+    meal-plans/
     pantry/
+    pending-approval/
+    recipes/
     settings/
+    shopping-lists/
+    user-management/
   components/     # React components
     ui/           # Reusable UI wrappers (DialogTitle, etc.)
     optimized/    # Performance-optimized components
@@ -68,6 +72,13 @@ src/
 - MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `storeItemPositions`, `shoppingLists`
 - Access pattern: `const client = await getMongoClient(); const db = client.db();`
 - Indexes defined in `src/lib/database-indexes.ts`, applied via `npm run setup-db`
+
+## Gotchas
+
+- **ESM project**: `package.json` has `"type": "module"`. Any standalone `.js` scripts need `.cjs` extension to use `require()`.
+- **Dynamic route params**: Next.js 15 params are async — use `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params;`
+- **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
+- **`globals.css`**: Exists in `src/app/` for base resets only. All component styling uses MUI `sx` prop.
 
 ## Do Not Edit
 
