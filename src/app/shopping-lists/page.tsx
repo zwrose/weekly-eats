@@ -99,7 +99,8 @@ import {
   usePersistentDialog,
   type ActiveUser,
 } from "@/lib/hooks";
-import EmojiPicker from "../../components/EmojiPicker";
+import dynamic from "next/dynamic";
+const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
 import { responsiveDialogStyle } from "@/lib/theme";

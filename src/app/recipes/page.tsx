@@ -54,7 +54,8 @@ import {
   UpdateRecipeRequest,
 } from "../../types/recipe";
 import { fetchRecipe } from "../../lib/recipe-utils";
-import EmojiPicker from "../../components/EmojiPicker";
+import dynamic from "next/dynamic";
+const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
 import RecipeIngredients from "../../components/RecipeIngredients";
 import RecipeInstructionsView from "../../components/RecipeInstructionsView";
 import { RecipeIngredientList } from "../../types/recipe";
