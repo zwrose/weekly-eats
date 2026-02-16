@@ -91,6 +91,26 @@ describe('StoreHistoryDialog', () => {
       const milkRow = screen.getByText('Milk').closest('[data-testid]') || screen.getByText('Milk').parentElement;
       expect(milkRow).toHaveTextContent(/on list/i);
     });
+
+    it('disables checkbox and add button for items already on the list', () => {
+      render(<StoreHistoryDialog {...defaultProps} />);
+      // Milk (f1) is on current list
+      const milkItem = screen.getByTestId('history-item-f1');
+      const milkCheckbox = within(milkItem).getByRole('checkbox');
+      expect(milkCheckbox).toBeDisabled();
+
+      // The add button for Milk should be disabled
+      const milkAddButton = screen.getByRole('button', { name: /add milk/i });
+      expect(milkAddButton).toBeDisabled();
+
+      // Bread (f2) is NOT on current list
+      const breadItem = screen.getByTestId('history-item-f2');
+      const breadCheckbox = within(breadItem).getByRole('checkbox');
+      expect(breadCheckbox).not.toBeDisabled();
+
+      const breadAddButton = screen.getByRole('button', { name: /add bread/i });
+      expect(breadAddButton).not.toBeDisabled();
+    });
   });
 
   describe('Search/Filter', () => {

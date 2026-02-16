@@ -181,6 +181,7 @@ export default function StoreHistoryDialog({
                       <Checkbox
                         edge="start"
                         checked={isSelected}
+                        disabled={isOnList}
                         onChange={() => handleToggleSelect(item.foodItemId)}
                         sx={{ mr: 1 }}
                       />
@@ -200,6 +201,7 @@ export default function StoreHistoryDialog({
                           edge="end"
                           aria-label={`Add ${item.name}`}
                           onClick={() => handleAddSingle(item)}
+                          disabled={isOnList}
                           size="small"
                         >
                           <Add />
