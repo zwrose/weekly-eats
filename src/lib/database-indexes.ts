@@ -100,6 +100,17 @@ export const createDatabaseIndexes = async () => {
       { name: 'storeItemPositions_storeId_position' }
     );
 
+    // Purchase History Collection
+    const purchaseHistoryCollection = db.collection('purchaseHistory');
+    await purchaseHistoryCollection.createIndex(
+      { storeId: 1, foodItemId: 1 },
+      { name: 'purchaseHistory_storeId_foodItemId', unique: true }
+    );
+    await purchaseHistoryCollection.createIndex(
+      { storeId: 1, lastPurchasedAt: -1 },
+      { name: 'purchaseHistory_storeId_lastPurchasedAt' }
+    );
+
     // Users Collection (if you have one)
     const usersCollection = db.collection('users');
     await usersCollection.createIndex(
@@ -137,7 +148,8 @@ export const dropAllIndexes = async () => {
       'pantry',
       'users',
       'storeItemPositions',
-      'shoppingLists'
+      'shoppingLists',
+      'purchaseHistory'
     ];
 
     for (const collectionName of collections) {
