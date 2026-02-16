@@ -11,6 +11,7 @@ interface ExtractedItem {
 interface PreMergeConflict {
   foodItemId: string;
   items: ExtractedItem[];
+  unitBreakdown: { quantity: number; unit: string }[];
   isAutoConverted: boolean;
   suggestedQuantity?: number;
   suggestedUnit?: string;
@@ -26,6 +27,7 @@ interface UnitConflict {
   isAutoConverted: boolean;
   suggestedQuantity?: number;
   suggestedUnit?: string;
+  unitBreakdown?: { quantity: number; unit: string }[];
 }
 
 const MAX_RECURSION_DEPTH = 50;
@@ -201,6 +203,12 @@ export function combineExtractedItems(
     // Add first entry as placeholder so item reaches the shopping list.
     combinedItems.push(items[0]);
 
+    // Build unit breakdown from summed-by-unit map
+    const unitBreakdown = Array.from(byUnit.entries()).map(([unit, quantity]) => ({
+      quantity,
+      unit,
+    }));
+
     // Check if all units are in the same convertible family
     const units = Array.from(byUnit.keys());
     const allSameFamily = units.every((u, i) =>
@@ -232,16 +240,17 @@ export function combineExtractedItems(
         conflicts.push({
           foodItemId,
           items,
+          unitBreakdown,
           isAutoConverted: true,
           suggestedQuantity: best.quantity,
           suggestedUnit: best.unit,
         });
       } else {
-        conflicts.push({ foodItemId, items, isAutoConverted: false });
+        conflicts.push({ foodItemId, items, unitBreakdown, isAutoConverted: false });
       }
     } else {
       // Non-convertible units
-      conflicts.push({ foodItemId, items, isAutoConverted: false });
+      conflicts.push({ foodItemId, items, unitBreakdown, isAutoConverted: false });
     }
   }
 

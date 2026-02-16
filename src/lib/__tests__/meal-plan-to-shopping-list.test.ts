@@ -479,7 +479,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflicts).toHaveLength(0);
     });
 
-    it('flags convertible units as conflict with suggested values', () => {
+    it('flags convertible units as conflict with suggested values and unitBreakdown', () => {
       // 2 cups + 1 pint (= 2 cups) → convertible, shown as conflict with suggestion
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'cup' },
@@ -496,13 +496,18 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflict.suggestedQuantity).toBeGreaterThan(0);
       expect(conflict.suggestedUnit).toBeDefined();
       expect(conflict.items).toHaveLength(2);
+      // unitBreakdown shows per-unit sums
+      expect(conflict.unitBreakdown).toEqual([
+        { quantity: 2, unit: 'cup' },
+        { quantity: 1, unit: 'pint' },
+      ]);
 
       // Placeholder should still exist in combinedItems
       const f1 = combinedItems.find(i => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
     });
 
-    it('flags non-convertible unit conflicts and keeps item in combinedItems', () => {
+    it('flags non-convertible unit conflicts with unitBreakdown and keeps item in combinedItems', () => {
       // cans vs pounds — different families, cannot auto-convert
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'can' },
@@ -517,6 +522,10 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflict.isAutoConverted).toBe(false);
       expect(conflict.suggestedQuantity).toBeUndefined();
       expect(conflict.items).toHaveLength(2);
+      expect(conflict.unitBreakdown).toEqual([
+        { quantity: 2, unit: 'can' },
+        { quantity: 1, unit: 'pound' },
+      ]);
       // Item should still appear in combinedItems as a placeholder
       const f1 = combinedItems.find(i => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
@@ -558,6 +567,49 @@ describe('meal-plan-to-shopping-list utilities', () => {
 
       // f3 passes through as-is
       expect(combinedItems).toContainEqual({ foodItemId: 'f3', quantity: 3, unit: 'piece' });
+    });
+
+    it('combines existing shopping list items with extracted items in unified flow', () => {
+      // Simulates the unified pre-merge: existing list has 2 cups, extracted has 1 pint
+      const existingAsExtracted = [
+        { foodItemId: 'f1', quantity: 2, unit: 'cup' },
+      ];
+      const extractedItems = [
+        { foodItemId: 'f1', quantity: 1, unit: 'pint' },
+      ];
+
+      const { combinedItems, conflicts } = combineExtractedItems([
+        ...existingAsExtracted,
+        ...extractedItems,
+      ]);
+
+      // Should produce one conflict (convertible) with unitBreakdown summing per-unit
+      expect(conflicts).toHaveLength(1);
+      const conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      expect(conflict.isAutoConverted).toBe(true);
+      expect(conflict.unitBreakdown).toEqual([
+        { quantity: 2, unit: 'cup' },
+        { quantity: 1, unit: 'pint' },
+      ]);
+      expect(conflict.suggestedQuantity).toBeGreaterThan(0);
+
+      // Placeholder in combinedItems
+      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      expect(f1).toBeDefined();
+    });
+
+    it('silently sums when existing list and extracted items share the same unit', () => {
+      // Existing: 2 cups, extracted: 3 cups → same unit, silent sum
+      const allItems = [
+        { foodItemId: 'f1', quantity: 2, unit: 'cup' },
+        { foodItemId: 'f1', quantity: 3, unit: 'cup' },
+      ];
+
+      const { combinedItems, conflicts } = combineExtractedItems(allItems);
+
+      expect(conflicts).toHaveLength(0);
+      expect(combinedItems).toHaveLength(1);
+      expect(combinedItems[0]).toEqual({ foodItemId: 'f1', quantity: 5, unit: 'cup' });
     });
 
     it('flags three+ different convertible units as single conflict with suggestion', () => {

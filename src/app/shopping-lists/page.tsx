@@ -118,7 +118,6 @@ import { fetchMealPlans } from "../../lib/meal-plan-utils";
 import {
   extractFoodItemsFromMealPlans,
   combineExtractedItems,
-  mergeWithShoppingList,
   UnitConflict,
   PreMergeConflict,
 } from "../../lib/meal-plan-to-shopping-list";
@@ -261,6 +260,9 @@ function ShoppingListsPageContent() {
   const [conflictResolutions, setConflictResolutions] = useState<
     Map<string, { quantity: number; unit: string }>
   >(new Map());
+  const [pendingMergedItems, setPendingMergedItems] = useState<
+    ShoppingListItem[]
+  >([]);
 
   // Pantry check states
   const [matchingPantryItems, setMatchingPantryItems] = useState<
@@ -931,9 +933,17 @@ function ShoppingListsPageContent() {
       // Extract food items from meal plans
       const extractedItems = await extractFoodItemsFromMealPlans(selectedPlans);
 
-      // Pre-merge: combine extracted items with unit conversion intelligence
+      // Convert existing shopping list items to ExtractedItem format
+      const existingAsExtracted = shoppingListItems.map((item) => ({
+        foodItemId: item.foodItemId,
+        quantity: item.quantity,
+        unit: item.unit,
+      }));
+
+      // Unified pre-merge: combine existing + extracted items together.
+      // This produces at most one conflict per food item.
       const { combinedItems, conflicts: preMergeConflicts } =
-        combineExtractedItems(extractedItems);
+        combineExtractedItems([...existingAsExtracted, ...extractedItems]);
 
       // Create food items map for name lookup
       const foodItemsMap = new Map(
@@ -947,33 +957,56 @@ function ShoppingListsPageContent() {
         ]),
       );
 
-      // Merge combined items with existing shopping list
-      const { mergedItems, conflicts: mergeConflicts } = mergeWithShoppingList(
-        shoppingListItems,
-        combinedItems,
-        foodItemsMap,
+      // Track which food items had extracted counterparts
+      const extractedFoodItemIds = new Set(
+        extractedItems.map((i) => i.foodItemId),
       );
 
-      // Convert pre-merge conflicts to UnitConflict format
-      const preMergeUnitConflicts: UnitConflict[] =
-        preMergeConflicts.map((conflict: PreMergeConflict) => {
+      // Convert combinedItems to ShoppingListItem format
+      const mergedItems: ShoppingListItem[] = combinedItems.map((item) => {
+        const foodItem = foodItemsMap.get(item.foodItemId);
+        const existingItem = shoppingListItems.find(
+          (si) => si.foodItemId === item.foodItemId,
+        );
+
+        // Preserve checked status for items that weren't modified by extraction
+        const wasModified = extractedFoodItemIds.has(item.foodItemId);
+
+        return {
+          foodItemId: item.foodItemId,
+          name: foodItem
+            ? item.quantity === 1
+              ? foodItem.singularName
+              : foodItem.pluralName
+            : existingItem?.name || "Unknown",
+          quantity: item.quantity,
+          unit: item.unit,
+          checked: wasModified ? false : existingItem?.checked ?? false,
+        };
+      });
+
+      // Convert pre-merge conflicts to UnitConflict format for dialog
+      const conflicts: UnitConflict[] = preMergeConflicts.map(
+        (conflict: PreMergeConflict) => {
           const foodItem = foodItemsMap.get(conflict.foodItemId);
           return {
             foodItemId: conflict.foodItemId,
             foodItemName: foodItem?.pluralName || "Unknown",
-            existingQuantity: conflict.items[0].quantity,
-            existingUnit: conflict.items[0].unit,
-            newQuantity: conflict.items
+            existingQuantity: conflict.unitBreakdown[0].quantity,
+            existingUnit: conflict.unitBreakdown[0].unit,
+            newQuantity: conflict.unitBreakdown
               .slice(1)
-              .reduce((sum, i) => sum + i.quantity, 0),
-            newUnit: conflict.items[1]?.unit || conflict.items[0].unit,
+              .reduce((sum, e) => sum + e.quantity, 0),
+            newUnit:
+              conflict.unitBreakdown[1]?.unit ||
+              conflict.unitBreakdown[0].unit,
             isAutoConverted: conflict.isAutoConverted,
             suggestedQuantity: conflict.suggestedQuantity,
             suggestedUnit: conflict.suggestedUnit,
+            unitBreakdown: conflict.unitBreakdown,
           };
-        });
-
-      const conflicts = [...preMergeUnitConflicts, ...mergeConflicts];
+        },
+      );
 
       // Separate existing items from new items for position-aware insertion
       const existingItemIds = new Set(
@@ -994,11 +1027,12 @@ function ShoppingListsPageContent() {
       );
 
       if (conflicts.length > 0) {
-        // Has unit conflicts - show resolution dialog
+        // Has unit conflicts - store pending items, show dialog
+        // Do NOT update shoppingListItems until deconfliction is complete
+        setPendingMergedItems(itemsWithPositions);
         setUnitConflicts(conflicts);
         setCurrentConflictIndex(0);
         setConflictResolutions(new Map());
-        setShoppingListItems(itemsWithPositions); // Update with position-aware items
         unitConflictDialog.openDialog();
       } else {
         // No conflicts - save directly
@@ -1040,11 +1074,24 @@ function ShoppingListsPageContent() {
       };
     }
 
-    // Default to existing values for manual conflicts
+    // Non-convertible conflicts start blank — user must choose
     return {
-      quantity: conflict?.existingQuantity || 1,
-      unit: conflict?.existingUnit || "piece",
+      quantity: 0,
+      unit: "",
     };
+  };
+
+  const isCurrentConflictResolved = (): boolean => {
+    if (unitConflicts.length === 0) return true;
+
+    const conflict = unitConflicts[currentConflictIndex];
+
+    // Auto-converted conflicts always have valid suggested defaults
+    if (conflict?.isAutoConverted) return true;
+
+    // Non-convertible: check that user has set both quantity and unit
+    const resolution = getCurrentConflictResolution();
+    return resolution.quantity > 0 && resolution.unit !== "";
   };
 
   const handleConflictQuantityChange = (quantity: number) => {
@@ -1110,8 +1157,8 @@ function ShoppingListsPageContent() {
       }
     }
 
-    // Apply resolutions to shopping list
-    const updatedItems = shoppingListItems.map((item) => {
+    // Apply resolutions to pending items (not yet on the shopping list)
+    const updatedItems = pendingMergedItems.map((item) => {
       const resolution = completeResolutions.get(item.foodItemId);
       if (resolution) {
         const foodItem = foodItems.find((f) => f._id === item.foodItemId);
@@ -2561,17 +2608,16 @@ function ShoppingListsPageContent() {
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                     <Chip label="Auto-converted" size="small" color="success" variant="outlined" />
                     <Typography variant="body2">
-                      {unitConflicts[currentConflictIndex]?.existingQuantity}{" "}
-                      {getUnitForm(
-                        unitConflicts[currentConflictIndex]!.existingUnit,
-                        unitConflicts[currentConflictIndex]!.existingQuantity,
-                      )}{" "}
-                      + {unitConflicts[currentConflictIndex]?.newQuantity}{" "}
-                      {getUnitForm(
-                        unitConflicts[currentConflictIndex]!.newUnit,
-                        unitConflicts[currentConflictIndex]!.newQuantity,
-                      )}{" "}
-                      ={" "}
+                      {unitConflicts[currentConflictIndex]?.unitBreakdown?.map(
+                        (entry, idx) => (
+                          <span key={idx}>
+                            {idx > 0 && " + "}
+                            {entry.quantity}{" "}
+                            {getUnitForm(entry.unit, entry.quantity)}
+                          </span>
+                        ),
+                      )}
+                      {" = "}
                       {Math.round(
                         (unitConflicts[currentConflictIndex]?.suggestedQuantity ?? 0) * 100
                       ) / 100}{" "}
@@ -2586,28 +2632,10 @@ function ShoppingListsPageContent() {
                 </Alert>
               ) : (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  This item has different units that can&apos;t be auto-converted.
+                  This item has different units that can&apos;t be
+                  auto-converted. Choose the quantity and unit for your list.
                 </Alert>
               )}
-
-              <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Already on shopping list:
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                  {unitConflicts[currentConflictIndex]?.existingQuantity}{" "}
-                  {unitConflicts[currentConflictIndex]?.existingUnit
-                    ? getUnitForm(
-                        unitConflicts[currentConflictIndex]!.existingUnit,
-                        unitConflicts[currentConflictIndex]!.existingQuantity,
-                      )
-                    : ""}
-                </Typography>
-              </Paper>
 
               <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                 <Typography
@@ -2615,21 +2643,29 @@ function ShoppingListsPageContent() {
                   color="text.secondary"
                   gutterBottom
                 >
-                  From meal plans:
+                  Unit entries to combine:
                 </Typography>
-                <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                  {unitConflicts[currentConflictIndex]?.newQuantity}{" "}
-                  {unitConflicts[currentConflictIndex]?.newUnit
-                    ? getUnitForm(
-                        unitConflicts[currentConflictIndex]!.newUnit,
-                        unitConflicts[currentConflictIndex]!.newQuantity,
-                      )
-                    : ""}
-                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                  {unitConflicts[currentConflictIndex]?.unitBreakdown?.map(
+                    (entry, idx) => (
+                      <Typography
+                        key={idx}
+                        component="li"
+                        variant="body1"
+                        sx={{ fontWeight: "medium" }}
+                      >
+                        {entry.quantity}{" "}
+                        {getUnitForm(entry.unit, entry.quantity)}
+                      </Typography>
+                    ),
+                  )}
+                </Box>
               </Paper>
 
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Set the quantity and unit for your shopping list:
+                {unitConflicts[currentConflictIndex]?.isAutoConverted
+                  ? "Review the suggested combined value:"
+                  : "Set the quantity and unit for your shopping list:"}
               </Typography>
 
               <Box
@@ -2689,7 +2725,11 @@ function ShoppingListsPageContent() {
                 >
                   ← Previous
                 </Button>
-                <Button onClick={handleNextConflict} variant="contained">
+                <Button
+                  onClick={handleNextConflict}
+                  variant="contained"
+                  disabled={!isCurrentConflictResolved()}
+                >
                   {currentConflictIndex < unitConflicts.length - 1
                     ? "Next →"
                     : "Complete"}
