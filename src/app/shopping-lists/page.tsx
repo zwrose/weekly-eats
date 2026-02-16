@@ -840,10 +840,17 @@ function ShoppingListsPageContent() {
   const handleAddHistoryItems = async (
     items: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
   ) => {
-    if (!selectedStore) return;
+    const store = selectedStore || historyDialogStore;
+    if (!store) return;
+
+    // Use live shopping list items when available, otherwise fall back to embedded data
+    const currentItems =
+      selectedStore?._id === store._id
+        ? shoppingListItems
+        : store.shoppingList?.items || [];
 
     const newItems = items.filter(
-      (item) => !shoppingListItems.some((i) => i.foodItemId === item.foodItemId)
+      (item) => !currentItems.some((i) => i.foodItemId === item.foodItemId)
     );
     if (newItems.length === 0) {
       showSnackbar("All selected items are already in your list", "info");
@@ -859,18 +866,19 @@ function ShoppingListsPageContent() {
     }));
 
     const mergedItems = await insertItemsWithPositions(
-      shoppingListItems,
+      currentItems,
       newListItems,
-      selectedStore._id
+      store._id
     );
 
-    const previousItems = [...shoppingListItems];
-    setShoppingListItems(mergedItems);
-
     try {
-      await updateShoppingList(selectedStore._id, { items: mergedItems });
+      await updateShoppingList(store._id, { items: mergedItems });
       const updatedStores = await fetchStores();
       setStores(updatedStores);
+      // If the shopping list dialog is open for this store, update its items too
+      if (selectedStore?._id === store._id) {
+        setShoppingListItems(mergedItems);
+      }
       showSnackbar(
         `Added ${newItems.length} item${newItems.length > 1 ? "s" : ""} from history`,
         "success"
@@ -878,7 +886,6 @@ function ShoppingListsPageContent() {
     } catch (error) {
       console.error("Error adding items from history:", error);
       showSnackbar("Failed to add items from history", "error");
-      setShoppingListItems(previousItems);
     }
   };
 
@@ -2880,7 +2887,11 @@ function ShoppingListsPageContent() {
         open={!!historyDialogStore}
         onClose={handleCloseHistory}
         historyItems={historyItems}
-        currentItems={shoppingListItems}
+        currentItems={
+          selectedStore?._id === historyDialogStore?._id
+            ? shoppingListItems
+            : historyDialogStore?.shoppingList?.items || []
+        }
         onAddItems={handleAddHistoryItems}
         loading={loadingHistory}
       />
