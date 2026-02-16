@@ -3,8 +3,9 @@
   "type": "feature",
   "description": "Loading performance improvements with server-side pagination, unified list views, and smart data loading",
   "branch": "feature/perf-pagination-unified-views",
-  "status": "planning",
+  "status": "in-progress",
   "createdAt": "2026-02-16",
   "phases": 6,
-  "tasks": 18
+  "tasks": 18,
+  "updated_at": "2026-02-16T18:12:36.104077Z"
 }

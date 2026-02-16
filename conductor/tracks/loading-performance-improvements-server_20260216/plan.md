@@ -4,21 +4,21 @@
 
 Build the shared utilities that all subsequent phases depend on.
 
-- [ ] Task 1.1: Create server-side pagination helper
-  - [ ] Write tests for a `parsePaginationParams(searchParams)` utility that extracts `page`, `limit`, `sortBy`, `sortOrder` from URL search params with defaults
-  - [ ] Write tests for a `paginatedResponse(collection, filter, options)` utility that returns `{ data, total, page, limit, totalPages }`
-  - [ ] Implement both utilities in `src/lib/pagination-utils.ts`
-  - [ ] Verify tests pass
+- [x] Task 1.1: Create server-side pagination helper [ce511a8]
+  - [x] Write tests for a `parsePaginationParams(searchParams)` utility that extracts `page`, `limit`, `sortBy`, `sortOrder` from URL search params with defaults
+  - [x] Write tests for a `paginatedResponse(collection, filter, options)` utility that returns `{ data, total, page, limit, totalPages }`
+  - [x] Implement both utilities in `src/lib/pagination-utils.ts`
+  - [x] Verify tests pass
 
-- [ ] Task 1.2: Create client-side pagination hook for server-paginated data
-  - [ ] Write tests for a `useServerPagination` hook that manages page state, calls a fetch function with page/limit/sort params, and exposes loading/data/pagination state
-  - [ ] Implement `src/lib/hooks/use-server-pagination.ts`
-  - [ ] Verify tests pass
+- [x] Task 1.2: Create client-side pagination hook for server-paginated data [827946a]
+  - [x] Write tests for a `useServerPagination` hook that manages page state, calls a fetch function with page/limit/sort params, and exposes loading/data/pagination state
+  - [x] Implement `src/lib/hooks/use-server-pagination.ts`
+  - [x] Verify tests pass
 
-- [ ] Task 1.3: Create debounced server search hook
-  - [ ] Write tests for a `useDebouncedSearch` hook that debounces input and triggers a callback after ~300ms
-  - [ ] Implement `src/lib/hooks/use-debounced-search.ts`
-  - [ ] Verify tests pass
+- [x] Task 1.3: Create debounced server search hook [26230e5]
+  - [x] Write tests for a `useDebouncedSearch` hook that debounces input and triggers a callback after ~300ms
+  - [x] Implement `src/lib/hooks/use-debounced-search.ts`
+  - [x] Verify tests pass
 
 ## Phase 2: Recipes — Unified List with Filtering [ ]
 

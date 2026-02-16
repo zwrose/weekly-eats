@@ -1,4 +1,4 @@
-import { Collection, Document, Filter } from 'mongodb';
+import { Collection, Document, Filter, WithId } from 'mongodb';
 
 export interface PaginationParams {
   page: number;
@@ -47,7 +47,7 @@ export async function paginatedResponse<T extends Document>(
   collection: Collection<T>,
   filter: Filter<T>,
   params: PaginationParams
-): Promise<PaginatedResult<T>> {
+): Promise<PaginatedResult<WithId<T>>> {
   const { page, limit, sortBy, sortOrder } = params;
   const skip = (page - 1) * limit;
 
