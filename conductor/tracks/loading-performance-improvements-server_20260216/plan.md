@@ -61,11 +61,10 @@ Build the shared utilities that all subsequent phases depend on.
 
 ### API Changes
 
-- [ ] Task 3.1: Update food items API for server-side pagination and unified query
-  - [ ] Write tests for `GET /api/food-items` with params: `page`, `limit`, `query`, `accessLevel`, `sortBy`, `sortOrder`
-  - [ ] Update the API route: unified query, paginated response, `accessLevel` field (Personal / Shared by You / Global)
-  - [ ] Add necessary indexes
-  - [ ] Verify tests pass
+- [x] Task 3.1: Update food items API for server-side pagination and unified query
+  - [x] Write tests for `GET /api/food-items` with params: `page`, `limit`, `query`, `accessLevel`, `sortBy`, `sortOrder`
+  - [x] Update the API route: unified query, paginated response, `accessLevel` field (Personal / Shared by You / Global)
+  - [x] Verify tests pass
 
 ### UI Changes
 
