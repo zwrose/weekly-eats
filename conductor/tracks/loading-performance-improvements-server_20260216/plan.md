@@ -44,16 +44,16 @@ Build the shared utilities that all subsequent phases depend on.
   - [x] Implement the component using MUI controls
   - [x] Verify tests pass
 
-- [~] Task 2.4: Refactor recipes page to unified server-paginated list
-  - [ ] Write tests for the updated recipes page: single list, server pagination, filter bar integration
-  - [ ] Refactor `src/app/recipes/page.tsx` to remove dual-section layout and use `useServerPagination` with the updated API
-  - [ ] Add access-level badges (Personal / Shared by You / Global) to each recipe row/card
-  - [ ] Verify tests pass
+- [x] Task 2.4: Refactor recipes page to unified server-paginated list [3acd7ae]
+  - [x] Write tests for the updated recipes page: single list, server pagination, filter bar integration
+  - [x] Refactor `src/app/recipes/page.tsx` to remove dual-section layout and use `useServerPagination` with the updated API
+  - [x] Add access-level badges (Personal / Shared by You / Global) to each recipe row/card
+  - [x] Verify tests pass
 
-- [ ] Task 2.5: Update `useRecipes` hook for unified data model
-  - [ ] Write tests for the updated hook that fetches a single paginated list instead of two separate lists
-  - [ ] Refactor `src/lib/hooks/use-recipes.ts`
-  - [ ] Verify tests pass
+- [x] Task 2.5: Remove unused `useRecipes` hook (replaced by `useServerPagination` in Task 2.4)
+  - [x] Verify no consumers of `useRecipes` remain
+  - [x] Remove `src/lib/hooks/use-recipes.ts` and its export from `hooks/index.ts`
+  - [x] Verify tests pass
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
