@@ -1,0 +1,75 @@
+# Weekly Eats
+
+Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB, and NextAuth.
+
+## Quick Reference
+
+- **Dev server**: `npm run dev` (includes DB setup) or `npm run dev:fast` (skip setup)
+- **Tests**: `npm test` (single run) or `npm run test:watch` (watch mode)
+- **Full validation**: `npm run check` (lint + test + build — run before pushing)
+- **Lint**: `npm run lint`
+
+## Project Structure
+
+```
+src/
+  app/
+    api/          # API routes (Next.js route handlers)
+    meal-plans/   # Feature pages
+    recipes/
+    shopping-lists/
+    pantry/
+    settings/
+  components/     # React components
+    ui/           # Reusable UI wrappers (DialogTitle, etc.)
+    optimized/    # Performance-optimized components
+    __tests__/    # Component tests
+  lib/
+    hooks/        # Custom React hooks (useRecipes, useFoodItems, etc.)
+    __tests__/    # Utility tests
+    auth.ts       # NextAuth config
+    mongodb.ts    # MongoDB connection singleton
+    errors.ts     # Centralized error constants
+    validation.ts # Input validation helpers
+    *-utils.ts    # Domain-specific utilities
+  types/          # TypeScript interfaces
+```
+
+## Conventions
+
+### API Routes
+
+- Check auth first: `const session = await getServerSession(authOptions)`
+- Return `{ error: AUTH_ERRORS.UNAUTHORIZED }` with 401 if no session
+- Admin routes check `user.isAdmin`, return 403 with `AUTH_ERRORS.FORBIDDEN`
+- Use error constants from `@/lib/errors` (never hardcode error strings)
+- Log errors with `logError('ContextName', error)`
+- Validate ObjectIds with `ObjectId.isValid(id)` before querying
+- Always filter user-scoped data by `userId` from the session
+
+### Components
+
+- All interactive components need `"use client"` directive
+- Use MUI components and `sx` prop for styling (no CSS files)
+- Memoize with `React.memo` where appropriate
+- Use custom hooks from `@/lib/hooks/` for data fetching
+
+### Tests
+
+- Colocated in `__tests__/` folders next to source files
+- Vitest + React Testing Library + MSW for API mocking
+- Mock next-auth: `vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }))`
+- Mock MongoDB: `vi.mock('@/lib/mongodb', () => ({ getMongoClient: vi.fn() }))`
+- Use `userEvent.setup()` for user interactions (not fireEvent)
+- Use `waitFor()` for async assertions
+
+### Database
+
+- MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `storeItemPositions`, `shoppingLists`
+- Access pattern: `const client = await getMongoClient(); const db = client.db();`
+- Indexes defined in `src/lib/database-indexes.ts`, applied via `npm run setup-db`
+
+## Do Not Edit
+
+- `.env.local` — contains secrets (MongoDB URI, NextAuth, Google OAuth, Ably keys)
+- `package-lock.json` — modify only via npm commands
