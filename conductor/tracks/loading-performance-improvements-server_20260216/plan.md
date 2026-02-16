@@ -57,7 +57,7 @@ Build the shared utilities that all subsequent phases depend on.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
-## Phase 3: Food Items — Unified List [x]
+## Phase 3: Food Items — Unified List [x] [checkpoint: ec9a108]
 
 ### API Changes
 

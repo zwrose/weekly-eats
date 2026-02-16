@@ -110,10 +110,7 @@ function FoodItemsPageContent() {
     page,
     totalPages,
     loading,
-    sortBy,
-    sortOrder,
     setPage,
-    setSort,
     refetch,
   } = useServerPagination<FoodItemWithAccessLevel>({
     fetchFn: fetchFoodItems,
