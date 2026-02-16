@@ -35,7 +35,7 @@
 - [x] Task 4.4: Add `Promise.all` for independent initial data loads in `settings/page.tsx` — `loadUserSettings` and `loadMealPlanOwners` now fire in parallel with shared loading state (`async-parallel`) [eb5e720]
 - [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
-## Phase 5: App Router Conventions & Metadata (HIGH impact, MEDIUM effort)
+## Phase 5: App Router Conventions & Metadata (HIGH impact, MEDIUM effort) [checkpoint: 9ce69d7]
 
 - [x] Task 5.1: Add `loading.tsx` with skeleton UIs for key routes: `recipes/`, `meal-plans/`, `shopping-lists/` (`async-suspense-boundaries`) [6fe1a7b]
 - [x] Task 5.2: Add `error.tsx` error boundary components for key routes: `recipes/`, `meal-plans/`, `shopping-lists/` [59a1481]
@@ -45,11 +45,12 @@
 
 ## Phase 6: Auth & Type Safety Fixes (HIGH impact, MEDIUM effort)
 
-- [ ] Task 6.1: Fix `src/lib/auth.ts` type safety — replace all 6 `any` casts with proper NextAuth types using the session callback signature (`server-auth-actions`)
-- [ ] Task 6.2: Make `isAdmin` and `isApproved` non-optional in `src/types/next-auth.d.ts` session type extension — update all consumers
-- [ ] Task 6.3: Cache auth session user lookup — store `isAdmin`/`isApproved` in the JWT token via the `jwt` callback instead of querying MongoDB on every `session()` call (`server-cache-lru`)
-- [ ] Task 6.4: Standardize API error handling — audit all routes in `src/app/api/` and replace hardcoded error strings with centralized constants from `src/lib/errors.ts`; replace `console.error` with `logError`; remove local `STORE_ERRORS` from `stores/route.ts`
-- [ ] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
+- [x] Task 6.1: Fix `src/lib/auth.ts` type safety — replace all 6 `any` casts with proper NextAuth types using the session callback signature (`server-auth-actions`) [e657586]
+- [x] Task 6.2: Make `isAdmin` and `isApproved` non-optional in `src/types/next-auth.d.ts` session type extension — update all consumers [e657586]
+- [x] Task 6.3: Cache auth session user lookup — store `isAdmin`/`isApproved` in the JWT token via the `jwt` callback instead of querying MongoDB on every `session()` call (`server-cache-lru`) [e657586]
+- [x] Task 6.4: Standardize API error handling — audit all routes in `src/app/api/` and replace hardcoded error strings with centralized constants from `src/lib/errors.ts`; replace `console.error` with `logError`; remove local `STORE_ERRORS` from `stores/route.ts` [b044a7b]
+- [x] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
+  - `npm run check` passed: lint clean, 536 tests passing, build successful
 
 ## Phase 7: React 19 Modernization & Re-render Optimization (MEDIUM impact, MEDIUM effort)
 
