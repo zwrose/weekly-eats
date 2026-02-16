@@ -22,6 +22,10 @@ export const createDatabaseIndexes = async () => {
       { userId: 1, createdAt: -1 },
       { name: 'mealPlans_userId_createdAt' }
     );
+    await mealPlansCollection.createIndex(
+      { templateId: 1 },
+      { name: 'mealPlans_templateId' }
+    );
 
     // Meal Plan Templates Collection
     const templatesCollection = db.collection('mealPlanTemplates');
@@ -78,6 +82,13 @@ export const createDatabaseIndexes = async () => {
       { name: 'pantry_userId_foodItemId', unique: true }
     );
 
+    // Shopping Lists Collection
+    const shoppingListsCollection = db.collection('shoppingLists');
+    await shoppingListsCollection.createIndex(
+      { storeId: 1 },
+      { name: 'shoppingLists_storeId', unique: true }
+    );
+
     // Store Item Positions Collection
     const storeItemPositionsCollection = db.collection('storeItemPositions');
     await storeItemPositionsCollection.createIndex(
@@ -119,13 +130,14 @@ export const dropAllIndexes = async () => {
 
     const collections = [
       'mealPlans',
-      'mealPlanTemplates', 
+      'mealPlanTemplates',
       'foodItems',
       'recipes',
       'recipeUserData',
       'pantry',
       'users',
-      'storeItemPositions'
+      'storeItemPositions',
+      'shoppingLists'
     ];
 
     for (const collectionName of collections) {
