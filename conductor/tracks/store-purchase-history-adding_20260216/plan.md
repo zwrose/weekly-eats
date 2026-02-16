@@ -1,6 +1,6 @@
 # Implementation Plan: Store Purchase History
 
-## Phase 1: Data Layer — Types, Collection & Indexes `[ ]`
+## Phase 1: Data Layer — Types, Collection & Indexes `[x]` [checkpoint: db681c0]
 
 - [x] Task: Add `PurchaseHistoryRecord` interface to `src/types/shopping-list.ts` [f682be7]
   - Fields: `_id`, `storeId`, `foodItemId`, `name`, `quantity`, `unit`, `lastPurchasedAt`
@@ -11,15 +11,15 @@
 
 ## Phase 2: API Routes `[ ]`
 
-- [ ] Task: Write tests for `GET /api/shopping-lists/[storeId]/history` route
+- [x] Task: Write tests for `GET /api/shopping-lists/[storeId]/history` route [1fa478f]
   - Test auth check, store access validation (owner + invited user), returns items sorted by `lastPurchasedAt` desc
-- [ ] Task: Implement `GET /api/shopping-lists/[storeId]/history` route
+- [x] Task: Implement `GET /api/shopping-lists/[storeId]/history` route [1fa478f]
   - Validates session and store access (owner or accepted invitation)
   - Returns purchase history for the store sorted by most recent first
-- [ ] Task: Write tests for `POST /api/shopping-lists/[storeId]/finish-shop` route
+- [x] Task: Write tests for `POST /api/shopping-lists/[storeId]/finish-shop` route [f749b1d]
   - Test that it upserts checked items into `purchaseHistory` then clears them from the shopping list
   - Test auth and store access validation
-- [ ] Task: Implement `POST /api/shopping-lists/[storeId]/finish-shop` route
+- [x] Task: Implement `POST /api/shopping-lists/[storeId]/finish-shop` route [f749b1d]
   - Receives checked items, bulk upserts into `purchaseHistory` collection, removes checked items from shopping list
   - Replaces the current client-side "Finish Shop" logic with a single server-side operation
 
