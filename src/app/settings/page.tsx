@@ -29,12 +29,13 @@ export default function SettingsPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]);
   
-  const currentUserId = (session?.user as { id?: string })?.id;
+  const currentUserId = session?.user?.id;
 
   useEffect(() => {
     if (session?.user?.email) {
-      loadUserSettings();
-      loadMealPlanOwners();
+      Promise.all([loadUserSettings(), loadMealPlanOwners()]).finally(() => {
+        setLoading(false);
+      });
     }
   }, [session?.user?.email]);
 
@@ -47,8 +48,6 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

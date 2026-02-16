@@ -2,17 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const INVITATION_ERRORS = {
-  INVITATION_NOT_FOUND: 'Invitation not found',
-  INVALID_ACTION: 'Invalid action',
-  NOT_AUTHORIZED: 'Not authorized to perform this action',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, MEAL_PLAN_SHARING_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ userId: string }>;
@@ -34,12 +24,12 @@ export async function PUT(
     const { action } = body; // 'accept' or 'reject'
 
     if (action !== 'accept' && action !== 'reject') {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVALID_ACTION }, { status: 400 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.INVALID_ACTION }, { status: 400 });
     }
 
     // Only the invited user can accept/reject their invitation
     if (userId !== session.user.id) {
-      return NextResponse.json({ error: INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.NOT_AUTHORIZED }, { status: 403 });
     }
 
     const client = await getMongoClient();
@@ -57,7 +47,7 @@ export async function PUT(
     });
 
     if (!owner) {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
     }
 
     // Update invitation status
@@ -106,7 +96,7 @@ export async function DELETE(
     const isSelf = userId === session.user.id;
 
     if (!isOwner && !isSelf) {
-      return NextResponse.json({ error: INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.NOT_AUTHORIZED }, { status: 403 });
     }
 
     // Remove the invitation

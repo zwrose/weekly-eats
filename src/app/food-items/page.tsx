@@ -48,17 +48,16 @@ import { DialogActions, DialogTitle } from '@/components/ui';
 
 function FoodItemsPageContent() {
   const { data: session, status } = useSession();
-  const user = session?.user as { id: string; isAdmin?: boolean } | undefined;
-  const isAdmin = user?.isAdmin;
+  const isAdmin = session?.user?.isAdmin;
   const { foodItems, loading, refetch } = useFoodItems();
 
   // User's food items: personal items + global items created by the user
   const userFoodItems = foodItems.filter(
-    item => !item.isGlobal || (item.isGlobal && item.createdBy === user?.id)
+    item => !item.isGlobal || (item.isGlobal && item.createdBy === session?.user?.id)
   );
   // Global food items: global items NOT created by the user
   const globalFoodItems = foodItems.filter(
-    item => item.isGlobal && item.createdBy !== user?.id
+    item => item.isGlobal && item.createdBy !== session?.user?.id
   );
 
   // Search and pagination

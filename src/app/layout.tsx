@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
+import { cookies } from "next/headers";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import "./globals.css";
 import Providers from "../components/Providers";
+import type { ThemeMode } from "../lib/user-settings";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -10,7 +13,10 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Weekly Eats",
+  title: {
+    template: "%s - Weekly Eats",
+    default: "Weekly Eats",
+  },
   description: "Plan your meals, make your list, and head to the store with confidence.",
   manifest: "/manifest.json",
   icons: {
@@ -23,17 +29,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const initialMode = (cookieStore.get("theme-mode")?.value as ThemeMode) || undefined;
+  const initialIsDark = cookieStore.get("theme-isDark")?.value === "1";
+
   return (
     <html lang="en">
       <body className={figtree.variable}>
-        <Providers>
-          {children}
-        </Providers>
+        <AppRouterCacheProvider>
+          <Providers initialMode={initialMode} initialIsDark={initialIsDark}>
+            {children}
+          </Providers>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

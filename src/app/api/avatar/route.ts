@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logError } from '@/lib/errors';
 
 /**
  * Proxy endpoint for Google profile images to:
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching avatar image:', error);
+    logError('Avatar GET', error);
     
     // Return 503 on timeout or network errors
     if (error instanceof Error && error.name === 'AbortError') {

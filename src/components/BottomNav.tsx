@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -32,42 +32,50 @@ export default function BottomNav() {
   const pathname = usePathname();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleProfileMenu = (event: React.MouseEvent<HTMLElement>) => {
+  const handleProfileMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
 
-  const handleNavigation = (path: string) => {
-    router.push(path);
-  };
-
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     signOut({ callbackUrl: "/" });
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, []);
 
-  const handleSettings = () => {
+  const handleSettings = useCallback(() => {
     router.push('/settings');
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
 
-  const handleAdmin = () => {
+  const handleAdmin = useCallback(() => {
     router.push('/user-management');
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
 
-  const handleFoodItems = () => {
+  const handleFoodItems = useCallback(() => {
     router.push('/food-items');
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
 
-  const handlePantry = () => {
+  const handlePantry = useCallback(() => {
     router.push('/pantry');
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
+
+  const handleNavMealPlans = useCallback(() => {
+    router.push('/meal-plans');
+  }, [router]);
+
+  const handleNavShoppingLists = useCallback(() => {
+    router.push('/shopping-lists');
+  }, [router]);
+
+  const handleNavRecipes = useCallback(() => {
+    router.push('/recipes');
+  }, [router]);
 
   // Determine current value based on pathname
   const getCurrentValue = () => {
@@ -79,8 +87,8 @@ export default function BottomNav() {
 
   // Check if we should hide the bottom nav for unapproved users
   const shouldHideBottomNav = session?.user && 
-    !(session.user as { isApproved?: boolean }).isApproved && 
-    !(session.user as { isAdmin?: boolean }).isAdmin;
+    !session.user.isApproved && 
+    !session.user.isAdmin;
 
   if (!session?.user || shouldHideBottomNav) {
     return null;
@@ -113,7 +121,7 @@ export default function BottomNav() {
           <BottomNavigationAction
             aria-label="Meal Plans"
             icon={<CalendarMonth />}
-            onClick={() => handleNavigation('/meal-plans')}
+            onClick={handleNavMealPlans}
             sx={{
               '&.Mui-selected': {
                 color: '#1976d2',
@@ -123,7 +131,7 @@ export default function BottomNav() {
           <BottomNavigationAction
             aria-label="Shopping Lists"
             icon={<ShoppingCart />}
-            onClick={() => handleNavigation('/shopping-lists')}
+            onClick={handleNavShoppingLists}
             sx={{
               '&.Mui-selected': {
                 color: '#2e7d32',
@@ -133,7 +141,7 @@ export default function BottomNav() {
           <BottomNavigationAction
             aria-label="Recipes"
             icon={<Restaurant />}
-            onClick={() => handleNavigation('/recipes')}
+            onClick={handleNavRecipes}
             sx={{
               '&.Mui-selected': {
                 color: '#ed6c02',
@@ -180,7 +188,7 @@ export default function BottomNav() {
             </ListItemIcon>
             <ListItemText>Manage Food Items</ListItemText>
           </MenuItem>
-          {(session.user as { isAdmin?: boolean }).isAdmin && (
+          {session.user.isAdmin && (
             <MenuItem onClick={handleAdmin}>
               <ListItemIcon>
                 <Person fontSize="small" />

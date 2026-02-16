@@ -99,7 +99,8 @@ import {
   usePersistentDialog,
   type ActiveUser,
 } from "@/lib/hooks";
-import EmojiPicker from "../../components/EmojiPicker";
+import dynamic from "next/dynamic";
+const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
 import { responsiveDialogStyle } from "@/lib/theme";
@@ -503,7 +504,7 @@ function ShoppingListsPageContent() {
   };
 
   const confirmLeaveStore = async () => {
-    const userId = (session?.user as { id?: string })?.id;
+    const userId = session?.user?.id;
     if (!userId || !selectedStore) return;
 
     try {
@@ -519,7 +520,7 @@ function ShoppingListsPageContent() {
   };
 
   const isStoreOwner = (store: StoreWithShoppingList): boolean => {
-    const userId = (session?.user as { id?: string })?.id;
+    const userId = session?.user?.id;
     return store.userId === userId;
   };
 

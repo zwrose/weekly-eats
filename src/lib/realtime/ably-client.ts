@@ -1,11 +1,13 @@
-import * as Ably from 'ably';
+import type * as AblyTypes from 'ably';
 
-let client: Ably.Realtime | null = null;
+let client: AblyTypes.Realtime | null = null;
 
-export const getAblyClient = (): Ably.Realtime => {
+export const getAblyClient = async (): Promise<AblyTypes.Realtime> => {
   if (client) {
     return client;
   }
+
+  const Ably = await import('ably');
 
   client = new Ably.Realtime({
     authUrl: '/api/ably/token',
@@ -14,5 +16,3 @@ export const getAblyClient = (): Ably.Realtime => {
 
   return client;
 };
-
-

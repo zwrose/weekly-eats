@@ -103,11 +103,11 @@ All tasks follow a strict lifecycle:
         -   For each remaining code file, verify a corresponding test file exists.
         -   If a test file is missing, you **must** create one. Before writing the test, **first, analyze other test files in the repository to determine the correct naming convention and testing style.** The new tests **must** validate the functionality described in this phase's tasks (`plan.md`).
 
-3.  **Execute Automated Tests with Proactive Debugging:**
-    -   Before execution, you **must** announce the exact shell command you will use to run the tests.
-    -   **Example Announcement:** "I will now run the automated test suite to verify the phase. **Command:** `CI=true npm test`"
-    -   Execute the announced command.
-    -   If tests fail, you **must** inform the user and begin debugging. You may attempt to propose a fix a **maximum of two times**. If the tests still fail after your second proposed fix, you **must stop**, report the persistent failure, and ask the user for guidance.
+3.  **Run Full Validation Suite with Proactive Debugging:**
+    -   Before execution, you **must** announce the exact shell command you will use.
+    -   **Announcement:** "I will now run the full validation suite to verify the phase. **Command:** `npm run check`"
+    -   Execute `npm run check` (lint + test + build). This catches type errors, lint violations, and test failures before presenting the phase for manual review.
+    -   If any step fails, you **must** inform the user and begin debugging. You may attempt to propose a fix a **maximum of two times**. If the issue persists after your second proposed fix, you **must stop**, report the persistent failure, and ask the user for guidance.
 
 4.  **Propose a Detailed, Actionable Manual Verification Plan:**
     -   **CRITICAL:** To generate the plan, first analyze `product.md`, `product-guidelines.md`, and `plan.md` to determine the user-facing goals of the completed phase.
@@ -238,27 +238,23 @@ When skipping quality gate warnings, document the reason:
 
 ## Development Commands
 
-**AI AGENT INSTRUCTION: This section should be adapted to the project's specific language, framework, and build tools.**
-
 ### Setup
 ```bash
-# Example: Commands to set up the development environment (e.g., install dependencies, configure database)
-# e.g., for a Node.js project: npm install
-# e.g., for a Go project: go mod tidy
+npm install          # Install dependencies
+npm run dev          # Start dev server (includes DB setup)
+npm run dev:fast     # Start dev server (skip DB setup)
 ```
 
 ### Daily Development
 ```bash
-# Example: Commands for common daily tasks (e.g., start dev server, run tests, lint, format)
-# e.g., for a Node.js project: npm run dev, npm test, npm run lint
-# e.g., for a Go project: go run main.go, go test ./..., go fmt ./...
+npm test             # Run tests (single run)
+npm run test:watch   # Run tests (watch mode)
+npm run lint         # Lint only
 ```
 
-### Before Committing
+### Before Committing / Phase Verification
 ```bash
-# Example: Commands to run all pre-commit checks (e.g., format, lint, type check, run tests)
-# e.g., for a Node.js project: npm run check
-# e.g., for a Go project: make check (if a Makefile exists)
+npm run check        # Full validation: lint + test + build (REQUIRED before phase review)
 ```
 
 ## Testing Requirements

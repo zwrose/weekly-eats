@@ -3,21 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const INVITE_ERRORS = {
-  INVALID_STORE_ID: 'Invalid store ID',
-  STORE_NOT_FOUND: 'Store not found',
-  NOT_OWNER: 'Only the store owner can send invitations',
-  INVALID_EMAIL: 'Valid email address is required',
-  USER_NOT_FOUND: 'User not found. They need to register first.',
-  SELF_INVITE: 'Cannot invite yourself',
-  ALREADY_INVITED: 'User already has a pending invitation',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, STORE_INVITATION_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -35,21 +21,21 @@ export async function POST(
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: INVITE_ERRORS.INVALID_STORE_ID }, { status: 400 });
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
 
     const body = await request.json();
     const { email } = body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return NextResponse.json({ error: INVITE_ERRORS.INVALID_EMAIL }, { status: 400 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.INVALID_EMAIL }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check for self-invitation
     if (normalizedEmail === session.user.email?.toLowerCase()) {
-      return NextResponse.json({ error: INVITE_ERRORS.SELF_INVITE }, { status: 400 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.SELF_INVITE }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -64,14 +50,14 @@ export async function POST(
     });
 
     if (!store) {
-      return NextResponse.json({ error: INVITE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: STORE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
     // Find the user to invite
     const invitedUser = await usersCollection.findOne({ email: normalizedEmail });
 
     if (!invitedUser) {
-      return NextResponse.json({ error: INVITE_ERRORS.USER_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.USER_NOT_FOUND }, { status: 404 });
     }
 
     const invitedUserId = invitedUser._id.toString();

@@ -13,6 +13,27 @@ export async function fetchRecipeUserData(recipeId: string): Promise<RecipeUserD
 }
 
 /**
+ * Batch fetch recipe user data for multiple recipes in a single request
+ */
+export async function fetchRecipeUserDataBatch(
+  recipeIds: string[]
+): Promise<Map<string, RecipeUserDataResponse>> {
+  if (recipeIds.length === 0) return new Map();
+
+  const response = await fetch('/api/recipes/user-data/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeIds }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch recipe user data batch');
+  }
+  const { data } = await response.json();
+  return new Map(Object.entries(data) as [string, RecipeUserDataResponse][]);
+}
+
+/**
  * Update tags for a recipe
  */
 export async function updateRecipeTags(recipeId: string, tags: string[]): Promise<{ tags: string[] }> {

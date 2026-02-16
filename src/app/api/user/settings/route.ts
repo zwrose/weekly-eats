@@ -3,10 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../lib/mongodb';
 import { DEFAULT_USER_SETTINGS } from '../../../../lib/user-settings';
 import { getUserObjectId } from '../../../../lib/user-utils';
-import { 
-  AUTH_ERRORS, 
+import {
+  AUTH_ERRORS,
   API_ERRORS,
-  logError 
+  USER_ERRORS,
+  SETTINGS_ERRORS,
+  logError
 } from '@/lib/errors';
 
 export async function GET() {
@@ -48,18 +50,18 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession();
     
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const userId = await getUserObjectId(session.user.email);
     if (!userId) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: USER_ERRORS.USER_NOT_FOUND }, { status: 404 });
     }
 
     const { settings } = await request.json();
     
     if (!settings || typeof settings.themeMode !== 'string') {
-      return NextResponse.json({ error: 'Invalid settings data' }, { status: 400 });
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -87,11 +89,11 @@ export async function POST(request: NextRequest) {
     if (result.acknowledged) {
       return NextResponse.json({ success: true });
     } else {
-      return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+      return NextResponse.json({ error: SETTINGS_ERRORS.SETTINGS_UPDATE_FAILED }, { status: 500 });
     }
 
   } catch (error) {
-    console.error('Error saving user settings:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('User Settings POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

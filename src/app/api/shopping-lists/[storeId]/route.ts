@@ -4,19 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { publishShoppingEvent } from '@/lib/realtime/ably-server';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const SHOPPING_LIST_ERRORS = {
-  INVALID_STORE_ID: 'Invalid store ID',
-  STORE_NOT_FOUND: 'Store not found',
-  SHOPPING_LIST_NOT_FOUND: 'Shopping list not found',
-  INVALID_ITEMS: 'Invalid items array',
-  DUPLICATE_FOOD_ITEM: 'Food item already exists in the shopping list',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, SHOPPING_LIST_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ storeId: string }>;

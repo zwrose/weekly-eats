@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 export async function GET() {
   try {

@@ -55,88 +55,103 @@ export async function GET() {
       .sort({ startDate: -1 })
       .toArray();
 
-    // Helper function to populate a single meal item's name
-    const populateMealItemName = async (mealItem: MealItem): Promise<MealItem> => {
+    // Collect all food item and recipe IDs referenced in meal plans
+    const foodItemIds = new Set<string>();
+    const recipeIds = new Set<string>();
+
+    for (const plan of mealPlans) {
+      for (const mealPlanItem of (plan.items || []) as MealPlanItem[]) {
+        for (const mealItem of (mealPlanItem.items || []) as MealItem[]) {
+          if (mealItem.type === 'foodItem' && mealItem.id) {
+            foodItemIds.add(mealItem.id);
+          } else if (mealItem.type === 'recipe' && mealItem.id) {
+            recipeIds.add(mealItem.id);
+          } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
+            for (const group of mealItem.ingredients as RecipeIngredientList[]) {
+              for (const ingredient of group.ingredients || []) {
+                if (ingredient.type === 'foodItem' && ingredient.id) {
+                  foodItemIds.add(ingredient.id);
+                } else if (ingredient.type === 'recipe' && ingredient.id) {
+                  recipeIds.add(ingredient.id);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Batch fetch all referenced food items and recipes
+    const [foodItemDocs, recipeDocs] = await Promise.all([
+      foodItemIds.size > 0
+        ? foodItemsCollection.find({ _id: { $in: [...foodItemIds].map(id => ObjectId.createFromHexString(id)) } }).toArray()
+        : Promise.resolve([]),
+      recipeIds.size > 0
+        ? recipesCollection.find({ _id: { $in: [...recipeIds].map(id => ObjectId.createFromHexString(id)) } }).toArray()
+        : Promise.resolve([]),
+    ]);
+
+    const foodItemMap = new Map(foodItemDocs.map(fi => [fi._id.toString(), fi]));
+    const recipeMap = new Map(recipeDocs.map(r => [r._id.toString(), r]));
+
+    // Populate names using the lookup maps
+    const populateMealItemName = (mealItem: MealItem): MealItem => {
       if (mealItem.type === 'foodItem' && mealItem.id) {
-        const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        const foodItem = foodItemMap.get(mealItem.id);
         return {
           ...mealItem,
           name: foodItem ? (mealItem.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : mealItem.name || 'Unknown'
         };
       } else if (mealItem.type === 'recipe' && mealItem.id) {
-        const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(mealItem.id) });
+        const recipe = recipeMap.get(mealItem.id);
         return {
           ...mealItem,
           name: recipe ? recipe.title : mealItem.name || 'Unknown'
         };
       } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
-        // Populate names for ingredients within the group
-        const populatedIngredients = await Promise.all(
-          mealItem.ingredients.map(async (group: RecipeIngredientList) => {
-            const populatedGroupIngredients = await Promise.all(
-              (group.ingredients || []).map(async (ingredient) => {
-                if (ingredient.type === 'foodItem' && ingredient.id) {
-                  const foodItem = await foodItemsCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
-                  return {
-                    ...ingredient,
-                    name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown'
-                  };
-                } else if (ingredient.type === 'recipe' && ingredient.id) {
-                  const recipe = await recipesCollection.findOne({ _id: ObjectId.createFromHexString(ingredient.id) });
-                  return {
-                    ...ingredient,
-                    name: recipe ? recipe.title : 'Unknown'
-                  };
-                }
-                return ingredient;
-              })
-            );
-            
-            return {
-              ...group,
-              ingredients: populatedGroupIngredients
-            };
-          })
-        );
-        
-        return {
-          ...mealItem,
-          ingredients: populatedIngredients,
-          name: mealItem.name || ''
-        };
+        const populatedIngredients = mealItem.ingredients.map((group: RecipeIngredientList) => ({
+          ...group,
+          ingredients: (group.ingredients || []).map((ingredient) => {
+            if (ingredient.type === 'foodItem' && ingredient.id) {
+              const foodItem = foodItemMap.get(ingredient.id);
+              return {
+                ...ingredient,
+                name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown'
+              };
+            } else if (ingredient.type === 'recipe' && ingredient.id) {
+              const recipe = recipeMap.get(ingredient.id);
+              return {
+                ...ingredient,
+                name: recipe ? recipe.title : 'Unknown'
+              };
+            }
+            return ingredient;
+          }),
+        }));
+        return { ...mealItem, ingredients: populatedIngredients, name: mealItem.name || '' };
       }
       return mealItem;
     };
 
     // Transform meal plans to use template snapshot and populate names
-    const mealPlansWithTemplates = await Promise.all(
-      mealPlans.map(async (plan) => {
-        const populatedItems = await Promise.all(
-          ((plan.items || []) as MealPlanItem[]).map(async (mealPlanItem) => {
-            const populatedMealItems = await Promise.all(
-              (mealPlanItem.items || []).map(populateMealItemName)
-            );
-            
-            return {
-              ...mealPlanItem,
-              items: populatedMealItems
-            };
-          })
-        );
+    const mealPlansWithTemplates = mealPlans.map((plan) => {
+      const populatedItems = ((plan.items || []) as MealPlanItem[]).map((mealPlanItem) => ({
+        ...mealPlanItem,
+        items: (mealPlanItem.items || []).map(populateMealItemName),
+      }));
 
-        return {
-          ...plan,
-          items: populatedItems,
-          template: {
-            _id: plan.templateId,
-            userId: session.user.id,
-            ...plan.templateSnapshot,
-            createdAt: plan.createdAt,
-            updatedAt: plan.createdAt
-          }
-        };
-      })
-    );
+      return {
+        ...plan,
+        items: populatedItems,
+        template: {
+          _id: plan.templateId,
+          userId: session.user.id,
+          ...plan.templateSnapshot,
+          createdAt: plan.createdAt,
+          updatedAt: plan.createdAt
+        }
+      };
+    });
 
     return NextResponse.json(mealPlansWithTemplates);
   } catch (error) {

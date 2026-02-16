@@ -3,11 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getMongoClient } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { AUTH_ERRORS, API_ERRORS } from "@/lib/errors";
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, FOOD_ITEM_ERRORS, logError } from "@/lib/errors";
 
 type RouteParams = {
   params: Promise<{ storeId: string }>;
@@ -29,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { storeId } = await params;
     if (!ObjectId.isValid(storeId)) {
-      return NextResponse.json({ error: "Invalid store ID" }, { status: 400 });
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -50,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!store) {
-      return NextResponse.json({ error: "Store not found" }, { status: 404 });
+      return NextResponse.json({ error: STORE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
     // Check if querying for a specific food item
@@ -61,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // Return position for specific food item
       if (!ObjectId.isValid(foodItemId)) {
         return NextResponse.json(
-          { error: "Invalid food item ID" },
+          { error: FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID },
           { status: 400 }
         );
       }
@@ -116,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { storeId } = await params;
     if (!ObjectId.isValid(storeId)) {
-      return NextResponse.json({ error: "Invalid store ID" }, { status: 400 });
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
 
     const body = await request.json();
@@ -173,7 +169,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!store) {
-      return NextResponse.json({ error: "Store not found" }, { status: 404 });
+      return NextResponse.json({ error: STORE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
     // Upsert positions

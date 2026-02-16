@@ -251,9 +251,9 @@ export default function EmojiPicker({
               gap: 1,
             }}
           >
-            {filteredEmojis.map((item, index) => (
+            {filteredEmojis.map((item) => (
               <Box
-                key={index}
+                key={item.emoji}
                 onClick={() => handleEmojiSelect(item.emoji)}
                 sx={{
                   fontSize: "2rem",

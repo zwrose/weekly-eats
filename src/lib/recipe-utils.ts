@@ -52,7 +52,7 @@ export const createRecipe = async (recipe: CreateRecipeRequest): Promise<Recipe>
   return response.json();
 };
 
-export const updateRecipe = async (id: string, recipe: UpdateRecipeRequest): Promise<void> => {
+export const updateRecipe = async (id: string, recipe: UpdateRecipeRequest): Promise<Recipe> => {
   const response = await fetch(`/api/recipes/${id}`, {
     method: 'PUT',
     headers: {
@@ -60,11 +60,13 @@ export const updateRecipe = async (id: string, recipe: UpdateRecipeRequest): Pro
     },
     body: JSON.stringify(recipe),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update recipe');
   }
+
+  return response.json();
 };
 
 export const deleteRecipe = async (id: string): Promise<void> => {

@@ -253,7 +253,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
@@ -269,7 +269,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!mealPlan) {
-      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
     // Check if user owns this meal plan OR if it's been shared with them
@@ -298,12 +298,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_NOT_FOUND }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Meal plan deleted successfully' });
   } catch (error) {
-    console.error('Error deleting meal plan:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('MealPlans DELETE [id]', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

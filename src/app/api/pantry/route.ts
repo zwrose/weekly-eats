@@ -3,13 +3,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getMongoClient } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { AUTH_ERRORS, PANTRY_ERRORS, API_ERRORS, logError } from "@/lib/errors";
+import { AUTH_ERRORS, PANTRY_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedItems);
   } catch (error) {
-    console.error("Error fetching pantry items:", error);
+    logError("Pantry GET", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: API_ERRORS.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     // Validate ObjectId format
     if (!ObjectId.isValid(foodItemId)) {
       return NextResponse.json(
-        { error: "Invalid food item ID format" },
+        { error: FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID },
         { status: 400 }
       );
     }
@@ -195,7 +195,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -203,7 +203,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!foodItemId) {
       return NextResponse.json(
-        { error: "Food item ID is required" },
+        { error: PANTRY_ERRORS.FOOD_ITEM_ID_REQUIRED },
         { status: 400 }
       );
     }
@@ -219,16 +219,16 @@ export async function DELETE(request: NextRequest) {
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
-        { error: "Item not found in pantry" },
+        { error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ message: "Item removed from pantry" });
   } catch (error) {
-    console.error("Error removing pantry item:", error);
+    logError("Pantry DELETE", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: API_ERRORS.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }

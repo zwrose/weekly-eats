@@ -26,7 +26,7 @@ export default function PendingApprovalPage() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push('/');
-    } else if (status === "authenticated" && (session?.user as { isApproved?: boolean })?.isApproved) {
+    } else if (status === "authenticated" && session?.user?.isApproved) {
               router.push('/meal-plans');
     }
   }, [status, session, router]);
@@ -46,7 +46,7 @@ export default function PendingApprovalPage() {
 
   // Show loading while redirecting
   if (status === "unauthenticated" || 
-      (status === "authenticated" && (session?.user as { isApproved?: boolean })?.isApproved)) {
+      (status === "authenticated" && session?.user?.isApproved)) {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="md" sx={{ py: 4 }}>

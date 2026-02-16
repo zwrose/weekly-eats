@@ -3,18 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
+import { AUTH_ERRORS, API_ERRORS, SHOPPING_LIST_ERRORS, logError } from '@/lib/errors';
 import { publishShoppingEvent } from '@/lib/realtime/ably-server';
-
-const SHOPPING_LIST_ERRORS = {
-  INVALID_STORE_ID: 'Invalid store ID',
-  STORE_NOT_FOUND: 'Store not found',
-  ITEM_NOT_FOUND: 'Item not found in shopping list',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
 
 type RouteParams = {
   params: Promise<{ storeId: string; foodItemId: string }>;

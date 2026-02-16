@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
 
 interface UseSearchPaginationOptions<T> {
   data: T[];
@@ -10,6 +10,7 @@ interface UseSearchPaginationOptions<T> {
 interface UseSearchPaginationReturn<T> {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  isSearchPending: boolean;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   filteredData: T[];
@@ -25,22 +26,29 @@ export const useSearchPagination = <T>({
   searchFields,
   searchFunction
 }: UseSearchPaginationOptions<T>): UseSearchPaginationReturn<T> => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTermImmediate] = useState('');
+  const [deferredSearchTerm, setDeferredSearchTerm] = useState('');
+  const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Ensure data is always an array (compute inside memos to avoid changing deps)
+  const setSearchTerm = useCallback((term: string) => {
+    setSearchTermImmediate(term);
+    startTransition(() => {
+      setDeferredSearchTerm(term);
+    });
+  }, []);
 
-  // Reset pagination when search term changes
+  // Reset pagination when deferred search term changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [deferredSearchTerm]);
 
-  // Filter data based on search term
+  // Filter data based on deferred search term (low-priority update)
   const filteredData = useMemo(() => {
     const baseData = Array.isArray(data) ? data : [];
-    if (!searchTerm.trim()) return baseData;
+    if (!deferredSearchTerm.trim()) return baseData;
 
-    const term = searchTerm.toLowerCase();
+    const term = deferredSearchTerm.toLowerCase();
     
     if (searchFunction) {
       return baseData.filter(item => searchFunction(item, term));
@@ -64,7 +72,7 @@ export const useSearchPagination = <T>({
         typeof value === 'string' && value.toLowerCase().includes(term)
       )
     );
-  }, [data, searchTerm, searchFields, searchFunction]);
+  }, [data, deferredSearchTerm, searchFields, searchFunction]);
 
   // Paginate filtered data
   const paginatedData = useMemo(() => {
@@ -76,14 +84,16 @@ export const useSearchPagination = <T>({
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const totalItems = filteredData.length;
 
-  const resetPagination = () => {
-    setSearchTerm('');
+  const resetPagination = useCallback(() => {
+    setSearchTermImmediate('');
+    setDeferredSearchTerm('');
     setCurrentPage(1);
-  };
+  }, []);
 
   return {
     searchTerm,
     setSearchTerm,
+    isSearchPending: isPending,
     currentPage,
     setCurrentPage,
     filteredData,

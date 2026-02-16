@@ -56,6 +56,7 @@ export const USER_ERRORS = {
   INVALID_USER_ID: 'Invalid user ID',
   APPROVAL_UPDATE_FAILED: 'Failed to update approval status',
   ADMIN_TOGGLE_FAILED: 'Failed to toggle admin status',
+  CANNOT_MODIFY_OWN_ADMIN: 'Cannot modify your own admin status',
 } as const;
 
 // Food Items
@@ -76,6 +77,7 @@ export const FOOD_ITEM_ERRORS = {
   CANNOT_MAKE_GLOBAL_PERSONAL: 'Cannot make global items personal',
   ONLY_ADMINS_CAN_MAKE_GLOBAL: 'Only admins can make items global',
   ONLY_ADMINS_CAN_EDIT_GLOBAL: 'Only admins can edit global items',
+  ONLY_ADMINS_CAN_DELETE_GLOBAL: 'Only admins can delete global items',
 } as const;
 
 // Recipes
@@ -107,6 +109,57 @@ export const PANTRY_ERRORS = {
 export const SETTINGS_ERRORS = {
   SETTINGS_FETCH_FAILED: 'Failed to fetch user settings',
   SETTINGS_UPDATE_FAILED: 'Failed to update user settings',
+} as const;
+
+// Stores
+export const STORE_ERRORS = {
+  INVALID_STORE_ID: 'Invalid store ID',
+  STORE_NOT_FOUND: 'Store not found',
+  INVALID_NAME: 'Store name is required',
+  DUPLICATE_STORE: 'A store with this name already exists',
+  NOT_OWNER: 'Only the store owner can send invitations',
+} as const;
+
+// Store Invitations
+export const STORE_INVITATION_ERRORS = {
+  INVALID_EMAIL: 'Valid email address is required',
+  USER_NOT_FOUND: 'User not found. They need to register first.',
+  SELF_INVITE: 'Cannot invite yourself',
+  ALREADY_INVITED: 'User already has a pending invitation',
+  INVITATION_NOT_FOUND: 'Invitation not found',
+  INVALID_ACTION: 'Invalid action',
+  NOT_AUTHORIZED: 'Not authorized to perform this action',
+} as const;
+
+// Shopping Lists
+export const SHOPPING_LIST_ERRORS = {
+  INVALID_STORE_ID: 'Invalid store ID',
+  STORE_NOT_FOUND: 'Store not found',
+  SHOPPING_LIST_NOT_FOUND: 'Shopping list not found',
+  INVALID_ITEMS: 'Invalid items array',
+  DUPLICATE_FOOD_ITEM: 'Food item already exists in the shopping list',
+  ITEM_NOT_FOUND: 'Item not found in shopping list',
+} as const;
+
+// Meal Plan Sharing
+export const MEAL_PLAN_SHARING_ERRORS = {
+  INVALID_EMAIL: 'Valid email address is required',
+  USER_NOT_FOUND: 'User not found. They need to register first.',
+  SELF_INVITE: 'Cannot share meal plans with yourself',
+  INVITATION_NOT_FOUND: 'Invitation not found',
+  INVALID_ACTION: 'Invalid action',
+  NOT_AUTHORIZED: 'Not authorized to perform this action',
+} as const;
+
+// Recipe Sharing
+export const RECIPE_SHARING_ERRORS = {
+  INVALID_EMAIL: 'Valid email address is required',
+  USER_NOT_FOUND: 'User not found. They need to register first.',
+  SELF_INVITE: 'Cannot share recipe data with yourself',
+  INVALID_SHARING_TYPES: 'Sharing types must be an array with at least one of: tags, ratings',
+  INVITATION_NOT_FOUND: 'Invitation not found',
+  INVALID_ACTION: 'Invalid action',
+  NOT_AUTHORIZED: 'Not authorized to perform this action',
 } as const;
 
 // Helper function to create consistent error responses

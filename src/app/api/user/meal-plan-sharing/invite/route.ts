@@ -2,17 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const INVITE_ERRORS = {
-  INVALID_EMAIL: 'Valid email address is required',
-  USER_NOT_FOUND: 'User not found. They need to register first.',
-  SELF_INVITE: 'Cannot share meal plans with yourself',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, MEAL_PLAN_SHARING_ERRORS, logError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,14 +15,14 @@ export async function POST(request: NextRequest) {
     const { email } = body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return NextResponse.json({ error: INVITE_ERRORS.INVALID_EMAIL }, { status: 400 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.INVALID_EMAIL }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check for self-invitation
     if (normalizedEmail === session.user.email?.toLowerCase()) {
-      return NextResponse.json({ error: INVITE_ERRORS.SELF_INVITE }, { status: 400 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.SELF_INVITE }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -43,7 +33,7 @@ export async function POST(request: NextRequest) {
     const invitedUser = await usersCollection.findOne({ email: normalizedEmail });
 
     if (!invitedUser) {
-      return NextResponse.json({ error: INVITE_ERRORS.USER_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: MEAL_PLAN_SHARING_ERRORS.USER_NOT_FOUND }, { status: 404 });
     }
 
     const invitedUserId = invitedUser._id.toString();

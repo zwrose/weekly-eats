@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Ably from 'ably';
+import { API_ERRORS, logError } from '@/lib/errors';
 
 let restClient: Ably.Rest | null = null;
 
@@ -10,7 +11,7 @@ function getRestClient(): Ably.Rest | null {
 
   const apiKey = process.env.ABLY_API_KEY;
   if (!apiKey) {
-    console.error('[Ably] ABLY_API_KEY is not set');
+    logError('Ably', new Error('ABLY_API_KEY is not set'));
     return null;
   }
 
@@ -21,7 +22,7 @@ function getRestClient(): Ably.Rest | null {
 export async function GET() {
   const client = getRestClient();
   if (!client) {
-    return NextResponse.json({ error: 'Ably not configured' }, { status: 500 });
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 
   try {
@@ -38,8 +39,8 @@ export async function GET() {
 
     return NextResponse.json(tokenRequest);
   } catch (error) {
-    console.error('[Ably] Failed to create token request:', error);
-    return NextResponse.json({ error: 'Failed to create Ably token' }, { status: 500 });
+    logError('Ably Token GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 

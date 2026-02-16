@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { lightTheme, darkTheme } from './theme';
 import { useSession } from 'next-auth/react';
@@ -22,10 +22,23 @@ export function useTheme() {
   return context;
 }
 
-export function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
+function setThemeCookies(mode: ThemeMode, isDark: boolean) {
+  document.cookie = `theme-mode=${mode};path=/;max-age=31536000;SameSite=Lax`;
+  document.cookie = `theme-isDark=${isDark ? '1' : '0'};path=/;max-age=31536000;SameSite=Lax`;
+}
+
+export function ThemeProviderWrapper({
+  children,
+  initialMode,
+  initialIsDark = false,
+}: {
+  children: React.ReactNode;
+  initialMode?: ThemeMode;
+  initialIsDark?: boolean;
+}) {
   const { data: session } = useSession();
-  const [mode, setMode] = useState<ThemeMode>(DEFAULT_USER_SETTINGS.themeMode);
-  const [isDark, setIsDark] = useState(false);
+  const [mode, setMode] = useState<ThemeMode>(initialMode ?? DEFAULT_USER_SETTINGS.themeMode);
+  const [isDark, setIsDark] = useState(initialIsDark);
 
   // Load settings from database when user is authenticated
   useEffect(() => {
@@ -61,15 +74,20 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Determine if dark mode should be active
     let shouldBeDark = false;
-    
+
     if (mode === 'system') {
       shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     } else {
       shouldBeDark = mode === 'dark';
     }
-    
+
     setIsDark(shouldBeDark);
   }, [mode]);
+
+  // Persist mode and resolved isDark to cookies for next page load
+  useEffect(() => {
+    setThemeCookies(mode, isDark);
+  }, [mode, isDark]);
 
   useEffect(() => {
     // Listen for system theme changes
@@ -78,7 +96,7 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
       const handleChange = (e: MediaQueryListEvent) => {
         setIsDark(e.matches);
       };
-      
+
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
@@ -86,11 +104,16 @@ export function ThemeProviderWrapper({ children }: { children: React.ReactNode }
 
   const theme = isDark ? darkTheme : lightTheme;
 
+  const contextValue = useMemo<ThemeContextType>(
+    () => ({ mode, setMode, isDark }),
+    [mode, setMode, isDark]
+  );
+
   return (
-    <ThemeContext.Provider value={{ mode, setMode, isDark }}>
+    <ThemeContext.Provider value={contextValue}>
       <ThemeProvider theme={theme}>
         {children}
       </ThemeProvider>
     </ThemeContext.Provider>
   );
-} 
+}

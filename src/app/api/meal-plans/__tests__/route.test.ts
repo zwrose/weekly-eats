@@ -12,13 +12,13 @@ const updateOneMock = vi.fn();
 
 // Mock food items and recipes for name population (using valid ObjectId format)
 const mockFoodItems = {
-  '507f1f77bcf86cd799439011': { _id: '507f1f77bcf86cd799439011', singularName: 'apple', pluralName: 'apples', unit: 'piece' },
-  '507f1f77bcf86cd799439012': { _id: '507f1f77bcf86cd799439012', singularName: 'cup of rice', pluralName: 'cups of rice', unit: 'cup' },
+  '507f1f77bcf86cd799439011': { _id: { toString: () => '507f1f77bcf86cd799439011' }, singularName: 'apple', pluralName: 'apples', unit: 'piece' },
+  '507f1f77bcf86cd799439012': { _id: { toString: () => '507f1f77bcf86cd799439012' }, singularName: 'cup of rice', pluralName: 'cups of rice', unit: 'cup' },
 };
 
 const mockRecipes = {
-  '507f1f77bcf86cd799439021': { _id: '507f1f77bcf86cd799439021', title: 'Pasta Carbonara' },
-  '507f1f77bcf86cd799439022': { _id: '507f1f77bcf86cd799439022', title: 'Caesar Salad' },
+  '507f1f77bcf86cd799439021': { _id: { toString: () => '507f1f77bcf86cd799439021' }, title: 'Pasta Carbonara' },
+  '507f1f77bcf86cd799439022': { _id: { toString: () => '507f1f77bcf86cd799439022' }, title: 'Caesar Salad' },
 };
 
 vi.mock('@/lib/mongodb', () => ({
@@ -45,6 +45,12 @@ vi.mock('@/lib/mongodb', () => ({
         }
         if (name === 'foodItems') {
           return {
+            find: vi.fn((query: any) => ({
+              toArray: vi.fn(() => {
+                const ids = query._id?.$in?.map((id: any) => id.toString()) || [];
+                return Promise.resolve(ids.map((id: string) => mockFoodItems[id as keyof typeof mockFoodItems]).filter(Boolean));
+              }),
+            })),
             findOne: vi.fn((query: any) => {
               const id = query._id?.toString();
               return Promise.resolve(mockFoodItems[id as keyof typeof mockFoodItems] || null);
@@ -53,6 +59,12 @@ vi.mock('@/lib/mongodb', () => ({
         }
         if (name === 'recipes') {
           return {
+            find: vi.fn((query: any) => ({
+              toArray: vi.fn(() => {
+                const ids = query._id?.$in?.map((id: any) => id.toString()) || [];
+                return Promise.resolve(ids.map((id: string) => mockRecipes[id as keyof typeof mockRecipes]).filter(Boolean));
+              }),
+            })),
             findOne: vi.fn((query: any) => {
               const id = query._id?.toString();
               return Promise.resolve(mockRecipes[id as keyof typeof mockRecipes] || null);
