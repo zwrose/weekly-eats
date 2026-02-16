@@ -89,6 +89,108 @@ import RecipeTagsEditor from "@/components/RecipeTagsEditor";
 import RecipeStarRating from "@/components/RecipeStarRating";
 import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 
+// ── Module-level sx constants (hoisted to avoid per-render allocations) ──
+
+const sectionHeaderSx = {
+  display: "flex",
+  flexDirection: { xs: "column", sm: "row" },
+  justifyContent: "space-between",
+  alignItems: { xs: "flex-start", sm: "center" },
+  gap: { xs: 1, sm: 0 },
+  mb: 2,
+} as const;
+
+const tableRowHoverSx = {
+  cursor: "pointer",
+  "&:hover": { backgroundColor: "action.hover" },
+} as const;
+
+const recipeTitleFlexSx = {
+  display: "flex",
+  alignItems: "center",
+  gap: 1,
+} as const;
+
+const recipeIconSmallSx = { fontSize: 24, color: "text.secondary" } as const;
+const recipeIconLargeSx = { fontSize: 32, color: "text.secondary" } as const;
+
+const tagContainerDesktopSx = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 0.5,
+  justifyContent: "center",
+} as const;
+
+const tagContainerMobileSx = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 0.5,
+  mb: 1,
+} as const;
+
+const chipDesktopSx = { fontSize: "0.7rem", height: 20 } as const;
+const chipMobileSx = { fontSize: "0.75rem" } as const;
+
+const ratingDesktopSx = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 0.25,
+} as const;
+
+const ratingMobileSx = {
+  display: "flex",
+  alignItems: "center",
+  gap: 0.5,
+} as const;
+
+const mobileCardSx = {
+  p: 3,
+  mb: 2,
+  cursor: "pointer",
+  "&:hover": {
+    backgroundColor: "action.hover",
+    transform: "translateY(-2px)",
+    boxShadow: 4,
+  },
+  transition: "all 0.2s ease-in-out",
+  boxShadow: 2,
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: 2,
+} as const;
+
+const mobileCardTitleSx = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  mb: 2,
+} as const;
+
+const mobileCardFooterSx = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+} as const;
+
+const paginationContainerSx = {
+  display: "flex",
+  justifyContent: "center",
+  mt: 2,
+} as const;
+
+const centeredLoadingSx = {
+  display: "flex",
+  justifyContent: "center",
+  py: 4,
+} as const;
+
+const tableHeaderCellSx = (width: string) => ({
+  width,
+  fontWeight: "bold",
+  wordWrap: "break-word",
+}) as const;
+
 function RecipesPageContent() {
   const { data: session, status } = useSession();
   const {
@@ -672,7 +774,7 @@ function RecipesPageContent() {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="xl">
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <Box sx={centeredLoadingSx}>
             <CircularProgress />
           </Box>
         </Container>
@@ -801,23 +903,14 @@ function RecipesPageContent() {
             />
 
             {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <Box sx={centeredLoadingSx}>
                 <CircularProgress />
               </Box>
             ) : (
               <>
                 {/* User Recipes Section */}
                 <Box sx={{ mb: 4 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      justifyContent: "space-between",
-                      alignItems: { xs: "flex-start", sm: "center" },
-                      gap: { xs: 1, sm: 0 },
-                      mb: 2,
-                    }}
-                  >
+                  <Box sx={sectionHeaderSx}>
                     <Typography variant="h6" gutterBottom>
                       <Person sx={{ mr: 1, verticalAlign: "middle" }} />
                       Your Recipes (
@@ -838,51 +931,31 @@ function RecipesPageContent() {
                             <TableHead>
                               <TableRow>
                                 <TableCell
-                                  sx={{
-                                    width: "40%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("40%")}
                                 >
                                   Recipe
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "15%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("15%")}
                                 >
                                   Tags
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "10%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("10%")}
                                 >
                                   Rating
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "15%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("15%")}
                                 >
                                   Access Level
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "20%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("20%")}
                                 >
                                   Updated
                                 </TableCell>
@@ -893,20 +966,11 @@ function RecipesPageContent() {
                                 <TableRow
                                   key={recipe._id}
                                   onClick={() => handleViewRecipe(recipe)}
-                                  sx={{
-                                    cursor: "pointer",
-                                    "&:hover": {
-                                      backgroundColor: "action.hover",
-                                    },
-                                  }}
+                                  sx={tableRowHoverSx}
                                 >
                                   <TableCell sx={{ wordWrap: "break-word" }}>
                                     <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
+                                      sx={recipeTitleFlexSx}
                                     >
                                       {recipe.emoji ? (
                                         <Typography variant="h6">
@@ -914,10 +978,7 @@ function RecipesPageContent() {
                                         </Typography>
                                       ) : (
                                         <RestaurantMenu
-                                          sx={{
-                                            fontSize: 24,
-                                            color: "text.secondary",
-                                          }}
+                                          sx={recipeIconSmallSx}
                                         />
                                       )}
                                       <Typography variant="body1">
@@ -939,20 +1000,20 @@ function RecipesPageContent() {
                                         return <Typography variant="body2" color="text.secondary">—</Typography>;
                                       }
                                       return (
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+                                        <Box sx={tagContainerDesktopSx}>
                                           {allTags.slice(0, 3).map((tag) => (
                                             <Chip
                                               key={tag}
                                               label={tag}
                                               size="small"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                              sx={chipDesktopSx}
                                             />
                                           ))}
                                           {allTags.length > 3 && (
                                             <Chip
                                               label={`+${allTags.length - 3}`}
                                               size="small"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                              sx={chipDesktopSx}
                                             />
                                           )}
                                         </Box>
@@ -970,7 +1031,7 @@ function RecipesPageContent() {
                                         return <Typography variant="body2" color="text.secondary">—</Typography>;
                                       }
                                       return (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.25 }}>
+                                        <Box sx={ratingDesktopSx}>
                                           <Star sx={{ fontSize: 16, color: 'warning.main' }} />
                                           <Typography variant="body2">{rating}</Typography>
                                         </Box>
@@ -1020,30 +1081,9 @@ function RecipesPageContent() {
                           <Paper
                             key={recipe._id}
                             onClick={() => handleViewRecipe(recipe)}
-                            sx={{
-                              p: 3,
-                              mb: 2,
-                              cursor: "pointer",
-                              "&:hover": {
-                                backgroundColor: "action.hover",
-                                transform: "translateY(-2px)",
-                                boxShadow: 4,
-                              },
-                              transition: "all 0.2s ease-in-out",
-                              boxShadow: 2,
-                              border: "1px solid",
-                              borderColor: "divider",
-                              borderRadius: 2,
-                            }}
+                            sx={mobileCardSx}
                           >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "flex-start",
-                                mb: 2,
-                              }}
-                            >
+                            <Box sx={mobileCardTitleSx}>
                               <Box sx={{ mb: 1 }}>
                                 {recipe.emoji ? (
                                   <Typography variant="h4">
@@ -1051,10 +1091,7 @@ function RecipesPageContent() {
                                   </Typography>
                                 ) : (
                                   <RestaurantMenu
-                                    sx={{
-                                      fontSize: 32,
-                                      color: "text.secondary",
-                                    }}
+                                    sx={recipeIconLargeSx}
                                   />
                                 )}
                               </Box>
@@ -1075,26 +1112,26 @@ function RecipesPageContent() {
                               return (allTags.length > 0 || rating) && (
                                 <Box sx={{ mb: 2, width: '100%' }}>
                                   {allTags.length > 0 && (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                                    <Box sx={tagContainerMobileSx}>
                                       {allTags.slice(0, 5).map((tag) => (
                                         <Chip
                                           key={tag}
                                           label={tag}
                                           size="small"
-                                          sx={{ fontSize: '0.75rem' }}
+                                          sx={chipMobileSx}
                                         />
                                       ))}
                                       {allTags.length > 5 && (
                                         <Chip
                                           label={`+${allTags.length - 5}`}
                                           size="small"
-                                          sx={{ fontSize: '0.75rem' }}
+                                          sx={chipMobileSx}
                                         />
                                       )}
                                     </Box>
                                   )}
                                   {rating && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={ratingMobileSx}>
                                       <Star sx={{ fontSize: 18, color: 'warning.main' }} />
                                       <Typography variant="body2">{rating}/5</Typography>
                                     </Box>
@@ -1102,13 +1139,7 @@ function RecipesPageContent() {
                                 </Box>
                               );
                             })()}
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                              }}
-                            >
+                            <Box sx={mobileCardFooterSx}>
                               <Box>
                                 {recipe.isGlobal ? (
                                   <Chip
@@ -1143,13 +1174,7 @@ function RecipesPageContent() {
                       </Box>
 
                       {filteredUserRecipes.length > itemsPerPage && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            mt: 2,
-                          }}
-                        >
+                        <Box sx={paginationContainerSx}>
                           <Pagination
                             count={Math.ceil(
                               filteredUserRecipes.length / itemsPerPage
@@ -1171,16 +1196,7 @@ function RecipesPageContent() {
 
                 {/* Global Recipes Section */}
                 <Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      justifyContent: "space-between",
-                      alignItems: { xs: "flex-start", sm: "center" },
-                      gap: { xs: 1, sm: 0 },
-                      mb: 2,
-                    }}
-                  >
+                  <Box sx={sectionHeaderSx}>
                     <Typography variant="h6" gutterBottom>
                       <Public sx={{ mr: 1, verticalAlign: "middle" }} />
                       Global Recipes (
@@ -1201,51 +1217,31 @@ function RecipesPageContent() {
                             <TableHead>
                               <TableRow>
                                 <TableCell
-                                  sx={{
-                                    width: "40%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("40%")}
                                 >
                                   Recipe
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "15%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("15%")}
                                 >
                                   Tags
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "10%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("10%")}
                                 >
                                   Rating
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "15%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("15%")}
                                 >
                                   Access Level
                                 </TableCell>
                                 <TableCell
                                   align="center"
-                                  sx={{
-                                    width: "20%",
-                                    fontWeight: "bold",
-                                    wordWrap: "break-word",
-                                  }}
+                                  sx={tableHeaderCellSx("20%")}
                                 >
                                   Updated
                                 </TableCell>
@@ -1256,20 +1252,11 @@ function RecipesPageContent() {
                                 <TableRow
                                   key={recipe._id}
                                   onClick={() => handleViewRecipe(recipe)}
-                                  sx={{
-                                    cursor: "pointer",
-                                    "&:hover": {
-                                      backgroundColor: "action.hover",
-                                    },
-                                  }}
+                                  sx={tableRowHoverSx}
                                 >
                                   <TableCell sx={{ wordWrap: "break-word" }}>
                                     <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
+                                      sx={recipeTitleFlexSx}
                                     >
                                       {recipe.emoji ? (
                                         <Typography variant="h6">
@@ -1277,10 +1264,7 @@ function RecipesPageContent() {
                                         </Typography>
                                       ) : (
                                         <RestaurantMenu
-                                          sx={{
-                                            fontSize: 24,
-                                            color: "text.secondary",
-                                          }}
+                                          sx={recipeIconSmallSx}
                                         />
                                       )}
                                       <Typography variant="body1">
@@ -1302,20 +1286,20 @@ function RecipesPageContent() {
                                         return <Typography variant="body2" color="text.secondary">—</Typography>;
                                       }
                                       return (
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+                                        <Box sx={tagContainerDesktopSx}>
                                           {allTags.slice(0, 3).map((tag) => (
                                             <Chip
                                               key={tag}
                                               label={tag}
                                               size="small"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                              sx={chipDesktopSx}
                                             />
                                           ))}
                                           {allTags.length > 3 && (
                                             <Chip
                                               label={`+${allTags.length - 3}`}
                                               size="small"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                              sx={chipDesktopSx}
                                             />
                                           )}
                                         </Box>
@@ -1333,7 +1317,7 @@ function RecipesPageContent() {
                                         return <Typography variant="body2" color="text.secondary">—</Typography>;
                                       }
                                       return (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.25 }}>
+                                        <Box sx={ratingDesktopSx}>
                                           <Star sx={{ fontSize: 16, color: 'warning.main' }} />
                                           <Typography variant="body2">{rating}</Typography>
                                         </Box>
@@ -1373,30 +1357,9 @@ function RecipesPageContent() {
                           <Paper
                             key={recipe._id}
                             onClick={() => handleViewRecipe(recipe)}
-                            sx={{
-                              p: 3,
-                              mb: 2,
-                              cursor: "pointer",
-                              "&:hover": {
-                                backgroundColor: "action.hover",
-                                transform: "translateY(-2px)",
-                                boxShadow: 4,
-                              },
-                              transition: "all 0.2s ease-in-out",
-                              boxShadow: 2,
-                              border: "1px solid",
-                              borderColor: "divider",
-                              borderRadius: 2,
-                            }}
+                            sx={mobileCardSx}
                           >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "flex-start",
-                                mb: 2,
-                              }}
-                            >
+                            <Box sx={mobileCardTitleSx}>
                               <Box sx={{ mb: 1 }}>
                                 {recipe.emoji ? (
                                   <Typography variant="h4">
@@ -1404,10 +1367,7 @@ function RecipesPageContent() {
                                   </Typography>
                                 ) : (
                                   <RestaurantMenu
-                                    sx={{
-                                      fontSize: 32,
-                                      color: "text.secondary",
-                                    }}
+                                    sx={recipeIconLargeSx}
                                   />
                                 )}
                               </Box>
@@ -1428,26 +1388,26 @@ function RecipesPageContent() {
                               return (allTags.length > 0 || rating) && (
                                 <Box sx={{ mb: 2, width: '100%' }}>
                                   {allTags.length > 0 && (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                                    <Box sx={tagContainerMobileSx}>
                                       {allTags.slice(0, 5).map((tag) => (
                                         <Chip
                                           key={tag}
                                           label={tag}
                                           size="small"
-                                          sx={{ fontSize: '0.75rem' }}
+                                          sx={chipMobileSx}
                                         />
                                       ))}
                                       {allTags.length > 5 && (
                                         <Chip
                                           label={`+${allTags.length - 5}`}
                                           size="small"
-                                          sx={{ fontSize: '0.75rem' }}
+                                          sx={chipMobileSx}
                                         />
                                       )}
                                     </Box>
                                   )}
                                   {rating && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={ratingMobileSx}>
                                       <Star sx={{ fontSize: 18, color: 'warning.main' }} />
                                       <Typography variant="body2">{rating}/5</Typography>
                                     </Box>
@@ -1455,13 +1415,7 @@ function RecipesPageContent() {
                                 </Box>
                               );
                             })()}
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                              }}
-                            >
+                            <Box sx={mobileCardFooterSx}>
                               <Box>
                                 <Chip
                                   label="Global"
@@ -1486,13 +1440,7 @@ function RecipesPageContent() {
                       </Box>
 
                       {filteredGlobalRecipes.length > itemsPerPage && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            mt: 2,
-                          }}
-                        >
+                        <Box sx={paginationContainerSx}>
                           <Pagination
                             count={Math.ceil(
                               filteredGlobalRecipes.length / itemsPerPage
@@ -2131,7 +2079,7 @@ export default function RecipesPage() {
       fallback={
         <AuthenticatedLayout>
           <Container maxWidth="xl">
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <Box sx={centeredLoadingSx}>
               <CircularProgress />
             </Box>
           </Container>
