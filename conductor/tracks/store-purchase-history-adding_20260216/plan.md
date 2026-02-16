@@ -41,10 +41,10 @@
   - Checkbox mode for multi-select with "Add Selected" button
   - Integrates with `insertItemsWithPositions` for remembered store layout
 
-## Phase 5: UI Integration `[ ]`
+## Phase 5: UI Integration `[x]` [checkpoint: 09dc0f2]
 
-- [ ] Task: Replace `ShoppingCart` icon on store cards/rows (both desktop table and mobile card) with a `History` icon that opens `StoreHistoryDialog` for that store
-- [ ] Task: Add "Purchase History" menu item to the shopping list overflow menu (alongside "Add items from meal plans" and "Pantry check")
-- [ ] Task: Wire up Ably broadcast for items re-added from history (reuse existing `list_updated` event)
-- [ ] Task: Write/update integration tests for the new entry points
-- [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
+- [x] Task: Add `History` icon buttons to store cards/rows (both desktop table and mobile card) that open `StoreHistoryDialog` for that store [d917612]
+- [x] Task: Add "Purchase History" menu item to the shopping list overflow menu (alongside "Add items from meal plans" and "Pantry check") [d917612]
+- [x] Task: Wire up Ably broadcast for items re-added from history (reuse existing `list_updated` event via `updateShoppingList`) [d917612]
+- [x] Task: Write/update integration tests for the new entry points [d917612]
+- [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md) [09dc0f2]
