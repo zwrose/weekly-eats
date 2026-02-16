@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import {
   AppBar,
@@ -45,46 +45,67 @@ export default function Header() {
     // Redirect unapproved users to pending approval page
     if (
       session?.user &&
-      !(session.user as { isApproved?: boolean }).isApproved &&
-      !(session.user as { isAdmin?: boolean }).isAdmin
+      !session.user.isApproved &&
+      !session.user.isAdmin
     ) {
       router.push("/pending-approval");
     }
   }, [session, router]);
 
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+  const handleMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     signOut({ callbackUrl: "/" });
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, []);
 
-  const handleSettings = () => {
+  const handleSettings = useCallback(() => {
     router.push("/settings");
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
 
-  const handleAdmin = () => {
+  const handleAdmin = useCallback(() => {
     router.push("/user-management");
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
 
-  const handleFoodItems = () => {
+  const handleFoodItems = useCallback(() => {
     router.push("/food-items");
-    handleClose();
-  };
+    setAnchorEl(null);
+  }, [router]);
+
+  const handlePantry = useCallback(() => {
+    router.push("/pantry");
+    setAnchorEl(null);
+  }, [router]);
+
+  const handleNavMealPlans = useCallback(() => {
+    router.push("/meal-plans");
+  }, [router]);
+
+  const handleNavShoppingLists = useCallback(() => {
+    router.push("/shopping-lists");
+  }, [router]);
+
+  const handleNavRecipes = useCallback(() => {
+    router.push("/recipes");
+  }, [router]);
+
+  const handleNavPantry = useCallback(() => {
+    router.push("/pantry");
+  }, [router]);
 
   // Check if we should hide the header for unapproved users
   const shouldHideHeader =
     session?.user &&
-    !(session.user as { isApproved?: boolean }).isApproved && 
-    !(session.user as { isAdmin?: boolean }).isAdmin;
+    !session.user.isApproved && 
+    !session.user.isAdmin;
 
   return (
     <SessionWrapper>
@@ -107,7 +128,7 @@ export default function Header() {
                 userSelect: "none",
                 flexGrow: 1,
               }}
-              onClick={() => router.push("/meal-plans")}
+              onClick={handleNavMealPlans}
             >
               <Box sx={{ display: { xs: "none", sm: "block" } }}>
                 <Image
@@ -140,7 +161,7 @@ export default function Header() {
               }}
             >
               <Button
-                onClick={() => router.push("/meal-plans")}
+                onClick={handleNavMealPlans}
                 startIcon={<CalendarMonth sx={{ color: "primary.main" }} />}
                 sx={{ 
                   textTransform: "none",
@@ -159,7 +180,7 @@ export default function Header() {
                 Meal Plans
               </Button>
               <Button
-                onClick={() => router.push("/shopping-lists")}
+                onClick={handleNavShoppingLists}
                 startIcon={<ShoppingCart sx={{ color: "#2e7d32" }} />}
                 sx={{ 
                   textTransform: "none",
@@ -180,7 +201,7 @@ export default function Header() {
                 Shopping Lists
               </Button>
               <Button
-                onClick={() => router.push("/recipes")}
+                onClick={handleNavRecipes}
                 startIcon={<Restaurant sx={{ color: "#ed6c02" }} />}
                 sx={{ 
                   textTransform: "none",
@@ -199,7 +220,7 @@ export default function Header() {
                 Recipes
               </Button>
               <Button
-                onClick={() => router.push("/pantry")}
+                onClick={handleNavPantry}
                 startIcon={<Kitchen sx={{ color: "#9c27b0" }} />}
                 sx={{ 
                   textTransform: "none",
@@ -263,10 +284,7 @@ export default function Header() {
               onClose={handleClose}
             >
               <MenuItem
-                onClick={() => {
-                  router.push("/pantry");
-                  handleClose();
-                }}
+                onClick={handlePantry}
               >
                 <ListItemIcon>
                   <Kitchen fontSize="small" />
@@ -279,7 +297,7 @@ export default function Header() {
                 </ListItemIcon>
                 <ListItemText>Manage Food Items</ListItemText>
               </MenuItem>
-              {(session.user as { isAdmin?: boolean }).isAdmin && (
+              {session.user.isAdmin && (
                 <MenuItem onClick={handleAdmin}>
                   <ListItemIcon>
                     <Person fontSize="small" />
