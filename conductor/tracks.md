@@ -7,7 +7,7 @@
 
 
 
-- [~] **Track: Smart unit deconfliction for shopping list meal plan population**
+- [x] **Track: Smart unit deconfliction for shopping list meal plan population**
   *Link: [smart-unit-deconfliction-shopping_20260216](./conductor/tracks/smart-unit-deconfliction-shopping_20260216/)*
 - [x] **Track: Store purchase history for re-adding previously bought items**
   *Link: [store-purchase-history-adding_20260216](./conductor/tracks/store-purchase-history-adding_20260216/)*
