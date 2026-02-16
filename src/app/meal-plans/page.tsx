@@ -27,9 +27,8 @@ import {
   ListItem,
   ListItemText,
   TextField,
-  Checkbox,
 } from "@mui/material";
-import { Add, CalendarMonth, Settings, Edit, Delete, Share, Check, Close as CloseIcon, PersonAdd } from "@mui/icons-material";
+import { Add, CalendarMonth, Settings, Delete, Share, Check, Close as CloseIcon, PersonAdd } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -44,7 +43,6 @@ import {
 } from "../../types/meal-plan";
 import { RecipeIngredient } from "../../types/recipe";
 
-import { getUnitForm } from "../../lib/food-items-utils";
 import { 
   fetchMealPlans, 
   fetchMealPlan,
@@ -55,10 +53,11 @@ import {
   updateMealPlan,
   DEFAULT_TEMPLATE
 } from "../../lib/meal-plan-utils";
+import dynamic from "next/dynamic";
 import AddFoodItemDialog from "../../components/AddFoodItemDialog";
 import MealEditor from "../../components/MealEditor";
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+const MealPlanCreateDialog = dynamic(() => import("@/components/MealPlanCreateDialog"), { ssr: false });
+const MealPlanViewDialog = dynamic(() => import("@/components/MealPlanViewDialog"), { ssr: false });
 import { calculateEndDateAsString, parseLocalDate } from "../../lib/date-utils";
 import { addDays } from 'date-fns';
 import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate } from "../../lib/meal-plan-utils";
@@ -77,7 +76,6 @@ import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { DialogActions, DialogTitle } from '@/components/ui';
-import { formatDateForAPI } from '@/lib/date-utils';
 import { dayOfWeekToIndex } from "../../lib/date-utils";
 
 function MealPlansPageContent() {
@@ -948,141 +946,20 @@ function MealPlansPageContent() {
           </Paper>
 
           {/* Create Meal Plan Dialog */}
-          <Dialog 
-            open={createDialog.open} 
+          <MealPlanCreateDialog
+            open={createDialog.open}
             onClose={handleCloseCreateDialog}
-            maxWidth="sm"
-            fullWidth
-            sx={responsiveDialogStyle}
-          >
-            <DialogTitle onClose={handleCloseCreateDialog}>Create Meal Plan</DialogTitle>
-            <DialogContent>
-              <Box sx={{ pt: 2 }}>
-                {/* Owner selection if user has shared access */}
-                {mealPlanOwners.length > 0 && (
-                  <FormControl fullWidth sx={{ mb: 3 }}>
-                    <InputLabel>Create For</InputLabel>
-                    <Select
-                      value={selectedOwner || currentUserId || ''}
-                      onChange={(e) => setSelectedOwner(e.target.value)}
-                      label="Create For"
-                    >
-                      <MenuItem value={currentUserId || ''}>Your Meal Plans</MenuItem>
-                      {mealPlanOwners.map((user) => (
-                        <MenuItem key={user.userId} value={user.userId}>
-                          {user.name || user.email}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-                
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Start Date"
-                    value={newMealPlan.startDate ? parseLocalDate(newMealPlan.startDate) : null}
-                    onChange={(date) => {
-                      // Only set the date if it's a valid Date object
-                      if (date && date instanceof Date && !isNaN(date.getTime())) {
-                        const formattedDate = formatDateForAPI(date);
-                        setNewMealPlan({ startDate: formattedDate });
-                      } else {
-                        // Clear the date if invalid
-                        setNewMealPlan({ startDate: '' });
-                      }
-                    }}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        sx: { mb: 3 },
-                        required: true,
-                        error: !!validationError,
-                        helperText: validationError || '',
-                        inputProps: {
-                          readOnly: true,
-                          inputMode: 'none',
-                        },
-                      },
-                    }}
-                  />
-                </LocalizationProvider>
-                
-                {validationError && (
-                  <Alert severity="error" sx={{ mb: 3 }}>
-                    {validationError}
-                  </Alert>
-                )}
-                
-                {skippedDefault?.skipped && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    The earliest available start date that does not overlap with your existing meal plans is <b>{skippedDefault.earliestAvailable}</b>.
-                  </Alert>
-                )}
-                
-                {template && (
-                  <Box sx={{ 
-                    mb: 3, 
-                    p: 2, 
-                    bgcolor: 'background.paper', 
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1 
-                  }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Using your template settings:
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      • Starts on {template.startDay.charAt(0).toUpperCase() + template.startDay.slice(1)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      • Includes: {Object.entries(template.meals).filter(([, enabled]) => enabled).map(([meal]) => meal).join(', ')}
-                    </Typography>
-                  </Box>
-                )}
-                
-                {!template && (
-                  <Box sx={{ 
-                    mb: 3, 
-                    p: 2, 
-                    bgcolor: 'background.paper', 
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1 
-                  }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Using default template settings:
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      • Starts on {DEFAULT_TEMPLATE.startDay.charAt(0).toUpperCase() + DEFAULT_TEMPLATE.startDay.slice(1)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      • Includes: {Object.entries(DEFAULT_TEMPLATE.meals).filter(([, enabled]) => enabled).map(([meal]) => meal).join(', ')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
-                      You can customize these defaults in Template Settings
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-              
-              <DialogActions primaryButtonIndex={1}>
-                <Button 
-                  onClick={handleCloseCreateDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateMealPlan}
-                  variant="contained"
-                  disabled={!newMealPlan.startDate || !!validationError}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Create Plan
-                </Button>
-              </DialogActions>
-            </DialogContent>
-          </Dialog>
+            mealPlanOwners={mealPlanOwners}
+            selectedOwner={selectedOwner}
+            onSelectedOwnerChange={setSelectedOwner}
+            currentUserId={currentUserId}
+            newMealPlan={newMealPlan}
+            onNewMealPlanChange={setNewMealPlan}
+            validationError={validationError}
+            skippedDefault={skippedDefault}
+            template={template}
+            onSubmit={handleCreateMealPlan}
+          />
 
           {/* Template Settings Dialog */}
           <Dialog 
@@ -1180,648 +1057,32 @@ function MealPlansPageContent() {
           </Dialog>
 
           {/* View/Edit Meal Plan Dialog */}
-          <Dialog 
-            open={viewDialog.open} 
+          <MealPlanViewDialog
+            open={viewDialog.open}
             onClose={handleCloseViewDialog}
-            maxWidth="lg"
-            fullWidth
-            sx={responsiveDialogStyle}
-          >
-            <DialogTitle 
-              onClose={handleCloseViewDialog}
-              actions={
-                editMode ? (
-                  <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignItems: 'center' }}>
-                    <Button 
-                      onClick={() => {
-                        setEditMode(false);
-                        viewDialog.removeDialogData('editMode');
-                      }}
-                      size="small"
-                      sx={{ minWidth: 'auto' }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={() => {
-                        if (mealPlanValidationErrors.length > 0) {
-                          setShowValidationErrors(true);
-                        } else {
-                          handleUpdateMealPlan();
-                        }
-                      }}
-                      variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
-                      size="small"
-                      sx={{ 
-                        minWidth: 'auto',
-                        ...(mealPlanValidationErrors.length > 0 && {
-                          color: 'text.secondary',
-                          borderColor: 'text.secondary'
-                        })
-                      }}
-                    >
-                      Save
-                    </Button>
-                  </Box>
-                ) : (
-                  <IconButton onClick={handleEditMealPlanMode} color="inherit" aria-label="Edit">
-                    <Edit />
-                  </IconButton>
-                )
-              }
-            >
-              <Typography variant="h6">
-                {selectedMealPlan?.name || 'This Meal Plan'}
-              </Typography>
-            </DialogTitle>
-            <DialogContent>
-              {selectedMealPlan && (
-                <Box sx={{ mt: 2 }}>
-                  {editMode ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Edit Meal Plan Items
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Add food items, recipes, or ingredient groups to each meal. Each meal can contain any combination of these types.
-                      </Typography>
-                      
-                      {/* Validation Errors Display - Only show when user clicks disabled Save button */}
-                      {showValidationErrors && mealPlanValidationErrors.length > 0 && (
-                        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setShowValidationErrors(false)}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Please fix the following issues before saving:
-                          </Typography>
-                          <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
-                            {mealPlanValidationErrors.map((error, index) => (
-                              <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
-                                {error}
-                              </Typography>
-                            ))}
-                          </Box>
-                        </Alert>
-                      )}
-                      
-                      {/* Weekly Staples Section - Editable */}
-                      {(() => {
-                        const staplesItems = selectedMealPlan.items.filter(item => item.mealType === 'staples');
-                        const staples = staplesItems.length > 0 ? staplesItems[0].items : [];
-                        
-                        return (
-                          <Paper 
-                            elevation={1}
-                            sx={{ 
-                              mb: 3,
-                              border: '1px solid',
-                              borderColor: 'primary.main',
-                              borderRadius: 2,
-                              overflow: 'hidden'
-                            }}
-                          >
-                            {/* Staples Header */}
-                            <Box 
-                              sx={{ 
-                                p: 2, 
-                                backgroundColor: 'primary.main',
-                                color: 'primary.contrastText',
-                                borderBottom: '1px solid',
-                                borderColor: 'divider'
-                              }}
-                            >
-                              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                                Weekly Staples
-                              </Typography>
-                            </Box>
-                            
-                            {/* Staples Content - Editable */}
-                            <Box sx={{ p: 3 }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Add, edit, or remove staples for this specific meal plan.
-                              </Typography>
-                              <MealEditor
-                                mealItems={staples}
-                                onChange={(newStaples) => {
-                                  // Update the meal plan staples
-                                  const updatedMealPlan = { ...selectedMealPlan };
-                                  const existingStaplesIndex = updatedMealPlan.items.findIndex(
-                                    item => item.mealType === 'staples'
-                                  );
-                                  
-                                  if (existingStaplesIndex !== -1) {
-                                    // Update existing staples
-                                    updatedMealPlan.items[existingStaplesIndex].items = newStaples;
-                                  } else {
-                                    // Create new staples entry
-                                    updatedMealPlan.items.push({
-                                      _id: `temp-${Date.now()}`,
-                                      mealPlanId: selectedMealPlan._id,
-                                      dayOfWeek: 'saturday', // Staples don't belong to a specific day
-                                      mealType: 'staples',
-                                      items: newStaples
-                                    });
-                                  }
-                                  
-                                  setSelectedMealPlan(updatedMealPlan);
-                                  updateMealPlanValidation();
-                                }}
-                                onFoodItemAdded={handleAddFoodItem}
-                              />
-                            </Box>
-                          </Paper>
-                        );
-                      })()}
-
-                      {/* Edit meals by day */}
-                      {getDaysInOrder().map((dayOfWeek) => {
-                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples');
-                        const meals = ['breakfast', 'lunch', 'dinner'] as MealType[];
-                        
-                        // Get all meals for this day that are included in the template
-                        const dayMeals = meals
-                          .filter(mealType => selectedMealPlan.template.meals[mealType])
-                          .map(mealType => {
-                            const mealPlanItem = dayItems.find(item => item.mealType === mealType);
-                            
-                            return {
-                              mealType,
-                              items: mealPlanItem?.items ?? [],
-                              planItem: mealPlanItem ?? null
-                            };
-                          });
-                        
-                        return (
-                          <Paper 
-                            key={dayOfWeek} 
-                            elevation={1}
-                            sx={{ 
-                              mb: 3,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              borderRadius: 2,
-                              overflow: 'hidden'
-                            }}
-                          >
-                            {/* Day Header */}
-                            <Box 
-                              sx={{ 
-                                p: 2, 
-                                backgroundColor: 'primary.main',
-                                color: 'primary.contrastText',
-                                borderBottom: '1px solid',
-                                borderColor: 'divider'
-                              }}
-                            >
-                              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                                {getDateForDay(dayOfWeek)}
-                              </Typography>
-                            </Box>
-                            
-                            {/* Day Content */}
-                            <Box sx={{ p: 3 }}>
-                              {dayMeals.map((meal, mealIndex) => {
-                                const hasItems = (meal.items?.length ?? 0) > 0;
-                                const isSkipped = !hasItems && (meal.planItem?.skipped ?? false);
-                                const skipReason = !hasItems ? (meal.planItem?.skipReason ?? '') : '';
-
-                                return (
-                                <Box key={meal.mealType} sx={{ mb: mealIndex === dayMeals.length - 1 ? 0 : 3 }}>
-                                  <Typography 
-                                    variant="subtitle1" 
-                                    sx={{ 
-                                      mb: 2, 
-                                      fontWeight: 'bold',
-                                      color: 'text.primary',
-                                      borderBottom: '2px solid',
-                                      borderColor: 'primary.light',
-                                      pb: 0.5,
-                                      display: 'inline-block'
-                                    }}
-                                  >
-                                    {getMealTypeName(meal.mealType)}
-                                  </Typography>
-                                  {/* Skip controls only when there are no meal items */}
-                                  {!hasItems && (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Checkbox
-                                          size="small"
-                                          checked={isSkipped}
-                                          onChange={(e) => {
-                                            if (!selectedMealPlan) return;
-                                            const updatedMealPlan = { ...selectedMealPlan };
-                                            const existingIndex = updatedMealPlan.items.findIndex(
-                                              item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
-                                            );
-
-                                            if (existingIndex !== -1) {
-                                              updatedMealPlan.items[existingIndex] = {
-                                                ...updatedMealPlan.items[existingIndex],
-                                                skipped: e.target.checked,
-                                                skipReason: e.target.checked
-                                                  ? (updatedMealPlan.items[existingIndex].skipReason || '')
-                                                  : undefined
-                                              };
-                                            } else {
-                                              updatedMealPlan.items.push({
-                                                _id: `temp-${Date.now()}`,
-                                                mealPlanId: selectedMealPlan._id,
-                                                dayOfWeek: dayOfWeek as DayOfWeek,
-                                                mealType: meal.mealType as MealType,
-                                                items: [],
-                                                skipped: e.target.checked,
-                                                skipReason: e.target.checked ? '' : undefined
-                                              });
-                                            }
-
-                                            setSelectedMealPlan(updatedMealPlan);
-                                            const validation = validateMealPlan(updatedMealPlan.items);
-                                            setMealPlanValidationErrors(validation.errors);
-                                            if (validation.isValid) {
-                                              setShowValidationErrors(false);
-                                            }
-                                          }}
-                                        />
-                                        <Typography variant="body2" color="text.secondary">
-                                          Skip this meal
-                                        </Typography>
-                                      </Box>
-                                      {isSkipped && (
-                                        <TextField
-                                          autoFocus
-                                          label="Skip reason"
-                                          size="small"
-                                          fullWidth
-                                          value={skipReason}
-                                          onChange={(e) => {
-                                            if (!selectedMealPlan) return;
-                                            const updatedMealPlan = { ...selectedMealPlan };
-                                            const existingIndex = updatedMealPlan.items.findIndex(
-                                              item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
-                                            );
-
-                                            if (existingIndex !== -1) {
-                                              updatedMealPlan.items[existingIndex] = {
-                                                ...updatedMealPlan.items[existingIndex],
-                                                skipped: true,
-                                                skipReason: e.target.value
-                                              };
-                                            } else {
-                                              updatedMealPlan.items.push({
-                                                _id: `temp-${Date.now()}`,
-                                                mealPlanId: selectedMealPlan._id,
-                                                dayOfWeek: dayOfWeek as DayOfWeek,
-                                                mealType: meal.mealType as MealType,
-                                                items: [],
-                                                skipped: true,
-                                                skipReason: e.target.value
-                                              });
-                                            }
-
-                                            setSelectedMealPlan(updatedMealPlan);
-                                          }}
-                                        />
-                                      )}
-                                    </Box>
-                                  )}
-
-                                  {/* Only show MealEditor when meal is not explicitly skipped */}
-                                  {!isSkipped && (
-                                  <MealEditor
-                                    mealItems={meal.items}
-                                    onChange={(newItems) => {
-                                      // Update the meal plan
-                                      const updatedMealPlan = { ...selectedMealPlan };
-                                      const existingMealPlanItemIndex = updatedMealPlan.items.findIndex(
-                                        item => item.dayOfWeek === dayOfWeek && item.mealType === meal.mealType
-                                      );
-                                      
-                                      // Always update the meal plan item, even if it's empty
-                                      if (existingMealPlanItemIndex !== -1) {
-                                          updatedMealPlan.items[existingMealPlanItemIndex] = {
-                                            ...updatedMealPlan.items[existingMealPlanItemIndex],
-                                            items: newItems
-                                          };
-                                      } else {
-                                        // Create a new meal plan item even if it's empty (to allow adding items)
-                                        updatedMealPlan.items.push({
-                                          _id: `temp-${Date.now()}`,
-                                          mealPlanId: selectedMealPlan._id,
-                                          dayOfWeek: dayOfWeek as DayOfWeek,
-                                          mealType: meal.mealType as MealType,
-                                          items: newItems
-                                        });
-                                      }
-                                      
-                                      setSelectedMealPlan(updatedMealPlan);
-                                      // Update validation immediately
-                                      const validation = validateMealPlan(updatedMealPlan.items);
-                                      setMealPlanValidationErrors(validation.errors);
-                                      // Hide validation errors if they're resolved
-                                      if (validation.isValid) {
-                                        setShowValidationErrors(false);
-                                      }
-                                    }}
-                                    onFoodItemAdded={handleAddFoodItem}
-                                  />
-                                  )}
-                                </Box>
-                              )})}
-                            </Box>
-                          </Paper>
-                        );
-                      })}
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {/* <Box>
-                        <Typography variant="h6" gutterBottom>{selectedMealPlan.name}</Typography>
-                      </Box> */}
-                      <Divider />
-                      
-                      {/* Weekly Staples Section - Show once at the top */}
-                      {(() => {
-                        const staplesItems = selectedMealPlan.items.filter(item => item.mealType === 'staples');
-                        if (staplesItems.length > 0) {
-                          return (
-                            <Paper 
-                              elevation={1}
-                              sx={{ 
-                                mb: 3,
-                                border: '1px solid',
-                                borderColor: 'primary.main',
-                                borderRadius: 2,
-                                overflow: 'hidden'
-                              }}
-                            >
-                              {/* Staples Header */}
-                              <Box 
-                                sx={{ 
-                                  p: 2, 
-                                  backgroundColor: 'primary.main',
-                                  color: 'primary.contrastText',
-                                  borderBottom: '1px solid',
-                                  borderColor: 'divider'
-                                }}
-                              >
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                                  Weekly Staples
-                                </Typography>
-                              </Box>
-                              
-                              {/* Staples Content */}
-                              <Box sx={{ p: 3 }}>
-                                {staplesItems[0].items.map((staple, index) => {
-                                  if (staple.type === 'ingredientGroup') {
-                                    // Render ingredient group
-                                    return (
-                                      <Box key={index} sx={{ mb: 1 }}>
-                                        {staple.ingredients && staple.ingredients.map((group, groupIndex) => (
-                                          <Box key={groupIndex} sx={{ mb: 1 }}>
-                                            {group.title && (
-                                              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                                {group.title}:
-                                              </Typography>
-                                            )}
-                                            <Box sx={{ pl: 2 }}>
-                                              {group.ingredients.map((ingredient, ingIndex) => (
-                                                <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                  • {ingredient.quantity}{' '}
-                                                  {ingredient.type === 'foodItem' &&
-                                                  ingredient.unit &&
-                                                  ingredient.unit !== 'each'
-                                                    ? getUnitForm(ingredient.unit, ingredient.quantity) + ' '
-                                                    : ''}
-                                                  {ingredient.name || 'Unknown'}
-                                                </Typography>
-                                              ))}
-                                            </Box>
-                                          </Box>
-                                        ))}
-                                      </Box>
-                                    );
-                                  } else {
-                                    // Render regular staple item
-                                    return (
-                                      <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                        • {staple.name}
-                                        {staple.type === 'foodItem' && staple.quantity && staple.unit && (
-                                          <span style={{ color: 'text.secondary' }}>
-                                            {' '}({staple.quantity} {getUnitForm(staple.unit, staple.quantity)})
-                                          </span>
-                                        )}
-                                        {staple.type === 'recipe' && staple.quantity && (
-                                          <span style={{ color: 'text.secondary' }}>
-                                            {' '}({staple.quantity}x)
-                                          </span>
-                                        )}
-                                      </Typography>
-                                    );
-                                  }
-                                })}
-                              </Box>
-                            </Paper>
-                          );
-                        }
-                        return null;
-                      })()}
-
-                      {/* Show meals by day */}
-                      {getDaysInOrder().map((dayOfWeek) => {
-                        const dayItems = selectedMealPlan.items.filter(item => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples');
-                        
-                        return (
-                          <Paper 
-                            key={dayOfWeek} 
-                            elevation={1}
-                            sx={{ 
-                               mb: 3,
-                               border: '1px solid',
-                               borderColor: 'divider',
-                               borderRadius: 2,
-                               overflow: 'hidden'
-                             }}
-                          >
-                            {/* Day Header */}
-                            <Box 
-                              sx={{ 
-                                p: 2, 
-                                backgroundColor: 'primary.main',
-                                color: 'primary.contrastText',
-                                borderBottom: '1px solid',
-                                borderColor: 'divider'
-                              }}
-                            >
-                              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                                {getDateForDay(dayOfWeek)}
-                              </Typography>
-                            </Box>
-                            
-                            {/* Day Content */}
-                            <Box sx={{ p: 3 }}>
-                              {(['breakfast', 'lunch', 'dinner'] as MealType[])
-                                .filter(mealType => selectedMealPlan.template.meals[mealType])
-                                .map((mealType) => {
-                                  const mealItems = dayItems.filter(item => item.mealType === mealType);
-                                  const mealPlanItem = mealItems[0];
-                                  const isSkipped = mealPlanItem?.skipped ?? false;
-                                  const skipReason = mealPlanItem?.skipReason ?? '';
-                                  
-                                  return (
-                                    <Box key={mealType} sx={{ mb: 3 }}>
-                                      <Typography 
-                                        variant="subtitle1" 
-                                        sx={{ 
-                                          mb: 2, 
-                                          fontWeight: 'bold',
-                                          color: 'text.primary',
-                                          borderBottom: '2px solid',
-                                          borderColor: 'primary.light',
-                                          pb: 0.5,
-                                          display: 'inline-block'
-                                        }}
-                                      >
-                                        {getMealTypeName(mealType)}
-                                      </Typography>
-                                      {isSkipped ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ pl: 2, fontStyle: 'italic' }}>
-                                          Skipped{skipReason ? `: ${skipReason}` : ''}
-                                        </Typography>
-                                      ) : mealItems.length > 0 ? (
-                                        <Box sx={{ pl: 2 }}>
-                                          {mealItems.map((item, index) => (
-                                            <Box key={index}>
-                                              {item.items.map((mealItem, mealIndex) => {
-                                                if (mealItem.type === 'ingredientGroup') {
-                                                  // Render ingredient group
-                                                  return (
-                                                    <Box key={mealIndex} sx={{ mb: 1 }}>
-                                                      {mealItem.ingredients && mealItem.ingredients.map((group, groupIndex) => (
-                                                        <Box key={groupIndex} sx={{ mb: 1 }}>
-                                                          {group.title && (
-                                                            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                                              {group.title}:
-                                                            </Typography>
-                                                          )}
-                                                          <Box sx={{ pl: 2 }}>
-                                                            {group.ingredients.map((ingredient, ingIndex) => (
-                                                              <Typography key={ingIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                                • {ingredient.quantity}{' '}
-                                                                {ingredient.type === 'foodItem' &&
-                                                                ingredient.unit &&
-                                                                ingredient.unit !== 'each'
-                                                                  ? getUnitForm(ingredient.unit, ingredient.quantity) + ' '
-                                                                  : ''}
-                                                                {ingredient.name || 'Unknown'}
-                                                              </Typography>
-                                                            ))}
-                                                          </Box>
-                                                        </Box>
-                                                      ))}
-                                                    </Box>
-                                                  );
-                                                } else {
-                                                  // Render regular meal item (foodItem or recipe)
-                                                  return (
-                                                    <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
-                                                      • {mealItem.name}
-                                                      {mealItem.type === 'foodItem' && mealItem.quantity && mealItem.unit && (
-                                                        <span style={{ color: 'text.secondary' }}>
-                                                          {' '}({mealItem.quantity} {getUnitForm(mealItem.unit, mealItem.quantity)})
-                                                        </span>
-                                                      )}
-                                                      {mealItem.type === 'recipe' && mealItem.quantity && (
-                                                        <span style={{ color: 'text.secondary' }}>
-                                                          {' '}({mealItem.quantity}x)
-                                                        </span>
-                                                      )}
-                                                    </Typography>
-                                                  );
-                                                }
-                                              })}
-                                              {item.notes && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 2 }}>
-                                                  Note: {item.notes}
-                                                </Typography>
-                                              )}
-                                            </Box>
-                                          ))}
-                                        </Box>
-                                      ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', pl: 2 }}>
-                                          No items planned yet
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  );
-                                })}
-                            </Box>
-                          </Paper>
-                        );
-                      })}
-                    </Box>
-                  )}
-                </Box>
-              )}
-              
-              {editMode && (
-                <Box sx={{ 
-                  display: 'flex',
-                  flexDirection: { xs: 'column-reverse', sm: 'row' },
-                  gap: 1,
-                  p: 2,
-                  justifyContent: { xs: 'stretch', sm: 'flex-start' },
-                  alignItems: { xs: 'stretch', sm: 'center' }
-                }}>
-                  <Button 
-                    onClick={() => deleteConfirmDialog.openDialog()}
-                    color="error"
-                    variant="outlined"
-                    startIcon={<Delete />}
-                    sx={{ 
-                      width: { xs: '100%', sm: 'auto' },
-                      mr: { xs: 0, sm: 'auto' },
-                      border: { sm: 'none' },
-                      '&:hover': {
-                        border: { sm: 'none' },
-                        backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' }
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      setEditMode(false);
-                      viewDialog.removeDialogData('editMode');
-                    }}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      if (mealPlanValidationErrors.length > 0) {
-                        setShowValidationErrors(true);
-                      } else {
-                        handleUpdateMealPlan();
-                      }
-                    }}
-                    variant={mealPlanValidationErrors.length > 0 ? "outlined" : "contained"}
-                    sx={{ 
-                      width: { xs: '100%', sm: 'auto' },
-                      ...(mealPlanValidationErrors.length > 0 && {
-                        color: 'text.secondary',
-                        borderColor: 'text.secondary'
-                      })
-                    }}
-                  >
-                    Save
-                  </Button>
-                </Box>
-              )}
-            </DialogContent>
-          </Dialog>
-
+            editMode={editMode}
+            selectedMealPlan={selectedMealPlan}
+            mealPlanValidationErrors={mealPlanValidationErrors}
+            showValidationErrors={showValidationErrors}
+            onEditMode={handleEditMealPlanMode}
+            onCancelEdit={() => {
+              setEditMode(false);
+              viewDialog.removeDialogData('editMode');
+            }}
+            onSave={handleUpdateMealPlan}
+            onDeleteConfirm={() => deleteConfirmDialog.openDialog()}
+            onMealPlanChange={setSelectedMealPlan}
+            onValidationUpdate={(errors, hideIfValid) => {
+              setMealPlanValidationErrors(errors);
+              if (hideIfValid) setShowValidationErrors(false);
+            }}
+            onShowValidationErrors={setShowValidationErrors}
+            onFoodItemAdded={handleAddFoodItem}
+            getDaysInOrder={getDaysInOrder}
+            getDateForDay={getDateForDay}
+            getMealTypeName={getMealTypeName}
+            validateMealPlan={validateMealPlan}
+          />
           {/* Delete Confirmation Dialog */}
           <Dialog
             open={deleteConfirmDialog.open}
