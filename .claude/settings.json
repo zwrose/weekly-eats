@@ -8,6 +8,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-env-edit.js\"",
             "statusMessage": "Checking for .env file edits..."
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-lock-edit.js\"",
+            "statusMessage": "Checking for lock file edits..."
           }
         ]
       }
