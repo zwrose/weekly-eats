@@ -22,19 +22,22 @@ export function useTheme() {
   return context;
 }
 
-function setThemeCookie(isDark: boolean) {
+function setThemeCookies(mode: ThemeMode, isDark: boolean) {
+  document.cookie = `theme-mode=${mode};path=/;max-age=31536000;SameSite=Lax`;
   document.cookie = `theme-isDark=${isDark ? '1' : '0'};path=/;max-age=31536000;SameSite=Lax`;
 }
 
 export function ThemeProviderWrapper({
   children,
+  initialMode,
   initialIsDark = false,
 }: {
   children: React.ReactNode;
+  initialMode?: ThemeMode;
   initialIsDark?: boolean;
 }) {
   const { data: session } = useSession();
-  const [mode, setMode] = useState<ThemeMode>(DEFAULT_USER_SETTINGS.themeMode);
+  const [mode, setMode] = useState<ThemeMode>(initialMode ?? DEFAULT_USER_SETTINGS.themeMode);
   const [isDark, setIsDark] = useState(initialIsDark);
 
   // Load settings from database when user is authenticated
@@ -81,10 +84,10 @@ export function ThemeProviderWrapper({
     setIsDark(shouldBeDark);
   }, [mode]);
 
-  // Persist resolved isDark to cookie so the server can read it on next page load
+  // Persist mode and resolved isDark to cookies for next page load
   useEffect(() => {
-    setThemeCookie(isDark);
-  }, [isDark]);
+    setThemeCookies(mode, isDark);
+  }, [mode, isDark]);
 
   useEffect(() => {
     // Listen for system theme changes

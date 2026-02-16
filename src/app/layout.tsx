@@ -3,6 +3,7 @@ import { Figtree } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import Providers from "../components/Providers";
+import type { ThemeMode } from "../lib/user-settings";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -33,12 +34,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
+  const initialMode = (cookieStore.get("theme-mode")?.value as ThemeMode) || undefined;
   const initialIsDark = cookieStore.get("theme-isDark")?.value === "1";
 
   return (
     <html lang="en">
       <body className={figtree.variable}>
-        <Providers initialIsDark={initialIsDark}>
+        <Providers initialMode={initialMode} initialIsDark={initialIsDark}>
           {children}
         </Providers>
       </body>
