@@ -2,7 +2,8 @@
   "trackId": "smart-unit-deconfliction-shopping_20260216",
   "type": "feature",
   "branch": "feature/smart-unit-deconfliction",
-  "status": "planned",
+  "status": "in-progress",
   "created": "2026-02-16",
-  "description": "Smart unit deconfliction for shopping list meal plan population"
+  "description": "Smart unit deconfliction for shopping list meal plan population",
+  "updated_at": "2026-02-16T18:16:48.807454Z"
 }

@@ -1,4 +1,4 @@
-import convert, { getMeasureKind } from 'convert';
+import convert, { getMeasureKind, type Unit } from 'convert';
 
 /**
  * Maps app singular unit names to `convert` library unit strings.
@@ -83,8 +83,8 @@ export function areSameFamily(unitA: string, unitB: string): boolean {
   if (!convertA || !convertB) return false;
 
   try {
-    const kindA = getMeasureKind(convertA as any);
-    const kindB = getMeasureKind(convertB as any);
+    const kindA = getMeasureKind(convertA as Unit);
+    const kindB = getMeasureKind(convertB as Unit);
     return kindA !== undefined && kindB !== undefined && kindA === kindB;
   } catch {
     return false;
@@ -106,7 +106,7 @@ export function tryConvert(
   if (!convertFrom || !convertTo) return null;
 
   try {
-    return convert(quantity, convertFrom as any).to(convertTo as any);
+    return convert(quantity, convertFrom as Unit).to(convertTo as Unit);
   } catch {
     return null;
   }
@@ -132,7 +132,7 @@ export function pickBestUnit(
   }
 
   try {
-    const best = convert(quantity, convertUnit as any).to('best', 'imperial');
+    const best = convert(quantity, convertUnit as Unit).to('best', 'imperial');
     const bestUnitStr = String(best.unit);
 
     // Map the convert library's best unit back to an app unit name

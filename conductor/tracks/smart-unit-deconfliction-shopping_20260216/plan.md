@@ -2,11 +2,11 @@
 
 ## Phase 1: Unit Conversion Utility Module
 
-- [ ] Task: Install `convert` npm package
+- [x] Task: Install `convert` npm package [f8b385c]
   - Run `npm install convert` in the worktree
   - Verify it appears in `package.json` dependencies
 
-- [ ] Task: Create unit conversion utility with TDD
+- [x] Task: Create unit conversion utility with TDD [425b23b]
   - **Test first** (`src/lib/__tests__/unit-conversion.test.ts`):
     - `toConvertUnit`: maps app unit names (e.g., `'cup'`, `'tablespoon'`, `'pound'`) to `convert` library identifiers; returns `null` for unmappable units (e.g., `'can'`, `'bag'`, `'piece'`)
     - `areSameFamily`: returns `true` for same-family pairs (cup/gallon, ounce/pound); `false` for cross-family (cup/pound) and non-convertible (can/bag)
