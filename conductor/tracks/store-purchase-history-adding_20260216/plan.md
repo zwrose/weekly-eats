@@ -23,16 +23,16 @@
   - Receives checked items, bulk upserts into `purchaseHistory` collection, removes checked items from shopping list
   - Replaces the current client-side "Finish Shop" logic with a single server-side operation
 
-## Phase 3: Client Utilities `[ ]`
+## Phase 3: Client Utilities `[x]` [checkpoint: 4426bbf]
 
 - [x] Task: Add `fetchPurchaseHistory` and `finishShop` functions to `src/lib/shopping-list-utils.ts` [07d612e]
 - [x] Task: Update `handleClearCheckedItems` in the shopping list page to call the new `finishShop` API instead of directly updating the list [2c44efb]
 
 ## Phase 4: History Dialog Component `[ ]`
 
-- [ ] Task: Write tests for `StoreHistoryDialog` component
+- [x] Task: Write tests for `StoreHistoryDialog` component [ab87d61]
   - Test rendering history items, search/filter, single add, multi-select add, quantity editing, empty state
-- [ ] Task: Create `src/components/shopping-list/StoreHistoryDialog.tsx` (dynamically imported)
+- [x] Task: Create `src/components/shopping-list/StoreHistoryDialog.tsx` (dynamically imported) [ab87d61]
   - Displays history items in a scrollable list sorted by recency
   - Each item shows: food emoji + name, last quantity + unit, relative date (e.g. "3 days ago")
   - Items already on the active shopping list are visually indicated (muted/badged)
