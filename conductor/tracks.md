@@ -4,8 +4,9 @@
 
 ## Active Tracks
 
-_No active tracks._
 
+- [ ] **Track: React best practices architectural audit and refactor plan**
+  *Link: [react-best-practices-architectural_20260215](./conductor/tracks/react-best-practices-architectural_20260215/)*
 ---
 
 ## Completed Tracks
