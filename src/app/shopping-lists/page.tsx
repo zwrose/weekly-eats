@@ -504,7 +504,7 @@ function ShoppingListsPageContent() {
   };
 
   const confirmLeaveStore = async () => {
-    const userId = (session?.user as { id?: string })?.id;
+    const userId = session?.user?.id;
     if (!userId || !selectedStore) return;
 
     try {
@@ -520,7 +520,7 @@ function ShoppingListsPageContent() {
   };
 
   const isStoreOwner = (store: StoreWithShoppingList): boolean => {
-    const userId = (session?.user as { id?: string })?.id;
+    const userId = session?.user?.id;
     return store.userId === userId;
   };
 

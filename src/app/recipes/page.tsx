@@ -220,7 +220,7 @@ function RecipesPageContent() {
   });
   
   // Extract userId for dependency tracking
-  const userId = (session?.user as { id?: string })?.id;
+  const userId = session?.user?.id;
   
   // New/edit recipe state (keep as local state)
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({

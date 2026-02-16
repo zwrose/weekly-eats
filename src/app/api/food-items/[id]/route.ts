@@ -43,7 +43,7 @@ export async function PUT(
       return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
-    const isAdmin = (session.user as { isAdmin?: boolean })?.isAdmin;
+    const isAdmin = session.user.isAdmin;
     const isOwner = existingItem.createdBy === session.user.id;
 
     // Check permissions
@@ -128,7 +128,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
     }
 
-    const isAdmin = (session.user as { isAdmin?: boolean })?.isAdmin;
+    const isAdmin = session.user.isAdmin;
     const isOwner = existingItem.createdBy === session.user.id;
 
     // Check permissions

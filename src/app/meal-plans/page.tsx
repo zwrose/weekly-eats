@@ -159,7 +159,7 @@ function MealPlansPageContent() {
 
   // Organize meal plans by owner
   const { data: session } = useSession();
-  const currentUserId = (session?.user as { id?: string })?.id;
+  const currentUserId = session?.user?.id;
   
   const mealPlansByOwner = () => {
     const grouped: Record<string, MealPlanWithTemplate[]> = {};
