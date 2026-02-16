@@ -1,6 +1,6 @@
 # Plan: React Best Practices Architectural Audit & Refactor
 
-## Phase 1: Quick Wins — Bundle & Memoization Fixes (CRITICAL/HIGH impact, LOW effort)
+## Phase 1: Quick Wins — Bundle & Memoization Fixes (CRITICAL/HIGH impact, LOW effort) [checkpoint: 760d5f2]
 
 - [x] Task 1.1: Fix `foodItemsMap` in `use-food-items.ts` — replace `useCallback()()` IIFE with `useMemo` (`rerender-memo`) [0452692]
 - [x] Task 1.2: Memoize theme context provider value in `src/lib/theme-context.tsx` — wrap `{ mode, setMode, isDark }` in `useMemo` (`rerender-memo-with-default-value`) [5e0ecd8]
@@ -11,11 +11,11 @@
 
 ## Phase 2: Dynamic Imports & Code Splitting (CRITICAL impact, MEDIUM effort)
 
-- [ ] Task 2.1: Add `next/dynamic` import for `EmojiPicker` component with `{ ssr: false }` (`bundle-dynamic-imports`)
-- [ ] Task 2.2: Dynamic import dialog-heavy components — extract and lazy-load recipe view/edit dialogs from `recipes/page.tsx` (`bundle-dynamic-imports`)
-- [ ] Task 2.3: Dynamic import `react-markdown` + `remark-gfm` — `RecipeInstructionsView` should load these on demand (`bundle-conditional`)
-- [ ] Task 2.4: Lazy-load Ably — ensure the `ably` package only loads on the shopping-lists page, not globally (`bundle-defer-third-party`)
-- [ ] Task 2.5: Lazy-load `@dnd-kit` — ensure drag-and-drop packages only load on meal-plans page (`bundle-defer-third-party`)
+- [x] Task 2.1: Add `next/dynamic` import for `EmojiPicker` component with `{ ssr: false }` (`bundle-dynamic-imports`) [fc734b9]
+- [x] Task 2.2: Dynamic import dialog-heavy components — extract and lazy-load recipe view/edit dialogs from `recipes/page.tsx` (`bundle-dynamic-imports`) [409f281]
+- [x] Task 2.3: Dynamic import `react-markdown` + `remark-gfm` — `RecipeInstructionsView` should load these on demand (`bundle-conditional`) [409f281] (covered by Task 2.2 — component is dynamically imported, so its deps are already code-split)
+- [x] Task 2.4: Lazy-load Ably — ensure the `ably` package only loads on the shopping-lists page, not globally (`bundle-defer-third-party`) [6a11e9b]
+- [x] Task 2.5: Lazy-load `@dnd-kit` — ensure drag-and-drop packages only load on meal-plans page (`bundle-defer-third-party`) [no change needed — @dnd-kit is only imported in shopping-lists/page.tsx, already route-level code-split by Next.js]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Split Oversized Page Components (CRITICAL impact, HIGH effort)
