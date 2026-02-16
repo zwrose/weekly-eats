@@ -70,6 +70,16 @@ npm run test         # Runs test suite
 npm run check        # Lint + coverage + build (CI-style check)
 ```
 
+### Worktree Setup (for parallel development)
+
+```bash
+./scripts/worktree-create.sh <branch>   # Create isolated worktree (unique port, cloned DB)
+./scripts/worktree-list.sh              # List all worktrees with port/database info
+./scripts/worktree-remove.sh [branch]   # Remove worktree and optionally drop database
+```
+
+Each worktree gets its own port (3001+), MongoDB database, `node_modules`, and `.env.local`. See `CLAUDE.md` and `conductor/workflow.md` for full details.
+
 ### Key Scripts
 
 | Script | Description |

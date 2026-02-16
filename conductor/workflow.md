@@ -11,12 +11,62 @@
 
 ## Plan Generation Guidelines
 
-When creating a `plan.md` for a new track, follow these rules for manual verification tasks:
+When creating a new track, the **first step** — before writing any track files (spec, plan, decisions, index) — is to create a worktree for the track's branch. All track files must be created and committed inside the worktree, never in the main worktree. See the "Worktree Isolation" section below for the exact procedure.
+
+The track's `index.md` **must** specify its branch name. Plans should not include worktree setup as a task — it is a prerequisite that happens before any track work begins.
+
+Follow these rules for manual verification tasks:
 
 1. **Only include a `Conductor - User Manual Verification` task for phases that produce user-facing changes** — changes the user can observe and interact with in a browser or via a simple command.
 2. **Do NOT include verification tasks for phases** that only touch data models, types, indexes, internal utilities, API routes without a visible frontend, or isolated components not yet integrated into the UI.
 3. **For borderline cases** (e.g., a backend change that alters existing visible behavior, or a refactor that could subtly affect UX), describe what the manual validation would look like and ask the user during plan preparation whether they want to include a manual verification step.
 4. **Phase completion and checkpointing always runs.** The absence of a manual verification task does NOT mean the phase skips the Phase Completion Verification and Checkpointing Protocol. That protocol (test coverage, validation suite, checkpoint commit, SHA recording) executes for every phase. The manual verification task in the plan only controls whether steps 4–5 of the protocol (user walkthrough and feedback) are performed.
+
+## Worktree Isolation (Required for All Tracks)
+
+Every track **must** live entirely in its own git worktree — **both planning and implementation**. The main worktree (`/home/zwrose/weekly-eats`) must never be used for track work of any kind (no spec files, no plan files, no code changes, no commits).
+
+### Before Any Track Work (Planning or Implementation)
+
+The worktree must be created **before writing any track files** (spec.md, plan.md, decisions.md, index.md, metadata.json). This means:
+
+1. **Create the worktree** for the track's branch (run from the main worktree):
+   ```bash
+   ./scripts/worktree-create.sh <branch-name>
+   ```
+   This auto-assigns a unique port (3001+), clones the database with sample data, generates `.env.local`, and runs `npm install`.
+
+2. **Navigate to the worktree**:
+   ```bash
+   cd /home/zwrose/weekly-eats-worktrees/<sanitized-branch-name>
+   ```
+
+3. **Now begin track work** — create the track directory under `conductor/tracks/`, write spec/plan/decisions files, and commit them. All of this happens inside the worktree.
+
+4. **All subsequent work** (implementation, tests, `npm run check`, `npm run dev`, git commits) also happens inside this worktree.
+
+### After Completing a Track
+
+Clean up the worktree to free disk space:
+```bash
+./scripts/worktree-remove.sh <branch-name>
+```
+
+### Rules
+
+- **One agent per worktree** — never run two agents on the same worktree/branch
+- **One worktree per track** — each track gets its own isolated environment
+- **Dev server ports are unique** — the script assigns 3001, 3002, etc. automatically
+- **Databases are isolated** — each worktree has its own MongoDB database (`weekly-eats-<branch>`)
+- **`npm test` and `npm run check` are always safe** — they use fake DB URIs regardless of worktree
+
+### Management Commands
+
+```bash
+./scripts/worktree-list.sh              # Show all worktrees with port/database info
+./scripts/worktree-create.sh <branch>   # Create worktree (clones DB, installs deps)
+./scripts/worktree-remove.sh [branch]   # Remove worktree (interactive menu if no branch given)
+```
 
 ## Task Workflow
 
@@ -123,26 +173,35 @@ All tasks follow a strict lifecycle:
 4.  **Manual Verification (User-Facing Phases Only):**
     -   **CRITICAL:** Manual verification is only performed for phases that produce user-facing changes — i.e., changes the user can see and interact with in the browser or via a simple command. Phases that only touch data models, internal utilities, backend logic without visible output, or isolated components not yet wired into the UI should **skip steps 4 and 5** and proceed directly to step 6 (checkpoint commit). The remaining steps (6–9) always execute regardless.
     -   To determine if this phase is user-facing, analyze `product.md`, `product-guidelines.md`, and `plan.md` to identify whether the completed phase has observable, user-facing outcomes.
-    -   **If the phase IS user-facing:** Generate a step-by-step plan that walks the user through the verification process, including any necessary commands and specific, expected outcomes. The plan **must** follow this format:
+    -   **If the phase IS user-facing**, the agent must **start the dev server, confirm it is running, and then present verification steps to the user.** Follow this procedure:
+
+        **Step 4a — Start the Dev Server:**
+        1.  Run `npm run dev` (in the background) inside this worktree.
+        2.  Wait for the server to emit the "Ready" message confirming it is accepting connections.
+        3.  Determine the correct port from this worktree's `.env.local` (`NEXTAUTH_URL`). **Do not hardcode port 3000** — worktrees use unique ports (3001, 3002, etc.).
+        4.  Verify the server responds by fetching the root URL (e.g., `curl -s -o /dev/null -w "%{http_code}" http://localhost:<PORT>`). If it returns a non-error status, the server is confirmed working.
+        5.  If the server fails to start after 30 seconds, inform the user and attempt to debug (check port conflicts, missing dependencies).
+
+        **Step 4b — Present Manual Verification Steps:**
+        Once the server is confirmed running, present the user with specific verification instructions. **Always use the worktree's actual port**, not 3000.
 
         **For a Frontend Change:**
         ```
-        The automated tests have passed. For manual verification, please follow these steps:
+        The dev server is running and confirmed healthy at http://localhost:<PORT>.
 
         **Manual Verification Steps:**
-        1.  **Start the development server with the command:** `npm run dev`
-        2.  **Open your browser to:** `http://localhost:3000`
-        3.  **Confirm that you see:** The new user profile page, with the user's name and email displayed correctly.
+        1.  **Open your browser to:** `http://localhost:<PORT>`
+        2.  **Confirm that you see:** [specific expected outcome]
+        3.  [Additional verification steps...]
         ```
 
         **For a Backend Change:**
         ```
-        The automated tests have passed. For manual verification, please follow these steps:
+        The dev server is running and confirmed healthy at http://localhost:<PORT>.
 
         **Manual Verification Steps:**
-        1.  **Ensure the server is running.**
-        2.  **Execute the following command in your terminal:** `curl -X POST http://localhost:8080/api/v1/users -d '{"name": "test"}'`
-        3.  **Confirm that you receive:** A JSON response with a status of `201 Created`.
+        1.  **Execute the following command:** `curl -X POST http://localhost:<PORT>/api/... -d '...'`
+        2.  **Confirm that you receive:** [specific expected response]
         ```
 
     -   **If the phase is NOT user-facing:** Announce "This phase has no user-facing changes — skipping manual verification. Automated tests provide coverage." Then proceed to step 6.
@@ -234,10 +293,17 @@ After `npm run check` produces coverage output (`./coverage/` directory with tex
 
 ## Development Commands
 
-### Setup
+### Worktree Management (run from main worktree)
+```bash
+./scripts/worktree-create.sh <branch>   # Create isolated worktree for a track
+./scripts/worktree-list.sh              # List all worktrees with ports/databases
+./scripts/worktree-remove.sh [branch]   # Remove worktree and optionally drop its database
+```
+
+### Setup (run inside your worktree)
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start dev server (includes DB setup)
+npm run dev          # Start dev server (includes DB setup) — uses worktree's unique port
 npm run dev:fast     # Start dev server (skip DB setup)
 ```
 

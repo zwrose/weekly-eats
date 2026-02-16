@@ -10,6 +10,44 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 - **Lint**: `npm run lint`
 - **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main` and `develop`
 
+## Worktree / Multi-Agent Workflow
+
+This project supports running multiple Claude Code agents (or developers) in parallel using git worktrees. Each worktree gets an isolated port, database, and `node_modules`.
+
+### Commands
+
+```bash
+# Create a new worktree (auto-assigns port, clones database, runs npm install)
+./scripts/worktree-create.sh <branch-name>
+./scripts/worktree-create.sh <branch-name> --no-install  # skip npm install
+./scripts/worktree-create.sh <branch-name> --empty        # empty database (indexes only)
+
+# List all worktrees with port/database info
+./scripts/worktree-list.sh
+
+# Remove a worktree (interactive menu or specify branch)
+./scripts/worktree-remove.sh [branch-name]
+```
+
+### How Isolation Works
+
+| Resource | Main worktree | Each new worktree |
+|----------|--------------|-------------------|
+| Port | 3000 | 3001, 3002, ... (auto-assigned) |
+| Database | `weekly-eats-dev` | `weekly-eats-<branch-name>` (cloned from main) |
+| `node_modules` | Own copy | Own copy (~955 MB) |
+| `.env.local` | Manual | Auto-generated from main's |
+| `.next/` build cache | Own | Own |
+
+Worktrees live at `../weekly-eats-worktrees/<branch>/` (sibling to main).
+
+### Rules for Parallel Agents
+
+- **Never run two agents on the same worktree/branch** — file edits will collide
+- **Always create a worktree** before starting parallel work on a new branch
+- **`npm test` and `npm run check` are safe** in any worktree (they use fake DB URIs)
+- **Clean up worktrees when done** to free disk space
+
 ## Project Structure
 
 ```
@@ -88,5 +126,5 @@ src/
 
 ## Do Not Edit
 
-- `.env.local` — contains secrets (MongoDB URI, NextAuth, Google OAuth, Ably keys)
+- `.env.local` — contains secrets; auto-generated in worktrees by `worktree-create.sh`
 - `package-lock.json` — modify only via npm commands

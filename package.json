@@ -17,7 +17,10 @@
     "test": "vitest run --run --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "test:watch": "vitest",
     "test:coverage": "vitest run --run --coverage --pool=forks --poolOptions.forks.singleFork=true --isolate",
-    "check": "npm run lint -- --max-warnings=0 && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run test:coverage && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run build"
+    "check": "npm run lint -- --max-warnings=0 && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run test:coverage && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run build",
+    "worktree:create": "./scripts/worktree-create.sh",
+    "worktree:list": "./scripts/worktree-list.sh",
+    "worktree:remove": "./scripts/worktree-remove.sh"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.9.1",
