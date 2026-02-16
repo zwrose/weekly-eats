@@ -116,6 +116,7 @@ import { MealPlanWithTemplate } from "../../types/meal-plan";
 import { fetchMealPlans } from "../../lib/meal-plan-utils";
 import {
   extractFoodItemsFromMealPlans,
+  combineExtractedItems,
   mergeWithShoppingList,
   UnitConflict,
 } from "../../lib/meal-plan-to-shopping-list";
@@ -928,6 +929,10 @@ function ShoppingListsPageContent() {
       // Extract food items from meal plans
       const extractedItems = await extractFoodItemsFromMealPlans(selectedPlans);
 
+      // Pre-merge: combine extracted items with unit conversion intelligence
+      const { combinedItems, conflicts: preMergeConflicts } =
+        combineExtractedItems(extractedItems);
+
       // Create food items map for name lookup
       const foodItemsMap = new Map(
         foodItems.map((f) => [
@@ -940,12 +945,29 @@ function ShoppingListsPageContent() {
         ]),
       );
 
-      // Merge with existing shopping list
-      const { mergedItems, conflicts } = mergeWithShoppingList(
+      // Merge combined items with existing shopping list
+      const { mergedItems, conflicts: mergeConflicts } = mergeWithShoppingList(
         shoppingListItems,
-        extractedItems,
+        combinedItems,
         foodItemsMap,
       );
+
+      // Combine pre-merge conflicts (from combineExtractedItems) with merge conflicts
+      const preMergeUnitConflicts: UnitConflict[] = Array.from(
+        preMergeConflicts.entries(),
+      ).map(([foodItemId, items]) => {
+        const foodItem = foodItemsMap.get(foodItemId);
+        return {
+          foodItemId,
+          foodItemName: foodItem?.pluralName || "Unknown",
+          existingQuantity: items[0].quantity,
+          existingUnit: items[0].unit,
+          newQuantity: items.slice(1).reduce((sum, i) => sum + i.quantity, 0),
+          newUnit: items[1]?.unit || items[0].unit,
+        };
+      });
+
+      const conflicts = [...preMergeUnitConflicts, ...mergeConflicts];
 
       // Separate existing items from new items for position-aware insertion
       const existingItemIds = new Set(
