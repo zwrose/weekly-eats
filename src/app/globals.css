@@ -4,14 +4,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Prevent light-mode flash before MUI theme hydrates */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #121212;
-    color: #fff;
-  }
-}
-
 /* Hide native number input spinners (up/down arrows) globally */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
