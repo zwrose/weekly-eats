@@ -1,10 +1,20 @@
 import { MealPlanWithTemplate } from '../types/meal-plan';
 import { ShoppingListItem } from '../types/shopping-list';
+import { areSameFamily, tryConvert, pickBestUnit } from './unit-conversion';
 
 interface ExtractedItem {
   foodItemId: string;
   quantity: number;
   unit: string;
+}
+
+interface PreMergeConflict {
+  foodItemId: string;
+  items: ExtractedItem[];
+  unitBreakdown: { quantity: number; unit: string }[];
+  isAutoConverted: boolean;
+  suggestedQuantity?: number;
+  suggestedUnit?: string;
 }
 
 interface UnitConflict {
@@ -14,6 +24,10 @@ interface UnitConflict {
   existingUnit: string;
   newQuantity: number;
   newUnit: string;
+  isAutoConverted: boolean;
+  suggestedQuantity?: number;
+  suggestedUnit?: string;
+  unitBreakdown?: { quantity: number; unit: string }[];
 }
 
 const MAX_RECURSION_DEPTH = 50;
@@ -144,12 +158,14 @@ export async function extractFoodItemsFromMealPlans(
 }
 
 /**
- * Combines extracted items, summing quantities for items with the same unit
- * Returns combined items and any unit conflicts
+ * Combines extracted items, summing quantities for items with the same unit.
+ * Items with different units are always flagged as conflicts for user review.
+ * Convertible conflicts include pre-computed suggested values.
+ * Returns combined items (same-unit sums only) and all multi-unit conflicts.
  */
 export function combineExtractedItems(
   extractedItems: ExtractedItem[]
-): { combinedItems: ExtractedItem[]; conflicts: Map<string, ExtractedItem[]> } {
+): { combinedItems: ExtractedItem[]; conflicts: PreMergeConflict[] } {
   const itemsByFoodId = new Map<string, ExtractedItem[]>();
 
   // Group by food item ID
@@ -161,30 +177,80 @@ export function combineExtractedItems(
   }
 
   const combinedItems: ExtractedItem[] = [];
-  const conflicts = new Map<string, ExtractedItem[]>();
+  const conflicts: PreMergeConflict[] = [];
 
-  // Combine items with same unit, identify conflicts
   for (const [foodItemId, items] of itemsByFoodId.entries()) {
     if (items.length === 1) {
       combinedItems.push(items[0]);
-    } else {
-      // Group by unit
-      const byUnit = new Map<string, number>();
-      for (const item of items) {
-        const currentQty = byUnit.get(item.unit) || 0;
-        byUnit.set(item.unit, currentQty + item.quantity);
+      continue;
+    }
+
+    // Group by unit first
+    const byUnit = new Map<string, number>();
+    for (const item of items) {
+      const currentQty = byUnit.get(item.unit) || 0;
+      byUnit.set(item.unit, currentQty + item.quantity);
+    }
+
+    if (byUnit.size === 1) {
+      // All same unit — sum directly (AC-5: silent sum)
+      const [unit, quantity] = Array.from(byUnit.entries())[0];
+      combinedItems.push({ foodItemId, quantity, unit });
+      continue;
+    }
+
+    // Multiple different units — always flag as conflict for user review.
+    // Add first entry as placeholder so item reaches the shopping list.
+    combinedItems.push(items[0]);
+
+    // Build unit breakdown from summed-by-unit map
+    const unitBreakdown = Array.from(byUnit.entries()).map(([unit, quantity]) => ({
+      quantity,
+      unit,
+    }));
+
+    // Check if all units are in the same convertible family
+    const units = Array.from(byUnit.keys());
+    const allSameFamily = units.every((u, i) =>
+      i === 0 ? true : areSameFamily(units[0], u)
+    );
+
+    if (allSameFamily) {
+      // Convertible — compute suggested combined value
+      const targetUnit = units[0];
+      let totalInTarget = 0;
+      let conversionFailed = false;
+
+      for (const [unit, qty] of byUnit.entries()) {
+        if (unit === targetUnit) {
+          totalInTarget += qty;
+        } else {
+          const converted = tryConvert(qty, unit, targetUnit);
+          if (converted !== null) {
+            totalInTarget += converted;
+          } else {
+            conversionFailed = true;
+            break;
+          }
+        }
       }
 
-      if (byUnit.size === 1) {
-        // All same unit - combine
-        const [unit, quantity] = Array.from(byUnit.entries())[0];
-        combinedItems.push({ foodItemId, quantity, unit });
+      if (!conversionFailed) {
+        const best = pickBestUnit(totalInTarget, targetUnit);
+        conflicts.push({
+          foodItemId,
+          items,
+          unitBreakdown,
+          isAutoConverted: true,
+          suggestedQuantity: best.quantity,
+          suggestedUnit: best.unit,
+        });
       } else {
-        // Multiple units - conflict
-        conflicts.set(foodItemId, items);
-        // For now, just take the first one
-        combinedItems.push(items[0]);
+        conflicts.push({ foodItemId, items, unitBreakdown, isAutoConverted: false });
       }
+    } else {
+      // Non-convertible units
+      conflicts.push({ foodItemId, items, unitBreakdown, isAutoConverted: false });
     }
   }
 
@@ -240,8 +306,33 @@ export function mergeWithShoppingList(
             ? (newQuantity === 1 ? foodItem.singularName : foodItem.pluralName)
             : existing.name
         });
+      } else if (areSameFamily(existing.unit, extracted.unit)) {
+        // Convertible units — auto-convert and pre-fill suggested resolution
+        const foodItem = foodItems.get(extracted.foodItemId);
+        const convertedExtracted = tryConvert(
+          extracted.quantity,
+          extracted.unit,
+          existing.unit
+        );
+        const totalInExistingUnit =
+          convertedExtracted !== null
+            ? existing.quantity + convertedExtracted
+            : existing.quantity + extracted.quantity;
+        const best = pickBestUnit(totalInExistingUnit, existing.unit);
+
+        conflicts.push({
+          foodItemId: extracted.foodItemId,
+          foodItemName: foodItem?.pluralName || existing.name,
+          existingQuantity: existing.quantity,
+          existingUnit: existing.unit,
+          newQuantity: extracted.quantity,
+          newUnit: extracted.unit,
+          isAutoConverted: true,
+          suggestedQuantity: best.quantity,
+          suggestedUnit: best.unit,
+        });
       } else {
-        // Different unit - conflict
+        // Non-convertible units — manual conflict
         const foodItem = foodItems.get(extracted.foodItemId);
         conflicts.push({
           foodItemId: extracted.foodItemId,
@@ -249,7 +340,8 @@ export function mergeWithShoppingList(
           existingQuantity: existing.quantity,
           existingUnit: existing.unit,
           newQuantity: extracted.quantity,
-          newUnit: extracted.unit
+          newUnit: extracted.unit,
+          isAutoConverted: false,
         });
       }
     }
@@ -261,5 +353,5 @@ export function mergeWithShoppingList(
   };
 }
 
-export type { UnitConflict };
+export type { UnitConflict, PreMergeConflict };
 
