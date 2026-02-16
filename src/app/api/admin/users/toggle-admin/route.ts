@@ -3,13 +3,14 @@ import { authOptions } from '../../../../../lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../../lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { AUTH_ERRORS, API_ERRORS, USER_ERRORS, logError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const client = await getMongoClient();
@@ -19,24 +20,24 @@ export async function POST(request: NextRequest) {
     // Get current user to check admin status
     const currentUser = await usersCollection.findOne({ email: session.user.email });
     if (!currentUser?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
     }
 
     // Get request body
     const { userId, isAdmin } = await request.json();
 
     if (!userId || typeof isAdmin !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
     }
 
     // Prevent user from revoking their own admin status
     const targetUser = await usersCollection.findOne({ _id: ObjectId.createFromHexString(userId) });
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: USER_ERRORS.USER_NOT_FOUND }, { status: 404 });
     }
 
     if (targetUser.email === session.user.email) {
-      return NextResponse.json({ error: 'Cannot modify your own admin status' }, { status: 400 });
+      return NextResponse.json({ error: USER_ERRORS.CANNOT_MODIFY_OWN_ADMIN }, { status: 400 });
     }
 
     // Update user's admin status
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error toggling admin status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('ToggleAdmin POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

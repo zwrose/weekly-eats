@@ -113,7 +113,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
@@ -125,7 +125,7 @@ export async function DELETE(
     // Check if food item exists
     const existingItem = await foodItemsCollection.findOne({ _id: new ObjectId(id) });
     if (!existingItem) {
-      return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     const isAdmin = session.user.isAdmin;
@@ -133,23 +133,23 @@ export async function DELETE(
 
     // Check permissions
     if (!isAdmin && !isOwner) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
     }
 
     // Non-admins can only delete their own personal items
     if (!isAdmin && existingItem.isGlobal) {
-      return NextResponse.json({ error: 'Only admins can delete global items' }, { status: 403 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_DELETE_GLOBAL }, { status: 403 });
     }
 
     const result = await foodItemsCollection.deleteOne({ _id: new ObjectId(id) });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Food item not found' }, { status: 404 });
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Food item deleted successfully' });
   } catch (error) {
-    console.error('Error deleting food item:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('FoodItems DELETE', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

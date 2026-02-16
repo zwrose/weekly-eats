@@ -141,12 +141,12 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: 'Invalid recipe ID' }, { status: 400 });
+      return NextResponse.json({ error: RECIPE_ERRORS.INVALID_RECIPE_ID }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -160,12 +160,12 @@ export async function DELETE(
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Recipe not found or you do not have permission to delete it' }, { status: 404 });
+      return NextResponse.json({ error: RECIPE_ERRORS.NO_PERMISSION_TO_EDIT }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Recipe deleted successfully' });
   } catch (error) {
-    console.error('Error deleting recipe:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('Recipes DELETE [id]', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 } 

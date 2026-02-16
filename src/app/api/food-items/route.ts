@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(foodItems);
   } catch (error) {
-    console.error('Error fetching food items:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError('FoodItems GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 

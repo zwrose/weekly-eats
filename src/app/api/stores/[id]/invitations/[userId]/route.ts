@@ -3,19 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const INVITATION_ERRORS = {
-  INVALID_STORE_ID: 'Invalid store ID',
-  STORE_NOT_FOUND: 'Store not found',
-  INVITATION_NOT_FOUND: 'Invitation not found',
-  INVALID_ACTION: 'Invalid action',
-  NOT_AUTHORIZED: 'Not authorized to perform this action',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, STORE_INVITATION_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string; userId: string }>;
@@ -34,19 +22,19 @@ export async function PUT(
 
     const { id, userId } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVALID_STORE_ID }, { status: 400 });
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
 
     const body = await request.json();
     const { action } = body; // 'accept' or 'reject'
 
     if (action !== 'accept' && action !== 'reject') {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVALID_ACTION }, { status: 400 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.INVALID_ACTION }, { status: 400 });
     }
 
     // Only the invited user can accept/reject their invitation
     if (userId !== session.user.id) {
-      return NextResponse.json({ error: INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
     }
 
     const client = await getMongoClient();
@@ -60,7 +48,7 @@ export async function PUT(
     });
 
     if (!store) {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
     }
 
     // Update invitation status
@@ -97,7 +85,7 @@ export async function DELETE(
 
     const { id, userId } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: INVITATION_ERRORS.INVALID_STORE_ID }, { status: 400 });
+      return NextResponse.json({ error: STORE_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
 
     const client = await getMongoClient();
@@ -109,7 +97,7 @@ export async function DELETE(
     });
 
     if (!store) {
-      return NextResponse.json({ error: INVITATION_ERRORS.STORE_NOT_FOUND }, { status: 404 });
+      return NextResponse.json({ error: STORE_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
     // Allow if user is owner OR if user is removing themselves
@@ -117,7 +105,7 @@ export async function DELETE(
     const isSelf = userId === session.user.id;
 
     if (!isOwner && !isSelf) {
-      return NextResponse.json({ error: INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
+      return NextResponse.json({ error: STORE_INVITATION_ERRORS.NOT_AUTHORIZED }, { status: 403 });
     }
 
     // Remove the invitation

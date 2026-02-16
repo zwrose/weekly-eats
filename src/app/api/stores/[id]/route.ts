@@ -3,18 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
-
-const STORE_ERRORS = {
-  INVALID_STORE_ID: 'Invalid store ID',
-  STORE_NOT_FOUND: 'Store not found',
-  INVALID_NAME: 'Store name is required',
-  DUPLICATE_STORE: 'A store with this name already exists',
-};
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
+import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string }>;

@@ -38,6 +38,12 @@ vi.mock('@/lib/errors', () => ({
   API_ERRORS: {
     INTERNAL_SERVER_ERROR: 'Internal server error',
   },
+  RECIPE_SHARING_ERRORS: {
+    INVALID_EMAIL: 'Valid email address is required',
+    INVALID_SHARING_TYPES: 'Sharing types must be an array with at least one of: tags, ratings',
+    SELF_INVITE: 'Cannot share recipe data with yourself',
+    USER_NOT_FOUND: 'User not found. They need to register first.',
+  },
   logError: vi.fn(),
 }));
 

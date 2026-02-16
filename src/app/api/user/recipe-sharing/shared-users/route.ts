@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS } from '@/lib/errors';
+import { AUTH_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { ObjectId } from 'mongodb';
 import { RecipeSharingInvitation } from '@/lib/user-settings';
-
-function logError(context: string, error: unknown) {
-  console.error(`[${context}]`, error);
-}
 
 export async function GET() {
   try {

@@ -53,11 +53,11 @@ function FoodItemsPageContent() {
 
   // User's food items: personal items + global items created by the user
   const userFoodItems = foodItems.filter(
-    item => !item.isGlobal || (item.isGlobal && item.createdBy === user?.id)
+    item => !item.isGlobal || (item.isGlobal && item.createdBy === session?.user?.id)
   );
   // Global food items: global items NOT created by the user
   const globalFoodItems = foodItems.filter(
-    item => item.isGlobal && item.createdBy !== user?.id
+    item => item.isGlobal && item.createdBy !== session?.user?.id
   );
 
   // Search and pagination
