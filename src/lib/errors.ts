@@ -131,6 +131,15 @@ export const STORE_INVITATION_ERRORS = {
   NOT_AUTHORIZED: 'Not authorized to perform this action',
 } as const;
 
+// Purchase History
+export const PURCHASE_HISTORY_ERRORS = {
+  STORE_ACCESS_DENIED: 'You do not have access to this store',
+  HISTORY_FETCH_FAILED: 'Failed to fetch purchase history',
+  HISTORY_RECORD_FAILED: 'Failed to record purchase history',
+  NO_CHECKED_ITEMS: 'No checked items to finish shop',
+  FINISH_SHOP_FAILED: 'Failed to finish shop',
+} as const;
+
 // Shopping Lists
 export const SHOPPING_LIST_ERRORS = {
   INVALID_STORE_ID: 'Invalid store ID',
