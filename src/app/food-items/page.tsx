@@ -1,12 +1,12 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  CircularProgress, 
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import {
+  Container,
+  Typography,
+  Box,
+  CircularProgress,
   Paper,
   TextField,
   Table,
@@ -30,46 +30,96 @@ import {
   Switch,
   IconButton
 } from "@mui/material";
-import { 
+import {
   Public,
   Person,
   Edit,
-  Delete
+  Delete,
+  IosShare,
 } from "@mui/icons-material";
+import { Pagination as MuiPagination } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import { getUnitOptions } from "@/lib/food-items-utils";
-import { useFoodItems } from '@/lib/hooks';
-import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { useServerPagination } from '@/lib/hooks/use-server-pagination';
+import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import { responsiveDialogStyle } from '@/lib/theme';
-import SearchBar from '@/components/optimized/SearchBar';
-import Pagination from '@/components/optimized/Pagination';
-import type { FoodItem } from '@/lib/hooks/use-food-items';
 import { DialogActions, DialogTitle } from '@/components/ui';
+
+interface FoodItemWithAccessLevel {
+  _id: string;
+  name: string;
+  singularName: string;
+  pluralName: string;
+  unit: string;
+  isGlobal?: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  accessLevel: 'personal' | 'shared-by-you' | 'global';
+}
+
+const accessLevelChipProps = {
+  personal: { label: 'Personal', color: 'default' as const, icon: <Person fontSize="small" /> },
+  'shared-by-you': { label: 'Shared by You', color: 'info' as const, icon: <IosShare fontSize="small" /> },
+  global: { label: 'Global', color: 'primary' as const, icon: <Public fontSize="small" /> },
+} as const;
+
+const accessLevelOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'personal', label: 'Personal' },
+  { value: 'shared-by-you', label: 'Shared by You' },
+  { value: 'global', label: 'Global' },
+] as const;
 
 function FoodItemsPageContent() {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.isAdmin;
-  const { foodItems, loading, refetch } = useFoodItems();
 
-  // User's food items: personal items + global items created by the user
-  const userFoodItems = foodItems.filter(
-    item => !item.isGlobal || (item.isGlobal && item.createdBy === session?.user?.id)
-  );
-  // Global food items: global items NOT created by the user
-  const globalFoodItems = foodItems.filter(
-    item => item.isGlobal && item.createdBy !== session?.user?.id
+  // Search
+  const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+
+  // Filter state
+  const [accessLevel, setAccessLevel] = useState<string>('all');
+
+  // Compute filterKey for useServerPagination
+  const filterKey = useMemo(
+    () => JSON.stringify({ q: debouncedSearchTerm, al: accessLevel }),
+    [debouncedSearchTerm, accessLevel]
   );
 
-  // Search and pagination
-  const userPagination = useSearchPagination({
-    data: userFoodItems,
-    itemsPerPage: 25,
-    searchFields: ['name', 'singularName', 'pluralName']
-  });
-  const globalPagination = useSearchPagination({
-    data: globalFoodItems,
-    itemsPerPage: 25,
-    searchFields: ['name', 'singularName', 'pluralName']
+  // Server-paginated data fetching
+  const fetchFoodItems = useCallback(async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
+    const sp = new URLSearchParams({
+      page: String(params.page),
+      limit: String(params.limit),
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    });
+    if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
+    if (accessLevel !== 'all') sp.set('accessLevel', accessLevel);
+
+    const response = await fetch(`/api/food-items?${sp.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch food items');
+    return response.json();
+  }, [debouncedSearchTerm, accessLevel]);
+
+  const {
+    data: foodItems,
+    total,
+    page,
+    totalPages,
+    loading,
+    sortBy,
+    sortOrder,
+    setPage,
+    setSort,
+    refetch,
+  } = useServerPagination<FoodItemWithAccessLevel>({
+    fetchFn: fetchFoodItems,
+    filterKey,
+    defaultSortBy: 'name',
+    defaultSortOrder: 'asc',
   });
 
   // Dialogs
@@ -78,36 +128,18 @@ function FoodItemsPageContent() {
   const confirmGlobalDialog = useDialog();
 
   // Selected item state
-  const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
-  const [editingItem, setEditingItem] = useState<Partial<FoodItem>>({});
+  const [selectedItem, setSelectedItem] = useState<FoodItemWithAccessLevel | null>(null);
+  const [editingItem, setEditingItem] = useState<Partial<FoodItemWithAccessLevel>>({});
   const [editMode, setEditMode] = useState(false);
 
-  const itemsPerPage = 25;
-
-  const loadFoodItems = useCallback(async () => {
-    try {
-      await refetch();
-    } catch (error) {
-      console.error('Error loading food items:', error);
-    }
-  }, [refetch]);
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      loadFoodItems();
-    }
-  }, [status, loadFoodItems]);
-
-
-
-  const handleViewItem = useCallback((item: FoodItem) => {
+  const handleViewItem = useCallback((item: FoodItemWithAccessLevel) => {
     setSelectedItem(item);
     setEditingItem({
       name: item.name,
       singularName: item.singularName,
       pluralName: item.pluralName,
       unit: item.unit,
-      isGlobal: item.isGlobal
+      isGlobal: item.isGlobal,
     });
     viewDialog.openDialog({ foodItemId: item._id });
   }, [viewDialog]);
@@ -119,41 +151,36 @@ function FoodItemsPageContent() {
     }
   }, [selectedItem, viewDialog]);
 
-  // Handle persistent dialog data
+  // Handle persistent dialog data restoration
   useEffect(() => {
-    // Only try to restore dialog state after data is loaded
     if (loading) return;
-    
+
     if (viewDialog.open && viewDialog.data?.foodItemId && !selectedItem) {
-      // Find the food item in our loaded data
-      const item = [...userFoodItems, ...globalFoodItems].find(item => item._id === viewDialog.data?.foodItemId);
+      const item = foodItems.find(fi => fi._id === viewDialog.data?.foodItemId);
       if (item) {
-        // Set the selected item without opening the dialog again
         setSelectedItem(item);
         setEditingItem({
           name: item.name,
           singularName: item.singularName,
           pluralName: item.pluralName,
           unit: item.unit,
-          isGlobal: item.isGlobal
+          isGlobal: item.isGlobal,
         });
       }
     }
-    // Handle edit mode persistence
     if (viewDialog.open && viewDialog.data?.editMode === 'true' && selectedItem && !editMode) {
       setEditMode(true);
     }
-  }, [viewDialog.open, viewDialog.data, selectedItem, userFoodItems, globalFoodItems, editMode, loading]);
+  }, [viewDialog.open, viewDialog.data, selectedItem, foodItems, editMode, loading]);
 
   const handleUpdateItem = async () => {
     if (!selectedItem?._id) return;
-    
-    // Validate required fields
+
     if (!editingItem.name || !editingItem.name.trim()) {
       alert('Name is required');
       return;
     }
-    
+
     try {
       const updateData: {
         name: string;
@@ -167,50 +194,38 @@ function FoodItemsPageContent() {
         pluralName: editingItem.pluralName?.trim() || editingItem.name.trim(),
         unit: editingItem.unit || '',
       };
-      
-      // Only include isGlobal if it's explicitly set
+
       if (editingItem.isGlobal !== undefined) {
         updateData.isGlobal = editingItem.isGlobal;
       }
-      
-      console.log('Updating food item:', selectedItem._id, updateData);
-      
+
       const response = await fetch(`/api/food-items/${selectedItem._id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Update failed:', response.status, errorData);
         throw new Error(errorData.error || `Failed to update food item (${response.status})`);
       }
 
       const updatedItem = await response.json();
-      console.log('Update successful:', updatedItem);
-      
-      // Update selectedItem with the response from the server immediately
+
       setSelectedItem(updatedItem);
       setEditingItem({
         name: updatedItem.name,
         singularName: updatedItem.singularName,
         pluralName: updatedItem.pluralName,
         unit: updatedItem.unit,
-        isGlobal: updatedItem.isGlobal
+        isGlobal: updatedItem.isGlobal,
       });
-      
-      // Exit edit mode but keep dialog open in view mode
+
       setEditMode(false);
       viewDialog.removeDialogData('editMode');
-      // Use updatedItem._id to ensure we have the correct ID
       viewDialog.openDialog({ foodItemId: updatedItem._id });
-      
-      // Refresh the lists after updating the selectedItem
-      // This ensures the list is updated but doesn't overwrite our selectedItem
-      loadFoodItems();
+
+      refetch();
     } catch (error) {
       console.error('Error updating food item:', error);
       alert(error instanceof Error ? error.message : 'Failed to update food item');
@@ -219,30 +234,20 @@ function FoodItemsPageContent() {
 
   const handleDeleteItem = async () => {
     if (!selectedItem?._id) return;
-    
+
     try {
-      console.log('Deleting food item:', selectedItem._id);
-      
       const response = await fetch(`/api/food-items/${selectedItem._id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Delete failed:', response.status, errorData);
         throw new Error(errorData.error || `Failed to delete food item (${response.status})`);
       }
 
-      console.log('Delete successful');
-      
-      // Close the view dialog
       handleCloseViewDialog();
-      
-      // Refresh the lists
-      await loadFoodItems();
+      await refetch();
     } catch (error) {
       console.error('Error deleting food item:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete food item');
@@ -255,7 +260,7 @@ function FoodItemsPageContent() {
     setEditMode(false);
   };
 
-  const canDeleteItem = (item: FoodItem) => {
+  const canDeleteItem = (item: FoodItemWithAccessLevel) => {
     if (isAdmin) return true;
     if (!item.isGlobal) return true;
     return false;
@@ -274,10 +279,11 @@ function FoodItemsPageContent() {
     );
   }
 
-  // Only redirect if session is definitely not available
   if (status === "unauthenticated") {
-    return null; // Will be handled by AuthenticatedLayout
+    return null;
   }
+
+  const hasActiveFilters = debouncedSearchTerm !== '' || accessLevel !== 'all';
 
   return (
     <Suspense fallback={
@@ -294,18 +300,31 @@ function FoodItemsPageContent() {
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Food Items
         </Typography>
-        
+
         <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
-          {/* Search Bar */}
-          <Box sx={{ mb: 4 }}>
-            <SearchBar
-              value={userPagination.searchTerm}
-              onChange={(value) => {
-                userPagination.setSearchTerm(value);
-                globalPagination.setSearchTerm(value);
-              }}
-              placeholder="Start typing to filter food items by name..."
+          {/* Search and Filters */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="Search food items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoComplete="off"
+              sx={{ flex: 1, minWidth: 200 }}
             />
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="access-level-label">Access Level</InputLabel>
+              <Select
+                labelId="access-level-label"
+                value={accessLevel}
+                label="Access Level"
+                onChange={(e) => setAccessLevel(e.target.value)}
+              >
+                {accessLevelOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
 
           {loading ? (
@@ -314,77 +333,61 @@ function FoodItemsPageContent() {
             </Box>
           ) : (
             <>
-              {/* User Food Items Section */}
-              <Box sx={{ mb: 4 }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  justifyContent: 'space-between', 
-                  alignItems: { xs: 'flex-start', sm: 'center' }, 
-                  gap: { xs: 1, sm: 0 },
-                  mb: 2 
-                }}>
-                  <Typography variant="h6" gutterBottom>
-                    <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Your Food Items ({userPagination.searchTerm ? `${userPagination.totalItems}/${userFoodItems.length}` : userFoodItems.length})
-                  </Typography>
-                </Box>
-                
-                {userFoodItems.length > 0 ? (
-                  <>
-                    {/* Desktop Table View */}
-                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {userPagination.paginatedData.map((item) => (
-                              <TableRow 
+              {/* Summary */}
+              {total > 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {total} food item{total !== 1 ? 's' : ''} found
+                </Typography>
+              )}
+
+              {foodItems.length > 0 ? (
+                <>
+                  {/* Desktop Table View */}
+                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
+                            <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
+                            <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {foodItems.map((item) => {
+                            const chipProps = accessLevelChipProps[item.accessLevel];
+                            return (
+                              <TableRow
                                 key={item._id}
                                 onClick={() => handleViewItem(item)}
                                 sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
                               >
+                                <TableCell>{item.name}</TableCell>
                                 <TableCell>
-                                  {item.name}
-                                </TableCell>
-                                <TableCell>
-                                  {item.isGlobal ? (
-                                    <Chip 
-                                      label="Global" 
-                                      size="small" 
-                                      color="primary" 
-                                      variant="outlined"
-                                      icon={<Public fontSize="small" />}
-                                    />
-                                  ) : (
-                                    <Chip 
-                                      label="Personal" 
-                                      size="small" 
-                                      color="default" 
-                                      variant="outlined"
-                                      icon={<Person fontSize="small" />}
-                                    />
-                                  )}
+                                  <Chip
+                                    label={chipProps.label}
+                                    size="small"
+                                    color={chipProps.color}
+                                    variant="outlined"
+                                    icon={chipProps.icon}
+                                  />
                                 </TableCell>
                                 <TableCell>
                                   {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                                 </TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Box>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
 
-                    {/* Mobile Card View */}
-                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                      {userPagination.paginatedData.map((item) => (
+                  {/* Mobile Card View */}
+                  <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    {foodItems.map((item) => {
+                      const chipProps = accessLevelChipProps[item.accessLevel];
+                      return (
                         <Paper
                           key={item._id}
                           onClick={() => handleViewItem(item)}
@@ -392,208 +395,55 @@ function FoodItemsPageContent() {
                             p: 3,
                             mb: 2,
                             cursor: 'pointer',
-                            '&:hover': { 
+                            '&:hover': {
                               backgroundColor: 'action.hover',
                               transform: 'translateY(-2px)',
-                              boxShadow: 4
+                              boxShadow: 4,
                             },
                             transition: 'all 0.2s ease-in-out',
                             boxShadow: 2,
                             border: '1px solid',
                             borderColor: 'divider',
-                            borderRadius: 2
+                            borderRadius: 2,
                           }}
                         >
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                              {item.name}
-                            </Typography>
-                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
+                            {item.name}
+                          </Typography>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box>
-                              {item.isGlobal ? (
-                                <Chip 
-                                  label="Global" 
-                                  size="small" 
-                                  color="primary" 
-                                  variant="outlined"
-                                  icon={<Public fontSize="small" />}
-                                />
-                              ) : (
-                                <Chip 
-                                  label="Personal" 
-                                  size="small" 
-                                  color="default" 
-                                  variant="outlined"
-                                  icon={<Person fontSize="small" />}
-                                />
-                              )}
-                            </Box>
+                            <Chip
+                              label={chipProps.label}
+                              size="small"
+                              color={chipProps.color}
+                              variant="outlined"
+                              icon={chipProps.icon}
+                            />
                             <Typography variant="body2" color="text.secondary">
-                              Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+                              {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                             </Typography>
                           </Box>
                         </Paper>
-                      ))}
-                    </Box>
-                    
-                    {userFoodItems.length > itemsPerPage && (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                        <Pagination
-                          count={userPagination.totalPages}
-                          page={userPagination.currentPage}
-                          onChange={userPagination.setCurrentPage}
-                        />
-                      </Box>
-                    )}
-                  </>
-                ) : (
-                  <Alert severity="info">
-                    {userPagination.searchTerm ? 'No user food items match your search criteria' : 'No user food items found'}
-                  </Alert>
-                )}
-              </Box>
-
-              {/* Global Food Items Section (Admin Only) */}
-              {isAdmin && (
-                <Box>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    justifyContent: 'space-between', 
-                    alignItems: { xs: 'flex-start', sm: 'center' }, 
-                    gap: { xs: 1, sm: 0 },
-                    mb: 2 
-                  }}>
-                    <Typography variant="h6" gutterBottom>
-                      <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Global Food Items Owned By Others ({globalPagination.searchTerm ? `${globalPagination.totalItems}/${globalFoodItems.length}` : globalFoodItems.length})
-                    </Typography>
+                      );
+                    })}
                   </Box>
-                  
-                  {globalFoodItems.length > 0 ? (
-                    <>
-                      {/* Desktop Table View */}
-                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                        <TableContainer>
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
-                                <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>Access Level</TableCell>
-                                <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>Created</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {globalPagination.paginatedData.map((item) => (
-                                <TableRow 
-                                  key={item._id}
-                                  onClick={() => handleViewItem(item)}
-                                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
-                                >
-                                  <TableCell>
-                                    {item.name}
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.isGlobal ? (
-                                      <Chip 
-                                        label="Global" 
-                                        size="small" 
-                                        color="primary" 
-                                        variant="outlined"
-                                        icon={<Public fontSize="small" />}
-                                      />
-                                    ) : (
-                                      <Chip 
-                                        label="Personal" 
-                                        size="small" 
-                                        color="default" 
-                                        variant="outlined"
-                                        icon={<Person fontSize="small" />}
-                                      />
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </Box>
 
-                      {/* Mobile Card View */}
-                      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                        {globalPagination.paginatedData.map((item) => (
-                          <Paper
-                            key={item._id}
-                            onClick={() => handleViewItem(item)}
-                            sx={{
-                              p: 3,
-                              mb: 2,
-                              cursor: 'pointer',
-                              '&:hover': { 
-                                backgroundColor: 'action.hover',
-                                transform: 'translateY(-2px)',
-                                boxShadow: 4
-                              },
-                              transition: 'all 0.2s ease-in-out',
-                              boxShadow: 2,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              borderRadius: 2
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
-                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                                {item.name}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box>
-                                {item.isGlobal ? (
-                                  <Chip 
-                                    label="Global" 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                    icon={<Public fontSize="small" />}
-                                  />
-                                ) : (
-                                  <Chip 
-                                    label="Personal" 
-                                    size="small" 
-                                    color="default" 
-                                    variant="outlined"
-                                    icon={<Person fontSize="small" />}
-                                  />
-                                )}
-                              </Box>
-                              <Typography variant="body2" color="text.secondary">
-                                Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
-                              </Typography>
-                            </Box>
-                          </Paper>
-                        ))}
-                      </Box>
-                      
-                      {globalFoodItems.length > itemsPerPage && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                          <Pagination
-                            count={globalPagination.totalPages}
-                            page={globalPagination.currentPage}
-                            onChange={globalPagination.setCurrentPage}
-                          />
-                        </Box>
-                      )}
-                    </>
-                  ) : (
-                    <Alert severity="info">
-                      {globalPagination.searchTerm ? 'No global food items match your search criteria' : 'No global food items found not owned by you'}
-                    </Alert>
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                      <MuiPagination
+                        count={totalPages}
+                        page={page}
+                        onChange={(_, newPage) => setPage(newPage)}
+                      />
+                    </Box>
                   )}
-                </Box>
+                </>
+              ) : (
+                <Alert severity="info">
+                  {hasActiveFilters
+                    ? 'No food items match your search'
+                    : 'No food items found'}
+                </Alert>
               )}
             </>
           )}
@@ -601,14 +451,14 @@ function FoodItemsPageContent() {
       </Container>
 
       {/* View/Edit Dialog */}
-      <Dialog 
-        open={viewDialog.open} 
+      <Dialog
+        open={viewDialog.open}
         onClose={handleCloseViewDialog}
         maxWidth="lg"
         fullWidth
         sx={responsiveDialogStyle}
       >
-        <DialogTitle 
+        <DialogTitle
           onClose={handleCloseViewDialog}
           actions={!editMode ? (
             <IconButton onClick={handleEditItem} color="inherit" aria-label="Edit">
@@ -659,8 +509,7 @@ function FoodItemsPageContent() {
                       ))}
                     </Select>
                   </FormControl>
-                  
-                  {/* Global/Personal Toggle - Only show for admins and personal items */}
+
                   {isAdmin && selectedItem && !selectedItem.isGlobal && (
                     <FormControlLabel
                       control={
@@ -679,8 +528,7 @@ function FoodItemsPageContent() {
                       label="Make this item global (available to all users)"
                     />
                   )}
-                  
-                  {/* Show current status for global items */}
+
                   {selectedItem && selectedItem.isGlobal && (
                     <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
                       <Typography variant="body2" color="primary.contrastText">
@@ -714,7 +562,7 @@ function FoodItemsPageContent() {
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Access Level</Typography>
                     <Typography variant="body1">
-                      {selectedItem.isGlobal ? 'Global' : 'Personal'}
+                      {accessLevelChipProps[selectedItem.accessLevel]?.label || selectedItem.accessLevel}
                     </Typography>
                   </Box>
                   <Divider />
@@ -735,11 +583,11 @@ function FoodItemsPageContent() {
               )}
             </Box>
           )}
-          
-              <DialogActions primaryButtonIndex={2}>
+
+          <DialogActions primaryButtonIndex={2}>
             {editMode ? (
               <>
-                <Button 
+                <Button
                   onClick={() => {
                     setEditMode(false);
                     viewDialog.removeDialogData('editMode');
@@ -748,7 +596,7 @@ function FoodItemsPageContent() {
                 >
                   Cancel
                 </Button>
-                <Tooltip 
+                <Tooltip
                   title={canDeleteItem(selectedItem!) ? "Delete this food item" : "Only admins can delete global items"}
                   placement="top"
                 >
@@ -763,8 +611,8 @@ function FoodItemsPageContent() {
                     </Button>
                   </span>
                 </Tooltip>
-                <Button 
-                  onClick={handleUpdateItem} 
+                <Button
+                  onClick={handleUpdateItem}
                   variant="contained"
                 >
                   Save
@@ -776,8 +624,8 @@ function FoodItemsPageContent() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog 
-        open={deleteConfirmDialog.open} 
+      <Dialog
+        open={deleteConfirmDialog.open}
         onClose={deleteConfirmDialog.closeDialog}
         sx={responsiveDialogStyle}
       >
@@ -786,17 +634,17 @@ function FoodItemsPageContent() {
           <Typography>
             Are you sure you want to delete &quot;{selectedItem?.name}&quot;? This action cannot be undone.
           </Typography>
-          
+
           <DialogActions primaryButtonIndex={1}>
             <Button onClick={deleteConfirmDialog.closeDialog}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={async () => {
                 deleteConfirmDialog.closeDialog();
                 await handleDeleteItem();
-              }} 
-              color="error" 
+              }}
+              color="error"
               variant="contained"
             >
               Delete
@@ -806,8 +654,8 @@ function FoodItemsPageContent() {
       </Dialog>
 
       {/* Confirmation Dialog for making global */}
-      <Dialog 
-        open={confirmGlobalDialog.open} 
+      <Dialog
+        open={confirmGlobalDialog.open}
         onClose={confirmGlobalDialog.closeDialog}
         sx={responsiveDialogStyle}
       >
@@ -818,12 +666,12 @@ function FoodItemsPageContent() {
           </Typography>
           <DialogActions primaryButtonIndex={1}>
             <Button onClick={confirmGlobalDialog.closeDialog}>Cancel</Button>
-            <Button 
+            <Button
               onClick={() => {
                 setEditingItem((prev) => ({ ...prev, isGlobal: true }));
                 confirmGlobalDialog.closeDialog();
-              }} 
-              color="primary" 
+              }}
+              color="primary"
               variant="contained"
             >
               Yes, Make Global

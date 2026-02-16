@@ -57,7 +57,7 @@ Build the shared utilities that all subsequent phases depend on.
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
-## Phase 3: Food Items — Unified List [ ]
+## Phase 3: Food Items — Unified List [x]
 
 ### API Changes
 
@@ -68,11 +68,11 @@ Build the shared utilities that all subsequent phases depend on.
 
 ### UI Changes
 
-- [ ] Task 3.2: Refactor food items page to unified server-paginated list
-  - [ ] Write tests for the updated food items page: single list, server pagination, search, access level filter
-  - [ ] Refactor `src/app/food-items/page.tsx` to remove dual-section layout
-  - [ ] Add three-state access-level badges
-  - [ ] Verify tests pass
+- [x] Task 3.2: Refactor food items page to unified server-paginated list
+  - [x] Write tests for the updated food items page: single list, server pagination, search, access level filter
+  - [x] Refactor `src/app/food-items/page.tsx` to remove dual-section layout
+  - [x] Add three-state access-level badges
+  - [x] Verify tests pass
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
