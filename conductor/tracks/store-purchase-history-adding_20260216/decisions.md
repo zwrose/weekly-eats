@@ -1,17 +1,6 @@
 # Decisions: Store Purchase History
 
-## ADR-001: Manual Verification Only for User-Facing Phases
-
-**Date:** 2026-02-16
-**Status:** Accepted
-
-**Context:** The Conductor workflow includes a "User Manual Verification" task at the end of every phase. However, many phases (data layer, API routes, client utilities, isolated components) have no user-facing changes that can be practically verified in a browser.
-
-**Decision:** Only include manual verification tasks for phases where the user can perform straightforward validation in the browser. For this track, only Phase 5 (UI Integration) includes a manual verification task.
-
-**Consequences:** Reduces unnecessary verification overhead. Automated tests remain the primary validation for non-UI phases.
-
-## ADR-002: Server-Side Finish Shop
+## ADR-001: Server-Side Finish Shop
 
 **Date:** 2026-02-16
 **Status:** Accepted
@@ -22,7 +11,7 @@
 
 **Consequences:** Ensures history is always recorded when items are cleared. Simplifies the client logic. Adds one new API route.
 
-## ADR-003: Upsert Strategy for History Records
+## ADR-002: Upsert Strategy for History Records
 
 **Date:** 2026-02-16
 **Status:** Accepted

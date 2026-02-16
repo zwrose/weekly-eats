@@ -9,6 +9,15 @@
 5. **User Experience First:** Every decision should prioritize user experience
 6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
 
+## Plan Generation Guidelines
+
+When creating a `plan.md` for a new track, follow these rules for manual verification tasks:
+
+1. **Only include a `Conductor - User Manual Verification` task for phases that produce user-facing changes** — changes the user can observe and interact with in a browser or via a simple command.
+2. **Do NOT include verification tasks for phases** that only touch data models, types, indexes, internal utilities, API routes without a visible frontend, or isolated components not yet integrated into the UI.
+3. **For borderline cases** (e.g., a backend change that alters existing visible behavior, or a refactor that could subtly affect UX), describe what the manual validation would look like and ask the user during plan preparation whether they want to include a manual verification step.
+4. **Phase completion and checkpointing always runs.** The absence of a manual verification task does NOT mean the phase skips the Phase Completion Verification and Checkpointing Protocol. That protocol (test coverage, validation suite, checkpoint commit, SHA recording) executes for every phase. The manual verification task in the plan only controls whether steps 4–5 of the protocol (user walkthrough and feedback) are performed.
+
 ## Task Workflow
 
 All tasks follow a strict lifecycle:
@@ -32,11 +41,8 @@ All tasks follow a strict lifecycle:
    - With the safety of passing tests, refactor the implementation code and the test code to improve clarity, remove duplication, and enhance performance without changing the external behavior.
    - Rerun tests to ensure they still pass after refactoring.
 
-6. **Verify Coverage:** Run coverage reports using the project's chosen tools. For example, in a Python project, this might look like:
-   ```bash
-   pytest --cov=app --cov-report=html
-   ```
-   Target: >80% coverage for new code. The specific tools and commands will vary by language and framework.
+6. **Verify Coverage:** Run `npm test` and review the coverage text summary in the output.
+   Target: >80% coverage for new code. Detailed reports are available in `./coverage/` (html, lcov).
 
 7. **Document Deviations:** If implementation differs from tech stack:
    - **STOP** implementation
@@ -93,6 +99,8 @@ All tasks follow a strict lifecycle:
 
 **Trigger:** This protocol is executed immediately after a task is completed that also concludes a phase in `plan.md`.
 
+**CRITICAL:** This protocol **always** runs to completion for every phase — steps 1, 2, 3, 6, 7, 8, and 9 are mandatory. Only steps 4 and 5 (manual verification) are conditional on whether the phase has user-facing changes.
+
 1.  **Announce Protocol Start:** Inform the user that the phase is complete and the verification and checkpointing protocol has begun.
 
 2.  **Ensure Test Coverage for Phase Changes:**
@@ -106,13 +114,16 @@ All tasks follow a strict lifecycle:
 3.  **Run Full Validation Suite with Proactive Debugging:**
     -   Before execution, you **must** announce the exact shell command you will use.
     -   **Announcement:** "I will now run the full validation suite to verify the phase. **Command:** `npm run check`"
-    -   Execute `npm run check` (lint + test + build). This catches type errors, lint violations, and test failures before presenting the phase for manual review.
+    -   Execute `npm run check` (lint + test with coverage + build). This catches type errors, lint violations, and test failures.
     -   If any step fails, you **must** inform the user and begin debugging. You may attempt to propose a fix a **maximum of two times**. If the issue persists after your second proposed fix, you **must stop**, report the persistent failure, and ask the user for guidance.
+    -   **After `npm run check` passes**, run Quality Intelligence (see Quality Intelligence section below):
+        1. **Anti-Pattern Detection**: Review all files modified in this phase for code smells. Present findings to user if any.
+        2. **Coverage Intelligence**: Review coverage output, identify under-covered files modified in this phase, suggest tests or create them if below 80%.
 
-4.  **Propose a Detailed, Actionable Manual Verification Plan:**
-    -   **CRITICAL:** To generate the plan, first analyze `product.md`, `product-guidelines.md`, and `plan.md` to determine the user-facing goals of the completed phase.
-    -   You **must** generate a step-by-step plan that walks the user through the verification process, including any necessary commands and specific, expected outcomes.
-    -   The plan you present to the user **must** follow this format:
+4.  **Manual Verification (User-Facing Phases Only):**
+    -   **CRITICAL:** Manual verification is only performed for phases that produce user-facing changes — i.e., changes the user can see and interact with in the browser or via a simple command. Phases that only touch data models, internal utilities, backend logic without visible output, or isolated components not yet wired into the UI should **skip steps 4 and 5** and proceed directly to step 6 (checkpoint commit). The remaining steps (6–9) always execute regardless.
+    -   To determine if this phase is user-facing, analyze `product.md`, `product-guidelines.md`, and `plan.md` to identify whether the completed phase has observable, user-facing outcomes.
+    -   **If the phase IS user-facing:** Generate a step-by-step plan that walks the user through the verification process, including any necessary commands and specific, expected outcomes. The plan **must** follow this format:
 
         **For a Frontend Change:**
         ```
@@ -134,7 +145,9 @@ All tasks follow a strict lifecycle:
         3.  **Confirm that you receive:** A JSON response with a status of `201 Created`.
         ```
 
-5.  **Await Explicit User Feedback:**
+    -   **If the phase is NOT user-facing:** Announce "This phase has no user-facing changes — skipping manual verification. Automated tests provide coverage." Then proceed to step 6.
+
+5.  **Await Explicit User Feedback (Only If Step 4 Proposed a Verification Plan):**
     -   After presenting the detailed plan, ask the user for confirmation: "**Does this meet your expectations? Please confirm with yes or provide feedback on what needs to be changed.**"
     -   **PAUSE** and await the user's response. Do not proceed without an explicit yes or confirmation.
 
@@ -155,86 +168,69 @@ All tasks follow a strict lifecycle:
 
 9.  **Announce Completion:** Inform the user that the phase is complete and the checkpoint has been created.
 
-### Quality Gates
+### Quality Gate
 
-Before marking any task complete, verify:
+Before marking any task complete, verify that the following are satisfied. Items marked **[auto]** are caught by `npm run check`; remaining items require manual attention.
 
-- [ ] All tests pass
-- [ ] Code coverage meets requirements (>80%)
-- [ ] Code follows project's code style guidelines (as defined in `code_styleguides/`)
-- [ ] All public functions/methods are documented (e.g., docstrings, JSDoc, GoDoc)
-- [ ] Type safety is enforced (e.g., type hints, TypeScript types, Go types)
-- [ ] No linting or static analysis errors (using the project's configured tools)
-- [ ] No anti-patterns detected (or documented exceptions)
-- [ ] Works correctly on mobile (if applicable)
-- [ ] Documentation updated if needed
-- [ ] No security vulnerabilities introduced
+- **[auto]** All tests pass
+- **[auto]** No linting or static analysis errors
+- **[auto]** TypeScript strict mode passes (type safety enforced)
+- **[auto]** Build succeeds
+- Code coverage meets requirements (>80% for new code) — review the coverage text output from the test run
+- No security vulnerabilities introduced (no hardcoded secrets, input validation at boundaries, no XSS vectors)
+- Works correctly on mobile (if the task touches UI)
+- Anti-pattern check passed (see Quality Intelligence below)
 
 ### Quality Intelligence
 
-Quality Intelligence provides automated analysis of code quality beyond basic test coverage. It includes:
-
-1. **Anti-Pattern Detection**: Scans modified files for common code smells
-2. **Coverage Intelligence**: Analyzes coverage reports and suggests priority tests
+Quality Intelligence runs during the Phase Completion Protocol (step 3) after `npm run check` completes. It consists of two analyses performed by the agent on every phase.
 
 #### Anti-Pattern Detection
 
-Anti-patterns are defined in `patterns/anti-patterns/` and categorized by severity:
+After `npm run check` passes, review all files modified in the current phase for common code smells. Flag any findings using the format below.
 
 | Severity | Behavior | Examples |
 |----------|----------|----------|
-| **Critical** | Blocks task completion | (Reserved for security issues) |
-| **High** | Warns, requires documented skip | God Object, Spaghetti Code, Mutable Defaults |
-| **Medium** | Informational | Magic Numbers, Deep Nesting |
+| **Critical** | Blocks task completion — must fix | Security vulnerabilities, credentials in code |
+| **High** | Warn user, requires fix or documented skip | God objects (files >400 lines with mixed concerns), deeply nested callbacks (>3 levels), mutable default parameters, duplicated logic blocks |
+| **Medium** | Informational — mention but don't block | Magic numbers, overly broad catch blocks, unused imports (if lint missed them) |
 
-**Example Anti-Pattern Finding:**
+**When findings exist, present them to the user:**
 ```
-⚠️ **Quality Gate: Issues Detected**
+⚠️ Quality Gate: Anti-Pattern Review
 
-| Severity | File | Line | Anti-Pattern | Issue |
-|----------|------|------|--------------|-------|
-| 🔴 High | src/service.py | 45 | Mutable Defaults | `def process(items=[])` |
-| 🟡 Medium | src/utils.py | 23 | Magic Numbers | Literal `86400` |
+| Severity | File | Line | Issue |
+|----------|------|------|-------|
+| 🔴 High | src/lib/foo.ts | 45 | God object — mixed data fetching and UI logic |
+| 🟡 Medium | src/app/api/bar/route.ts | 23 | Magic number `86400` |
 
-Options: (1) Fix issues (2) Skip with reason (3) View guidance
+Options: (1) Fix now (2) Skip with documented reason
 ```
+
+**When skipping a High finding**, record the reason in the track's `decisions.md`.
 
 #### Coverage Intelligence
 
-When a coverage report is available, Coverage Intelligence:
-- Parses coverage data (lcov, Cobertura, Istanbul, etc.)
-- Identifies uncovered functions and prioritizes by business impact
-- Estimates coverage gain for each suggested test
+After `npm run check` produces coverage output (`./coverage/` directory with text, html, and lcov reports):
 
-**Example Coverage Suggestion:**
+1. Read the text coverage summary from the test output
+2. Identify files modified in the current phase that have below-target coverage (<80%)
+3. For each under-covered file, suggest specific functions or branches to test, prioritized by business impact
+4. Present findings to the user:
+
 ```
 ### Coverage Intelligence
 
-**Current Coverage:** 75% (Target: 80%)
+**Phase Coverage Summary:**
+- src/lib/shopping-list-utils.ts: 92% ✅
+- src/app/api/shopping-lists/[storeId]/finish-shop/route.ts: 68% ⚠️
 
-**Top Suggestions:**
-1. `process_payment()` in services/payment.py (+2.5% gain)
-   - Core business logic, currently untested
-2. `validate_input()` in api/handlers.py (+1.8% gain)
-   - Input validation with multiple branches
+**Suggestions:**
+1. `POST finish-shop` error handling branches (+8% gain)
+   - Missing tests for: invalid storeId, empty checked items, DB write failure
 ```
 
-#### Skip Documentation
-
-When skipping quality gate warnings, document the reason:
-
-```markdown
-### Quality Gate Decisions
-
-**Skipped Anti-Patterns:**
-- **Mutable Defaults** at src/service.py:45
-  - Reason: Intentional memoization cache, documented in function docstring
-  - Reviewed: YYYY-MM-DD
-
-**Coverage Decisions:**
-- Proceeding at 78% (target 80%)
-  - Reason: Remaining 2% is generated code, will exclude in config
-```
+5. If overall coverage is below 80%, the agent must create additional tests before proceeding to the checkpoint commit — unless the user explicitly approves skipping with a documented reason
 
 ## Development Commands
 
@@ -278,44 +274,6 @@ npm run check        # Full validation: lint + test + build (REQUIRED before pha
 - Verify responsive layouts
 - Check performance on 3G/4G
 
-## Code Review Process
-
-### Self-Review Checklist
-Before requesting review:
-
-1. **Functionality**
-   - Feature works as specified
-   - Edge cases handled
-   - Error messages are user-friendly
-
-2. **Code Quality**
-   - Follows style guide
-   - DRY principle applied
-   - Clear variable/function names
-   - Appropriate comments
-
-3. **Testing**
-   - Unit tests comprehensive
-   - Integration tests pass
-   - Coverage adequate (>80%)
-
-4. **Security**
-   - No hardcoded secrets
-   - Input validation present
-   - SQL injection prevented
-   - XSS protection in place
-
-5. **Performance**
-   - Database queries optimized
-   - Images optimized
-   - Caching implemented where needed
-
-6. **Mobile Experience**
-   - Touch targets adequate (44x44px)
-   - Text readable without zooming
-   - Performance acceptable on mobile
-   - Interactions feel native
-
 ## Commit Guidelines
 
 ### Message Format
@@ -344,75 +302,3 @@ git commit -m "test(comments): Add tests for emoji reaction limits"
 git commit -m "style(mobile): Improve button touch targets"
 ```
 
-## Definition of Done
-
-A task is complete when:
-
-1. All code implemented to specification
-2. Unit tests written and passing
-3. Code coverage meets project requirements
-4. Documentation complete (if applicable)
-5. Code passes all configured linting and static analysis checks
-6. Works beautifully on mobile (if applicable)
-7. Implementation notes added to `plan.md`
-8. Changes committed with proper message
-9. Git note with task summary attached (optional)
-10. Significant decisions recorded in `decisions.md` (when applicable)
-
-## Emergency Procedures
-
-### Critical Bug in Production
-1. Create hotfix branch from main
-2. Write failing test for bug
-3. Implement minimal fix
-4. Test thoroughly including mobile
-5. Deploy immediately
-6. Document in plan.md
-
-### Data Loss
-1. Stop all write operations
-2. Restore from latest backup
-3. Verify data integrity
-4. Document incident
-5. Update backup procedures
-
-### Security Breach
-1. Rotate all secrets immediately
-2. Review access logs
-3. Patch vulnerability
-4. Notify affected users (if any)
-5. Document and update security procedures
-
-## Deployment Workflow
-
-### Pre-Deployment Checklist
-- [ ] All tests passing
-- [ ] Coverage >80%
-- [ ] No linting errors
-- [ ] Mobile testing complete
-- [ ] Environment variables configured
-- [ ] Database migrations ready
-- [ ] Backup created
-
-### Deployment Steps
-1. Merge feature branch to main
-2. Tag release with version
-3. Push to deployment service
-4. Run database migrations
-5. Verify deployment
-6. Test critical paths
-7. Monitor for errors
-
-### Post-Deployment
-1. Monitor analytics
-2. Check error logs
-3. Gather user feedback
-4. Plan next iteration
-
-## Continuous Improvement
-
-- Review workflow weekly
-- Update based on pain points
-- Document lessons learned
-- Optimize for user happiness
-- Keep things simple and maintainable
