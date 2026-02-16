@@ -610,30 +610,92 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflicts).toHaveLength(0);
     });
 
-    it('identifies unit conflicts when merging', () => {
+    it('auto-converts and pre-fills conflict for convertible units', () => {
+      // Existing: 2 cups, extracted: 8 tablespoons (= 0.5 cups)
       const existingItems = [
         { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
       ];
 
       const extractedItems = [
-        { foodItemId: 'f1', quantity: 1, unit: 'gallon' }
+        { foodItemId: 'f1', quantity: 8, unit: 'tablespoon' }
       ];
 
       const foodItemsMap = new Map([
-        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'gallon' }]
+        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }]
+      ]);
+
+      const { conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
+
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].isAutoConverted).toBe(true);
+      expect(conflicts[0].suggestedQuantity).toBeGreaterThan(0);
+      expect(conflicts[0].suggestedUnit).toBeDefined();
+    });
+
+    it('flags non-convertible units as manual conflicts', () => {
+      // Existing: 2 cans, extracted: 1 pound — different families
+      const existingItems = [
+        { foodItemId: 'f1', name: 'Tomatoes', quantity: 2, unit: 'can', checked: false }
+      ];
+
+      const extractedItems = [
+        { foodItemId: 'f1', quantity: 1, unit: 'pound' }
+      ];
+
+      const foodItemsMap = new Map([
+        ['f1', { singularName: 'tomato', pluralName: 'tomatoes', unit: 'can' }]
+      ]);
+
+      const { conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
+
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].isAutoConverted).toBe(false);
+      expect(conflicts[0].foodItemId).toBe('f1');
+      expect(conflicts[0].existingQuantity).toBe(2);
+      expect(conflicts[0].existingUnit).toBe('can');
+      expect(conflicts[0].newQuantity).toBe(1);
+      expect(conflicts[0].newUnit).toBe('pound');
+    });
+
+    it('still sums quantities for same units (existing behavior)', () => {
+      const existingItems = [
+        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
+      ];
+
+      const extractedItems = [
+        { foodItemId: 'f1', quantity: 3, unit: 'cup' }
+      ];
+
+      const foodItemsMap = new Map([
+        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }]
       ]);
 
       const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
-      
-      expect(conflicts).toHaveLength(1);
-      expect(conflicts[0]).toEqual({
-        foodItemId: 'f1',
-        foodItemName: 'milks',
-        existingQuantity: 2,
-        existingUnit: 'cup',
-        newQuantity: 1,
-        newUnit: 'gallon'
-      });
+
+      expect(conflicts).toHaveLength(0);
+      expect(mergedItems).toHaveLength(1);
+      expect(mergedItems[0].quantity).toBe(5);
+      expect(mergedItems[0].unit).toBe('cup');
+    });
+
+    it('still adds new items directly (existing behavior)', () => {
+      const existingItems = [
+        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
+      ];
+
+      const extractedItems = [
+        { foodItemId: 'f2', quantity: 1, unit: 'pound' }
+      ];
+
+      const foodItemsMap = new Map([
+        ['f2', { singularName: 'flour', pluralName: 'flours', unit: 'pound' }]
+      ]);
+
+      const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
+
+      expect(conflicts).toHaveLength(0);
+      expect(mergedItems).toHaveLength(2);
+      expect(mergedItems.find(i => i.foodItemId === 'f2')?.quantity).toBe(1);
     });
   });
 });

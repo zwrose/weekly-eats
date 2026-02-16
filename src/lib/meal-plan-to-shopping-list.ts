@@ -15,6 +15,9 @@ interface UnitConflict {
   existingUnit: string;
   newQuantity: number;
   newUnit: string;
+  isAutoConverted: boolean;
+  suggestedQuantity?: number;
+  suggestedUnit?: string;
 }
 
 const MAX_RECURSION_DEPTH = 50;
@@ -279,8 +282,33 @@ export function mergeWithShoppingList(
             ? (newQuantity === 1 ? foodItem.singularName : foodItem.pluralName)
             : existing.name
         });
+      } else if (areSameFamily(existing.unit, extracted.unit)) {
+        // Convertible units — auto-convert and pre-fill suggested resolution
+        const foodItem = foodItems.get(extracted.foodItemId);
+        const convertedExtracted = tryConvert(
+          extracted.quantity,
+          extracted.unit,
+          existing.unit
+        );
+        const totalInExistingUnit =
+          convertedExtracted !== null
+            ? existing.quantity + convertedExtracted
+            : existing.quantity + extracted.quantity;
+        const best = pickBestUnit(totalInExistingUnit, existing.unit);
+
+        conflicts.push({
+          foodItemId: extracted.foodItemId,
+          foodItemName: foodItem?.pluralName || existing.name,
+          existingQuantity: existing.quantity,
+          existingUnit: existing.unit,
+          newQuantity: extracted.quantity,
+          newUnit: extracted.unit,
+          isAutoConverted: true,
+          suggestedQuantity: best.quantity,
+          suggestedUnit: best.unit,
+        });
       } else {
-        // Different unit - conflict
+        // Non-convertible units — manual conflict
         const foodItem = foodItems.get(extracted.foodItemId);
         conflicts.push({
           foodItemId: extracted.foodItemId,
@@ -288,7 +316,8 @@ export function mergeWithShoppingList(
           existingQuantity: existing.quantity,
           existingUnit: existing.unit,
           newQuantity: extracted.quantity,
-          newUnit: extracted.unit
+          newUnit: extracted.unit,
+          isAutoConverted: false,
         });
       }
     }
