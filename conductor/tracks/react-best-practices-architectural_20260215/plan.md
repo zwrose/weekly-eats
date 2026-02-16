@@ -2,11 +2,11 @@
 
 ## Phase 1: Quick Wins — Bundle & Memoization Fixes (CRITICAL/HIGH impact, LOW effort)
 
-- [ ] Task 1.1: Fix `foodItemsMap` in `use-food-items.ts` — replace `useCallback()()` IIFE with `useMemo` (`rerender-memo`)
-- [ ] Task 1.2: Memoize theme context provider value in `src/lib/theme-context.tsx` — wrap `{ mode, setMode, isDark }` in `useMemo` (`rerender-memo-with-default-value`)
-- [ ] Task 1.3: Fix EmojiPicker key — replace array index key with `item.emoji` in `src/components/EmojiPicker.tsx` (`rendering-hoist-jsx`)
-- [ ] Task 1.4: Extract recurring inline `sx` prop objects to module-level constants in `src/app/recipes/page.tsx` (card styles, flex row patterns used 50+ times) (`rendering-hoist-jsx`)
-- [ ] Task 1.5: Clean up unused code — remove `src/lib/context/app-context.tsx` (dead AppProvider) and verify `BaseIngredientInput.tsx` is unused, then remove if confirmed
+- [x] Task 1.1: Fix `foodItemsMap` in `use-food-items.ts` — replace `useCallback()()` IIFE with `useMemo` (`rerender-memo`) [0452692]
+- [x] Task 1.2: Memoize theme context provider value in `src/lib/theme-context.tsx` — wrap `{ mode, setMode, isDark }` in `useMemo` (`rerender-memo-with-default-value`) [5e0ecd8]
+- [x] Task 1.3: Fix EmojiPicker key — replace array index key with `item.emoji` in `src/components/EmojiPicker.tsx` (`rendering-hoist-jsx`) [f46c52d]
+- [x] Task 1.4: Extract recurring inline `sx` prop objects to module-level constants in `src/app/recipes/page.tsx` (card styles, flex row patterns used 50+ times) (`rendering-hoist-jsx`) [59e89f9]
+- [x] Task 1.5: Clean up unused code — remove `src/lib/context/app-context.tsx` (dead AppProvider) and verify `BaseIngredientInput.tsx` is unused, then remove if confirmed [aae4529]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Dynamic Imports & Code Splitting (CRITICAL impact, MEDIUM effort)
