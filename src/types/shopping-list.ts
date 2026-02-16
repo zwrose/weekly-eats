@@ -59,3 +59,13 @@ export interface StoreItemPosition {
   updatedAt: Date;
 }
 
+export interface PurchaseHistoryRecord {
+  _id?: string;
+  storeId: string;
+  foodItemId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  lastPurchasedAt: Date;
+}
+

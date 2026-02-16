@@ -5,6 +5,9 @@
 ## Active Tracks
 
 
+
+- [x] **Track: Store purchase history for re-adding previously bought items**
+  *Link: [store-purchase-history-adding_20260216](./conductor/tracks/store-purchase-history-adding_20260216/)*
 - [x] **Track: React best practices architectural audit and refactor plan**
   *Link: [react-best-practices-architectural_20260215](./conductor/tracks/react-best-practices-architectural_20260215/)*
 ---

@@ -118,8 +118,9 @@ export async function PUT(
       updatedAt: new Date()
     };
 
+    const objectId = ObjectId.createFromHexString(id);
     const result = await recipesCollection.updateOne(
-      { _id: ObjectId.createFromHexString(id), createdBy: session.user.id },
+      { _id: objectId, createdBy: session.user.id },
       { $set: updateData }
     );
 
@@ -127,7 +128,8 @@ export async function PUT(
       return NextResponse.json({ error: RECIPE_ERRORS.RECIPE_NOT_FOUND }, { status: 404 });
     }
 
-    return NextResponse.json({ message: 'Recipe updated successfully' });
+    const updatedRecipe = await recipesCollection.findOne({ _id: objectId });
+    return NextResponse.json(updatedRecipe);
   } catch (error) {
     logError('Recipes PUT [id]', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });

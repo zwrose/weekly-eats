@@ -73,11 +73,13 @@ import {
   MoreVert,
   Refresh,
   DoneAll,
+  History,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
   StoreWithShoppingList,
   ShoppingListItem,
+  PurchaseHistoryRecord,
 } from "../../types/shopping-list";
 import {
   fetchStores,
@@ -90,6 +92,8 @@ import {
   removeUserFromStore,
   fetchPendingInvitations,
   fetchShoppingList,
+  finishShop,
+  fetchPurchaseHistory,
 } from "../../lib/shopping-list-utils";
 import {
   useDialog,
@@ -101,6 +105,7 @@ import {
 } from "@/lib/hooks";
 import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
+const StoreHistoryDialog = dynamic(() => import("../../components/shopping-list/StoreHistoryDialog"), { ssr: false });
 import { DialogTitle } from "../../components/ui/DialogTitle";
 import { DialogActions } from "../../components/ui/DialogActions";
 import { responsiveDialogStyle } from "@/lib/theme";
@@ -266,6 +271,12 @@ function ShoppingListsPageContent() {
     }>
   >([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
+
+  // Purchase history states
+  const [historyDialogStore, setHistoryDialogStore] =
+    useState<StoreWithShoppingList | null>(null);
+  const [historyItems, setHistoryItems] = useState<PurchaseHistoryRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
 
   // Shopping Sync SSE connection
@@ -776,7 +787,8 @@ function ShoppingListsPageContent() {
 
   const handleClearCheckedItems = async () => {
     if (!selectedStore) return;
-    if (!shoppingListItems.some((i) => i.checked)) return;
+    const checkedItems = shoppingListItems.filter((i) => i.checked);
+    if (checkedItems.length === 0) return;
 
     const previousItems = [...shoppingListItems];
     const uncheckedItems = shoppingListItems.filter((i) => !i.checked);
@@ -784,15 +796,96 @@ function ShoppingListsPageContent() {
     setShoppingListItems(uncheckedItems);
 
     try {
-      await updateShoppingList(selectedStore._id, { items: uncheckedItems });
+      await finishShop(
+        selectedStore._id,
+        checkedItems.map((i) => ({
+          foodItemId: i.foodItemId,
+          name: i.name,
+          quantity: i.quantity,
+          unit: i.unit,
+        }))
+      );
       // Refresh counts/badges on the store list
       const updatedStores = await fetchStores();
       setStores(updatedStores);
-      showSnackbar("Cleared checked items", "success");
+      showSnackbar("Shopping trip saved!", "success");
     } catch (error) {
-      console.error("Error clearing checked items:", error);
-      showSnackbar("Failed to clear checked items", "error");
+      console.error("Error finishing shop:", error);
+      showSnackbar("Failed to finish shop", "error");
       setShoppingListItems(previousItems);
+    }
+  };
+
+  // Purchase history handlers
+  const handleOpenHistory = async (store: StoreWithShoppingList) => {
+    setHistoryDialogStore(store);
+    setLoadingHistory(true);
+    try {
+      const items = await fetchPurchaseHistory(store._id);
+      setHistoryItems(items);
+    } catch (error) {
+      console.error("Error loading purchase history:", error);
+      showSnackbar("Failed to load purchase history", "error");
+      setHistoryItems([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryDialogStore(null);
+    setHistoryItems([]);
+  };
+
+  const handleAddHistoryItems = async (
+    items: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
+  ) => {
+    const store = selectedStore || historyDialogStore;
+    if (!store) return;
+
+    // Use live shopping list items when available, otherwise fall back to embedded data
+    const currentItems =
+      selectedStore?._id === store._id
+        ? shoppingListItems
+        : store.shoppingList?.items || [];
+
+    const newItems = items.filter(
+      (item) => !currentItems.some((i) => i.foodItemId === item.foodItemId)
+    );
+    if (newItems.length === 0) {
+      showSnackbar("All selected items are already in your list", "info");
+      return;
+    }
+
+    const newListItems: ShoppingListItem[] = newItems.map((item) => ({
+      foodItemId: item.foodItemId,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      checked: false,
+    }));
+
+    const mergedItems = await insertItemsWithPositions(
+      currentItems,
+      newListItems,
+      store._id
+    );
+
+    try {
+      await updateShoppingList(store._id, { items: mergedItems });
+      const updatedStores = await fetchStores();
+      setStores(updatedStores);
+      // If the shopping list dialog is open for this store, update its items too
+      if (selectedStore?._id === store._id) {
+        setShoppingListItems(mergedItems);
+      }
+      showSnackbar(
+        `Added ${newItems.length} item${newItems.length > 1 ? "s" : ""} from history`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Error adding items from history:", error);
+      showSnackbar("Failed to add items from history", "error");
     }
   };
 
@@ -1479,6 +1572,16 @@ function ShoppingListsPageContent() {
                                 >
                                   <ShoppingCart fontSize="small" />
                                 </IconButton>
+                                <IconButton
+                                  size="small"
+                                  title="Purchase History"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenHistory(store);
+                                  }}
+                                >
+                                  <History fontSize="small" />
+                                </IconButton>
 
                                 {isStoreOwner(store) ? (
                                   <>
@@ -1598,6 +1701,16 @@ function ShoppingListsPageContent() {
                           }}
                         >
                           <ShoppingCart fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          title="Purchase History"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenHistory(store);
+                          }}
+                        >
+                          <History fontSize="small" />
                         </IconButton>
 
                         {isStoreOwner(store) ? (
@@ -1971,6 +2084,19 @@ function ShoppingListsPageContent() {
               )}
             </ListItemIcon>
             <ListItemText>Pantry check</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseListActionsMenu();
+              if (selectedStore) {
+                void handleOpenHistory(selectedStore);
+              }
+            }}
+          >
+            <ListItemIcon>
+              <History fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Purchase history</ListItemText>
           </MenuItem>
         </Menu>
         <DialogContent
@@ -2755,6 +2881,20 @@ function ShoppingListsPageContent() {
           </DialogActions>
         </DialogContent>
       </Dialog>
+
+      {/* Purchase History Dialog */}
+      <StoreHistoryDialog
+        open={!!historyDialogStore}
+        onClose={handleCloseHistory}
+        historyItems={historyItems}
+        currentItems={
+          selectedStore?._id === historyDialogStore?._id
+            ? shoppingListItems
+            : historyDialogStore?.shoppingList?.items || []
+        }
+        onAddItems={handleAddHistoryItems}
+        loading={loadingHistory}
+      />
 
       {/* Snackbar for notifications */}
       <Snackbar

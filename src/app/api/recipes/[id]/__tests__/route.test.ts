@@ -63,18 +63,20 @@ describe('api/recipes/[id] route', () => {
     expect(res.status).toBe(404);
   });
 
-  it('PUT validates ingredient lists and updates when valid', async () => {
+  it('PUT validates ingredient lists and returns updated recipe', async () => {
     (getServerSession as any).mockResolvedValue({ user: { id: 'u1' } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     // Existing recipe belongs to u1
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1' });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
+    // Second findOne returns the updated recipe
+    findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', title: 'Update' });
     const body = { title: 'Update', ingredients: [{ title: 'G', ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }] }] };
     const req = { url: `http://localhost/api/recipes/${id}`, json: async () => body } as any;
     const res = await routes.PUT(req, { params: Promise.resolve({ id }) } as any);
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.message).toMatch(/updated/i);
+    expect(json.title).toBe('Update');
   });
 
   it('DELETE 401 when unauthenticated', async () => {

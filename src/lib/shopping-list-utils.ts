@@ -1,4 +1,4 @@
-import { Store, ShoppingList, CreateStoreRequest, UpdateStoreRequest, UpdateShoppingListRequest, StoreWithShoppingList } from '../types/shopping-list';
+import { Store, ShoppingList, CreateStoreRequest, UpdateStoreRequest, UpdateShoppingListRequest, StoreWithShoppingList, PurchaseHistoryRecord } from '../types/shopping-list';
 
 export async function fetchStores(): Promise<StoreWithShoppingList[]> {
   const response = await fetch('/api/stores');
@@ -132,6 +132,30 @@ export async function fetchPendingInvitations(): Promise<Array<{
   const response = await fetch('/api/stores/invitations');
   if (!response.ok) {
     throw new Error('Failed to fetch pending invitations');
+  }
+  return response.json();
+}
+
+export async function fetchPurchaseHistory(storeId: string): Promise<PurchaseHistoryRecord[]> {
+  const response = await fetch(`/api/shopping-lists/${storeId}/history`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch purchase history');
+  }
+  return response.json();
+}
+
+export async function finishShop(
+  storeId: string,
+  checkedItems: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
+): Promise<{ success: boolean; remainingItems: Array<{ foodItemId: string; name: string; quantity: number; unit: string; checked: boolean }> }> {
+  const response = await fetch(`/api/shopping-lists/${storeId}/finish-shop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ checkedItems }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to finish shop');
   }
   return response.json();
 }

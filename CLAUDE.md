@@ -74,7 +74,7 @@ src/
 
 ### Database
 
-- MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`
+- MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`
 - Access pattern: `const client = await getMongoClient(); const db = client.db();`
 - Indexes defined in `src/lib/database-indexes.ts`, applied via `npm run setup-db`
 
