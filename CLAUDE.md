@@ -74,6 +74,7 @@ src/
     errors.ts     # Centralized error constants
     validation.ts # Input validation helpers
     *-utils.ts    # Domain-specific utilities
+    unit-conversion.ts  # Unit conversion using jonahsnider/convert (volume & weight families)
   types/          # TypeScript interfaces
 ```
 
@@ -119,6 +120,7 @@ src/
 ## Gotchas
 
 - **Build cache**: If `npm run check` fails with MODULE_NOT_FOUND, clear `.next` directory: `rm -rf .next`
+- **Dev server after build**: Turbopack dev server crashes with `Cannot find module 'chunks/ssr/[turbopack]_runtime.js'` after `npm run check` or `npm run build`. Fix: `rm -rf .next` then restart dev server.
 - **ESM project**: `package.json` has `"type": "module"`. Any standalone `.js` scripts need `.cjs` extension to use `require()`.
 - **Dynamic route params**: Next.js 15 params are async — use `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params;`
 - **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
