@@ -18,14 +18,14 @@
 - [x] Task 2.5: Lazy-load `@dnd-kit` — ensure drag-and-drop packages only load on meal-plans page (`bundle-defer-third-party`) [no change needed — @dnd-kit is only imported in shopping-lists/page.tsx, already route-level code-split by Next.js]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
-## Phase 3: Split Oversized Page Components (CRITICAL impact, HIGH effort)
+## Phase 3: Split Oversized Page Components (CRITICAL impact, HIGH effort) [checkpoint: 9a78d55]
 
 - [x] Task 3.1: Extract recipe view dialog into `src/components/RecipeViewDialog.tsx` from `recipes/page.tsx` [cb346cd]
 - [x] Task 3.2: Extract recipe create/edit dialog into `src/components/RecipeEditorDialog.tsx` from `recipes/page.tsx` [3df65e8]
 - [x] Task 3.3: Extract recipe sharing section into `src/components/RecipeSharingSection.tsx` from `recipes/page.tsx` [38fb201]
 - [x] Task 3.4: Extract meal plan create/edit dialogs into dedicated components from `meal-plans/page.tsx` [179489e]
-- [x] Task 3.5: Add `React.memo` to extracted components and list row/card subcomponents (`rerender-memo`)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task 3.5: Add `React.memo` to extracted components and list row/card subcomponents (`rerender-memo`) [9a78d55]
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Eliminate Data Fetching Waterfalls (CRITICAL impact, HIGH effort)
 
