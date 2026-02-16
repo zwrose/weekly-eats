@@ -35,7 +35,6 @@ import {
 import {
   Restaurant,
   Add,
-  EmojiEmotions,
   Public,
   Person,
   RestaurantMenu,
@@ -55,8 +54,8 @@ import {
 import { fetchRecipe } from "../../lib/recipe-utils";
 import dynamic from "next/dynamic";
 const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
-const RecipeIngredients = dynamic(() => import("../../components/RecipeIngredients"), { ssr: false });
 const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
+const RecipeEditorDialog = dynamic(() => import("@/components/RecipeEditorDialog"), { ssr: false });
 import { RecipeIngredientList } from "../../types/recipe";
 import { fetchFoodItems } from "../../lib/food-items-utils";
 import { useRecipes } from "@/lib/hooks";
@@ -221,7 +220,7 @@ function RecipesPageContent() {
   const [shareTags, setShareTags] = useState(true);
   const [shareRatings, setShareRatings] = useState(true);
   // Auto-focus refs for dialog inputs
-  const createTitleRef = useRef<HTMLInputElement>(null);
+
   const shareEmailRef = useRef<HTMLInputElement>(null);
   // Snackbar state
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -1464,133 +1463,20 @@ function RecipesPageContent() {
         </Box>
 
         {/* Create Recipe Dialog */}
-        <Dialog
+        <RecipeEditorDialog
           open={createDialog.open}
           onClose={() => createDialog.closeDialog()}
-          maxWidth="lg"
-          fullWidth
-          sx={responsiveDialogStyle}
-          TransitionProps={{ onEntered: () => createTitleRef.current?.focus() }}
-        >
-          <DialogTitle onClose={() => createDialog.closeDialog()}>
-            Create New Recipe
-          </DialogTitle>
-          <DialogContent>
-            <Box sx={{ pt: 2 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 2,
-                  mb: 3,
-                  flexDirection: { xs: "column", sm: "row" },
-                  alignItems: { xs: "stretch", sm: "flex-start" },
-                }}
-              >
-                <IconButton
-                  onClick={() => emojiPickerDialog.openDialog()}
-                  sx={{
-                    border: "1px solid #ccc",
-                    width: { xs: 56, sm: 56 },
-                    height: { xs: 56, sm: 56 },
-                    fontSize: "1.5rem",
-                    alignSelf: { xs: "flex-start", sm: "flex-start" },
-                  }}
-                >
-                  {newRecipe.emoji || <EmojiEmotions />}
-                </IconButton>
-                <TextField
-                  inputRef={createTitleRef}
-                  label="Recipe Title"
-                  value={newRecipe.title}
-                  onChange={(e) =>
-                    setNewRecipe({ ...newRecipe, title: e.target.value })
-                  }
-                  fullWidth
-                  required
-                />
-              </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Access Level
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 2,
-                    flexDirection: { xs: "column", sm: "row" },
-                  }}
-                >
-                  <Button
-                    variant={newRecipe.isGlobal ? "contained" : "outlined"}
-                    onClick={() =>
-                      setNewRecipe({ ...newRecipe, isGlobal: true })
-                    }
-                    startIcon={<Public />}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
-                  >
-                    Global (visible to all users)
-                  </Button>
-                  <Button
-                    variant={newRecipe.isGlobal ? "outlined" : "contained"}
-                    onClick={() =>
-                      setNewRecipe({ ...newRecipe, isGlobal: false })
-                    }
-                    startIcon={<Person />}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
-                  >
-                    Personal (only visible to you)
-                  </Button>
-                </Box>
-              </Box>
-
-              <Typography variant="h6" gutterBottom>
-                Ingredients
-              </Typography>
-              <RecipeIngredients
-                ingredients={newRecipe.ingredients}
-                onChange={handleIngredientsChange}
-                foodItems={foodItemsList}
-                onFoodItemAdded={handleFoodItemAdded}
-                removeIngredientButtonText="Remove Ingredient"
-              />
-
-              <Divider sx={{ my: 3 }} />
-
-              <Typography variant="h6" gutterBottom>
-                Instructions
-              </Typography>
-              <TextField
-                label="Cooking Instructions"
-                value={newRecipe.instructions}
-                onChange={(e) =>
-                  setNewRecipe({ ...newRecipe, instructions: e.target.value })
-                }
-                multiline
-                rows={6}
-                fullWidth
-                required
-              />
-
-              <DialogActions primaryButtonIndex={1}>
-                <Button onClick={() => createDialog.closeDialog()}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateRecipe}
-                  variant="contained"
-                  disabled={
-                    !newRecipe.title ||
-                    !newRecipe.instructions ||
-                    !hasValidIngredients(newRecipe.ingredients)
-                  }
-                >
-                  Create Recipe
-                </Button>
-              </DialogActions>
-            </Box>
-          </DialogContent>
-        </Dialog>
+          recipe={newRecipe}
+          onRecipeChange={setNewRecipe}
+          onSubmit={handleCreateRecipe}
+          onEmojiPickerOpen={() => emojiPickerDialog.openDialog()}
+          onIngredientsChange={(ingredients) =>
+            setNewRecipe({ ...newRecipe, ingredients })
+          }
+          foodItemsList={foodItemsList}
+          onFoodItemAdded={handleFoodItemAdded}
+          hasValidIngredients={hasValidIngredients}
+        />
 
         {/* View/Edit Recipe Dialog */}
         <RecipeViewDialog
