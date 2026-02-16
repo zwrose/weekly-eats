@@ -33,8 +33,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (session?.user?.email) {
-      loadUserSettings();
-      loadMealPlanOwners();
+      Promise.all([loadUserSettings(), loadMealPlanOwners()]).finally(() => {
+        setLoading(false);
+      });
     }
   }, [session?.user?.email]);
 
@@ -47,8 +48,6 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
