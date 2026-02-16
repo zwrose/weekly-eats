@@ -10,7 +10,10 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Weekly Eats",
+  title: {
+    template: "%s - Weekly Eats",
+    default: "Weekly Eats",
+  },
   description: "Plan your meals, make your list, and head to the store with confidence.",
   manifest: "/manifest.json",
   icons: {
