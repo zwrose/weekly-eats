@@ -957,4 +957,4 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
   );
 };
 
-export default MealPlanViewDialog;
+export default React.memo(MealPlanViewDialog);

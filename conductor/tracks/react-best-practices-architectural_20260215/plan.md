@@ -9,7 +9,7 @@
 - [x] Task 1.5: Clean up unused code — remove `src/lib/context/app-context.tsx` (dead AppProvider) and verify `BaseIngredientInput.tsx` is unused, then remove if confirmed [aae4529]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
-## Phase 2: Dynamic Imports & Code Splitting (CRITICAL impact, MEDIUM effort)
+## Phase 2: Dynamic Imports & Code Splitting (CRITICAL impact, MEDIUM effort) [checkpoint: 05d371d]
 
 - [x] Task 2.1: Add `next/dynamic` import for `EmojiPicker` component with `{ ssr: false }` (`bundle-dynamic-imports`) [fc734b9]
 - [x] Task 2.2: Dynamic import dialog-heavy components — extract and lazy-load recipe view/edit dialogs from `recipes/page.tsx` (`bundle-dynamic-imports`) [409f281]
@@ -20,11 +20,11 @@
 
 ## Phase 3: Split Oversized Page Components (CRITICAL impact, HIGH effort)
 
-- [ ] Task 3.1: Extract recipe view dialog into `src/components/RecipeViewDialog.tsx` from `recipes/page.tsx`
-- [ ] Task 3.2: Extract recipe create/edit dialog into `src/components/RecipeEditorDialog.tsx` from `recipes/page.tsx`
-- [ ] Task 3.3: Extract recipe sharing section into `src/components/RecipeSharingSection.tsx` from `recipes/page.tsx`
-- [ ] Task 3.4: Extract meal plan create/edit dialogs into dedicated components from `meal-plans/page.tsx`
-- [ ] Task 3.5: Add `React.memo` to extracted components and list row/card subcomponents (`rerender-memo`)
+- [x] Task 3.1: Extract recipe view dialog into `src/components/RecipeViewDialog.tsx` from `recipes/page.tsx` [cb346cd]
+- [x] Task 3.2: Extract recipe create/edit dialog into `src/components/RecipeEditorDialog.tsx` from `recipes/page.tsx` [3df65e8]
+- [x] Task 3.3: Extract recipe sharing section into `src/components/RecipeSharingSection.tsx` from `recipes/page.tsx` [38fb201]
+- [x] Task 3.4: Extract meal plan create/edit dialogs into dedicated components from `meal-plans/page.tsx` [179489e]
+- [x] Task 3.5: Add `React.memo` to extracted components and list row/card subcomponents (`rerender-memo`)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Eliminate Data Fetching Waterfalls (CRITICAL impact, HIGH effort)

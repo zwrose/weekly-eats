@@ -204,4 +204,4 @@ const MealPlanCreateDialog: React.FC<MealPlanCreateDialogProps> = ({
   );
 };
 
-export default MealPlanCreateDialog;
+export default React.memo(MealPlanCreateDialog);

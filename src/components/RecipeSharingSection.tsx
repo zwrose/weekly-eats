@@ -249,4 +249,4 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
   );
 };
 
-export default RecipeSharingSection;
+export default React.memo(RecipeSharingSection);

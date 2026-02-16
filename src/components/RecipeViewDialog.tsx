@@ -407,4 +407,4 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   );
 };
 
-export default RecipeViewDialog;
+export default React.memo(RecipeViewDialog);

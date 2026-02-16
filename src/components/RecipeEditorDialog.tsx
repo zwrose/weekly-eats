@@ -185,4 +185,4 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
   );
 };
 
-export default RecipeEditorDialog;
+export default React.memo(RecipeEditorDialog);
