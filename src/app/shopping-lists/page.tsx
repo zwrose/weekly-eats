@@ -1088,9 +1088,31 @@ function ShoppingListsPageContent() {
   const handleApplyConflictResolutions = async () => {
     if (!selectedStore) return;
 
+    // Build complete resolutions map including defaults for unmodified conflicts
+    const completeResolutions = new Map(conflictResolutions);
+    for (const conflict of unitConflicts) {
+      if (!completeResolutions.has(conflict.foodItemId)) {
+        if (
+          conflict.isAutoConverted &&
+          conflict.suggestedQuantity !== undefined &&
+          conflict.suggestedUnit
+        ) {
+          completeResolutions.set(conflict.foodItemId, {
+            quantity: Math.round(conflict.suggestedQuantity * 100) / 100,
+            unit: conflict.suggestedUnit,
+          });
+        } else {
+          completeResolutions.set(conflict.foodItemId, {
+            quantity: conflict.existingQuantity,
+            unit: conflict.existingUnit,
+          });
+        }
+      }
+    }
+
     // Apply resolutions to shopping list
     const updatedItems = shoppingListItems.map((item) => {
-      const resolution = conflictResolutions.get(item.foodItemId);
+      const resolution = completeResolutions.get(item.foodItemId);
       if (resolution) {
         const foodItem = foodItems.find((f) => f._id === item.foodItemId);
         return {
