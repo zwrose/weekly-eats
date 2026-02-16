@@ -9,7 +9,7 @@
   - Sort index on `{ storeId, lastPurchasedAt: -1 }`
 - [x] Task: Add error constants for purchase history to `src/lib/errors.ts` [e7fd2e7]
 
-## Phase 2: API Routes `[ ]`
+## Phase 2: API Routes `[x]` [checkpoint: 3413a1a]
 
 - [x] Task: Write tests for `GET /api/shopping-lists/[storeId]/history` route [1fa478f]
   - Test auth check, store access validation (owner + invited user), returns items sorted by `lastPurchasedAt` desc
@@ -25,8 +25,8 @@
 
 ## Phase 3: Client Utilities `[ ]`
 
-- [ ] Task: Add `fetchPurchaseHistory` and `finishShop` functions to `src/lib/shopping-list-utils.ts`
-- [ ] Task: Update `handleClearCheckedItems` in the shopping list page to call the new `finishShop` API instead of directly updating the list
+- [x] Task: Add `fetchPurchaseHistory` and `finishShop` functions to `src/lib/shopping-list-utils.ts` [07d612e]
+- [x] Task: Update `handleClearCheckedItems` in the shopping list page to call the new `finishShop` API instead of directly updating the list [2c44efb]
 
 ## Phase 4: History Dialog Component `[ ]`
 
