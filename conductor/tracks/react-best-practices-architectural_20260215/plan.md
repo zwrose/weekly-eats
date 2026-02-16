@@ -52,7 +52,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
   - `npm run check` passed: lint clean, 536 tests passing, build successful
 
-## Phase 7: React 19 Modernization & Re-render Optimization (MEDIUM impact, MEDIUM effort)
+## Phase 7: React 19 Modernization & Re-render Optimization (MEDIUM impact, MEDIUM effort) [checkpoint: ef81c25]
 
 - [x] Task 7.1: Add `useTransition` to recipe search — wrap search input state updates to keep UI responsive during filtering (`rerender-transitions`) [27f6038]
 - [x] Task 7.2: Add `useTransition` to page/tab navigation in recipes and food-items pages (`rendering-usetransition-loading`) [no change needed — pages use simultaneous sections, not tabs; search transition from 7.1 covers the main concern]
@@ -64,6 +64,7 @@
 
 ## Phase 8: Database & Missing Index Optimizations (MEDIUM impact, LOW effort)
 
-- [ ] Task 8.1: Add missing MongoDB indexes to `src/lib/database-indexes.ts`: `shoppingLists.storeId`, `mealPlans.templateId`, compound `(userId, mealPlanId)` for meal plan items
-- [ ] Task 8.2: Run `npm run setup-db` and verify indexes are applied
-- [ ] Task: Conductor - User Manual Verification 'Phase 8' (Protocol in workflow.md)
+- [x] Task 8.1: Add missing MongoDB indexes to `src/lib/database-indexes.ts`: `shoppingLists.storeId`, `mealPlans.templateId` [06741da]
+- [x] Task 8.2: Run `npm run setup-db` and verify indexes are applied [06741da]
+- [x] Task: Conductor - User Manual Verification 'Phase 8' (Protocol in workflow.md)
+  - `npm run check` passed: lint clean, 536 tests passing, build successful
