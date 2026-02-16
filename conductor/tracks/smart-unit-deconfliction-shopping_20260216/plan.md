@@ -21,7 +21,7 @@
     - `pickBestUnit(quantity: number, unit: string): { quantity: number; unit: string }` — converts to `'best'` with `'imperial'` preference, then maps back to app unit names; falls back to original if unmappable
   - **Refactor**: ensure all functions are pure, well-typed, exported
 
-## Phase 2: Smart Pre-Merge of Extracted Items
+## Phase 2: Smart Pre-Merge of Extracted Items [checkpoint: b22264a]
 
 - [x] Task: Rewrite `combineExtractedItems` with conversion intelligence (TDD) [ec0690f]
   - **Test first** (update `src/lib/__tests__/meal-plan-to-shopping-list.test.ts`):
@@ -47,7 +47,7 @@
 
 ## Phase 3: Conversion-Aware Merge with Existing Shopping List
 
-- [ ] Task: Update `mergeWithShoppingList` to attempt conversion before flagging conflicts (TDD)
+- [x] Task: Update `mergeWithShoppingList` to attempt conversion before flagging conflicts (TDD) [ab13309]
   - **Test first** (update `src/lib/__tests__/meal-plan-to-shopping-list.test.ts`):
     - Existing item in cups + extracted item in tablespoons → auto-converts and pre-fills conflict with combined quantity in best unit
     - Existing item in cans + extracted item in pounds → non-convertible conflict (manual, existing behavior)

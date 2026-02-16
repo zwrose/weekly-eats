@@ -964,6 +964,7 @@ function ShoppingListsPageContent() {
           existingUnit: items[0].unit,
           newQuantity: items.slice(1).reduce((sum, i) => sum + i.quantity, 0),
           newUnit: items[1]?.unit || items[0].unit,
+          isAutoConverted: false,
         };
       });
 
