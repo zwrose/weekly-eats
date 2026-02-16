@@ -27,13 +27,13 @@
 - [x] Task 3.5: Add `React.memo` to extracted components and list row/card subcomponents (`rerender-memo`) [9a78d55]
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Eliminate Data Fetching Waterfalls (CRITICAL impact, HIGH effort)
+## Phase 4: Eliminate Data Fetching Waterfalls (CRITICAL impact, HIGH effort) [checkpoint: eb5e720]
 
-- [ ] Task 4.1: Create batch endpoint `POST /api/recipes/user-data/batch` that accepts `{ recipeIds: string[] }` and returns all user data in one request (`async-parallel`)
-- [ ] Task 4.2: Refactor `loadRecipesUserData` in `recipes/page.tsx` to call the batch endpoint instead of N individual requests (`async-parallel`)
-- [ ] Task 4.3: Refactor `GET /api/meal-plans` to use MongoDB `$lookup` aggregation instead of N+1 `findOne()` calls for meal item names (`async-api-routes`)
-- [ ] Task 4.4: Add `Promise.all` for independent initial data loads in `settings/page.tsx` — `loadUserSettings` and `loadMealPlanOwners` currently fire sequentially via separate `useEffect` (`async-parallel`)
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+- [x] Task 4.1: Create batch endpoint `POST /api/recipes/user-data/batch` that accepts `{ recipeIds: string[] }` and returns all user data in one request (`async-parallel`) [c9dceb7]
+- [x] Task 4.2: Refactor `loadRecipesUserData` in `recipes/page.tsx` to call the batch endpoint instead of N individual requests (`async-parallel`) [c9dceb7]
+- [x] Task 4.3: Refactor `GET /api/meal-plans` to use batch `$in` queries instead of N+1 `findOne()` calls for meal item names (`async-api-routes`) [d674f3f]
+- [x] Task 4.4: Add `Promise.all` for independent initial data loads in `settings/page.tsx` — `loadUserSettings` and `loadMealPlanOwners` now fire in parallel with shared loading state (`async-parallel`) [eb5e720]
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
 ## Phase 5: App Router Conventions & Metadata (HIGH impact, MEDIUM effort)
 
