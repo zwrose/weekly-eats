@@ -20,7 +20,7 @@ Build the shared utilities that all subsequent phases depend on.
   - [x] Implement `src/lib/hooks/use-debounced-search.ts`
   - [x] Verify tests pass
 
-## Phase 2: Recipes — Unified List with Filtering [ ]
+## Phase 2: Recipes — Unified List with Filtering [x] [checkpoint: 5eeea04]
 
 ### API Changes
 
