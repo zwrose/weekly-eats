@@ -27,6 +27,17 @@ import { responsiveDialogStyle } from "@/lib/theme";
 import { DialogTitle } from "@/components/ui";
 import MealEditor from "@/components/MealEditor";
 
+const recipeLinkSx = {
+  color: "primary.main",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textDecorationColor: "transparent",
+  transition: "text-decoration-color 0.2s",
+  "&:hover": {
+    textDecorationColor: "currentcolor",
+  },
+} as const;
+
 export interface MealPlanViewDialogProps {
   open: boolean;
   onClose: () => void;
@@ -610,6 +621,33 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     )}
                                 </Box>
                               );
+                            } else if (staple.type === "recipe") {
+                              return (
+                                <Typography
+                                  key={index}
+                                  variant="body2"
+                                  sx={{ mb: 0.5 }}
+                                >
+                                  &bull;{" "}
+                                  <Box
+                                    component="a"
+                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${staple.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={recipeLinkSx}
+                                  >
+                                    {staple.name}
+                                  </Box>
+                                  {staple.quantity && (
+                                    <span
+                                      style={{ color: "text.secondary" }}
+                                    >
+                                      {" "}
+                                      ({staple.quantity}x)
+                                    </span>
+                                  )}
+                                </Typography>
+                              );
                             } else {
                               return (
                                 <Typography
@@ -631,15 +669,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                           staple.quantity
                                         )}
                                         )
-                                      </span>
-                                    )}
-                                  {staple.type === "recipe" &&
-                                    staple.quantity && (
-                                      <span
-                                        style={{ color: "text.secondary" }}
-                                      >
-                                        {" "}
-                                        ({staple.quantity}x)
                                       </span>
                                     )}
                                 </Typography>
@@ -818,6 +847,36 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                     )}
                                                 </Box>
                                               );
+                                            } else if (mealItem.type === "recipe") {
+                                              return (
+                                                <Typography
+                                                  key={mealIndex}
+                                                  variant="body2"
+                                                  sx={{ mb: 0.5 }}
+                                                >
+                                                  &bull;{" "}
+                                                  <Box
+                                                    component="a"
+                                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${mealItem.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    sx={recipeLinkSx}
+                                                  >
+                                                    {mealItem.name}
+                                                  </Box>
+                                                  {mealItem.quantity && (
+                                                    <span
+                                                      style={{
+                                                        color:
+                                                          "text.secondary",
+                                                      }}
+                                                    >
+                                                      {" "}
+                                                      ({mealItem.quantity}x)
+                                                    </span>
+                                                  )}
+                                                </Typography>
+                                              );
                                             } else {
                                               return (
                                                 <Typography
@@ -843,19 +902,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                           mealItem.quantity
                                                         )}
                                                         )
-                                                      </span>
-                                                    )}
-                                                  {mealItem.type ===
-                                                    "recipe" &&
-                                                    mealItem.quantity && (
-                                                      <span
-                                                        style={{
-                                                          color:
-                                                            "text.secondary",
-                                                        }}
-                                                      >
-                                                        {" "}
-                                                        ({mealItem.quantity}x)
                                                       </span>
                                                     )}
                                                 </Typography>
@@ -954,6 +1000,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
           </Box>
         )}
       </DialogContent>
+
     </Dialog>
   );
 };

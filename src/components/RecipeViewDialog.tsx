@@ -19,6 +19,7 @@ import {
   Person,
   Delete,
   IosShare,
+  RestaurantMenu,
 } from "@mui/icons-material";
 import { Chip } from "@mui/material";
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
@@ -31,6 +32,17 @@ const RecipeIngredients = dynamic(() => import("@/components/RecipeIngredients")
 const RecipeInstructionsView = dynamic(() => import("@/components/RecipeInstructionsView"), { ssr: false });
 const RecipeTagsEditor = dynamic(() => import("@/components/RecipeTagsEditor"), { ssr: false });
 const RecipeStarRating = dynamic(() => import("@/components/RecipeStarRating"), { ssr: false });
+
+const recipeLinkSx = {
+  color: "primary.main",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textDecorationColor: "transparent",
+  transition: "text-decoration-color 0.2s",
+  "&:hover": {
+    textDecorationColor: "currentcolor",
+  },
+} as const;
 
 interface FoodItemOption {
   _id: string;
@@ -112,8 +124,10 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
         }
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {selectedRecipe?.emoji && (
+          {selectedRecipe?.emoji ? (
             <Typography variant="h4">{selectedRecipe.emoji}</Typography>
+          ) : (
+            <RestaurantMenu sx={{ fontSize: "2rem", color: "text.secondary" }} />
           )}
           <Typography variant="h5">{selectedRecipe?.title}</Typography>
         </Box>
@@ -384,7 +398,19 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                                   ingredient.quantity
                                 ) + " "
                               : ""}
-                            {getIngredientName(ingredient)}
+                            {ingredient.type === "recipe" ? (
+                              <Box
+                                component="a"
+                                href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${ingredient.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={recipeLinkSx}
+                              >
+                                {getIngredientName(ingredient)}
+                              </Box>
+                            ) : (
+                              getIngredientName(ingredient)
+                            )}
                             {ingredient.prepInstructions && `, ${ingredient.prepInstructions}`}
                           </Typography>
                         ))}

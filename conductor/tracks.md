@@ -9,6 +9,10 @@
 
 - [~] **Track: Loading performance improvements with server-side pagination, unified list views, and smart data loading**
   *Link: [loading-performance-improvements-server_20260216](./conductor/tracks/loading-performance-improvements-server_20260216/)*
+- [ ] **Track: View recipe details from meal plan UI**
+  *Link: [view-recipe-details-meal_20260216](./conductor/tracks/view-recipe-details-meal_20260216/)*
+- [x] **Track: Smart unit deconfliction for shopping list meal plan population**
+  *Link: [smart-unit-deconfliction-shopping_20260216](./conductor/tracks/smart-unit-deconfliction-shopping_20260216/)*
 - [x] **Track: Store purchase history for re-adding previously bought items**
   *Link: [store-purchase-history-adding_20260216](./conductor/tracks/store-purchase-history-adding_20260216/)*
 - [x] **Track: React best practices architectural audit and refactor plan**
