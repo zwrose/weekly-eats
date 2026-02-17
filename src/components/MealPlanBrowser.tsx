@@ -10,6 +10,7 @@ import {
   Collapse,
   CircularProgress,
   Chip,
+  Paper,
 } from '@mui/material';
 import { ExpandMore, ExpandLess, CalendarMonth, FolderOpen } from '@mui/icons-material';
 import type { MealPlanWithTemplate } from '@/types/meal-plan';
@@ -174,17 +175,40 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
                               <CircularProgress size={20} />
                             </Box>
                           ) : (
-                            <List disablePadding>
+                            <Box sx={{ px: { xs: 2, md: 0 }, py: { xs: 1, md: 0 } }}>
                               {plans.map((plan: MealPlanWithTemplate) => (
-                                <ListItemButton
+                                <Paper
                                   key={plan._id}
-                                  sx={{ pl: { xs: 7, md: 6 }, minHeight: touchMinHeight, py: { xs: 1.5, md: 0.5 } }}
                                   onClick={() => onPlanSelect(plan)}
+                                  sx={{
+                                    // Card style on mobile, flat list item on desktop
+                                    p: { xs: 2, md: 0 },
+                                    mb: { xs: 1.5, md: 0 },
+                                    pl: { md: 6 },
+                                    minHeight: { xs: 48, md: 40 },
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    boxShadow: { xs: 2, md: 0 },
+                                    border: { xs: '1px solid', md: 'none' },
+                                    borderColor: 'divider',
+                                    borderRadius: { xs: 2, md: 0 },
+                                    '&:hover': {
+                                      backgroundColor: 'action.hover',
+                                      transform: { xs: 'translateY(-1px)', md: 'none' },
+                                      boxShadow: { xs: 4, md: 0 }
+                                    },
+                                    transition: { xs: 'all 0.2s ease-in-out', md: 'background-color 0.15s' }
+                                  }}
+                                  elevation={0}
                                 >
-                                  <ListItemText primary={plan.name} />
-                                </ListItemButton>
+                                  <CalendarMonth sx={{ display: { xs: 'block', md: 'none' }, fontSize: 20, color: 'text.secondary', mr: 1 }} />
+                                  <Typography variant="body1" sx={{ fontWeight: { xs: 'medium', md: 'normal' } }}>
+                                    {plan.name}
+                                  </Typography>
+                                </Paper>
                               ))}
-                            </List>
+                            </Box>
                           )}
                         </Collapse>
                       </React.Fragment>

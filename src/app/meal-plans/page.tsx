@@ -861,7 +861,7 @@ function MealPlansPageContent() {
                             <Table>
                               <TableHead>
                                 <TableRow>
-                                  <TableCell sx={{ fontWeight: 'bold', wordWrap: 'break-word' }}>Meal Plan (click to open)</TableCell>
+                                  <TableCell sx={{ fontWeight: 'bold', wordWrap: 'break-word' }}>Meal Plan</TableCell>
                                 </TableRow>
                               </TableHead>
                               <TableBody>
