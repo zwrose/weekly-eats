@@ -53,8 +53,8 @@ export default function IngredientInput({
     const loadRecipes = async () => {
       try {
         const recipeRes = await fetch('/api/recipes?limit=1000');
-        const recipesData = recipeRes.ok ? await recipeRes.json() : [];
-        setRecipes(recipesData);
+        const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
+        setRecipes(Array.isArray(recipesJson) ? recipesJson : recipesJson.data || []);
       } catch (error) {
         console.error('Error loading recipes:', error);
       }
