@@ -14,6 +14,7 @@ import {
   Drawer,
   Typography,
   Divider,
+  Button,
 } from '@mui/material';
 import { FilterList, Close } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material';
@@ -31,6 +32,8 @@ interface RecipeFilterBarProps {
   sortBy: string;
   sortOrder: SortOrder;
   onSortChange: (sortBy: string, sortOrder: SortOrder) => void;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
 }
 
 const ratingOptions = [1, 2, 3, 4, 5];
@@ -77,6 +80,8 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
   sortBy,
   sortOrder,
   onSortChange,
+  hasActiveFilters,
+  onClearFilters,
 }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -249,6 +254,12 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
             ))}
           </Select>
         </FormControl>
+
+        {hasActiveFilters && (
+          <Button size="small" onClick={onClearFilters}>
+            Clear Filters
+          </Button>
+        )}
       </Box>
 
       {/* Mobile layout: search + filter button */}
@@ -303,6 +314,19 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
             <MenuItem value="rating-desc">Highest Rated</MenuItem>
           </Select>
         </FormControl>
+
+        {hasActiveFilters && (
+          <Button
+            size="small"
+            fullWidth
+            onClick={() => {
+              onClearFilters();
+              setDrawerOpen(false);
+            }}
+          >
+            Clear Filters
+          </Button>
+        )}
       </Drawer>
     </>
   );

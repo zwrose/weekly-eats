@@ -14,6 +14,8 @@ const defaultProps = {
   sortBy: 'updatedAt',
   sortOrder: 'desc' as const,
   onSortChange: vi.fn(),
+  hasActiveFilters: false,
+  onClearFilters: vi.fn(),
 };
 
 beforeEach(() => {
@@ -69,5 +71,15 @@ describe('RecipeFilterBar', () => {
   it('does not render access level selector', () => {
     render(<RecipeFilterBar {...defaultProps} />);
     expect(screen.queryByLabelText(/access level/i)).not.toBeInTheDocument();
+  });
+
+  it('shows clear filters button when filters are active', () => {
+    render(<RecipeFilterBar {...defaultProps} hasActiveFilters={true} />);
+    expect(screen.getAllByText(/clear filters/i).length).toBeGreaterThan(0);
+  });
+
+  it('hides clear filters button when no filters are active', () => {
+    render(<RecipeFilterBar {...defaultProps} hasActiveFilters={false} />);
+    expect(screen.queryByText(/clear filters/i)).not.toBeInTheDocument();
   });
 });

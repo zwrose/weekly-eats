@@ -149,7 +149,6 @@ const mobileCardSx = {
 const mobileCardTitleSx = {
   display: "flex",
   alignItems: "flex-start",
-  mb: 1,
 } as const;
 
 const paginationContainerSx = {
@@ -179,7 +178,15 @@ function RecipesPageContent() {
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // ── Debounced search ──
-  const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+  const { searchTerm, debouncedSearchTerm, setSearchTerm, clearSearch } = useDebouncedSearch();
+
+  const hasActiveFilters = searchTerm !== '' || selectedTags.length > 0 || selectedRatings.length > 0;
+
+  const handleClearFilters = useCallback(() => {
+    clearSearch();
+    setSelectedTags([]);
+    setSelectedRatings([]);
+  }, [clearSearch]);
 
   // ── Server pagination ──
   const filterKey = useMemo(
@@ -798,6 +805,8 @@ function RecipesPageContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSortChange={handleSortChange}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={handleClearFilters}
             />
 
             {loading ? (
@@ -942,7 +951,7 @@ function RecipesPageContent() {
                           </Box>
                         </Box>
                         {(allTags.length > 0 || rating) && (
-                          <Box sx={{ width: '100%' }}>
+                          <Box sx={{ mt: 1, width: '100%' }}>
                             {allTags.length > 0 && (
                               <Box sx={tagContainerMobileSx}>
                                 {allTags.slice(0, 5).map((tag) => (

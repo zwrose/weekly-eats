@@ -87,9 +87,9 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   getIngredientName,
   accessLevel,
 }) => {
-  const accessLevelChipMap: Record<string, { label: string; color: 'primary' | 'secondary' | 'default'; icon: React.ReactElement }> = {
+  const accessLevelChipMap: Record<string, { label: string; color: 'info' | 'primary' | 'default'; icon: React.ReactElement }> = {
     'private': { label: 'Private', color: 'default', icon: <Person fontSize="small" /> },
-    'shared-by-you': { label: 'Shared by You', color: 'secondary', icon: <IosShare fontSize="small" /> },
+    'shared-by-you': { label: 'Shared by You', color: 'info', icon: <IosShare fontSize="small" /> },
     'shared-by-others': { label: 'Shared by Others', color: 'primary', icon: <Public fontSize="small" /> },
   };
   return (
