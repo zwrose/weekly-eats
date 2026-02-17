@@ -11,7 +11,7 @@ import {
   CircularProgress,
   Chip,
 } from '@mui/material';
-import { ExpandMore, ExpandLess, CalendarMonth } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, CalendarMonth, FolderOpen } from '@mui/icons-material';
 import type { MealPlanWithTemplate } from '@/types/meal-plan';
 
 interface MonthSummary {
@@ -39,6 +39,7 @@ function getLastDayOfMonth(year: number, month: number): string {
 const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
   const [summary, setSummary] = useState<MonthSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedYear, setExpandedYear] = useState<number | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [monthPlans, setMonthPlans] = useState<Record<string, MealPlanWithTemplate[]>>({});
   const [loadingMonth, setLoadingMonth] = useState<string | null>(null);
@@ -59,6 +60,15 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
     };
     loadSummary();
   }, []);
+
+  const handleYearClick = useCallback((year: number) => {
+    if (expandedYear === year) {
+      setExpandedYear(null);
+      setExpandedMonth(null);
+    } else {
+      setExpandedYear(year);
+    }
+  }, [expandedYear]);
 
   const handleMonthClick = useCallback(async (year: number, month: number) => {
     const key = `${year}-${month}`;
@@ -114,59 +124,78 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
 
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
 
+  // Touch-friendly sizing
+  const touchMinHeight = { xs: 48, md: 40 };
+
   return (
     <Box>
-      {years.map(year => (
-        <Box key={year} sx={{ mb: 1 }}>
-          <Typography variant="subtitle2" sx={{ px: 2, py: 0.5, color: 'text.secondary', fontWeight: 600 }}>
-            {year}
-          </Typography>
-          <List disablePadding dense>
-            {byYear[year].map(item => {
-              const key = `${item.year}-${item.month}`;
-              const isExpanded = expandedMonth === key;
-              const plans = monthPlans[key] || [];
-              const isLoadingPlans = loadingMonth === key;
+      <List disablePadding>
+        {years.map(year => {
+          const isYearExpanded = expandedYear === year;
+          const yearPlanCount = byYear[year].reduce((sum, m) => sum + m.count, 0);
 
-              return (
-                <React.Fragment key={key}>
-                  <ListItemButton
-                    onClick={() => handleMonthClick(item.year, item.month)}
-                    sx={{ pl: 3 }}
-                  >
-                    <CalendarMonth sx={{ mr: 1, fontSize: 18, color: 'text.secondary' }} />
-                    <ListItemText primary={monthNames[item.month - 1]} />
-                    <Chip label={item.count} size="small" variant="outlined" sx={{ mr: 1 }} />
-                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                  </ListItemButton>
-                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                    {isLoadingPlans ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-                        <CircularProgress size={20} />
-                      </Box>
-                    ) : (
-                      <List disablePadding dense>
-                        {plans.map((plan: MealPlanWithTemplate) => (
-                          <ListItemButton
-                            key={plan._id}
-                            sx={{ pl: 6 }}
-                            onClick={() => onPlanSelect(plan)}
-                          >
-                            <ListItemText
-                              primary={plan.name}
-                              secondary={`${plan.startDate} — ${plan.endDate}`}
-                            />
-                          </ListItemButton>
-                        ))}
-                      </List>
-                    )}
-                  </Collapse>
-                </React.Fragment>
-              );
-            })}
-          </List>
-        </Box>
-      ))}
+          return (
+            <React.Fragment key={year}>
+              <ListItemButton
+                onClick={() => handleYearClick(year)}
+                sx={{ minHeight: touchMinHeight, py: { xs: 1.5, md: 0.5 } }}
+              >
+                <FolderOpen sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} />
+                <ListItemText
+                  primary={String(year)}
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
+                <Chip label={yearPlanCount} size="small" variant="outlined" sx={{ mr: 1 }} />
+                {isYearExpanded ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+
+              <Collapse in={isYearExpanded} timeout="auto" unmountOnExit>
+                <List disablePadding>
+                  {byYear[year].map(item => {
+                    const key = `${item.year}-${item.month}`;
+                    const isExpanded = expandedMonth === key;
+                    const plans = monthPlans[key] || [];
+                    const isLoadingPlans = loadingMonth === key;
+
+                    return (
+                      <React.Fragment key={key}>
+                        <ListItemButton
+                          onClick={() => handleMonthClick(item.year, item.month)}
+                          sx={{ pl: { xs: 4, md: 3 }, minHeight: touchMinHeight, py: { xs: 1.5, md: 0.5 } }}
+                        >
+                          <CalendarMonth sx={{ mr: 1.5, fontSize: 18, color: 'text.secondary' }} />
+                          <ListItemText primary={monthNames[item.month - 1]} />
+                          <Chip label={item.count} size="small" variant="outlined" sx={{ mr: 1 }} />
+                          {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </ListItemButton>
+                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                          {isLoadingPlans ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                              <CircularProgress size={20} />
+                            </Box>
+                          ) : (
+                            <List disablePadding>
+                              {plans.map((plan: MealPlanWithTemplate) => (
+                                <ListItemButton
+                                  key={plan._id}
+                                  sx={{ pl: { xs: 7, md: 6 }, minHeight: touchMinHeight, py: { xs: 1.5, md: 0.5 } }}
+                                  onClick={() => onPlanSelect(plan)}
+                                >
+                                  <ListItemText primary={plan.name} />
+                                </ListItemButton>
+                              ))}
+                            </List>
+                          )}
+                        </Collapse>
+                      </React.Fragment>
+                    );
+                  })}
+                </List>
+              </Collapse>
+            </React.Fragment>
+          );
+        })}
+      </List>
     </Box>
   );
 });

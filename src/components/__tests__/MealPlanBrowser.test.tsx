@@ -63,7 +63,7 @@ afterEach(() => {
 });
 
 describe('MealPlanBrowser', () => {
-  it('loads and displays year/month summary', async () => {
+  it('loads and displays years collapsed by default', async () => {
     render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
 
     await waitFor(() => {
@@ -71,19 +71,47 @@ describe('MealPlanBrowser', () => {
       expect(screen.getByText('2025')).toBeInTheDocument();
     });
 
-    // Should show month entries with counts
-    expect(screen.getByText(/February/)).toBeInTheDocument();
-    expect(screen.getByText(/January/)).toBeInTheDocument();
-    expect(screen.getByText(/December/)).toBeInTheDocument();
+    // Months should NOT be visible until year is expanded
+    expect(screen.queryByText(/February/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/January/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/December/)).not.toBeInTheDocument();
   });
 
-  it('shows plan counts per month', async () => {
+  it('shows months when year is expanded', async () => {
+    const user = userEvent.setup();
     render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2026')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('2026'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/February/)).toBeInTheDocument();
+      expect(screen.getByText(/January/)).toBeInTheDocument();
+    });
+
+    // 2025 months should still be hidden
+    expect(screen.queryByText(/December/)).not.toBeInTheDocument();
+  });
+
+  it('shows plan counts per year and month', async () => {
+    const user = userEvent.setup();
+    render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      // Year-level counts: 2026 has 7 (4+3), 2025 has 2
+      expect(screen.getByText('7')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    // Expand 2026 to see month counts
+    await user.click(screen.getByText('2026'));
 
     await waitFor(() => {
       expect(screen.getByText('4')).toBeInTheDocument(); // Feb count
       expect(screen.getByText('3')).toBeInTheDocument(); // Jan count
-      expect(screen.getByText('2')).toBeInTheDocument(); // Dec count
     });
   });
 
@@ -91,6 +119,12 @@ describe('MealPlanBrowser', () => {
     const user = userEvent.setup();
     render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
 
+    await waitFor(() => {
+      expect(screen.getByText('2026')).toBeInTheDocument();
+    });
+
+    // Expand year first
+    await user.click(screen.getByText('2026'));
     await waitFor(() => {
       expect(screen.getByText(/February/)).toBeInTheDocument();
     });
@@ -104,7 +138,7 @@ describe('MealPlanBrowser', () => {
       expect(calls.some(u => u.includes('startDate=2026-02-01') && u.includes('endDate=2026-02-28'))).toBe(true);
     });
 
-    // Should display the plans
+    // Should display the plans (without dates)
     await waitFor(() => {
       expect(screen.getByText('Week of Feb 7')).toBeInTheDocument();
       expect(screen.getByText('Week of Feb 14')).toBeInTheDocument();
@@ -116,6 +150,12 @@ describe('MealPlanBrowser', () => {
     const user = userEvent.setup();
     render(<MealPlanBrowser onPlanSelect={onPlanSelect} />);
 
+    await waitFor(() => {
+      expect(screen.getByText('2026')).toBeInTheDocument();
+    });
+
+    // Expand year, then month
+    await user.click(screen.getByText('2026'));
     await waitFor(() => {
       expect(screen.getByText(/February/)).toBeInTheDocument();
     });
@@ -154,19 +194,46 @@ describe('MealPlanBrowser', () => {
     render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
 
     await waitFor(() => {
+      expect(screen.getByText('2026')).toBeInTheDocument();
+    });
+
+    // Expand year first
+    await user.click(screen.getByText('2026'));
+    await waitFor(() => {
       expect(screen.getByText(/February/)).toBeInTheDocument();
     });
 
-    // Expand
+    // Expand month
     await user.click(screen.getByText(/February/));
     await waitFor(() => {
       expect(screen.getByText('Week of Feb 7')).toBeInTheDocument();
     });
 
-    // Collapse
+    // Collapse month
     await user.click(screen.getByText(/February/));
     await waitFor(() => {
       expect(screen.queryByText('Week of Feb 7')).not.toBeInTheDocument();
+    });
+  });
+
+  it('collapses year and hides months when year clicked again', async () => {
+    const user = userEvent.setup();
+    render(<MealPlanBrowser onPlanSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2026')).toBeInTheDocument();
+    });
+
+    // Expand year
+    await user.click(screen.getByText('2026'));
+    await waitFor(() => {
+      expect(screen.getByText(/February/)).toBeInTheDocument();
+    });
+
+    // Collapse year
+    await user.click(screen.getByText('2026'));
+    await waitFor(() => {
+      expect(screen.queryByText(/February/)).not.toBeInTheDocument();
     });
   });
 });
