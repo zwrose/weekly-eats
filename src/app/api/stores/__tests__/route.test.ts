@@ -31,7 +31,11 @@ describe('Stores API', () => {
       _id: { toString: () => 'list-1' },
       storeId: 'store-1',
       userId: 'user-123',
-      items: [],
+      items: [
+        { foodItemId: 'f1', name: 'apples', quantity: 3, unit: 'each', checked: false },
+        { foodItemId: 'f2', name: 'milk', quantity: 1, unit: 'gallon', checked: true },
+        { foodItemId: 'f3', name: 'bread', quantity: 2, unit: 'loaf', checked: false },
+      ],
       createdAt: new Date(),
       updatedAt: new Date()
     }
@@ -77,6 +81,110 @@ describe('Stores API', () => {
       expect(data[0].shoppingList).toBeDefined();
     });
 
+    it('returns itemCount instead of full items array', async () => {
+      const mockFind = vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(mockStores)
+      });
+
+      const mockShoppingListsFind = vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue(mockShoppingLists)
+      });
+
+      (getMongoClient as any).mockResolvedValue({
+        db: () => ({
+          collection: (name: string) => {
+            if (name === 'stores') {
+              return { find: mockFind };
+            }
+            if (name === 'shoppingLists') {
+              return { find: mockShoppingListsFind };
+            }
+          }
+        })
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/stores');
+      const response = await GET(request);
+      const data = await response.json();
+
+      // Should have itemCount, not items array
+      expect(data[0].shoppingList.itemCount).toBe(3);
+      expect(data[0].shoppingList.items).toBeUndefined();
+    });
+
+    it('returns itemCount of 0 when store has no shopping list', async () => {
+      const storeWithNoList = [{
+        _id: { toString: () => 'store-no-list' },
+        userId: 'user-123',
+        name: 'New Store',
+        emoji: '🏪',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }];
+
+      const mockFind = vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(storeWithNoList)
+      });
+
+      const mockShoppingListsFind = vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue([]) // no lists
+      });
+
+      (getMongoClient as any).mockResolvedValue({
+        db: () => ({
+          collection: (name: string) => {
+            if (name === 'stores') {
+              return { find: mockFind };
+            }
+            if (name === 'shoppingLists') {
+              return { find: mockShoppingListsFind };
+            }
+          }
+        })
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/stores');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data[0].shoppingList.itemCount).toBe(0);
+      expect(data[0].shoppingList.items).toBeUndefined();
+    });
+
+    it('preserves shopping list metadata (storeId, dates) without items', async () => {
+      const mockFind = vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(mockStores)
+      });
+
+      const mockShoppingListsFind = vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue(mockShoppingLists)
+      });
+
+      (getMongoClient as any).mockResolvedValue({
+        db: () => ({
+          collection: (name: string) => {
+            if (name === 'stores') {
+              return { find: mockFind };
+            }
+            if (name === 'shoppingLists') {
+              return { find: mockShoppingListsFind };
+            }
+          }
+        })
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/stores');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data[0].shoppingList.storeId).toBe('store-1');
+      expect(data[0].shoppingList.createdAt).toBeDefined();
+      expect(data[0].shoppingList.updatedAt).toBeDefined();
+    });
+
     it('returns 401 if not authenticated', async () => {
       (getServerSession as any).mockResolvedValue(null);
 
@@ -99,7 +207,7 @@ describe('Stores API', () => {
         db: () => ({
           collection: (name: string) => {
             if (name === 'stores') {
-              return { 
+              return {
                 insertOne: mockInsertOne,
                 findOne: mockFindOne
               };
@@ -174,4 +282,3 @@ describe('Stores API', () => {
     });
   });
 });
-

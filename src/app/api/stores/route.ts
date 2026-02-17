@@ -37,18 +37,31 @@ export async function GET() {
       shoppingLists.map(list => [list.storeId, list])
     );
 
-    // Combine stores with their shopping lists
-    const storesWithLists = stores.map(store => ({
-      ...store,
-      shoppingList: shoppingListMap.get(store._id.toString()) || {
-        _id: null,
-        storeId: store._id.toString(),
-        userId: session.user.id,
-        items: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
+    // Combine stores with their shopping list metadata (item counts, not full items)
+    const storesWithLists = stores.map(store => {
+      const list = shoppingListMap.get(store._id.toString());
+      if (list) {
+        const { items, ...listMeta } = list;
+        return {
+          ...store,
+          shoppingList: {
+            ...listMeta,
+            itemCount: Array.isArray(items) ? items.length : 0,
+          }
+        };
       }
-    }));
+      return {
+        ...store,
+        shoppingList: {
+          _id: null,
+          storeId: store._id.toString(),
+          userId: session.user.id,
+          itemCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      };
+    });
 
     // Sort by shopping list updatedAt (most recently edited first)
     storesWithLists.sort((a, b) => {

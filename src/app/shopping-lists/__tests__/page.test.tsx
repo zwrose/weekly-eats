@@ -117,8 +117,7 @@ describe('ShoppingListsPage', () => {
     // Default mock for pending invitations
     mockFetchPendingInvitations.mockResolvedValue([]);
     mockFetchShoppingList.mockReset();
-    // Provide a safe default: reject so the page falls back to the embedded
-    // store.shoppingList.items (and doesn't crash on undefined).
+    // Provide a safe default: reject so the page falls back to empty items.
     mockFetchShoppingList.mockRejectedValue(new Error('No mocked shopping list'));
     lastShoppingSyncOptions = null;
     mockFetchPurchaseHistory.mockResolvedValue([]);
@@ -195,7 +194,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -237,10 +236,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-            { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
-          ],
+          itemCount: 2,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -270,7 +266,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -302,9 +298,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -346,7 +340,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -410,9 +404,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Old Milk', quantity: 1, unit: 'gallon', checked: false }
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -477,7 +469,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -517,7 +509,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -556,9 +548,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -602,7 +592,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -646,10 +636,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-            { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
-          ],
+          itemCount: 2,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -657,6 +644,17 @@ describe('ShoppingListsPage', () => {
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue({
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
 
     render(<ShoppingListsPage />);
 
@@ -669,7 +667,7 @@ describe('ShoppingListsPage', () => {
     const startShoppingButtons = cartIcons
       .map(icon => icon.closest('button'))
       .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
-    
+
     await user.click(startShoppingButtons[0]!);
 
     // Wait for dialog to open (unified list)
@@ -694,17 +692,26 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
       }
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -765,18 +772,27 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-            { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
-          ],
+          itemCount: 2,
           createdAt: new Date(),
           updatedAt: new Date()
         }
       }
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -823,17 +839,26 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       },
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
     mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
@@ -878,7 +903,7 @@ describe('ShoppingListsPage', () => {
     // the cleared state (no checked items).
     const clearedStores = mockStores.map((s) => ({
       ...s,
-      shoppingList: { ...s.shoppingList!, items: [] },
+      shoppingList: { ...s.shoppingList!, itemCount: 0 },
     }));
     mockFetchStores.mockResolvedValue(clearedStores);
     mockFetchShoppingList.mockResolvedValue({ ...mockStores[0].shoppingList, items: [] } as any);
@@ -930,17 +955,26 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       },
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -978,7 +1012,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -1018,17 +1052,26 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       },
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
@@ -1068,7 +1111,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -1103,7 +1146,7 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [],
+          itemCount: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -1143,17 +1186,26 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          items: [
-            { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
-          ],
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date()
         }
       }
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [
+        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(mockStores[0].shoppingList as any);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
     (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {

@@ -337,12 +337,13 @@ function ShoppingListsPageContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storesData, foodItemsData, invitationsData] = await Promise.all([
+      const [storesData, foodItemsResponse, invitationsData] = await Promise.all([
         fetchStores(),
         fetch("/api/food-items?limit=1000").then((res) => res.json()),
         fetchPendingInvitations(),
       ]);
       setStores(storesData);
+      const foodItemsData = Array.isArray(foodItemsResponse) ? foodItemsResponse : foodItemsResponse.data || [];
       setFoodItems(foodItemsData);
       setPendingInvitations(invitationsData);
     } catch (error) {
@@ -545,7 +546,7 @@ function ShoppingListsPageContent() {
     } catch (error) {
       console.error("Error loading shopping list:", error);
       showSnackbar("Failed to load latest shopping list", "error");
-      setShoppingListItems(store.shoppingList?.items || []);
+      setShoppingListItems([]);
     }
   };
 
@@ -575,7 +576,7 @@ function ShoppingListsPageContent() {
       } catch (error) {
         console.error("Error loading shopping list:", error);
         showSnackbar("Failed to load latest shopping list", "error");
-        setShoppingListItems(store.shoppingList?.items || []);
+        setShoppingListItems([]);
       }
     };
 
@@ -767,11 +768,11 @@ function ShoppingListsPageContent() {
             "warning",
           );
           // Refresh the list
-          const store = await fetchStores().then((stores) =>
-            stores.find((s) => s._id === selectedStore._id),
-          );
-          if (store) {
-            setShoppingListItems(store.shoppingList?.items || []);
+          try {
+            const list = await fetchShoppingList(selectedStore._id);
+            setShoppingListItems(list.items || []);
+          } catch {
+            setShoppingListItems([]);
           }
         } else {
           showSnackbar(errorData.error || "Failed to update item", "error");
@@ -843,11 +844,11 @@ function ShoppingListsPageContent() {
     const store = selectedStore || historyDialogStore;
     if (!store) return;
 
-    // Use live shopping list items when available, otherwise fall back to embedded data
+    // Use live shopping list items when available
     const currentItems =
       selectedStore?._id === store._id
         ? shoppingListItems
-        : store.shoppingList?.items || [];
+        : [];
 
     const newItems = items.filter(
       (item) => !currentItems.some((i) => i.foodItemId === item.foodItemId)
@@ -1545,7 +1546,7 @@ function ShoppingListsPageContent() {
                                 variant="body2"
                                 color="text.secondary"
                               >
-                                {store.shoppingList?.items?.length || 0}
+                                {store.shoppingList?.itemCount || 0}
                               </Typography>
                             </TableCell>
                             <TableCell
@@ -1564,7 +1565,7 @@ function ShoppingListsPageContent() {
                                   size="small"
                                   color="success"
                                   title="Start Shopping"
-                                  disabled={!store.shoppingList?.items?.length}
+                                  disabled={!store.shoppingList?.itemCount}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleStartShopping(store);
@@ -1679,7 +1680,7 @@ function ShoppingListsPageContent() {
                             {store.name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {store.shoppingList?.items?.length || 0} items
+                            {store.shoppingList?.itemCount || 0} items
                           </Typography>
                         </Box>
                       </Box>
@@ -1694,7 +1695,7 @@ function ShoppingListsPageContent() {
                           size="small"
                           color="success"
                           title="Start Shopping"
-                          disabled={!store.shoppingList?.items?.length}
+                          disabled={!store.shoppingList?.itemCount}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartShopping(store);
@@ -2890,7 +2891,7 @@ function ShoppingListsPageContent() {
         currentItems={
           selectedStore?._id === historyDialogStore?._id
             ? shoppingListItems
-            : historyDialogStore?.shoppingList?.items || []
+            : []
         }
         onAddItems={handleAddHistoryItems}
         loading={loadingHistory}

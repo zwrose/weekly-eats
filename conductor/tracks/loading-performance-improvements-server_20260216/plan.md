@@ -153,7 +153,7 @@ Based on manual verification feedback:
 
 - [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
-## Phase 5: Pantry — Server-Side Search & Pagination [x]
+## Phase 5: Pantry — Server-Side Search & Pagination [x] [checkpoint: 92ecf58]
 
 - [x] Task 5.1: Update pantry API for server-side search and pagination [892fbf3]
   - [x] Write tests for `GET /api/pantry` with params: `page`, `limit`, `query`
@@ -168,13 +168,13 @@ Based on manual verification feedback:
 
 - [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
-## Phase 6: Shopping Lists — Lazy Loading [ ]
+## Phase 6: Shopping Lists — Lazy Loading [~]
 
-- [ ] Task 6.1: Update stores API to return metadata only
-  - [ ] Write tests for `GET /api/stores` returning store metadata + item counts (not full item arrays)
-  - [ ] Update the API route to exclude shopping list items from the initial response
-  - [ ] Add `itemCount` field to the response
-  - [ ] Verify tests pass
+- [x] Task 6.1: Update stores API to return metadata only
+  - [x] Write tests for `GET /api/stores` returning store metadata + item counts (not full item arrays)
+  - [x] Update the API route to exclude shopping list items from the initial response
+  - [x] Add `itemCount` field to the response
+  - [x] Verify tests pass
 
 - [ ] Task 6.2: Build on-demand food item autocomplete
   - [ ] Write tests for an updated `FoodItemAutocomplete` that fetches from API on input (debounced) instead of receiving a pre-loaded list
