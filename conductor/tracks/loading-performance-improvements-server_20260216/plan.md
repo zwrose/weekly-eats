@@ -55,51 +55,51 @@ Build the shared utilities that all subsequent phases depend on.
   - [x] Remove `src/lib/hooks/use-recipes.ts` and its export from `hooks/index.ts`
   - [x] Verify tests pass
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
-## Phase 2R: Recipes & Food Items UX Rework (User Feedback) [ ]
+## Phase 2R: Recipes & Food Items UX Rework (User Feedback) [x] [checkpoint: fed8dd9]
 
 Based on manual verification feedback:
 
-- [ ] Task 2R.1: Rename access level labels and update API response values
-  - [ ] Rename: "personal" → "private", "global" → "shared-by-others" across API and UI
-  - [ ] Update `computeAccessLevel` in recipes and food items APIs
-  - [ ] Remove red from badge colors
-  - [ ] Update all tests
+- [x] Task 2R.1: Rename access level labels and update API response values [1590ac0]
+  - [x] Rename: "personal" → "private", "global" → "shared-by-others" across API and UI
+  - [x] Update `computeAccessLevel` in recipes and food items APIs
+  - [x] Remove red from badge colors
+  - [x] Update all tests
 
-- [ ] Task 2R.2: Remove access level from table/filters, add to recipe view dialog
-  - [ ] Remove access level column from desktop table and mobile cards
-  - [ ] Remove access level filter dropdown from RecipeFilterBar
-  - [ ] Add access level badge to RecipeViewDialog view mode (not edit mode)
-  - [ ] Update tests
+- [x] Task 2R.2: Remove access level from table/filters, add to recipe view dialog [1590ac0]
+  - [x] Remove access level column from desktop table and mobile cards
+  - [x] Remove access level filter dropdown from RecipeFilterBar
+  - [x] Add access level badge to RecipeViewDialog view mode (not edit mode)
+  - [x] Update tests
 
-- [ ] Task 2R.3: Rework rating filter from min-rating to multi-select
-  - [ ] Change API from `minRating` param to `ratings` param (comma-separated, e.g., "4,5")
-  - [ ] Update RecipeFilterBar: replace Rating component with chip-based multi-select (same UX as tags)
-  - [ ] Update recipes page filter state and fetchRecipes
-  - [ ] Update API tests and page tests
+- [x] Task 2R.3: Rework rating filter from min-rating to multi-select [4237f69]
+  - [x] Change API from `minRating` param to `ratings` param (comma-separated, e.g., "4,5")
+  - [x] Update RecipeFilterBar: replace Rating component with chip-based multi-select (same UX as tags)
+  - [x] Update recipes page filter state and fetchRecipes
+  - [x] Update API tests and page tests
 
-- [ ] Task 2R.4: Make tags filter chips clearable with X
-  - [ ] Update RecipeFilterBar tags section to render selected tags as Chips with onDelete
-  - [ ] Update tests
+- [x] Task 2R.4: Make tags filter chips clearable with X [1590ac0]
+  - [x] Update RecipeFilterBar tags section to render selected tags as Chips with onDelete
+  - [x] Update tests
 
-- [ ] Task 2R.5: Add sortable table column headers on desktop
-  - [ ] Replace static table headers with clickable sort headers (click to sort, click again to reverse)
-  - [ ] Remove sort dropdown from RecipeFilterBar (desktop only; keep in mobile flyout)
-  - [ ] Update tests
+- [x] Task 2R.5: Add sortable table column headers on desktop [1590ac0]
+  - [x] Replace static table headers with clickable sort headers (click to sort, click again to reverse)
+  - [x] Remove sort dropdown from RecipeFilterBar (desktop only; keep in mobile flyout)
+  - [x] Update tests
 
-- [ ] Task 2R.6: Change default page size to 10
-  - [ ] Update useServerPagination default from 25 to 10
-  - [ ] Update parsePaginationParams server default from 25 to 10
-  - [ ] Update food items page default to 10
-  - [ ] Update all affected tests
+- [x] Task 2R.6: Change default page size to 10 [69b4591]
+  - [x] Update useServerPagination default from 25 to 10
+  - [x] Update parsePaginationParams server default from 25 to 10
+  - [x] Update food items page default to 10
+  - [x] Update all affected tests
 
-- [ ] Task 2R.7: Mobile filter/search UX — single row with filter flyout
-  - [ ] On mobile: search bar + filter icon button on one row
-  - [ ] Filter button opens MUI Drawer or Popover with filter controls (tags, rating, sort)
-  - [ ] Update tests
+- [x] Task 2R.7: Mobile filter/search UX — single row with filter flyout [f9d87cd]
+  - [x] On mobile: search bar + filter icon button on one row
+  - [x] Filter button opens MUI Drawer or Popover with filter controls (tags, rating, sort)
+  - [x] Update tests
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 2R' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2R' (Protocol in workflow.md)
 
 ## Phase 3: Food Items — Unified List [x] [checkpoint: ec9a108]
 
@@ -118,40 +118,40 @@ Based on manual verification feedback:
   - [x] Add three-state access-level badges
   - [x] Verify tests pass
 
-- [ ] Task 3R.1: Update food items page with renamed labels and default page size 10
-  - [ ] Rename access level labels: "Personal" → "Private", "Global" → "Shared by Others"
-  - [ ] Remove red badge colors
-  - [ ] Default page size to 10
-  - [ ] Update tests
+- [x] Task 3R.1: Update food items page with renamed labels and default page size 10 [69b4591]
+  - [x] Rename access level labels: "Personal" → "Private", "Global" → "Shared by Others"
+  - [x] Remove red badge colors
+  - [x] Default page size to 10
+  - [x] Update tests
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Meal Plans — Year/Month Browsing [ ]
+## Phase 4: Meal Plans — Year/Month Browsing [x]
 
 ### API Changes
 
-- [ ] Task 4.1: Add date-range and summary endpoints to meal plans API
-  - [ ] Write tests for `GET /api/meal-plans` with new params: `startDate`, `endDate` (return only plans in range)
-  - [ ] Write tests for `GET /api/meal-plans/summary` that returns year/month structure with plan counts (no full plan data)
-  - [ ] Implement both endpoints
-  - [ ] Add index support for date-range queries
-  - [ ] Verify tests pass
+- [x] Task 4.1: Add date-range and summary endpoints to meal plans API [c6fe21d]
+  - [x] Write tests for `GET /api/meal-plans` with new params: `startDate`, `endDate` (return only plans in range)
+  - [x] Write tests for `GET /api/meal-plans/summary` that returns year/month structure with plan counts (no full plan data)
+  - [x] Implement both endpoints
+  - [x] Add index support for date-range queries (existing userId+startDate index is sufficient)
+  - [x] Verify tests pass
 
 ### UI Changes
 
-- [ ] Task 4.2: Build year/month folder tree component
-  - [ ] Write tests for a `MealPlanBrowser` component that renders collapsible year/month headers with plan counts
-  - [ ] Implement with MUI Accordion or collapsible list
-  - [ ] Lazy-load month contents when expanded (calls API with date range)
-  - [ ] Verify tests pass
+- [x] Task 4.2: Build year/month folder tree component [e7a54a8]
+  - [x] Write tests for a `MealPlanBrowser` component that renders collapsible year/month headers with plan counts
+  - [x] Implement with MUI collapsible list
+  - [x] Lazy-load month contents when expanded (calls API with date range)
+  - [x] Verify tests pass
 
-- [ ] Task 4.3: Refactor meal plans page for current-week focus
-  - [ ] Write tests for the updated page: current week loads immediately, prior week optional, folder tree below
-  - [ ] Refactor `src/app/meal-plans/page.tsx` to use date-filtered API calls and the folder tree component
-  - [ ] Remove the "load all plans" pattern
-  - [ ] Verify tests pass
+- [x] Task 4.3: Refactor meal plans page for current-week focus [a255e61]
+  - [x] Write tests for the updated page: current week loads immediately, prior week optional, folder tree below
+  - [x] Refactor `src/app/meal-plans/page.tsx` to use date-filtered API calls and the folder tree component
+  - [x] Remove the "load all plans" pattern
+  - [x] Verify tests pass
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
 ## Phase 5: Pantry — Server-Side Search & Pagination [ ]
 
