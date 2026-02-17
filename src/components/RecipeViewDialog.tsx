@@ -31,6 +31,17 @@ const RecipeInstructionsView = dynamic(() => import("@/components/RecipeInstruct
 const RecipeTagsEditor = dynamic(() => import("@/components/RecipeTagsEditor"), { ssr: false });
 const RecipeStarRating = dynamic(() => import("@/components/RecipeStarRating"), { ssr: false });
 
+const recipeLinkSx = {
+  color: "primary.main",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textDecorationColor: "transparent",
+  transition: "text-decoration-color 0.2s",
+  "&:hover": {
+    textDecorationColor: "currentcolor",
+  },
+} as const;
+
 interface FoodItemOption {
   _id: string;
   name: string;
@@ -373,16 +384,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                                 href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${ingredient.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                sx={{
-                                  color: "primary.main",
-                                  cursor: "pointer",
-                                  textDecoration: "underline",
-                                  textDecorationColor: "transparent",
-                                  transition: "text-decoration-color 0.2s",
-                                  "&:hover": {
-                                    textDecorationColor: "currentcolor",
-                                  },
-                                }}
+                                sx={recipeLinkSx}
                               >
                                 {getIngredientName(ingredient)}
                               </Box>

@@ -27,6 +27,17 @@ import { responsiveDialogStyle } from "@/lib/theme";
 import { DialogTitle } from "@/components/ui";
 import MealEditor from "@/components/MealEditor";
 
+const recipeLinkSx = {
+  color: "primary.main",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textDecorationColor: "transparent",
+  transition: "text-decoration-color 0.2s",
+  "&:hover": {
+    textDecorationColor: "currentcolor",
+  },
+} as const;
+
 export interface MealPlanViewDialogProps {
   open: boolean;
   onClose: () => void;
@@ -91,10 +102,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
       const validation = validateMealPlan(updatedMealPlan.items);
       onValidationUpdate(validation.errors, validation.isValid);
     }
-  };
-
-  const openRecipeInNewTab = (recipeId: string) => {
-    window.open(`/recipes?viewRecipe=true&viewRecipe_recipeId=${recipeId}`, '_blank');
   };
 
   return (
@@ -623,26 +630,11 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                 >
                                   &bull;{" "}
                                   <Box
-                                    component="span"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => openRecipeInNewTab(staple.id)}
-                                    onKeyDown={(e: React.KeyboardEvent) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        openRecipeInNewTab(staple.id);
-                                      }
-                                    }}
-                                    sx={{
-                                      color: "primary.main",
-                                      cursor: "pointer",
-                                      textDecoration: "underline",
-                                      textDecorationColor: "transparent",
-                                      transition: "text-decoration-color 0.2s",
-                                      "&:hover": {
-                                        textDecorationColor: "currentcolor",
-                                      },
-                                    }}
+                                    component="a"
+                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${staple.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={recipeLinkSx}
                                   >
                                     {staple.name}
                                   </Box>
@@ -864,26 +856,11 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                 >
                                                   &bull;{" "}
                                                   <Box
-                                                    component="span"
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => openRecipeInNewTab(mealItem.id)}
-                                                    onKeyDown={(e: React.KeyboardEvent) => {
-                                                      if (e.key === "Enter" || e.key === " ") {
-                                                        e.preventDefault();
-                                                        openRecipeInNewTab(mealItem.id);
-                                                      }
-                                                    }}
-                                                    sx={{
-                                                      color: "primary.main",
-                                                      cursor: "pointer",
-                                                      textDecoration: "underline",
-                                                      textDecorationColor: "transparent",
-                                                      transition: "text-decoration-color 0.2s",
-                                                      "&:hover": {
-                                                        textDecorationColor: "currentcolor",
-                                                      },
-                                                    }}
+                                                    component="a"
+                                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${mealItem.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    sx={recipeLinkSx}
                                                   >
                                                     {mealItem.name}
                                                   </Box>

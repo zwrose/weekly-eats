@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-
-// Mock window.open
-const mockWindowOpen = vi.fn();
-vi.stubGlobal("open", mockWindowOpen);
 
 // Mock MealEditor to avoid its dependency tree
 vi.mock("@/components/MealEditor", () => ({
@@ -90,13 +85,18 @@ describe("MealPlanViewDialog - Recipe View Feature", () => {
   });
 
   describe("Clickable recipe items in view mode", () => {
-    it("renders recipe items as clickable in view mode", () => {
+    it("renders recipe items as links in view mode", () => {
       const { baseElement } = render(<MealPlanViewDialog {...getDefaultProps()} />);
 
-      const recipeLink = within(baseElement).getByRole("button", {
+      const recipeLink = within(baseElement).getByRole("link", {
         name: "Test Pasta Recipe",
       });
       expect(recipeLink).toBeInTheDocument();
+      expect(recipeLink).toHaveAttribute(
+        "href",
+        "/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-123"
+      );
+      expect(recipeLink).toHaveAttribute("target", "_blank");
     });
 
     it("renders food items as plain text (not clickable)", () => {
@@ -104,35 +104,33 @@ describe("MealPlanViewDialog - Recipe View Feature", () => {
 
       expect(within(baseElement).getAllByText(/Bread/).length).toBeGreaterThan(0);
       expect(
-        within(baseElement).queryByRole("button", { name: "Bread" })
+        within(baseElement).queryByRole("link", { name: "Bread" })
       ).not.toBeInTheDocument();
     });
 
-    it("does not render recipe items as clickable in edit mode", () => {
+    it("does not render recipe items as links in edit mode", () => {
       const { baseElement } = render(<MealPlanViewDialog {...getDefaultProps()} editMode={true} />);
 
       expect(
-        within(baseElement).queryByRole("button", { name: "Test Pasta Recipe" })
+        within(baseElement).queryByRole("link", { name: "Test Pasta Recipe" })
       ).not.toBeInTheDocument();
     });
   });
 
-  describe("Opens recipe in new tab", () => {
-    it("opens recipes page in new tab when recipe item is clicked", async () => {
-      const user = userEvent.setup();
+  describe("Recipe link URLs", () => {
+    it("links to correct recipe URL for daily meal items", () => {
       const { baseElement } = render(<MealPlanViewDialog {...getDefaultProps()} />);
 
-      await user.click(
-        within(baseElement).getByRole("button", { name: "Test Pasta Recipe" })
-      );
-
-      expect(mockWindowOpen).toHaveBeenCalledWith(
-        "/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-123",
-        "_blank"
+      const recipeLink = within(baseElement).getByRole("link", {
+        name: "Test Pasta Recipe",
+      });
+      expect(recipeLink).toHaveAttribute(
+        "href",
+        "/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-123"
       );
     });
 
-    it("opens correct recipe for staples items", async () => {
+    it("links to correct recipe URL for staples items", () => {
       const mealPlan = makeMealPlan({
         items: [
           {
@@ -162,18 +160,16 @@ describe("MealPlanViewDialog - Recipe View Feature", () => {
         },
       });
 
-      const user = userEvent.setup();
       const { baseElement } = render(
         <MealPlanViewDialog {...getDefaultProps()} selectedMealPlan={mealPlan} />
       );
 
-      await user.click(
-        within(baseElement).getByRole("button", { name: "Weekly Granola" })
-      );
-
-      expect(mockWindowOpen).toHaveBeenCalledWith(
-        "/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-456",
-        "_blank"
+      const recipeLink = within(baseElement).getByRole("link", {
+        name: "Weekly Granola",
+      });
+      expect(recipeLink).toHaveAttribute(
+        "href",
+        "/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-456"
       );
     });
   });
