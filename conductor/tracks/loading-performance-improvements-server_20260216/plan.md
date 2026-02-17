@@ -176,10 +176,10 @@ Based on manual verification feedback:
   - [x] Add `itemCount` field to the response
   - [x] Verify tests pass
 
-- [ ] Task 6.2: Build on-demand food item autocomplete
-  - [ ] Write tests for an updated `FoodItemAutocomplete` that fetches from API on input (debounced) instead of receiving a pre-loaded list
-  - [ ] Update the component to use debounced server search
-  - [ ] Verify tests pass
+- [x] Task 6.2: Build on-demand food item autocomplete
+  - [x] Write tests for an updated `FoodItemAutocomplete` that fetches from API on input (debounced) instead of receiving a pre-loaded list
+  - [x] Update the component to use debounced server search
+  - [x] Verify tests pass
 
 - [ ] Task 6.3: Refactor shopping lists page for lazy loading
   - [ ] Write tests for the updated page: store cards show item counts, items load on open, autocomplete is on-demand

@@ -194,8 +194,12 @@ export function useFoodItemSelector(
               ? fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=20`)
               : Promise.resolve({ ok: false, json: async () => [] }),
           ]);
-          const foodItemsData = foodRes.ok ? await foodRes.json() : [];
-          const recipesData = recipeRes.ok ? await recipeRes.json() : [];
+          const foodItemsRaw = foodRes.ok ? await foodRes.json() : [];
+          const recipesRaw = recipeRes.ok ? await recipeRes.json() : [];
+
+          // Handle both paginated ({ data: [...] }) and plain array responses
+          const foodItemsData: FoodItem[] = Array.isArray(foodItemsRaw) ? foodItemsRaw : foodItemsRaw.data || [];
+          const recipesData: Recipe[] = Array.isArray(recipesRaw) ? recipesRaw : recipesRaw.data || [];
 
           // Filter out items that don't actually match
           const inputLower = input.toLowerCase();

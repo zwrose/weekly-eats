@@ -1,56 +1,16 @@
 /**
  * Tests for useFoodItemSelector hook
- * 
- * These tests document the expected behavior of food item selection logic.
- * The hook will be implemented in Phase 2 to match these behaviors.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Mock types - these will match the actual implementation
-interface FoodItem {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
-
-interface Recipe {
-  _id: string;
-  title: string;
-  emoji?: string;
-}
-
-type SearchOption = (FoodItem & { type: 'foodItem' }) | (Recipe & { type: 'recipe' });
-
-interface UseFoodItemSelectorOptions {
-  allowRecipes?: boolean;
-  excludeIds?: string[];
-  foodItems?: FoodItem[];
-  recipes?: Recipe[];
-  currentRecipeId?: string;
-  onFoodItemAdded?: (item: FoodItem) => Promise<void>;
-}
-
-interface UseFoodItemSelectorReturn {
-  inputValue: string;
-  options: SearchOption[];
-  selectedItem: SearchOption | null;
-  isLoading: boolean;
-  setInputValue: (value: string) => void;
-  handleSelect: (item: SearchOption | null) => void;
-  handleCreate: () => void;
-  handleKeyDown: (e: React.KeyboardEvent) => void;
-  isCreateDialogOpen: boolean;
-  prefillName: string;
-}
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useFoodItemSelector, type FoodItem, type Recipe } from '../use-food-item-selector';
 
 describe('useFoodItemSelector', () => {
   const mockFoodItems: FoodItem[] = [
-    { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece' },
-    { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'piece' },
-    { _id: 'f3', name: 'Carrot', singularName: 'Carrot', pluralName: 'Carrots', unit: 'piece' },
+    { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+    { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'each' },
+    { _id: 'f3', name: 'Carrot', singularName: 'Carrot', pluralName: 'Carrots', unit: 'each' },
   ];
 
   const mockRecipes: Recipe[] = [
@@ -58,99 +18,234 @@ describe('useFoodItemSelector', () => {
     { _id: 'r2', title: 'Banana Bread', emoji: '🍞' },
   ];
 
-  describe('filtering options based on input', () => {
-    it('should filter food items by name, singularName, and pluralName', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Typing "app" should match "Apple" and "Apples"
-      // Expected: Typing "ban" should match "Banana" and "Bananas"
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  describe('local filtering with provided food items', () => {
+    it('filters food items by name match', async () => {
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          foodItems: mockFoodItems,
+          recipes: [],
+          allowRecipes: false,
+          autoLoad: false,
+        })
+      );
+
+      await act(async () => {
+        result.current.handleInputChange('app', 'input');
+        vi.advanceTimersByTime(800);
+      });
+
+      expect(result.current.options.length).toBeGreaterThan(0);
+      expect(result.current.options.some(o => o._id === 'f1')).toBe(true); // Apple matches
+      expect(result.current.options.some(o => o._id === 'f2')).toBe(false); // Banana doesn't match
     });
 
-    it('should filter recipes by title', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Typing "pie" should match "Apple Pie"
-    });
+    it('excludes IDs in excludeIds', async () => {
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          foodItems: mockFoodItems,
+          recipes: [],
+          allowRecipes: false,
+          autoLoad: false,
+          excludeIds: ['f1'],
+        })
+      );
 
-    it('should be case-insensitive', () => {
-      // TODO: Implement test when hook is created
-      // Expected: "APPLE" should match "Apple"
-    });
+      await act(async () => {
+        result.current.handleInputChange('a', 'input');
+        vi.advanceTimersByTime(800);
+      });
 
-    it('should return empty array when no matches found', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Typing "zzz" should return []
+      expect(result.current.options.some(o => o._id === 'f1')).toBe(false); // excluded
     });
   });
 
-  describe('excluding selected IDs from options', () => {
-    it('should exclude food items with IDs in excludeIds', () => {
-      // TODO: Implement test when hook is created
-      // Expected: If excludeIds=['f1'], "Apple" should not appear in options
+  describe('API search when no food items provided', () => {
+    it('handles paginated API response format correctly', async () => {
+      // Mock fetch to return paginated response format
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+            ],
+            total: 1,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => [],
+        });
+
+      global.fetch = mockFetch;
+
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          // No foodItems prop → triggers API search path
+          allowRecipes: false,
+          autoLoad: false,
+        })
+      );
+
+      await act(async () => {
+        result.current.handleInputChange('apple', 'input');
+        vi.advanceTimersByTime(800);
+      });
+
+      // Wait for async fetch to complete
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/food-items?query=apple')
+      );
+      expect(result.current.options.length).toBe(1);
+      expect(result.current.options[0]._id).toBe('f1');
     });
 
-    it('should exclude recipes with IDs in excludeIds', () => {
-      // TODO: Implement test when hook is created
-      // Expected: If excludeIds=['r1'], "Apple Pie" should not appear in options
+    it('handles plain array API response format (backward compat)', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'each' },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => [],
+        });
+
+      global.fetch = mockFetch;
+
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          allowRecipes: false,
+          autoLoad: false,
+        })
+      );
+
+      await act(async () => {
+        result.current.handleInputChange('banana', 'input');
+        vi.advanceTimersByTime(800);
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(result.current.options.length).toBe(1);
+      expect(result.current.options[0]._id).toBe('f2');
     });
 
-    it('should exclude current recipe from options when currentRecipeId is set', () => {
-      // TODO: Implement test when hook is created
-      // Expected: If currentRecipeId='r1', "Apple Pie" should not appear in options
+    it('handles API search with recipes enabled', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+            ],
+            total: 1,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { _id: 'r1', title: 'Apple Pie', emoji: '🥧' },
+            ],
+            total: 1,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+          }),
+        });
+
+      global.fetch = mockFetch;
+
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          allowRecipes: true,
+          autoLoad: false,
+        })
+      );
+
+      await act(async () => {
+        result.current.handleInputChange('apple', 'input');
+        vi.advanceTimersByTime(800);
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(result.current.options.length).toBe(2);
+      expect(result.current.options.some(o => o._id === 'f1' && o.type === 'foodItem')).toBe(true);
+      expect(result.current.options.some(o => o._id === 'r1' && o.type === 'recipe')).toBe(true);
+    });
+
+    it('returns empty results when API fails', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({ ok: false, json: async () => [] })
+        .mockResolvedValueOnce({ ok: false, json: async () => [] });
+
+      global.fetch = mockFetch;
+
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          allowRecipes: false,
+          autoLoad: false,
+        })
+      );
+
+      await act(async () => {
+        result.current.handleInputChange('xyz', 'input');
+        vi.advanceTimersByTime(800);
+      });
+
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(result.current.options.length).toBe(0);
     });
   });
 
-  describe('Enter key handling', () => {
-    it('should open create dialog when Enter pressed with no matching options', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Type "zzz", press Enter -> isCreateDialogOpen = true, prefillName = "zzz"
-    });
+  describe('selection behavior', () => {
+    it('clears input and options on selection', () => {
+      const { result } = renderHook(() =>
+        useFoodItemSelector({
+          foodItems: mockFoodItems,
+          allowRecipes: false,
+          autoLoad: false,
+        })
+      );
 
-    it('should select first option when Enter pressed with matching options', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Type "app", press Enter -> selectedItem = first matching option
-    });
+      const item = { ...mockFoodItems[0], type: 'foodItem' as const };
+      act(() => {
+        result.current.handleSelect(item);
+      });
 
-    it('should do nothing when Enter pressed with empty input', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Press Enter with empty input -> no action
-    });
-  });
-
-  describe('dialog prefill', () => {
-    it('should prefill dialog with current input value', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Type "New Item", open dialog -> prefillName = "New Item"
-    });
-
-    it('should trim whitespace from prefill name', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Type "  New Item  ", open dialog -> prefillName = "New Item"
-    });
-  });
-
-  describe('recipe support', () => {
-    it('should include recipes in options when allowRecipes=true', () => {
-      // TODO: Implement test when hook is created
-      // Expected: With allowRecipes=true, recipes appear in options
-    });
-
-    it('should exclude recipes when allowRecipes=false', () => {
-      // TODO: Implement test when hook is created
-      // Expected: With allowRecipes=false, only food items appear in options
-    });
-  });
-
-  describe('loading state', () => {
-    it('should set isLoading=true during search', () => {
-      // TODO: Implement test when hook is created
-      // Expected: When typing, isLoading becomes true, then false when results arrive
-    });
-  });
-
-  describe('debouncing', () => {
-    it('should debounce search requests', () => {
-      // TODO: Implement test when hook is created
-      // Expected: Rapid typing should only trigger search after debounce delay (750ms)
+      expect(result.current.selectedItem).toBe(item);
+      expect(result.current.inputValue).toBe('');
+      expect(result.current.options).toEqual([]);
     });
   });
 });
-
