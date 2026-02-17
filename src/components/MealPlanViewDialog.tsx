@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -22,10 +24,16 @@ import {
   MealPlanItem,
   MealItem,
 } from "@/types/meal-plan";
+import { Recipe } from "@/types/recipe";
+import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 import { getUnitForm } from "@/lib/food-items-utils";
+import { fetchRecipe } from "@/lib/recipe-utils";
+import { fetchRecipeUserData } from "@/lib/recipe-user-data-utils";
 import { responsiveDialogStyle } from "@/lib/theme";
 import { DialogTitle } from "@/components/ui";
 import MealEditor from "@/components/MealEditor";
+
+const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
 
 export interface MealPlanViewDialogProps {
   open: boolean;
@@ -74,6 +82,8 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
   getMealTypeName,
   validateMealPlan,
 }) => {
+  const router = useRouter();
+
   const handleSaveClick = () => {
     if (mealPlanValidationErrors.length > 0) {
       onShowValidationErrors(true);
@@ -92,6 +102,36 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
       onValidationUpdate(validation.errors, validation.isValid);
     }
   };
+
+  // Recipe viewing state
+  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
+  const handleRecipeClick = useCallback(async (recipeId: string) => {
+    try {
+      const [recipe, userData] = await Promise.all([
+        fetchRecipe(recipeId),
+        fetchRecipeUserData(recipeId).catch(() => null),
+      ]);
+      setSelectedRecipe(recipe);
+      setRecipeUserData(userData);
+      setRecipeDialogOpen(true);
+    } catch (error) {
+      console.error("Error loading recipe details:", error);
+    }
+  }, []);
+
+  const handleRecipeDialogClose = useCallback(() => {
+    setRecipeDialogOpen(false);
+    setSelectedRecipe(null);
+    setRecipeUserData(null);
+  }, []);
+
+  const handleNavigateToRecipe = useCallback((recipeId: string) => {
+    handleRecipeDialogClose();
+    onClose();
+    router.push(`/recipes?viewRecipe=${recipeId}&editMode=true`);
+  }, [handleRecipeDialogClose, onClose, router]);
 
   return (
     <Dialog
@@ -610,6 +650,48 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     )}
                                 </Box>
                               );
+                            } else if (staple.type === "recipe") {
+                              return (
+                                <Typography
+                                  key={index}
+                                  variant="body2"
+                                  sx={{ mb: 0.5 }}
+                                >
+                                  &bull;{" "}
+                                  <Box
+                                    component="span"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleRecipeClick(staple.id)}
+                                    onKeyDown={(e: React.KeyboardEvent) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        handleRecipeClick(staple.id);
+                                      }
+                                    }}
+                                    sx={{
+                                      color: "primary.main",
+                                      cursor: "pointer",
+                                      textDecoration: "underline",
+                                      textDecorationColor: "transparent",
+                                      transition: "text-decoration-color 0.2s",
+                                      "&:hover": {
+                                        textDecorationColor: "currentcolor",
+                                      },
+                                    }}
+                                  >
+                                    {staple.name}
+                                  </Box>
+                                  {staple.quantity && (
+                                    <span
+                                      style={{ color: "text.secondary" }}
+                                    >
+                                      {" "}
+                                      ({staple.quantity}x)
+                                    </span>
+                                  )}
+                                </Typography>
+                              );
                             } else {
                               return (
                                 <Typography
@@ -631,15 +713,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                           staple.quantity
                                         )}
                                         )
-                                      </span>
-                                    )}
-                                  {staple.type === "recipe" &&
-                                    staple.quantity && (
-                                      <span
-                                        style={{ color: "text.secondary" }}
-                                      >
-                                        {" "}
-                                        ({staple.quantity}x)
                                       </span>
                                     )}
                                 </Typography>
@@ -818,6 +891,51 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                     )}
                                                 </Box>
                                               );
+                                            } else if (mealItem.type === "recipe") {
+                                              return (
+                                                <Typography
+                                                  key={mealIndex}
+                                                  variant="body2"
+                                                  sx={{ mb: 0.5 }}
+                                                >
+                                                  &bull;{" "}
+                                                  <Box
+                                                    component="span"
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => handleRecipeClick(mealItem.id)}
+                                                    onKeyDown={(e: React.KeyboardEvent) => {
+                                                      if (e.key === "Enter" || e.key === " ") {
+                                                        e.preventDefault();
+                                                        handleRecipeClick(mealItem.id);
+                                                      }
+                                                    }}
+                                                    sx={{
+                                                      color: "primary.main",
+                                                      cursor: "pointer",
+                                                      textDecoration: "underline",
+                                                      textDecorationColor: "transparent",
+                                                      transition: "text-decoration-color 0.2s",
+                                                      "&:hover": {
+                                                        textDecorationColor: "currentcolor",
+                                                      },
+                                                    }}
+                                                  >
+                                                    {mealItem.name}
+                                                  </Box>
+                                                  {mealItem.quantity && (
+                                                    <span
+                                                      style={{
+                                                        color:
+                                                          "text.secondary",
+                                                      }}
+                                                    >
+                                                      {" "}
+                                                      ({mealItem.quantity}x)
+                                                    </span>
+                                                  )}
+                                                </Typography>
+                                              );
                                             } else {
                                               return (
                                                 <Typography
@@ -843,19 +961,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                           mealItem.quantity
                                                         )}
                                                         )
-                                                      </span>
-                                                    )}
-                                                  {mealItem.type ===
-                                                    "recipe" &&
-                                                    mealItem.quantity && (
-                                                      <span
-                                                        style={{
-                                                          color:
-                                                            "text.secondary",
-                                                        }}
-                                                      >
-                                                        {" "}
-                                                        ({mealItem.quantity}x)
                                                       </span>
                                                     )}
                                                 </Typography>
@@ -954,6 +1059,32 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
           </Box>
         )}
       </DialogContent>
+
+      {/* Recipe View Dialog - layered on top of meal plan dialog */}
+      <RecipeViewDialog
+        open={recipeDialogOpen}
+        onClose={handleRecipeDialogClose}
+        selectedRecipe={selectedRecipe}
+        editMode={false}
+        editingRecipe={{}}
+        onEditingRecipeChange={() => {}}
+        canEditRecipe={() => false}
+        onEditRecipe={() => {}}
+        onUpdateRecipe={() => {}}
+        onDeleteConfirm={() => {}}
+        onCancelEdit={() => {}}
+        onEmojiPickerOpen={() => {}}
+        recipeUserData={recipeUserData}
+        onTagsChange={() => {}}
+        onRatingChange={() => {}}
+        onIngredientsChange={() => {}}
+        foodItemsList={[]}
+        onFoodItemAdded={async () => {}}
+        hasValidIngredients={() => true}
+        getIngredientName={(ingredient) => (ingredient as { name?: string }).name || "Unknown"}
+        onNavigateToRecipe={handleNavigateToRecipe}
+      />
+
     </Dialog>
   );
 };

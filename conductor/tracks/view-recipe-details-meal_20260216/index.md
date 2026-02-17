@@ -3,7 +3,7 @@
 - **ID:** view-recipe-details-meal_20260216
 - **Type:** feature
 - **Branch:** feature/view-recipe-from-mealplan
-- **Status:** planned
+- **Status:** implemented
 - **Created:** 2026-02-16
 
 ## Summary

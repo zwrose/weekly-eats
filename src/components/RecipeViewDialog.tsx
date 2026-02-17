@@ -18,6 +18,7 @@ import {
   Public,
   Person,
   Delete,
+  OpenInNew,
 } from "@mui/icons-material";
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
 import { getUnitForm } from "@/lib/food-items-utils";
@@ -59,6 +60,7 @@ export interface RecipeViewDialogProps {
   onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
   getIngredientName: (ingredient: { type: "foodItem" | "recipe"; id: string; quantity: number }) => string;
+  onNavigateToRecipe?: (recipeId: string) => void;
 }
 
 const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
@@ -82,6 +84,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   onFoodItemAdded,
   hasValidIngredients,
   getIngredientName,
+  onNavigateToRecipe,
 }) => {
   return (
     <Dialog
@@ -400,6 +403,20 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                 </Box>
               </Box>
             </Box>
+            {onNavigateToRecipe && selectedRecipe?._id && (
+              <>
+                <Divider sx={{ my: 3 }} />
+                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                  <Button
+                    onClick={() => onNavigateToRecipe(selectedRecipe._id!)}
+                    startIcon={<OpenInNew />}
+                    size="small"
+                  >
+                    Edit in Recipes
+                  </Button>
+                </Box>
+              </>
+            )}
           </Box>
         )}
       </DialogContent>

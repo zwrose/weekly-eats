@@ -3,6 +3,13 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SessionProvider } from 'next-auth/react';
 
+// Mock next/navigation (needed by MealPlanViewDialog for recipe navigation)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/meal-plans',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // Mock next-auth
 vi.mock('next-auth/react', async () => {
   const actual = await vi.importActual('next-auth/react');
@@ -45,6 +52,25 @@ vi.mock('../../../lib/meal-plan-utils', () => ({
     startDate: '2024-01-06',
     skipped: false
   }))
+}));
+
+// Mock recipe utilities (used by MealPlanViewDialog for recipe viewing)
+vi.mock('../../../lib/recipe-utils', () => ({
+  fetchRecipe: vi.fn().mockResolvedValue({ _id: 'r1', title: 'Mock Recipe', ingredients: [], instructions: '' }),
+  fetchRecipes: vi.fn().mockResolvedValue([]),
+  fetchUserRecipes: vi.fn().mockResolvedValue([]),
+  fetchGlobalRecipes: vi.fn().mockResolvedValue([]),
+  createRecipe: vi.fn(),
+  updateRecipe: vi.fn(),
+  deleteRecipe: vi.fn(),
+}));
+vi.mock('../../../lib/recipe-user-data-utils', () => ({
+  fetchRecipeUserData: vi.fn().mockResolvedValue({ tags: [], rating: undefined }),
+  fetchRecipeUserDataBatch: vi.fn().mockResolvedValue(new Map()),
+  updateRecipeTags: vi.fn(),
+  updateRecipeRating: vi.fn(),
+  deleteRecipeRating: vi.fn(),
+  fetchUserTags: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock meal plan sharing utilities

@@ -22,14 +22,14 @@ Add the ability to open a recipe's full detail view directly from the meal plan 
 
 ## Acceptance Criteria
 
-- [ ] Recipe-type meal items in meal plan view mode are visually distinct (link styling, cursor pointer).
-- [ ] Clicking a recipe item opens `RecipeViewDialog` with the correct recipe loaded.
-- [ ] User can view ingredients, instructions, tags, and ratings.
-- [ ] RecipeViewDialog is read-only — no edit or delete buttons visible.
-- [ ] An "Edit in Recipes" link/button navigates to the recipes page for full editing.
-- [ ] Closing the recipe dialog returns to the meal plan view dialog (meal plan remains open).
-- [ ] Non-recipe meal items (food items, ingredient groups) are not clickable.
-- [ ] Edit mode of the meal plan does not show clickable recipes.
+- [x] Recipe-type meal items in meal plan view mode are visually distinct (link styling, cursor pointer).
+- [x] Clicking a recipe item opens `RecipeViewDialog` with the correct recipe loaded.
+- [x] User can view ingredients, instructions, tags, and ratings.
+- [x] RecipeViewDialog is read-only — no edit or delete buttons visible.
+- [x] An "Edit in Recipes" link/button navigates to the recipes page for full editing.
+- [x] Closing the recipe dialog returns to the meal plan view dialog (meal plan remains open).
+- [x] Non-recipe meal items (food items, ingredient groups) are not clickable.
+- [x] Edit mode of the meal plan does not show clickable recipes.
 
 ## Out of Scope
 
