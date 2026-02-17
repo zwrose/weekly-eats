@@ -126,7 +126,7 @@ Based on manual verification feedback:
 
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Meal Plans — Year/Month Browsing [x]
+## Phase 4: Meal Plans — Year/Month Browsing [x] [checkpoint: 428b88c]
 
 ### API Changes
 
@@ -153,20 +153,20 @@ Based on manual verification feedback:
 
 - [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
-## Phase 5: Pantry — Server-Side Search & Pagination [ ]
+## Phase 5: Pantry — Server-Side Search & Pagination [x]
 
-- [ ] Task 5.1: Update pantry API for server-side search and pagination
-  - [ ] Write tests for `GET /api/pantry` with params: `page`, `limit`, `query`
-  - [ ] Move search filtering from in-memory to MongoDB query (regex on joined food item names)
-  - [ ] Return paginated results with total count
-  - [ ] Verify tests pass
+- [x] Task 5.1: Update pantry API for server-side search and pagination [892fbf3]
+  - [x] Write tests for `GET /api/pantry` with params: `page`, `limit`, `query`
+  - [x] Move search filtering from in-memory to MongoDB query (regex on joined food item names)
+  - [x] Return paginated results with total count
+  - [x] Verify tests pass
 
-- [ ] Task 5.2: Update pantry page for server-side pagination
-  - [ ] Write tests for the updated pantry page using server-paginated data and debounced search
-  - [ ] Refactor `src/app/pantry/page.tsx` to use `useServerPagination`
-  - [ ] Verify tests pass
+- [x] Task 5.2: Update pantry page for server-side pagination [2cf7c7f]
+  - [x] Write tests for the updated pantry page using server-paginated data and debounced search
+  - [x] Refactor `src/app/pantry/page.tsx` to use `useServerPagination`
+  - [x] Verify tests pass
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
 ## Phase 6: Shopping Lists — Lazy Loading [ ]
 
