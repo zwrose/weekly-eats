@@ -102,7 +102,7 @@ describe('GET /api/recipes', () => {
     expect(res.status).toBe(200);
     expect(json.total).toBe(2);
     expect(json.page).toBe(1);
-    expect(json.limit).toBe(25);
+    expect(json.limit).toBe(10);
     expect(json.totalPages).toBe(1);
     expect(json.data).toHaveLength(2);
   });
@@ -120,9 +120,9 @@ describe('GET /api/recipes', () => {
     const res = await routes.GET(makeReq('http://localhost/api/recipes'));
     const json = await res.json();
 
-    expect(json.data[0].accessLevel).toBe('personal');
+    expect(json.data[0].accessLevel).toBe('private');
     expect(json.data[1].accessLevel).toBe('shared-by-you');
-    expect(json.data[2].accessLevel).toBe('global');
+    expect(json.data[2].accessLevel).toBe('shared-by-others');
   });
 
   it('accepts page and limit params', async () => {
@@ -165,13 +165,13 @@ describe('GET /api/recipes', () => {
     expect(filterStr).toContain('pizza');
   });
 
-  it('filters by accessLevel=personal', async () => {
+  it('filters by accessLevel=private', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
     await routes.GET(
-      makeReq('http://localhost/api/recipes?accessLevel=personal')
+      makeReq('http://localhost/api/recipes?accessLevel=private')
     );
 
     const filter = findMock.mock.calls[0][0];
@@ -197,13 +197,13 @@ describe('GET /api/recipes', () => {
     expect(filterStr).toContain('true');
   });
 
-  it('filters by accessLevel=global', async () => {
+  it('filters by accessLevel=shared-by-others', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
     await routes.GET(
-      makeReq('http://localhost/api/recipes?accessLevel=global')
+      makeReq('http://localhost/api/recipes?accessLevel=shared-by-others')
     );
 
     const filter = findMock.mock.calls[0][0];
@@ -238,17 +238,17 @@ describe('GET /api/recipes', () => {
 
     expect(aggregateMock).toHaveBeenCalled();
     expect(json.data).toHaveLength(1);
-    expect(json.data[0].accessLevel).toBe('personal');
+    expect(json.data[0].accessLevel).toBe('private');
   });
 
-  it('uses aggregation pipeline when minRating param is provided', async () => {
+  it('uses aggregation pipeline when ratings param is provided', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
       { total: 1, data: [{ _id: 'r1', title: 'Rated', createdBy: 'user1', isGlobal: true, userData: { tags: [], rating: 5 } }] },
     ]);
 
     const res = await routes.GET(
-      makeReq('http://localhost/api/recipes?minRating=4')
+      makeReq('http://localhost/api/recipes?ratings=4,5')
     );
     const json = await res.json();
 
@@ -272,14 +272,14 @@ describe('GET /api/recipes', () => {
     expect(pipelineStr).toContain('quick');
   });
 
-  it('combines tags, minRating, and accessLevel filters', async () => {
+  it('combines tags, ratings, and accessLevel filters', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
       { total: 0, data: [] },
     ]);
 
     await routes.GET(
-      makeReq('http://localhost/api/recipes?tags=dinner&minRating=3&accessLevel=personal')
+      makeReq('http://localhost/api/recipes?tags=dinner&ratings=3,4&accessLevel=private')
     );
 
     expect(aggregateMock).toHaveBeenCalled();

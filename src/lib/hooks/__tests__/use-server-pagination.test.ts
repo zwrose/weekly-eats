@@ -11,7 +11,7 @@ describe('useServerPagination', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
     });
   });
@@ -21,7 +21,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1', name: 'Test' }],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -40,7 +40,7 @@ describe('useServerPagination', () => {
     expect(result.current.totalPages).toBe(1);
     expect(mockFetchFn).toHaveBeenCalledWith({
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
     });
@@ -51,7 +51,7 @@ describe('useServerPagination', () => {
       data: Array.from({ length: 25 }, (_, i) => ({ _id: String(i) })),
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -64,7 +64,7 @@ describe('useServerPagination', () => {
     });
 
     expect(result.current.page).toBe(1);
-    expect(result.current.limit).toBe(25);
+    expect(result.current.limit).toBe(10);
     expect(result.current.total).toBe(50);
     expect(result.current.totalPages).toBe(2);
   });
@@ -74,7 +74,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }],
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -90,7 +90,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '26' }],
       total: 50,
       page: 2,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -105,7 +105,7 @@ describe('useServerPagination', () => {
 
     expect(mockFetchFn).toHaveBeenCalledWith({
       page: 2,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
     });
@@ -116,7 +116,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }],
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -150,7 +150,7 @@ describe('useServerPagination', () => {
 
     expect(mockFetchFn).toHaveBeenCalledWith({
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'title',
       sortOrder: 'asc',
     });
@@ -201,7 +201,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -219,7 +219,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }, { _id: '2' }],
       total: 2,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -236,7 +236,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -256,7 +256,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '2' }],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -274,7 +274,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '1' }],
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -293,7 +293,7 @@ describe('useServerPagination', () => {
       data: [{ _id: '26' }],
       total: 50,
       page: 2,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
     });
 
@@ -310,7 +310,7 @@ describe('useServerPagination', () => {
       data: [{ _id: 'filtered' }],
       total: 5,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
     });
 
@@ -337,7 +337,7 @@ describe('useServerPagination', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
     });
 

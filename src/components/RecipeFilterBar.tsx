@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   TextField,
@@ -10,45 +10,31 @@ import {
   MenuItem,
   Chip,
   OutlinedInput,
-  Rating,
+  IconButton,
+  Drawer,
+  Typography,
+  Button,
+  Divider,
 } from '@mui/material';
+import { FilterList, Close } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material';
 
-export type AccessLevelFilter = 'all' | 'personal' | 'shared-by-you' | 'global';
 export type SortOrder = 'asc' | 'desc';
 
 interface RecipeFilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  accessLevel: AccessLevelFilter;
-  onAccessLevelChange: (value: AccessLevelFilter) => void;
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;
   availableTags: string[];
-  minRating: number | null;
-  onMinRatingChange: (rating: number | null) => void;
+  selectedRatings: number[];
+  onRatingsChange: (ratings: number[]) => void;
   sortBy: string;
   sortOrder: SortOrder;
   onSortChange: (sortBy: string, sortOrder: SortOrder) => void;
 }
 
-const containerSx = {
-  display: 'flex',
-  flexDirection: { xs: 'column', md: 'row' },
-  gap: 2,
-  mb: 3,
-  flexWrap: 'wrap',
-  alignItems: { md: 'center' },
-} as const;
-
-const searchSx = {
-  flex: { md: '1 1 200px' },
-  minWidth: 200,
-} as const;
-
-const selectSx = {
-  minWidth: 140,
-} as const;
+const ratingOptions = [1, 2, 3, 4, 5];
 
 const sortCombinedValues: Record<string, { sortBy: string; sortOrder: SortOrder }> = {
   'updatedAt-desc': { sortBy: 'updatedAt', sortOrder: 'desc' },
@@ -58,27 +44,58 @@ const sortCombinedValues: Record<string, { sortBy: string; sortOrder: SortOrder 
   'rating-desc': { sortBy: 'rating', sortOrder: 'desc' },
 };
 
+const desktopContainerSx = {
+  display: { xs: 'none', md: 'flex' },
+  gap: 2,
+  mb: 3,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+} as const;
+
+const mobileContainerSx = {
+  display: { xs: 'flex', md: 'none' },
+  gap: 1,
+  mb: 2,
+  alignItems: 'center',
+} as const;
+
+const filterDrawerSx = {
+  '& .MuiDrawer-paper': {
+    width: '85%',
+    maxWidth: 360,
+    p: 3,
+  },
+} as const;
+
 const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
   searchTerm,
   onSearchChange,
-  accessLevel,
-  onAccessLevelChange,
   selectedTags,
   onTagsChange,
   availableTags,
-  minRating,
-  onMinRatingChange,
+  selectedRatings,
+  onRatingsChange,
   sortBy,
   sortOrder,
   onSortChange,
 }) => {
-  const handleAccessLevelChange = (e: SelectChangeEvent) => {
-    onAccessLevelChange(e.target.value as AccessLevelFilter);
-  };
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleTagsChange = (e: SelectChangeEvent<string[]>) => {
     const value = e.target.value;
     onTagsChange(typeof value === 'string' ? value.split(',') : value);
+  };
+
+  const handleDeleteTag = (tagToDelete: string) => {
+    onTagsChange(selectedTags.filter(t => t !== tagToDelete));
+  };
+
+  const toggleRating = (rating: number) => {
+    if (selectedRatings.includes(rating)) {
+      onRatingsChange(selectedRatings.filter(r => r !== rating));
+    } else {
+      onRatingsChange([...selectedRatings, rating].sort());
+    }
   };
 
   const handleSortChange = (e: SelectChangeEvent) => {
@@ -89,34 +106,12 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
   };
 
   const currentSortValue = `${sortBy}-${sortOrder}`;
+  const activeFilterCount = selectedTags.length + selectedRatings.length;
 
-  return (
-    <Box sx={containerSx}>
-      <TextField
-        sx={searchSx}
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search recipes..."
-        size="small"
-        autoComplete="off"
-      />
-
-      <FormControl size="small" sx={selectSx}>
-        <InputLabel id="access-level-label">Access Level</InputLabel>
-        <Select
-          labelId="access-level-label"
-          label="Access Level"
-          value={accessLevel}
-          onChange={handleAccessLevelChange}
-        >
-          <MenuItem value="all">All</MenuItem>
-          <MenuItem value="personal">Personal</MenuItem>
-          <MenuItem value="shared-by-you">Shared by You</MenuItem>
-          <MenuItem value="global">Global</MenuItem>
-        </Select>
-      </FormControl>
-
-      <FormControl size="small" sx={{ minWidth: 160 }}>
+  // Shared filter controls used in both desktop and mobile drawer
+  const filterControls = (
+    <>
+      <FormControl size="small" fullWidth sx={{ mb: 2 }}>
         <InputLabel id="tags-label">Tags</InputLabel>
         <Select
           labelId="tags-label"
@@ -128,7 +123,13 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((tag) => (
-                <Chip key={tag} label={tag} size="small" />
+                <Chip
+                  key={tag}
+                  label={tag}
+                  size="small"
+                  onDelete={() => handleDeleteTag(tag)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
               ))}
             </Box>
           )}
@@ -141,34 +142,151 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
         </Select>
       </FormControl>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box component="label" sx={{ fontSize: '0.875rem', whiteSpace: 'nowrap', color: 'text.secondary' }}>
-          Min Rating
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Rating
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          {ratingOptions.map((r) => (
+            <Chip
+              key={r}
+              label={`${'★'.repeat(r)}`}
+              size="small"
+              color={selectedRatings.includes(r) ? 'primary' : 'default'}
+              variant={selectedRatings.includes(r) ? 'filled' : 'outlined'}
+              onClick={() => toggleRating(r)}
+              onDelete={selectedRatings.includes(r) ? () => toggleRating(r) : undefined}
+            />
+          ))}
         </Box>
-        <Rating
-          aria-label="Min Rating"
-          value={minRating}
-          onChange={(_, newValue) => onMinRatingChange(newValue)}
+      </Box>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop layout */}
+      <Box sx={desktopContainerSx}>
+        <TextField
+          sx={{ flex: '1 1 200px', minWidth: 200 }}
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search recipes..."
           size="small"
+          autoComplete="off"
         />
+
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="tags-label-desktop">Tags</InputLabel>
+          <Select
+            labelId="tags-label-desktop"
+            label="Tags"
+            multiple
+            value={selectedTags}
+            onChange={handleTagsChange}
+            input={<OutlinedInput label="Tags" />}
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {selected.map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    onDelete={() => handleDeleteTag(tag)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                ))}
+              </Box>
+            )}
+          >
+            {availableTags.map((tag) => (
+              <MenuItem key={tag} value={tag}>
+                {tag}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5, whiteSpace: 'nowrap' }}>
+            Rating:
+          </Typography>
+          {ratingOptions.map((r) => (
+            <Chip
+              key={r}
+              label={`${'★'.repeat(r)}`}
+              size="small"
+              color={selectedRatings.includes(r) ? 'primary' : 'default'}
+              variant={selectedRatings.includes(r) ? 'filled' : 'outlined'}
+              onClick={() => toggleRating(r)}
+              onDelete={selectedRatings.includes(r) ? () => toggleRating(r) : undefined}
+            />
+          ))}
+        </Box>
       </Box>
 
-      <FormControl size="small" sx={selectSx}>
-        <InputLabel id="sort-label">Sort By</InputLabel>
-        <Select
-          labelId="sort-label"
-          label="Sort By"
-          value={currentSortValue}
-          onChange={handleSortChange}
+      {/* Mobile layout: search + filter button */}
+      <Box sx={mobileContainerSx}>
+        <TextField
+          sx={{ flex: 1 }}
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search recipes..."
+          size="small"
+          autoComplete="off"
+        />
+        <IconButton
+          onClick={() => setDrawerOpen(true)}
+          color={activeFilterCount > 0 ? 'primary' : 'default'}
+          aria-label="Open filters"
         >
-          <MenuItem value="updatedAt-desc">Newest First</MenuItem>
-          <MenuItem value="updatedAt-asc">Oldest First</MenuItem>
-          <MenuItem value="title-asc">Title A-Z</MenuItem>
-          <MenuItem value="title-desc">Title Z-A</MenuItem>
-          <MenuItem value="rating-desc">Highest Rated</MenuItem>
-        </Select>
-      </FormControl>
-    </Box>
+          <FilterList />
+        </IconButton>
+      </Box>
+
+      {/* Mobile filter drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={filterDrawerSx}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Filters</Typography>
+          <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close filters">
+            <Close />
+          </IconButton>
+        </Box>
+        <Divider sx={{ mb: 2 }} />
+
+        {filterControls}
+
+        <Divider sx={{ mb: 2 }} />
+        <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="sort-label-mobile">Sort By</InputLabel>
+          <Select
+            labelId="sort-label-mobile"
+            label="Sort By"
+            value={currentSortValue}
+            onChange={handleSortChange}
+          >
+            <MenuItem value="updatedAt-desc">Newest First</MenuItem>
+            <MenuItem value="updatedAt-asc">Oldest First</MenuItem>
+            <MenuItem value="title-asc">Title A-Z</MenuItem>
+            <MenuItem value="title-desc">Title Z-A</MenuItem>
+            <MenuItem value="rating-desc">Highest Rated</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={() => setDrawerOpen(false)}
+        >
+          Apply Filters
+        </Button>
+      </Drawer>
+    </>
   );
 });
 

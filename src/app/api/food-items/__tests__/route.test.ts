@@ -85,7 +85,7 @@ beforeEach(() => {
   // Default pagination params
   mockParsePaginationParams.mockReturnValue({
     page: 1,
-    limit: 25,
+    limit: 10,
     sortBy: 'name',
     sortOrder: 1,
   });
@@ -109,7 +109,7 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
@@ -162,7 +162,7 @@ describe('api/food-items route', () => {
         ],
         total: 3,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
@@ -177,12 +177,12 @@ describe('api/food-items route', () => {
       ]);
 
       // Verify accessLevel annotation
-      expect(json.data[0].accessLevel).toBe('personal');
-      expect(json.data[1].accessLevel).toBe('global');
+      expect(json.data[0].accessLevel).toBe('private');
+      expect(json.data[1].accessLevel).toBe('shared-by-others');
       expect(json.data[2].accessLevel).toBe('shared-by-you');
     });
 
-    it('filters by accessLevel=personal', async () => {
+    it('filters by accessLevel=private', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [
@@ -190,22 +190,22 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
       const res = await routes.GET(
-        makeRequest('http://localhost/api/food-items?accessLevel=personal')
+        makeRequest('http://localhost/api/food-items?accessLevel=private')
       );
       const json = await res.json();
 
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
       expect(filterArg.createdBy).toBe('u1');
       expect(filterArg.isGlobal).toEqual({ $ne: true });
-      expect(json.data[0].accessLevel).toBe('personal');
+      expect(json.data[0].accessLevel).toBe('private');
     });
 
-    it('filters by accessLevel=global', async () => {
+    it('filters by accessLevel=shared-by-others', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [
@@ -213,19 +213,19 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
       const res = await routes.GET(
-        makeRequest('http://localhost/api/food-items?accessLevel=global')
+        makeRequest('http://localhost/api/food-items?accessLevel=shared-by-others')
       );
       const json = await res.json();
 
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
       expect(filterArg.isGlobal).toBe(true);
       expect(filterArg.createdBy).toEqual({ $ne: 'u1' });
-      expect(json.data[0].accessLevel).toBe('global');
+      expect(json.data[0].accessLevel).toBe('shared-by-others');
     });
 
     it('filters by accessLevel=shared-by-you', async () => {
@@ -236,7 +236,7 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
@@ -261,7 +261,7 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
@@ -284,7 +284,7 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 
@@ -305,7 +305,7 @@ describe('api/food-items route', () => {
         ],
         total: 1,
         page: 1,
-        limit: 25,
+        limit: 10,
         totalPages: 1,
       });
 

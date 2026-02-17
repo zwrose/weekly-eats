@@ -24,7 +24,7 @@ vi.mock('@/lib/hooks/use-server-pagination', () => ({
     data: [],
     total: 0,
     page: 1,
-    limit: 25,
+    limit: 10,
     totalPages: 0,
     sortBy: 'updatedAt',
     sortOrder: 'desc',
@@ -229,7 +229,7 @@ const mockRecipe = {
   createdBy: 'user-123',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
-  accessLevel: 'personal' as const,
+  accessLevel: 'private' as const,
 };
 
 const globalRecipe = {
@@ -238,7 +238,7 @@ const globalRecipe = {
   title: 'Global Recipe',
   isGlobal: true,
   createdBy: 'other-user-456',
-  accessLevel: 'global' as const,
+  accessLevel: 'shared-by-others' as const,
 };
 
 const sharedRecipe = {
@@ -260,7 +260,7 @@ describe('RecipesPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -305,7 +305,7 @@ describe('RecipesPage - Unified List', () => {
       data: [mockRecipe, globalRecipe],
       total: 2,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -330,39 +330,6 @@ describe('RecipesPage - Unified List', () => {
 
     // Should show total count
     expect(screen.getByText('2 recipes found')).toBeInTheDocument();
-
-    unmount();
-  });
-
-  it('shows access level badges for each recipe', async () => {
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe, sharedRecipe, globalRecipe],
-      total: 3,
-      page: 1,
-      limit: 25,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      // Access level chips should be rendered
-      const personalChips = screen.getAllByText('Personal');
-      const sharedChips = screen.getAllByText('Shared by You');
-      const globalChips = screen.getAllByText('Global');
-
-      expect(personalChips.length).toBeGreaterThan(0);
-      expect(sharedChips.length).toBeGreaterThan(0);
-      expect(globalChips.length).toBeGreaterThan(0);
-    });
 
     unmount();
   });
@@ -401,7 +368,7 @@ describe('RecipesPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -427,7 +394,7 @@ describe('RecipesPage - Unified List', () => {
       data: [mockRecipe],
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -476,7 +443,7 @@ describe('RecipesPage - Delete Functionality', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -523,7 +490,7 @@ describe('RecipesPage - Delete Functionality', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -576,7 +543,7 @@ describe('RecipesPage - Delete Functionality', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -620,7 +587,7 @@ describe('RecipesPage - Tags and Ratings', () => {
     ...mockRecipe,
     _id: 'recipe-456',
     createdBy: 'other-user-456',
-    accessLevel: 'global' as const,
+    accessLevel: 'shared-by-others' as const,
   };
 
   beforeEach(() => {
@@ -652,7 +619,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -697,7 +664,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -742,7 +709,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: [otherUserRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -791,7 +758,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -837,7 +804,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',

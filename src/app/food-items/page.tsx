@@ -56,20 +56,20 @@ interface FoodItemWithAccessLevel {
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
-  accessLevel: 'personal' | 'shared-by-you' | 'global';
+  accessLevel: 'private' | 'shared-by-you' | 'shared-by-others';
 }
 
 const accessLevelChipProps = {
-  personal: { label: 'Personal', color: 'default' as const, icon: <Person fontSize="small" /> },
+  'private': { label: 'Private', color: 'default' as const, icon: <Person fontSize="small" /> },
   'shared-by-you': { label: 'Shared by You', color: 'info' as const, icon: <IosShare fontSize="small" /> },
-  global: { label: 'Global', color: 'primary' as const, icon: <Public fontSize="small" /> },
+  'shared-by-others': { label: 'Shared by Others', color: 'primary' as const, icon: <Public fontSize="small" /> },
 } as const;
 
 const accessLevelOptions = [
   { value: 'all', label: 'All' },
-  { value: 'personal', label: 'Personal' },
+  { value: 'private', label: 'Private' },
   { value: 'shared-by-you', label: 'Shared by You' },
-  { value: 'global', label: 'Global' },
+  { value: 'shared-by-others', label: 'Shared by Others' },
 ] as const;
 
 function FoodItemsPageContent() {

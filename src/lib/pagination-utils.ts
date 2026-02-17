@@ -25,7 +25,7 @@ export function parsePaginationParams(
   searchParams: URLSearchParams,
   defaults?: PaginationDefaults
 ): PaginationParams {
-  const defaultLimit = defaults?.defaultLimit ?? 25;
+  const defaultLimit = defaults?.defaultLimit ?? 10;
   const defaultSortBy = defaults?.defaultSortBy ?? 'updatedAt';
   const defaultSortOrder = defaults?.defaultSortOrder ?? 'desc';
 

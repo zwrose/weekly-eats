@@ -42,7 +42,7 @@ export interface UseServerPaginationReturn<T> {
 
 export function useServerPagination<T>({
   fetchFn,
-  defaultLimit = 25,
+  defaultLimit = 10,
   defaultSortBy = 'updatedAt',
   defaultSortOrder = 'desc',
   filterKey,

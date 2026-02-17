@@ -24,7 +24,7 @@ vi.mock('@/lib/hooks/use-server-pagination', () => ({
     data: [],
     total: 0,
     page: 1,
-    limit: 25,
+    limit: 10,
     totalPages: 0,
     sortBy: 'name',
     sortOrder: 'asc',
@@ -90,7 +90,7 @@ const personalItem = {
   createdBy: 'user-123',
   createdAt: '2024-01-01',
   updatedAt: '2024-01-01',
-  accessLevel: 'personal' as const,
+  accessLevel: 'private' as const,
 };
 
 const globalItem = {
@@ -103,7 +103,7 @@ const globalItem = {
   createdBy: 'other-user',
   createdAt: '2024-01-01',
   updatedAt: '2024-01-01',
-  accessLevel: 'global' as const,
+  accessLevel: 'shared-by-others' as const,
 };
 
 const sharedItem = {
@@ -129,7 +129,7 @@ describe('FoodItemsPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
       sortBy: 'name',
       sortOrder: 'asc',
@@ -169,7 +169,7 @@ describe('FoodItemsPage - Unified List', () => {
       data: [personalItem, globalItem],
       total: 2,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'name',
       sortOrder: 'asc',
@@ -204,7 +204,7 @@ describe('FoodItemsPage - Unified List', () => {
       data: [personalItem, sharedItem, globalItem],
       total: 3,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 1,
       sortBy: 'name',
       sortOrder: 'asc',
@@ -218,9 +218,9 @@ describe('FoodItemsPage - Unified List', () => {
     const { unmount } = render(<FoodItemsPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('Personal').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Private').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Shared by You').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Global').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Shared by Others').length).toBeGreaterThan(0);
     });
 
     unmount();
@@ -260,7 +260,7 @@ describe('FoodItemsPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 0,
       sortBy: 'name',
       sortOrder: 'asc',
@@ -286,7 +286,7 @@ describe('FoodItemsPage - Unified List', () => {
       data: [personalItem],
       total: 50,
       page: 1,
-      limit: 25,
+      limit: 10,
       totalPages: 2,
       sortBy: 'name',
       sortOrder: 'asc',

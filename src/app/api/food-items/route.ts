@@ -13,8 +13,8 @@ import {
 
 function computeAccessLevel(item: Record<string, unknown>, userId: string): string {
   if (item.isGlobal && item.createdBy === userId) return 'shared-by-you';
-  if (item.isGlobal) return 'global';
-  return 'personal';
+  if (item.isGlobal) return 'shared-by-others';
+  return 'private';
 }
 
 export async function GET(request: NextRequest) {
@@ -43,12 +43,12 @@ export async function GET(request: NextRequest) {
     // Build query based on filter parameters
     const filter: Record<string, unknown> = {};
 
-    if (accessLevel === 'personal' || userOnly) {
+    if (accessLevel === 'private' || userOnly) {
       filter.createdBy = session.user.id;
-      if (accessLevel === 'personal') {
+      if (accessLevel === 'private') {
         filter.isGlobal = { $ne: true };
       }
-    } else if (accessLevel === 'global' || (globalOnly && excludeUserCreated)) {
+    } else if (accessLevel === 'shared-by-others' || (globalOnly && excludeUserCreated)) {
       filter.isGlobal = true;
       filter.createdBy = { $ne: session.user.id };
     } else if (accessLevel === 'shared-by-you') {

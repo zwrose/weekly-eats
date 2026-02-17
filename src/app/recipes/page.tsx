@@ -27,12 +27,11 @@ import {
 import {
   Restaurant,
   Add,
-  Public,
-  Person,
   RestaurantMenu,
   Share,
   Star,
-  IosShare,
+  ArrowUpward,
+  ArrowDownward,
 } from "@mui/icons-material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
@@ -55,7 +54,7 @@ import {
 } from "@/lib/hooks";
 import { useServerPagination } from "@/lib/hooks/use-server-pagination";
 import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
-import RecipeFilterBar, { type AccessLevelFilter } from "@/components/RecipeFilterBar";
+import RecipeFilterBar from "@/components/RecipeFilterBar";
 import { responsiveDialogStyle } from "@/lib/theme";
 import Pagination from "@/components/optimized/Pagination";
 import { DialogActions, DialogTitle } from "@/components/ui";
@@ -82,7 +81,7 @@ import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 // ── Extended recipe type with server-computed accessLevel ──
 
 interface RecipeWithAccessLevel extends Recipe {
-  accessLevel: 'personal' | 'shared-by-you' | 'global';
+  accessLevel: 'private' | 'shared-by-you' | 'shared-by-others';
 }
 
 // ── Module-level sx constants (hoisted to avoid per-render allocations) ──
@@ -154,12 +153,6 @@ const mobileCardTitleSx = {
   mb: 2,
 } as const;
 
-const mobileCardFooterSx = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-} as const;
-
 const paginationContainerSx = {
   display: "flex",
   justifyContent: "center",
@@ -178,19 +171,12 @@ const tableHeaderCellSx = (width: string) => ({
   wordWrap: "break-word",
 }) as const;
 
-const accessLevelChipProps: Record<string, { label: string; color: 'primary' | 'secondary' | 'default'; icon: React.ReactElement }> = {
-  personal: { label: 'Personal', color: 'default', icon: <Person fontSize="small" /> },
-  'shared-by-you': { label: 'Shared by You', color: 'secondary', icon: <IosShare fontSize="small" /> },
-  global: { label: 'Global', color: 'primary', icon: <Public fontSize="small" /> },
-};
-
 function RecipesPageContent() {
   const { data: session, status } = useSession();
 
   // ── Filter state ──
-  const [accessLevel, setAccessLevel] = useState<AccessLevelFilter>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [minRating, setMinRating] = useState<number | null>(null);
+  const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // ── Debounced search ──
@@ -198,8 +184,8 @@ function RecipesPageContent() {
 
   // ── Server pagination ──
   const filterKey = useMemo(
-    () => JSON.stringify({ q: debouncedSearchTerm, al: accessLevel, t: selectedTags, mr: minRating }),
-    [debouncedSearchTerm, accessLevel, selectedTags, minRating]
+    () => JSON.stringify({ q: debouncedSearchTerm, t: selectedTags, r: selectedRatings }),
+    [debouncedSearchTerm, selectedTags, selectedRatings]
   );
 
   const fetchRecipes = useCallback(async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
@@ -210,14 +196,13 @@ function RecipesPageContent() {
       sortOrder: params.sortOrder,
     });
     if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
-    if (accessLevel !== 'all') sp.set('accessLevel', accessLevel);
     if (selectedTags.length > 0) sp.set('tags', selectedTags.join(','));
-    if (minRating !== null) sp.set('minRating', String(minRating));
+    if (selectedRatings.length > 0) sp.set('ratings', selectedRatings.join(','));
 
     const response = await fetch(`/api/recipes?${sp.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();
-  }, [debouncedSearchTerm, accessLevel, selectedTags, minRating]);
+  }, [debouncedSearchTerm, selectedTags, selectedRatings]);
 
   const {
     data: recipes,
@@ -241,6 +226,7 @@ function RecipesPageContent() {
 
   // ── Selected recipe state ──
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [selectedAccessLevel, setSelectedAccessLevel] = useState<RecipeWithAccessLevel['accessLevel'] | undefined>(undefined);
   const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
   const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(new Map());
 
@@ -428,6 +414,9 @@ function RecipesPageContent() {
       try {
         const fullRecipe = await fetchRecipe(recipe._id!);
         setSelectedRecipe(fullRecipe);
+        if ('accessLevel' in recipe) {
+          setSelectedAccessLevel((recipe as RecipeWithAccessLevel).accessLevel);
+        }
         viewDialog.openDialog({ recipeId: recipe._id! });
         try {
           const userData = await fetchRecipeUserData(recipe._id!);
@@ -675,6 +664,7 @@ function RecipesPageContent() {
   const handleCloseViewDialog = () => {
     viewDialog.closeDialog();
     setSelectedRecipe(null);
+    setSelectedAccessLevel(undefined);
     setEditMode(false);
   };
 
@@ -694,9 +684,17 @@ function RecipesPageContent() {
     return recipe.createdBy === (session?.user as Session["user"])?.id;
   };
 
-  // ── Filter bar sort handler ──
+  // ── Sort handlers ──
   const handleSortChange = (newSortBy: string, newSortOrder: 'asc' | 'desc') => {
     setSort(newSortBy, newSortOrder);
+  };
+
+  const handleColumnSort = (column: string) => {
+    if (sortBy === column) {
+      setSort(column, sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSort(column, column === 'title' ? 'asc' : 'desc');
+    }
   };
 
   // ── Render ──
@@ -793,13 +791,11 @@ function RecipesPageContent() {
             <RecipeFilterBar
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
-              accessLevel={accessLevel}
-              onAccessLevelChange={setAccessLevel}
               selectedTags={selectedTags}
               onTagsChange={setSelectedTags}
               availableTags={availableTags}
-              minRating={minRating}
-              onMinRatingChange={setMinRating}
+              selectedRatings={selectedRatings}
+              onRatingsChange={setSelectedRatings}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSortChange={handleSortChange}
@@ -821,11 +817,36 @@ function RecipesPageContent() {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={tableHeaderCellSx("40%")}>Recipe</TableCell>
+                          <TableCell
+                            sx={{ ...tableHeaderCellSx("45%"), cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => handleColumnSort('title')}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              Recipe
+                              {sortBy === 'title' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                            </Box>
+                          </TableCell>
                           <TableCell align="center" sx={tableHeaderCellSx("15%")}>Tags</TableCell>
-                          <TableCell align="center" sx={tableHeaderCellSx("10%")}>Rating</TableCell>
-                          <TableCell align="center" sx={tableHeaderCellSx("15%")}>Access Level</TableCell>
-                          <TableCell align="center" sx={tableHeaderCellSx("20%")}>Updated</TableCell>
+                          <TableCell
+                            align="center"
+                            sx={{ ...tableHeaderCellSx("15%"), cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => handleColumnSort('rating')}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                              Rating
+                              {sortBy === 'rating' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                            </Box>
+                          </TableCell>
+                          <TableCell
+                            align="center"
+                            sx={{ ...tableHeaderCellSx("25%"), cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => handleColumnSort('updatedAt')}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                              Updated
+                              {sortBy === 'updatedAt' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                            </Box>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -836,7 +857,6 @@ function RecipesPageContent() {
                             ...(userData?.sharedTags || [])
                           ])];
                           const rating = userData?.rating;
-                          const chipProps = accessLevelChipProps[recipe.accessLevel] || accessLevelChipProps.global;
 
                           return (
                             <TableRow
@@ -879,15 +899,6 @@ function RecipesPageContent() {
                                 )}
                               </TableCell>
                               <TableCell align="center" sx={{ wordWrap: "break-word" }}>
-                                <Chip
-                                  label={chipProps.label}
-                                  size="small"
-                                  color={chipProps.color}
-                                  variant="outlined"
-                                  icon={chipProps.icon}
-                                />
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
                                 {new Date(recipe.updatedAt).toLocaleDateString()}
                               </TableCell>
                             </TableRow>
@@ -907,7 +918,6 @@ function RecipesPageContent() {
                       ...(userData?.sharedTags || [])
                     ])];
                     const rating = userData?.rating;
-                    const chipProps = accessLevelChipProps[recipe.accessLevel] || accessLevelChipProps.global;
 
                     return (
                       <Paper
@@ -947,16 +957,7 @@ function RecipesPageContent() {
                             )}
                           </Box>
                         )}
-                        <Box sx={mobileCardFooterSx}>
-                          <Box>
-                            <Chip
-                              label={chipProps.label}
-                              size="small"
-                              color={chipProps.color}
-                              variant="outlined"
-                              icon={chipProps.icon}
-                            />
-                          </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <Typography variant="body2" color="text.secondary">
                             Updated: {new Date(recipe.updatedAt).toLocaleDateString()}
                           </Typography>
@@ -978,7 +979,7 @@ function RecipesPageContent() {
               </>
             ) : (
               <Alert severity="info">
-                {debouncedSearchTerm || accessLevel !== 'all' || selectedTags.length > 0 || minRating !== null
+                {debouncedSearchTerm || selectedTags.length > 0 || selectedRatings.length > 0
                   ? "No recipes match your filters"
                   : "No recipes found"}
               </Alert>
@@ -1027,6 +1028,7 @@ function RecipesPageContent() {
           onFoodItemAdded={handleFoodItemAdded}
           hasValidIngredients={hasValidIngredients}
           getIngredientName={getIngredientName}
+          accessLevel={selectedAccessLevel}
         />
 
         {/* Delete Confirmation Dialog */}

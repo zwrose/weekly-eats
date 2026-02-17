@@ -11,21 +11,21 @@ import {
   logError
 } from '@/lib/errors';
 
-type AccessLevel = 'personal' | 'shared-by-you' | 'global';
+type AccessLevel = 'private' | 'shared-by-you' | 'shared-by-others';
 
 function computeAccessLevel(recipe: { createdBy: string; isGlobal: boolean }, userId: string): AccessLevel {
-  if (recipe.createdBy === userId && !recipe.isGlobal) return 'personal';
+  if (recipe.createdBy === userId && !recipe.isGlobal) return 'private';
   if (recipe.createdBy === userId && recipe.isGlobal) return 'shared-by-you';
-  return 'global';
+  return 'shared-by-others';
 }
 
 function buildBaseFilter(accessLevel: string | null, userId: string): Record<string, unknown> {
   switch (accessLevel) {
-    case 'personal':
+    case 'private':
       return { createdBy: userId, isGlobal: false };
     case 'shared-by-you':
       return { createdBy: userId, isGlobal: true };
-    case 'global':
+    case 'shared-by-others':
       return { isGlobal: true, createdBy: { $ne: userId } };
     default:
       return {
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('query');
     const accessLevel = searchParams.get('accessLevel');
     const tagsParam = searchParams.get('tags');
-    const minRatingParam = searchParams.get('minRating');
+    const ratingsParam = searchParams.get('ratings');
 
     const client = await getMongoClient();
     const db = client.db();
@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
     filter = addTextSearch(filter, query);
 
     const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : [];
-    const minRating = minRatingParam ? parseInt(minRatingParam, 10) : null;
-    const useAggregation = tags.length > 0 || (minRating !== null && !Number.isNaN(minRating));
+    const ratings = ratingsParam ? ratingsParam.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !Number.isNaN(r)) : [];
+    const useAggregation = tags.length > 0 || ratings.length > 0;
 
     if (useAggregation) {
       // Use aggregation pipeline to join with recipeUserData for tag/rating filtering
@@ -115,10 +115,10 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Add rating filter
-      if (minRating !== null && !Number.isNaN(minRating)) {
+      // Add rating filter (multi-select: match any of the selected ratings)
+      if (ratings.length > 0) {
         pipeline.push({
-          $match: { 'userData.rating': { $gte: minRating } },
+          $match: { 'userData.rating': { $in: ratings } },
         });
       }
 

@@ -7,7 +7,7 @@ describe('parsePaginationParams', () => {
     const result = parsePaginationParams(params);
     expect(result).toEqual({
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
@@ -63,10 +63,10 @@ describe('parsePaginationParams', () => {
     expect(result.page).toBe(1);
   });
 
-  it('handles non-numeric limit gracefully (defaults to 25)', () => {
+  it('handles non-numeric limit gracefully (defaults to 10)', () => {
     const params = new URLSearchParams({ limit: 'xyz' });
     const result = parsePaginationParams(params);
-    expect(result.limit).toBe(25);
+    expect(result.limit).toBe(10);
   });
 
   it('accepts custom defaults', () => {
@@ -117,7 +117,7 @@ describe('paginatedResponse', () => {
 
     const result = await paginatedResponse(mockCollection as any, {}, {
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
@@ -126,8 +126,8 @@ describe('paginatedResponse', () => {
       data: mockData,
       total: 50,
       page: 1,
-      limit: 25,
-      totalPages: 2,
+      limit: 10,
+      totalPages: 5,
     });
   });
 
@@ -138,7 +138,7 @@ describe('paginatedResponse', () => {
     const filter = { isGlobal: true };
     await paginatedResponse(mockCollection as any, filter, {
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
@@ -169,12 +169,12 @@ describe('paginatedResponse', () => {
 
     const result = await paginatedResponse(mockCollection as any, {}, {
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
 
-    expect(result.totalPages).toBe(3); // ceil(51/25)
+    expect(result.totalPages).toBe(6); // ceil(51/10)
   });
 
   it('returns totalPages of 0 when no documents match', async () => {
@@ -183,7 +183,7 @@ describe('paginatedResponse', () => {
 
     const result = await paginatedResponse(mockCollection as any, {}, {
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
@@ -199,7 +199,7 @@ describe('paginatedResponse', () => {
 
     await paginatedResponse(mockCollection as any, {}, {
       page: 1,
-      limit: 25,
+      limit: 10,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });

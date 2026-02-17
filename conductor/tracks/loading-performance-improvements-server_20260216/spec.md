@@ -9,25 +9,29 @@ Improve loading performance across all major features by introducing server-side
 ### FR-1: Recipes — Unified List with Server-Side Pagination & Filtering
 
 - **Unified list**: Merge "Your Recipes" and "Global Recipes" into a single paginated list (remove the two-section layout)
-- **Access-level badge**: Each recipe displays one of three badges:
-  - **Personal** — user-created, not shared globally
+- **Access-level badge**: Shown in recipe view dialog only (NOT in the table/list). Three labels:
+  - **Private** — user-created, not shared globally
   - **Shared by You** — user-created and marked global
-  - **Global** — created by someone else, globally available
-- **Server-side pagination**: API returns a page of results (e.g., 25 per page) with total count; client renders pagination controls
+  - **Shared by Others** — created by someone else, globally available
+  - No red badge colors
+- **Server-side pagination**: API returns a page of results (10 per page) with total count; client renders pagination controls
 - **Server-side search**: Move text search to the API (query by title, existing regex approach)
-- **Tag filter**: Multi-select dropdown of the user's known tags; API filters recipes that have ANY of the selected tags (via `recipeUserData` join)
-- **Rating filter/sort**: Option to filter by minimum rating (e.g., 3+ stars) and sort by rating descending
-- **Access level filter**: Dropdown to narrow to Personal / Shared by You / Global / All
-- **Sort options**: Updated date (default), rating, title alphabetical
+- **Tag filter**: Clearable chip-based multi-select of the user's known tags; each selected tag shows an X to remove it. API filters recipes that have ANY of the selected tags (via `recipeUserData` join)
+- **Rating filter**: Multi-select chip-based filter allowing any combination of star ratings (e.g., select 4 and 5 stars). UX identical to the tags filter — chips with X to clear. API accepts `ratings` param (comma-separated values like "4,5")
+- **Sort options (desktop)**: Clickable table column headers toggle sort by that column; clicking again reverses direction. Columns: Recipe (title), Tags, Rating, Updated
+- **Sort options (mobile)**: Sort controls available in the filter flyout menu
+- **Mobile filter/search UX**: Search bar and filter button on a single row. Search bar takes most of the width. Filter button opens a flyout/temporary drawer with filter and sort controls
+- **Default page size**: 10 results per page (not 25)
 
 ### FR-2: Food Items — Unified List with Server-Side Pagination
 
 - **Unified list**: Merge "Your Food Items" and "Global Food Items" into a single paginated list (same pattern as Recipes)
 - **Access-level badge**: Each food item displays one of three badges:
-  - **Personal** — user-created, not shared globally
+  - **Private** — user-created, not shared globally
   - **Shared by You** — user-created and marked global
-  - **Global** — created by someone else, globally available
-- **Server-side pagination**: API returns paginated results (25 per page) with total count
+  - **Shared by Others** — created by someone else, globally available
+  - No red badge colors
+- **Server-side pagination**: API returns paginated results (10 per page) with total count
 - **Server-side search**: Move text search to API (query by name/singularName/pluralName)
 - **Access level filter**: Dropdown to narrow to Personal / Shared by You / Global / All
 

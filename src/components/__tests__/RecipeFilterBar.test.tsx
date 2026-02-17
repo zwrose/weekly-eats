@@ -6,13 +6,11 @@ import RecipeFilterBar from '../RecipeFilterBar';
 const defaultProps = {
   searchTerm: '',
   onSearchChange: vi.fn(),
-  accessLevel: 'all' as const,
-  onAccessLevelChange: vi.fn(),
   selectedTags: [] as string[],
   onTagsChange: vi.fn(),
   availableTags: ['italian', 'quick', 'healthy', 'dinner'],
-  minRating: null as number | null,
-  onMinRatingChange: vi.fn(),
+  selectedRatings: [] as number[],
+  onRatingsChange: vi.fn(),
   sortBy: 'updatedAt',
   sortOrder: 'desc' as const,
   onSortChange: vi.fn(),
@@ -29,46 +27,49 @@ afterEach(() => {
 describe('RecipeFilterBar', () => {
   it('renders search input', () => {
     render(<RecipeFilterBar {...defaultProps} />);
-    expect(screen.getByPlaceholderText(/search recipes/i)).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText(/search recipes/i).length).toBeGreaterThan(0);
   });
 
   it('calls onSearchChange when typing in search', async () => {
     const user = userEvent.setup();
     render(<RecipeFilterBar {...defaultProps} />);
-    const input = screen.getByPlaceholderText(/search recipes/i);
-    await user.type(input, 'pizza');
+    const inputs = screen.getAllByPlaceholderText(/search recipes/i);
+    await user.type(inputs[0], 'pizza');
     expect(defaultProps.onSearchChange).toHaveBeenCalled();
-  });
-
-  it('renders access level selector', () => {
-    render(<RecipeFilterBar {...defaultProps} />);
-    expect(screen.getByLabelText(/access level/i)).toBeInTheDocument();
-  });
-
-  it('renders sort selector', () => {
-    render(<RecipeFilterBar {...defaultProps} />);
-    expect(screen.getByLabelText(/sort by/i)).toBeInTheDocument();
-  });
-
-  it('renders rating filter', () => {
-    render(<RecipeFilterBar {...defaultProps} />);
-    expect(screen.getByLabelText(/min rating/i)).toBeInTheDocument();
-  });
-
-  it('renders tag filter', () => {
-    render(<RecipeFilterBar {...defaultProps} />);
-    expect(screen.getByLabelText(/tags/i)).toBeInTheDocument();
-  });
-
-  it('displays selected tags as chips', () => {
-    render(<RecipeFilterBar {...defaultProps} selectedTags={['italian', 'quick']} />);
-    expect(screen.getByText('italian')).toBeInTheDocument();
-    expect(screen.getByText('quick')).toBeInTheDocument();
   });
 
   it('shows current search value', () => {
     render(<RecipeFilterBar {...defaultProps} searchTerm="pasta" />);
-    const input = screen.getByPlaceholderText(/search recipes/i);
-    expect(input).toHaveValue('pasta');
+    const inputs = screen.getAllByPlaceholderText(/search recipes/i);
+    expect(inputs[0]).toHaveValue('pasta');
+  });
+
+  it('renders tag filter', () => {
+    render(<RecipeFilterBar {...defaultProps} />);
+    expect(screen.getAllByLabelText(/tags/i).length).toBeGreaterThan(0);
+  });
+
+  it('displays selected tags as chips', () => {
+    render(<RecipeFilterBar {...defaultProps} selectedTags={['italian', 'quick']} />);
+    // Tags appear in both desktop and mobile drawer filter controls
+    expect(screen.getAllByText('italian').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('quick').length).toBeGreaterThan(0);
+  });
+
+  it('renders rating chips', () => {
+    render(<RecipeFilterBar {...defaultProps} />);
+    // Rating chips use star characters
+    expect(screen.getAllByText('★').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('★★★★★').length).toBeGreaterThan(0);
+  });
+
+  it('renders mobile filter button', () => {
+    render(<RecipeFilterBar {...defaultProps} />);
+    expect(screen.getByLabelText(/open filters/i)).toBeInTheDocument();
+  });
+
+  it('does not render access level selector', () => {
+    render(<RecipeFilterBar {...defaultProps} />);
+    expect(screen.queryByLabelText(/access level/i)).not.toBeInTheDocument();
   });
 });
