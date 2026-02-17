@@ -23,7 +23,7 @@ const mockFetchMealPlan = vi.fn();
 const mockFetchMealPlanTemplate = vi.fn();
 
 vi.mock('../../../lib/meal-plan-utils', () => ({
-  fetchMealPlans: () => mockFetchMealPlans(),
+  fetchMealPlans: (...args: any[]) => mockFetchMealPlans(...args),
   fetchMealPlan: (id: string) => mockFetchMealPlan(id),
   createMealPlan: vi.fn(),
   deleteMealPlan: (id: string) => mockDeleteMealPlan(id),
@@ -59,16 +59,6 @@ vi.mock('../../../lib/meal-plan-sharing-utils', () => ({
 
 // Mock hooks
 vi.mock('@/lib/hooks', () => ({
-  useSearchPagination: vi.fn(() => ({
-    searchTerm: '',
-    setSearchTerm: vi.fn(),
-    isSearchPending: false,
-    currentPage: 1,
-    setCurrentPage: vi.fn(),
-    totalPages: 1,
-    paginatedData: [],
-    totalItems: 0
-  })),
   useDialog: vi.fn(() => ({
     open: false,
     openDialog: vi.fn(),
@@ -99,6 +89,10 @@ vi.mock('../../../components/MealEditor', () => ({
 
 vi.mock('../../../components/AddFoodItemDialog', () => ({
   default: () => <div>Add Food Item Dialog</div>
+}));
+
+vi.mock('../../../components/MealPlanBrowser', () => ({
+  default: ({ onPlanSelect }: { onPlanSelect: (plan: any) => void }) => <div data-testid="meal-plan-browser">Meal Plan Browser</div>
 }));
 
 // Import after mocks
@@ -432,8 +426,8 @@ describe('MealPlansPage - Delete Functionality', () => {
       // Test passes if component renders without crashing with missing names
       // Empty string names will render as "• " (bullet with nothing)
       // This is expected behavior that indicates the API should have populated names
-      const mealPlanName = screen.getByText(mockMealPlan.name);
-      expect(mealPlanName).toBeInTheDocument();
+      // Name appears in both list and dialog, so use getAllByText
+      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
       
       // If this test starts failing because items don't render or show "Unknown",
       // that means we've improved the frontend to handle missing names - which is good!
@@ -518,7 +512,7 @@ describe('MealPlansPage - Delete Functionality', () => {
 
     await waitFor(() => {
       // Should show the meal plan dialog is open
-      expect(screen.getByText(mockMealPlan.name)).toBeInTheDocument();
+      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
     });
     
     // Should show Weekly Staples section
@@ -568,7 +562,7 @@ describe('MealPlansPage - Delete Functionality', () => {
 
     await waitFor(() => {
       // Should show the meal plan dialog is open
-      expect(screen.getByText(mockMealPlan.name)).toBeInTheDocument();
+      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
     });
     
     // Should show Weekly Staples section even when empty
@@ -675,7 +669,7 @@ describe('MealPlansPage - Delete Functionality', () => {
 
     await waitFor(() => {
       // Edit dialog is open with our meal plan
-      expect(screen.getByText(mealPlanSkipped.name)).toBeInTheDocument();
+      expect(screen.getAllByText(mealPlanSkipped.name).length).toBeGreaterThan(0);
     });
 
     // Skip checkbox label and reason should be visible

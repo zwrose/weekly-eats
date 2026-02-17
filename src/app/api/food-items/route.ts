@@ -3,12 +3,19 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { VALID_UNITS } from '@/lib/food-items-utils';
-import { 
-  AUTH_ERRORS, 
-  FOOD_ITEM_ERRORS, 
+import { parsePaginationParams, paginatedResponse } from '@/lib/pagination-utils';
+import {
+  AUTH_ERRORS,
+  FOOD_ITEM_ERRORS,
   API_ERRORS,
-  logError 
+  logError
 } from '@/lib/errors';
+
+function computeAccessLevel(item: Record<string, unknown>, userId: string): string {
+  if (item.isGlobal && item.createdBy === userId) return 'shared-by-you';
+  if (item.isGlobal) return 'shared-by-others';
+  return 'private';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,42 +26,42 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') || '';
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const accessLevel = searchParams.get('accessLevel');
     const userOnly = searchParams.get('userOnly') === 'true';
     const globalOnly = searchParams.get('globalOnly') === 'true';
     const excludeUserCreated = searchParams.get('excludeUserCreated') === 'true';
+
+    const paginationParams = parsePaginationParams(searchParams, {
+      defaultSortBy: 'name',
+      defaultSortOrder: 'asc',
+    });
 
     const client = await getMongoClient();
     const db = client.db();
     const foodItemsCollection = db.collection('foodItems');
 
     // Build query based on filter parameters
-    let filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = {};
 
-    if (userOnly) {
-      // Only user's personal items (including global items they created)
-      filter = { 
-        $or: [
-          { createdBy: session.user.id },
-          { isGlobal: true, createdBy: session.user.id }
-        ]
-      };
-    } else if (globalOnly) {
-      if (excludeUserCreated) {
-        // Only global items NOT created by the current user
-        filter = { isGlobal: true, createdBy: { $ne: session.user.id } };
-      } else {
-        // Only global items
-        filter = { isGlobal: true };
+    if (accessLevel === 'private' || userOnly) {
+      filter.createdBy = session.user.id;
+      if (accessLevel === 'private') {
+        filter.isGlobal = { $ne: true };
       }
+    } else if (accessLevel === 'shared-by-others' || (globalOnly && excludeUserCreated)) {
+      filter.isGlobal = true;
+      filter.createdBy = { $ne: session.user.id };
+    } else if (accessLevel === 'shared-by-you') {
+      filter.isGlobal = true;
+      filter.createdBy = session.user.id;
+    } else if (globalOnly) {
+      filter.isGlobal = true;
     } else {
       // Default: both global and user's personal items
-      filter = {
-        $or: [
-          { isGlobal: true },
-          { createdBy: session.user.id }
-        ]
-      };
+      filter.$or = [
+        { isGlobal: true },
+        { createdBy: session.user.id },
+      ];
     }
 
     // Add search filter if query is provided
@@ -62,13 +69,22 @@ export async function GET(request: NextRequest) {
       filter.name = { $regex: query, $options: 'i' };
     }
 
-    const foodItems = await foodItemsCollection
-      .find(filter)
-      .sort({ name: 1 })
-      .limit(limit)
-      .toArray();
+    const result = await paginatedResponse(
+      foodItemsCollection,
+      filter,
+      paginationParams
+    );
 
-    return NextResponse.json(foodItems);
+    // Annotate each item with accessLevel
+    const annotatedData = result.data.map(item => ({
+      ...item,
+      accessLevel: computeAccessLevel(item as Record<string, unknown>, session.user.id),
+    }));
+
+    return NextResponse.json({
+      ...result,
+      data: annotatedData,
+    });
   } catch (error) {
     logError('FoodItems GET', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });

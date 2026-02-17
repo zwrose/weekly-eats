@@ -165,5 +165,7 @@ export const fetchFoodItems = async (query?: string): Promise<Array<{ _id: strin
   if (!response.ok) {
     throw new Error('Failed to fetch food items');
   }
-  return response.json();
+  const json = await response.json();
+  // API returns paginated response { data, total, ... } — extract the array
+  return Array.isArray(json) ? json : json.data;
 }; 

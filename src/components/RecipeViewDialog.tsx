@@ -18,8 +18,10 @@ import {
   Public,
   Person,
   Delete,
+  IosShare,
   RestaurantMenu,
 } from "@mui/icons-material";
+import { Chip } from "@mui/material";
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
 import { getUnitForm } from "@/lib/food-items-utils";
 import { responsiveDialogStyle } from "@/lib/theme";
@@ -71,6 +73,7 @@ export interface RecipeViewDialogProps {
   onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
   getIngredientName: (ingredient: { type: "foodItem" | "recipe"; id: string; quantity: number }) => string;
+  accessLevel?: 'private' | 'shared-by-you' | 'shared-by-others';
 }
 
 const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
@@ -94,7 +97,13 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   onFoodItemAdded,
   hasValidIngredients,
   getIngredientName,
+  accessLevel,
 }) => {
+  const accessLevelChipMap: Record<string, { label: string; color: 'info' | 'primary' | 'default'; icon: React.ReactElement }> = {
+    'private': { label: 'Private', color: 'default', icon: <Person fontSize="small" /> },
+    'shared-by-you': { label: 'Shared by You', color: 'info', icon: <IosShare fontSize="small" /> },
+    'shared-by-others': { label: 'Shared by Others', color: 'primary', icon: <Public fontSize="small" /> },
+  };
   return (
     <Dialog
       open={open}
@@ -322,6 +331,17 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                     editable={!canEditRecipe(selectedRecipe)}
                   />
                 </Box>
+                {accessLevel && accessLevelChipMap[accessLevel] && (
+                  <Box sx={{ mb: 3 }}>
+                    <Chip
+                      label={accessLevelChipMap[accessLevel].label}
+                      size="small"
+                      color={accessLevelChipMap[accessLevel].color}
+                      variant="outlined"
+                      icon={accessLevelChipMap[accessLevel].icon}
+                    />
+                  </Box>
+                )}
               </>
             )}
             <Divider sx={{ mb: 3 }} />

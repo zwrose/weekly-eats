@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Container,
@@ -20,6 +20,7 @@ import {
   TableRow,
   IconButton,
 } from "@mui/material";
+import { Pagination as MuiPagination } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
 import {
   PantryItemWithFoodItem,
@@ -28,17 +29,16 @@ import {
 import {
   createPantryItem,
   deletePantryItem,
-  fetchPantryItems,
 } from "../../lib/pantry-utils";
 import {
   useFoodItems,
-  useSearchPagination,
   useDialog,
   useConfirmDialog,
 } from "@/lib/hooks";
+import { useServerPagination } from "@/lib/hooks/use-server-pagination";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 import { responsiveDialogStyle } from "@/lib/theme";
 import SearchBar from "@/components/optimized/SearchBar";
-import Pagination from "@/components/optimized/Pagination";
 import Kitchen from "@mui/icons-material/Kitchen";
 import Add from "@mui/icons-material/Add";
 import Delete from "@mui/icons-material/Delete";
@@ -48,8 +48,6 @@ import { SearchOption } from "@/lib/hooks/use-food-item-selector";
 
 export default function PantryPage() {
   const { status } = useSession();
-  const [loading, setLoading] = useState(true);
-  const [pantryItems, setPantryItems] = useState<PantryItemWithFoodItem[]>([]);
   const [newItem, setNewItem] = useState<CreatePantryItemRequest>({
     foodItemId: "",
   });
@@ -64,38 +62,45 @@ export default function PantryPage() {
   const createDialog = useDialog();
   const deleteConfirmDialog = useConfirmDialog<PantryItemWithFoodItem>();
 
-  // Food items hook
+  // Food items hook (for the add dialog autocomplete)
   const { foodItems, addFoodItem } = useFoodItems();
 
-  // Search and pagination
-  const pagination = useSearchPagination<PantryItemWithFoodItem>({
+  // Search
+  const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+
+  // Compute filterKey for useServerPagination
+  const filterKey = useMemo(
+    () => JSON.stringify({ q: debouncedSearchTerm }),
+    [debouncedSearchTerm]
+  );
+
+  // Server-paginated data fetching
+  const fetchPantryItems = useCallback(async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
+    const sp = new URLSearchParams({
+      page: String(params.page),
+      limit: String(params.limit),
+    });
+    if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
+
+    const response = await fetch(`/api/pantry?${sp.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch pantry items');
+    return response.json();
+  }, [debouncedSearchTerm]);
+
+  const {
     data: pantryItems,
-    itemsPerPage: 25,
-    searchFunction: (item, term) =>
-      item.foodItem.name.toLowerCase().includes(term) ||
-      item.foodItem.singularName?.toLowerCase().includes(term) ||
-      item.foodItem.pluralName?.toLowerCase().includes(term),
+    total,
+    page,
+    totalPages,
+    loading,
+    setPage,
+    refetch,
+  } = useServerPagination<PantryItemWithFoodItem>({
+    fetchFn: fetchPantryItems,
+    filterKey,
+    defaultSortBy: 'foodItem.name',
+    defaultSortOrder: 'asc',
   });
-
-  // Load pantry items
-  const loadPantryItems = useCallback(async () => {
-    try {
-      setLoading(true);
-      const items = await fetchPantryItems();
-      setPantryItems(items);
-    } catch (error) {
-      console.error("Error loading pantry items:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial load
-  React.useEffect(() => {
-    if (status === "authenticated") {
-      loadPantryItems();
-    }
-  }, [status, loadPantryItems]);
 
   // Handlers
   const handleCreateItem = async () => {
@@ -104,7 +109,7 @@ export default function PantryPage() {
       createDialog.closeDialog();
       setNewItem({ foodItemId: "" });
       setSelectedFoodItem(null);
-      loadPantryItems();
+      refetch();
     } catch (error) {
       console.error("Error creating pantry item:", error);
       alert("Failed to create pantry item");
@@ -116,7 +121,7 @@ export default function PantryPage() {
     try {
       await deletePantryItem(deleteConfirmDialog.data._id);
       deleteConfirmDialog.closeDialog();
-      loadPantryItems();
+      refetch();
     } catch (error) {
       console.error("Error deleting pantry item:", error);
       alert("Failed to delete pantry item");
@@ -152,11 +157,7 @@ export default function PantryPage() {
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Kitchen sx={{ fontSize: 40, color: "#9c27b0" }} />
             <Typography variant="h3" component="h1" sx={{ color: "#9c27b0" }}>
-              Pantry Items (
-              {pagination.searchTerm
-                ? `${pagination.totalItems}/${pantryItems.length}`
-                : pantryItems.length}
-              )
+              Pantry Items ({total})
             </Typography>
           </Box>
           <Button
@@ -176,8 +177,8 @@ export default function PantryPage() {
 
         <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
           <SearchBar
-            value={pagination.searchTerm}
-            onChange={pagination.setSearchTerm}
+            value={searchTerm}
+            onChange={setSearchTerm}
             placeholder="Search your pantry..."
           />
 
@@ -187,7 +188,7 @@ export default function PantryPage() {
             </Box>
           ) : (
             <>
-              {pagination.paginatedData.length > 0 ? (
+              {pantryItems.length > 0 ? (
                 <>
                   {/* Desktop Table View */}
                   <Box sx={{ display: { xs: "none", md: "block" } }}>
@@ -217,7 +218,7 @@ export default function PantryPage() {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {pagination.paginatedData.map((item) => (
+                          {pantryItems.map((item) => (
                             <TableRow
                               key={item._id}
                               sx={{
@@ -252,7 +253,7 @@ export default function PantryPage() {
 
                   {/* Mobile Card View */}
                   <Box sx={{ display: { xs: "block", md: "none" } }}>
-                    {pagination.paginatedData.map((item) => (
+                    {pantryItems.map((item) => (
                       <Paper
                         key={item._id}
                         sx={{
@@ -287,16 +288,19 @@ export default function PantryPage() {
                     ))}
                   </Box>
 
-                  <Pagination
-                    count={pagination.totalPages}
-                    page={pagination.currentPage}
-                    onChange={pagination.setCurrentPage}
-                    show={pagination.totalPages > 1}
-                  />
+                  {totalPages > 1 && (
+                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                      <MuiPagination
+                        count={totalPages}
+                        page={page}
+                        onChange={(_e, value) => setPage(value)}
+                      />
+                    </Box>
+                  )}
                 </>
               ) : (
                 <Alert severity="info">
-                  {pagination.searchTerm
+                  {searchTerm
                     ? "No pantry items match your search criteria"
                     : "No pantry items found. Add your first item to get started!"}
                 </Alert>
@@ -328,7 +332,6 @@ export default function PantryPage() {
                 if (item && item.type === "foodItem") {
                   setSelectedFoodItem(item);
                   setNewItem({ foodItemId: item._id });
-                  // Focus the Add button after selection
                   setTimeout(() => {
                     addButtonRef.current?.focus();
                   }, 100);
@@ -338,9 +341,7 @@ export default function PantryPage() {
                 }
               }}
               onFoodItemAdded={async (newFoodItem) => {
-                // Add to local state
                 addFoodItem(newFoodItem);
-                // Auto-select the newly created item
                 const searchOption: SearchOption = {
                   ...newFoodItem,
                   type: "foodItem" as const,
@@ -349,7 +350,6 @@ export default function PantryPage() {
                 setNewItem({ foodItemId: newFoodItem._id });
               }}
               onCreateItem={(newFoodItem) => {
-                // When a new food item is created, auto-select it
                 const searchOption: SearchOption = {
                   ...newFoodItem,
                   type: "foodItem" as const,

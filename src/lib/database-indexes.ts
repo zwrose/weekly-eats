@@ -64,6 +64,12 @@ export const createDatabaseIndexes = async () => {
       { name: 'recipes_title' }
     );
 
+    // Recipes: support pagination with updatedAt sort
+    await recipesCollection.createIndex(
+      { isGlobal: 1, createdBy: 1, updatedAt: -1 },
+      { name: 'recipes_unified_pagination' }
+    );
+
     // Recipe User Data Collection
     const recipeUserDataCollection = db.collection('recipeUserData');
     await recipeUserDataCollection.createIndex(

@@ -47,8 +47,17 @@ export interface UpdateShoppingListRequest {
   items: ShoppingListItem[];
 }
 
+export interface ShoppingListMeta {
+  _id: string | null;
+  storeId: string;
+  userId: string;
+  itemCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface StoreWithShoppingList extends Store {
-  shoppingList: ShoppingList;
+  shoppingList: ShoppingListMeta;
 }
 
 export interface StoreItemPosition {

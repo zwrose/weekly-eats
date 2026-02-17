@@ -64,10 +64,10 @@ export default function MealEditor({
           fetch('/api/food-items?limit=1000'),
           fetch('/api/recipes?limit=1000')
         ]);
-        const foodItemsData = foodRes.ok ? await foodRes.json() : [];
-        const recipesData = recipeRes.ok ? await recipeRes.json() : [];
-        setFoodItems(foodItemsData);
-        setRecipes(recipesData);
+        const foodItemsJson = foodRes.ok ? await foodRes.json() : { data: [] };
+        const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
+        setFoodItems(Array.isArray(foodItemsJson) ? foodItemsJson : foodItemsJson.data || []);
+        setRecipes(Array.isArray(recipesJson) ? recipesJson : recipesJson.data || []);
       } catch (error) {
         console.error('Error loading data:', error);
       }

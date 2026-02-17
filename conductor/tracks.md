@@ -7,7 +7,8 @@
 
 
 
-
+- [~] **Track: Loading performance improvements with server-side pagination, unified list views, and smart data loading**
+  *Link: [loading-performance-improvements-server_20260216](./conductor/tracks/loading-performance-improvements-server_20260216/)*
 - [ ] **Track: View recipe details from meal plan UI**
   *Link: [view-recipe-details-meal_20260216](./conductor/tracks/view-recipe-details-meal_20260216/)*
 - [x] **Track: Smart unit deconfliction for shopping list meal plan population**
