@@ -168,7 +168,7 @@ Based on manual verification feedback:
 
 - [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
-## Phase 6: Shopping Lists — Lazy Loading [~]
+## Phase 6: Shopping Lists — Lazy Loading [x] [checkpoint: 5d95a8f]
 
 - [x] Task 6.1: Update stores API to return metadata only
   - [x] Write tests for `GET /api/stores` returning store metadata + item counts (not full item arrays)
@@ -188,4 +188,4 @@ Based on manual verification feedback:
   - [x] Verify all existing interactions (real-time sync, finish shop, purchase history) still work
   - [x] Verify tests pass
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
