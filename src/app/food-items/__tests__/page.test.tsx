@@ -157,7 +157,7 @@ describe('FoodItemsPage - Unified List', () => {
     const { unmount } = render(<FoodItemsPage />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/search food items/i)).toBeInTheDocument();
+      expect(screen.getAllByPlaceholderText(/search food items/i).length).toBeGreaterThan(0);
     });
 
     unmount();

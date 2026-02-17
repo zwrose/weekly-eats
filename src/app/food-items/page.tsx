@@ -28,7 +28,8 @@ import {
   InputLabel,
   FormControlLabel,
   Switch,
-  IconButton
+  IconButton,
+  Drawer,
 } from "@mui/material";
 import {
   Public,
@@ -36,6 +37,8 @@ import {
   Edit,
   Delete,
   IosShare,
+  FilterList,
+  Close,
 } from "@mui/icons-material";
 import { Pagination as MuiPagination } from "@mui/material";
 import AuthenticatedLayout from "../../components/AuthenticatedLayout";
@@ -77,10 +80,18 @@ function FoodItemsPageContent() {
   const isAdmin = session?.user?.isAdmin;
 
   // Search
-  const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+  const { searchTerm, debouncedSearchTerm, setSearchTerm, clearSearch } = useDebouncedSearch();
 
   // Filter state
   const [accessLevel, setAccessLevel] = useState<string>('all');
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  const hasActiveFilters = searchTerm !== '' || accessLevel !== 'all';
+
+  const handleClearFilters = useCallback(() => {
+    clearSearch();
+    setAccessLevel('all');
+  }, [clearSearch]);
 
   // Compute filterKey for useServerPagination
   const filterKey = useMemo(
@@ -280,8 +291,6 @@ function FoodItemsPageContent() {
     return null;
   }
 
-  const hasActiveFilters = debouncedSearchTerm !== '' || accessLevel !== 'all';
-
   return (
     <Suspense fallback={
       <AuthenticatedLayout>
@@ -299,8 +308,8 @@ function FoodItemsPageContent() {
         </Typography>
 
         <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
-          {/* Search and Filters */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Desktop: Search + Filters */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               size="small"
               placeholder="Search food items..."
@@ -322,7 +331,72 @@ function FoodItemsPageContent() {
                 ))}
               </Select>
             </FormControl>
+            {hasActiveFilters && (
+              <Button size="small" onClick={handleClearFilters}>
+                Clear Filters
+              </Button>
+            )}
           </Box>
+
+          {/* Mobile: Search + Filter button */}
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2, alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="Search food items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoComplete="off"
+              sx={{ flex: 1 }}
+            />
+            <IconButton
+              onClick={() => setFilterDrawerOpen(true)}
+              color={accessLevel !== 'all' ? 'primary' : 'default'}
+              aria-label="Open filters"
+            >
+              <FilterList />
+            </IconButton>
+          </Box>
+
+          {/* Mobile filter drawer */}
+          <Drawer
+            anchor="right"
+            open={filterDrawerOpen}
+            onClose={() => setFilterDrawerOpen(false)}
+            sx={{ '& .MuiDrawer-paper': { width: '85%', maxWidth: 360, p: 3 } }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Filters</Typography>
+              <IconButton onClick={() => setFilterDrawerOpen(false)} aria-label="Close filters">
+                <Close />
+              </IconButton>
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="access-level-label-mobile">Access Level</InputLabel>
+              <Select
+                labelId="access-level-label-mobile"
+                value={accessLevel}
+                label="Access Level"
+                onChange={(e) => setAccessLevel(e.target.value)}
+              >
+                {accessLevelOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {hasActiveFilters && (
+              <Button
+                size="small"
+                fullWidth
+                onClick={() => {
+                  handleClearFilters();
+                  setFilterDrawerOpen(false);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </Drawer>
 
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -557,10 +631,14 @@ function FoodItemsPageContent() {
                   </Box>
                   <Divider />
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">Access Level</Typography>
-                    <Typography variant="body1">
-                      {accessLevelChipProps[selectedItem.accessLevel]?.label || selectedItem.accessLevel}
-                    </Typography>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Access Level</Typography>
+                    <Chip
+                      label={accessLevelChipProps[selectedItem.accessLevel]?.label || selectedItem.accessLevel}
+                      size="small"
+                      color={accessLevelChipProps[selectedItem.accessLevel]?.color || 'default'}
+                      variant="outlined"
+                      icon={accessLevelChipProps[selectedItem.accessLevel]?.icon}
+                    />
                   </Box>
                   <Divider />
                   <Box>
