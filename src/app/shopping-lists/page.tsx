@@ -334,17 +334,31 @@ function ShoppingListsPageContent() {
   // was being improved. With Redis-backed SSE broadcasting in place, this polling
   // effect is disabled to allow testing pure real-time behavior.
 
+  // Lazy-load food items on demand (not at page load)
+  const foodItemsLoadedRef = useRef(false);
+  const loadFoodItems = useCallback(async () => {
+    if (foodItemsLoadedRef.current && foodItems.length > 0) return foodItems;
+    try {
+      const res = await fetch("/api/food-items?limit=1000");
+      const json = await res.json();
+      const items: FoodItem[] = Array.isArray(json) ? json : json.data || [];
+      setFoodItems(items);
+      foodItemsLoadedRef.current = true;
+      return items;
+    } catch (error) {
+      console.error("Error loading food items:", error);
+      return foodItems;
+    }
+  }, [foodItems]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storesData, foodItemsResponse, invitationsData] = await Promise.all([
+      const [storesData, invitationsData] = await Promise.all([
         fetchStores(),
-        fetch("/api/food-items?limit=1000").then((res) => res.json()),
         fetchPendingInvitations(),
       ]);
       setStores(storesData);
-      const foodItemsData = Array.isArray(foodItemsResponse) ? foodItemsResponse : foodItemsResponse.data || [];
-      setFoodItems(foodItemsData);
       setPendingInvitations(invitationsData);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -592,6 +606,7 @@ function ShoppingListsPageContent() {
     setItemEditorInitialDraft(null);
     setEditingOriginalFoodItemId(null);
     setItemEditorOpen(true);
+    void loadFoodItems();
   };
 
   const handleOpenEditItemEditor = (item: ShoppingListItem) => {
@@ -603,6 +618,7 @@ function ShoppingListsPageContent() {
     });
     setEditingOriginalFoodItemId(item.foodItemId);
     setItemEditorOpen(true);
+    void loadFoodItems();
   };
 
   const resolveNameForFoodItemId = (
@@ -893,6 +909,8 @@ function ShoppingListsPageContent() {
   // Meal plan import handlers
   const handleOpenMealPlanSelection = async () => {
     try {
+      // Start loading food items in parallel with meal plans
+      void loadFoodItems();
       const allMealPlans = await fetchMealPlans();
 
       // Filter meal plans: last 3 days or future
@@ -929,9 +947,12 @@ function ShoppingListsPageContent() {
       // Extract food items from meal plans
       const extractedItems = await extractFoodItemsFromMealPlans(selectedPlans);
 
+      // Ensure food items are loaded for name/unit lookup
+      const loadedFoodItems = await loadFoodItems();
+
       // Create food items map for name lookup
       const foodItemsMap = new Map(
-        foodItems.map((f) => [
+        loadedFoodItems.map((f) => [
           f._id,
           {
             singularName: f.singularName,
@@ -1096,8 +1117,11 @@ function ShoppingListsPageContent() {
     try {
       setLoadingPantryCheck(true);
 
-      // Fetch pantry items
-      const pantryItems = await fetchPantryItems();
+      // Load food items and pantry items in parallel
+      const [pantryItems] = await Promise.all([
+        fetchPantryItems(),
+        loadFoodItems(),
+      ]);
 
       // Find shopping list items that are in pantry
       const matches = shoppingListItems

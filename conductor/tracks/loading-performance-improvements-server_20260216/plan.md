@@ -181,11 +181,11 @@ Based on manual verification feedback:
   - [x] Update the component to use debounced server search
   - [x] Verify tests pass
 
-- [ ] Task 6.3: Refactor shopping lists page for lazy loading
-  - [ ] Write tests for the updated page: store cards show item counts, items load on open, autocomplete is on-demand
-  - [ ] Refactor `src/app/shopping-lists/page.tsx` to remove upfront food item fetch and rely on lazy-loaded store items
-  - [ ] Add loading indicators for store item fetching
-  - [ ] Verify all existing interactions (real-time sync, finish shop, purchase history) still work
-  - [ ] Verify tests pass
+- [x] Task 6.3: Refactor shopping lists page for lazy loading
+  - [x] Write tests for the updated page: store cards show item counts, items load on open, autocomplete is on-demand
+  - [x] Refactor `src/app/shopping-lists/page.tsx` to remove upfront food item fetch and rely on lazy-loaded store items
+  - [x] Add loading indicators for store item fetching
+  - [x] Verify all existing interactions (real-time sync, finish shop, purchase history) still work
+  - [x] Verify tests pass
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 6' (Protocol in workflow.md)
