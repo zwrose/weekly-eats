@@ -14,76 +14,75 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || "";
-    const limit = parseInt(searchParams.get("limit") || "10000");
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const rawLimit = parseInt(searchParams.get("limit") || "10", 10);
+    const page = Number.isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+    const limit = Number.isNaN(rawLimit) ? 10 : Math.min(Math.max(rawLimit, 1), 100);
 
     const client = await getMongoClient();
     const db = client.db();
     const pantryCollection = db.collection("pantry");
 
-    // Build query
-    const filter: Record<string, unknown> = { userId: session.user.id };
-
-    // Add search filter if query is provided
-    if (query.trim()) {
-      // We'll filter by food item name after the join
-    }
-
-    const pantryItems = await pantryCollection
-      .find(filter)
-      .sort({ addedAt: -1 })
-      .limit(limit)
-      .toArray();
-
-    // Join with food items to get the names
-    const foodItemsCollection = db.collection("foodItems");
-    const foodItemIds = pantryItems.map(
-      (item) => new ObjectId(item.foodItemId)
-    );
-    const foodItems = await foodItemsCollection
-      .find({ _id: { $in: foodItemIds } })
-      .toArray();
-
-    const foodItemsMap = new Map(
-      foodItems.map((item) => [item._id.toString(), item])
-    );
-
-    // Transform the data to include food item details and filter by search term
-    let transformedItems = pantryItems
-      .map((item) => {
-        const foodItem = foodItemsMap.get(item.foodItemId);
-        if (!foodItem) return null; // Skip items with missing food items
-
-        return {
-          ...item,
+    // Build aggregation pipeline: match user, join food items, filter by search, sort, paginate
+    const pipeline: Record<string, unknown>[] = [
+      { $match: { userId: session.user.id } },
+      {
+        $lookup: {
+          from: "foodItems",
+          let: { fid: { $toObjectId: "$foodItemId" } },
+          pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$fid"] } } }],
+          as: "foodItemArr",
+        },
+      },
+      { $unwind: "$foodItemArr" },
+      {
+        $addFields: {
           foodItem: {
-            _id: foodItem._id,
-            name: foodItem.name,
-            singularName: foodItem.singularName,
-            pluralName: foodItem.pluralName,
-            unit: foodItem.unit,
+            _id: "$foodItemArr._id",
+            name: "$foodItemArr.name",
+            singularName: "$foodItemArr.singularName",
+            pluralName: "$foodItemArr.pluralName",
+            unit: "$foodItemArr.unit",
           },
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null); // Remove null items
+        },
+      },
+      { $unset: "foodItemArr" },
+    ];
 
-    // Apply search filter if query is provided
+    // Search filter on food item names
     if (query.trim()) {
-      transformedItems = transformedItems.filter(
-        (item) =>
-          item.foodItem.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.foodItem.singularName
-            .toLowerCase()
-            .includes(query.toLowerCase()) ||
-          item.foodItem.pluralName.toLowerCase().includes(query.toLowerCase())
-      );
+      pipeline.push({
+        $match: {
+          $or: [
+            { "foodItem.name": { $regex: query, $options: "i" } },
+            { "foodItem.singularName": { $regex: query, $options: "i" } },
+            { "foodItem.pluralName": { $regex: query, $options: "i" } },
+          ],
+        },
+      });
     }
 
-    // Sort by food item name
-    transformedItems.sort((a, b) =>
-      a.foodItem.name.localeCompare(b.foodItem.name)
-    );
+    // Sort by food item name ascending
+    pipeline.push({ $sort: { "foodItem.name": 1 } });
 
-    return NextResponse.json(transformedItems);
+    // Get total count for pagination (before skip/limit)
+    const countPipeline = [...pipeline, { $count: "total" }];
+    const countResult = await pantryCollection.aggregate(countPipeline).toArray();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+
+    // Skip and limit for pagination
+    pipeline.push({ $skip: (page - 1) * limit });
+    pipeline.push({ $limit: limit });
+
+    const data = await pantryCollection.aggregate(pipeline).toArray();
+
+    return NextResponse.json({
+      data,
+      total,
+      page,
+      limit,
+      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+    });
   } catch (error) {
     logError("Pantry GET", error);
     return NextResponse.json(
