@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,16 +22,10 @@ import {
   MealPlanItem,
   MealItem,
 } from "@/types/meal-plan";
-import { Recipe } from "@/types/recipe";
-import { RecipeUserDataResponse } from "@/types/recipe-user-data";
 import { getUnitForm } from "@/lib/food-items-utils";
-import { fetchRecipe } from "@/lib/recipe-utils";
-import { fetchRecipeUserData } from "@/lib/recipe-user-data-utils";
 import { responsiveDialogStyle } from "@/lib/theme";
 import { DialogTitle } from "@/components/ui";
 import MealEditor from "@/components/MealEditor";
-
-const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
 
 export interface MealPlanViewDialogProps {
   open: boolean;
@@ -82,8 +74,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
   getMealTypeName,
   validateMealPlan,
 }) => {
-  const router = useRouter();
-
   const handleSaveClick = () => {
     if (mealPlanValidationErrors.length > 0) {
       onShowValidationErrors(true);
@@ -103,35 +93,9 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
     }
   };
 
-  // Recipe viewing state
-  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
-  const handleRecipeClick = useCallback(async (recipeId: string) => {
-    try {
-      const [recipe, userData] = await Promise.all([
-        fetchRecipe(recipeId),
-        fetchRecipeUserData(recipeId).catch(() => null),
-      ]);
-      setSelectedRecipe(recipe);
-      setRecipeUserData(userData);
-      setRecipeDialogOpen(true);
-    } catch (error) {
-      console.error("Error loading recipe details:", error);
-    }
-  }, []);
-
-  const handleRecipeDialogClose = useCallback(() => {
-    setRecipeDialogOpen(false);
-    setSelectedRecipe(null);
-    setRecipeUserData(null);
-  }, []);
-
-  const handleNavigateToRecipe = useCallback((recipeId: string) => {
-    handleRecipeDialogClose();
-    onClose();
-    router.push(`/recipes?viewRecipe=${recipeId}&editMode=true`);
-  }, [handleRecipeDialogClose, onClose, router]);
+  const openRecipeInNewTab = (recipeId: string) => {
+    window.open(`/recipes?viewRecipe=true&viewRecipe_recipeId=${recipeId}`, '_blank');
+  };
 
   return (
     <Dialog
@@ -662,11 +626,11 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     component="span"
                                     role="button"
                                     tabIndex={0}
-                                    onClick={() => handleRecipeClick(staple.id)}
+                                    onClick={() => openRecipeInNewTab(staple.id)}
                                     onKeyDown={(e: React.KeyboardEvent) => {
                                       if (e.key === "Enter" || e.key === " ") {
                                         e.preventDefault();
-                                        handleRecipeClick(staple.id);
+                                        openRecipeInNewTab(staple.id);
                                       }
                                     }}
                                     sx={{
@@ -903,11 +867,11 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                     component="span"
                                                     role="button"
                                                     tabIndex={0}
-                                                    onClick={() => handleRecipeClick(mealItem.id)}
+                                                    onClick={() => openRecipeInNewTab(mealItem.id)}
                                                     onKeyDown={(e: React.KeyboardEvent) => {
                                                       if (e.key === "Enter" || e.key === " ") {
                                                         e.preventDefault();
-                                                        handleRecipeClick(mealItem.id);
+                                                        openRecipeInNewTab(mealItem.id);
                                                       }
                                                     }}
                                                     sx={{
@@ -1059,31 +1023,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
           </Box>
         )}
       </DialogContent>
-
-      {/* Recipe View Dialog - layered on top of meal plan dialog */}
-      <RecipeViewDialog
-        open={recipeDialogOpen}
-        onClose={handleRecipeDialogClose}
-        selectedRecipe={selectedRecipe}
-        editMode={false}
-        editingRecipe={{}}
-        onEditingRecipeChange={() => {}}
-        canEditRecipe={() => false}
-        onEditRecipe={() => {}}
-        onUpdateRecipe={() => {}}
-        onDeleteConfirm={() => {}}
-        onCancelEdit={() => {}}
-        onEmojiPickerOpen={() => {}}
-        recipeUserData={recipeUserData}
-        onTagsChange={() => {}}
-        onRatingChange={() => {}}
-        onIngredientsChange={() => {}}
-        foodItemsList={[]}
-        onFoodItemAdded={async () => {}}
-        hasValidIngredients={() => true}
-        getIngredientName={(ingredient) => (ingredient as { name?: string }).name || "Unknown"}
-        onNavigateToRecipe={handleNavigateToRecipe}
-      />
 
     </Dialog>
   );

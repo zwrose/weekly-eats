@@ -18,7 +18,7 @@ import {
   Public,
   Person,
   Delete,
-  OpenInNew,
+  RestaurantMenu,
 } from "@mui/icons-material";
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
 import { getUnitForm } from "@/lib/food-items-utils";
@@ -60,7 +60,6 @@ export interface RecipeViewDialogProps {
   onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
   getIngredientName: (ingredient: { type: "foodItem" | "recipe"; id: string; quantity: number }) => string;
-  onNavigateToRecipe?: (recipeId: string) => void;
 }
 
 const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
@@ -84,7 +83,6 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   onFoodItemAdded,
   hasValidIngredients,
   getIngredientName,
-  onNavigateToRecipe,
 }) => {
   return (
     <Dialog
@@ -106,8 +104,10 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
         }
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {selectedRecipe?.emoji && (
+          {selectedRecipe?.emoji ? (
             <Typography variant="h4">{selectedRecipe.emoji}</Typography>
+          ) : (
+            <RestaurantMenu sx={{ fontSize: "2rem", color: "text.secondary" }} />
           )}
           <Typography variant="h5">{selectedRecipe?.title}</Typography>
         </Box>
@@ -367,7 +367,28 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                                   ingredient.quantity
                                 ) + " "
                               : ""}
-                            {getIngredientName(ingredient)}
+                            {ingredient.type === "recipe" ? (
+                              <Box
+                                component="a"
+                                href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${ingredient.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  color: "primary.main",
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                  textDecorationColor: "transparent",
+                                  transition: "text-decoration-color 0.2s",
+                                  "&:hover": {
+                                    textDecorationColor: "currentcolor",
+                                  },
+                                }}
+                              >
+                                {getIngredientName(ingredient)}
+                              </Box>
+                            ) : (
+                              getIngredientName(ingredient)
+                            )}
                             {ingredient.prepInstructions && `, ${ingredient.prepInstructions}`}
                           </Typography>
                         ))}
@@ -403,20 +424,6 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                 </Box>
               </Box>
             </Box>
-            {onNavigateToRecipe && selectedRecipe?._id && (
-              <>
-                <Divider sx={{ my: 3 }} />
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button
-                    onClick={() => onNavigateToRecipe(selectedRecipe._id!)}
-                    startIcon={<OpenInNew />}
-                    size="small"
-                  >
-                    Edit in Recipes
-                  </Button>
-                </Box>
-              </>
-            )}
           </Box>
         )}
       </DialogContent>
