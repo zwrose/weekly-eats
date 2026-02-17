@@ -71,12 +71,11 @@ import {
   SharedUser,
   PendingMealPlanInvitation
 } from "../../lib/meal-plan-sharing-utils";
-import { useSearchPagination, useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import { responsiveDialogStyle } from '@/lib/theme';
-import SearchBar from '@/components/optimized/SearchBar';
-import Pagination from '@/components/optimized/Pagination';
 import { DialogActions, DialogTitle } from '@/components/ui';
-import { dayOfWeekToIndex } from "../../lib/date-utils";
+import { dayOfWeekToIndex, formatDateForAPI } from "../../lib/date-utils";
+import MealPlanBrowser from "../../components/MealPlanBrowser";
 
 function MealPlansPageContent() {
   const { status } = useSession();
@@ -150,35 +149,28 @@ function MealPlansPageContent() {
     weeklyStaples: []
   });
 
-  // Search and pagination
-  const mealPlanPagination = useSearchPagination({
-    data: mealPlans,
-    itemsPerPage: 10,
-    searchFields: ['name']
-  });
-
   // Organize meal plans by owner
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
-  
+
   const mealPlansByOwner = () => {
     const grouped: Record<string, MealPlanWithTemplate[]> = {};
-    
-    mealPlanPagination.paginatedData.forEach(plan => {
+
+    mealPlans.forEach(plan => {
       const owner = plan.userId;
       if (!grouped[owner]) {
         grouped[owner] = [];
       }
       grouped[owner].push(plan);
     });
-    
+
     // Sort owners: current user first, then others alphabetically
     const sortedEntries = Object.entries(grouped).sort(([ownerA], [ownerB]) => {
       if (ownerA === currentUserId) return -1;
       if (ownerB === currentUserId) return 1;
       return getOwnerName(ownerA).localeCompare(getOwnerName(ownerB));
     });
-    
+
     return Object.fromEntries(sortedEntries);
   };
   
@@ -198,8 +190,14 @@ function MealPlansPageContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      // Fetch only recent meal plans (last 4 weeks) instead of all
+      const now = new Date();
+      const fourWeeksAgo = new Date(now);
+      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+      const recentStartDate = formatDateForAPI(fourWeeksAgo);
+
       const [plans, userTemplate, pendingInvites, invitedUsers, owners, settingsResponse] = await Promise.all([
-        fetchMealPlans(),
+        fetchMealPlans({ startDate: recentStartDate }),
         fetchMealPlanTemplate(),
         fetchPendingMealPlanSharingInvitations(),
         fetchSharedMealPlanUsers(), // Users YOU invited
@@ -818,11 +816,9 @@ function MealPlansPageContent() {
             </Paper>
           )}
 
+          {/* Recent Meal Plans */}
           <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <SearchBar
-              value={mealPlanPagination.searchTerm}
-              onChange={mealPlanPagination.setSearchTerm}
-            />
+            <Typography variant="h6" sx={{ mb: 2 }}>Recent Meal Plans</Typography>
 
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -832,16 +828,14 @@ function MealPlansPageContent() {
               <>
                 {mealPlans.length > 0 ? (
                   <>
-                    {/* Render sections for each owner */}
                     {Object.entries(mealPlansByOwner()).map(([ownerId, ownerMealPlans], sectionIndex) => {
                       const owners = Object.keys(mealPlansByOwner());
                       const hasMultipleOwners = owners.length > 1;
                       const isOnlyOwnerAndNotCurrentUser = owners.length === 1 && ownerId !== currentUserId;
                       const shouldShowHeader = hasMultipleOwners || isOnlyOwnerAndNotCurrentUser;
-                      
+
                       return (
                       <Box key={ownerId} sx={{ mb: sectionIndex < Object.keys(mealPlansByOwner()).length - 1 ? 4 : 0 }}>
-                        {/* Show owner header if multiple owners OR if only owner is not the current user */}
                         {shouldShowHeader && (
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                             <Typography variant="h6" sx={{ color: 'text.secondary' }}>
@@ -860,7 +854,7 @@ function MealPlansPageContent() {
                             )}
                           </Box>
                         )}
-                        
+
                         {/* Desktop Table View */}
                         <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                           <TableContainer>
@@ -872,7 +866,7 @@ function MealPlansPageContent() {
                               </TableHead>
                               <TableBody>
                                 {ownerMealPlans.map((mealPlan) => (
-                                  <TableRow 
+                                  <TableRow
                                     key={mealPlan._id}
                                     onClick={() => handleEditMealPlan(mealPlan)}
                                     sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
@@ -904,7 +898,7 @@ function MealPlansPageContent() {
                             border: '1px solid',
                             borderColor: 'divider',
                             borderRadius: 2,
-                            '&:hover': { 
+                            '&:hover': {
                               backgroundColor: 'action.hover',
                               transform: 'translateY(-2px)',
                               boxShadow: 4
@@ -925,24 +919,20 @@ function MealPlansPageContent() {
                       );
                     }
                     )}
-                    
-                    {mealPlans.length > 10 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                        <Pagination
-                          count={mealPlanPagination.totalPages}
-                          page={mealPlanPagination.currentPage}
-                          onChange={mealPlanPagination.setCurrentPage}
-                        />
-                      </Box>
-                    )}
                   </>
                 ) : (
                   <Alert severity="info">
-                    {mealPlanPagination.searchTerm ? 'No meal plans match your search criteria' : 'No meal plans found. Create your first meal plan to get started!'}
+                    No recent meal plans. Create your first meal plan to get started!
                   </Alert>
                 )}
               </>
             )}
+          </Paper>
+
+          {/* Meal Plan History Browser */}
+          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>Meal Plan History</Typography>
+            <MealPlanBrowser onPlanSelect={handleEditMealPlan} />
           </Paper>
 
           {/* Create Meal Plan Dialog */}
