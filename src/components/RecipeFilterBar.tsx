@@ -13,7 +13,6 @@ import {
   IconButton,
   Drawer,
   Typography,
-  Button,
   Divider,
 } from '@mui/material';
 import { FilterList, Close } from '@mui/icons-material';
@@ -90,12 +89,13 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
     onTagsChange(selectedTags.filter(t => t !== tagToDelete));
   };
 
-  const toggleRating = (rating: number) => {
-    if (selectedRatings.includes(rating)) {
-      onRatingsChange(selectedRatings.filter(r => r !== rating));
-    } else {
-      onRatingsChange([...selectedRatings, rating].sort());
-    }
+  const handleRatingsChange = (e: SelectChangeEvent<number[]>) => {
+    const value = e.target.value;
+    onRatingsChange(typeof value === 'string' ? value.split(',').map(Number) : value);
+  };
+
+  const handleDeleteRating = (ratingToDelete: number) => {
+    onRatingsChange(selectedRatings.filter(r => r !== ratingToDelete));
   };
 
   const handleSortChange = (e: SelectChangeEvent) => {
@@ -142,24 +142,36 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
         </Select>
       </FormControl>
 
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Rating
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+      <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="ratings-label">Rating</InputLabel>
+        <Select
+          labelId="ratings-label"
+          label="Rating"
+          multiple
+          value={selectedRatings}
+          onChange={handleRatingsChange}
+          input={<OutlinedInput label="Rating" />}
+          renderValue={(selected) => (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {selected.map((r) => (
+                <Chip
+                  key={r}
+                  label={'★'.repeat(r)}
+                  size="small"
+                  onDelete={() => handleDeleteRating(r)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              ))}
+            </Box>
+          )}
+        >
           {ratingOptions.map((r) => (
-            <Chip
-              key={r}
-              label={`${'★'.repeat(r)}`}
-              size="small"
-              color={selectedRatings.includes(r) ? 'primary' : 'default'}
-              variant={selectedRatings.includes(r) ? 'filled' : 'outlined'}
-              onClick={() => toggleRating(r)}
-              onDelete={selectedRatings.includes(r) ? () => toggleRating(r) : undefined}
-            />
+            <MenuItem key={r} value={r}>
+              {'★'.repeat(r)}
+            </MenuItem>
           ))}
-        </Box>
-      </Box>
+        </Select>
+      </FormControl>
     </>
   );
 
@@ -207,22 +219,36 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
           </Select>
         </FormControl>
 
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5, whiteSpace: 'nowrap' }}>
-            Rating:
-          </Typography>
-          {ratingOptions.map((r) => (
-            <Chip
-              key={r}
-              label={`${'★'.repeat(r)}`}
-              size="small"
-              color={selectedRatings.includes(r) ? 'primary' : 'default'}
-              variant={selectedRatings.includes(r) ? 'filled' : 'outlined'}
-              onClick={() => toggleRating(r)}
-              onDelete={selectedRatings.includes(r) ? () => toggleRating(r) : undefined}
-            />
-          ))}
-        </Box>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="ratings-label-desktop">Rating</InputLabel>
+          <Select
+            labelId="ratings-label-desktop"
+            label="Rating"
+            multiple
+            value={selectedRatings}
+            onChange={handleRatingsChange}
+            input={<OutlinedInput label="Rating" />}
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {selected.map((r) => (
+                  <Chip
+                    key={r}
+                    label={'★'.repeat(r)}
+                    size="small"
+                    onDelete={() => handleDeleteRating(r)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                ))}
+              </Box>
+            )}
+          >
+            {ratingOptions.map((r) => (
+              <MenuItem key={r} value={r}>
+                {'★'.repeat(r)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Mobile layout: search + filter button */}
@@ -277,14 +303,6 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(({
             <MenuItem value="rating-desc">Highest Rated</MenuItem>
           </Select>
         </FormControl>
-
-        <Button
-          variant="contained"
-          fullWidth
-          onClick={() => setDrawerOpen(false)}
-        >
-          Apply Filters
-        </Button>
       </Drawer>
     </>
   );

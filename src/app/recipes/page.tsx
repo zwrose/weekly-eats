@@ -148,9 +148,8 @@ const mobileCardSx = {
 
 const mobileCardTitleSx = {
   display: "flex",
-  flexDirection: "column",
   alignItems: "flex-start",
-  mb: 2,
+  mb: 1,
 } as const;
 
 const paginationContainerSx = {
@@ -926,19 +925,24 @@ function RecipesPageContent() {
                         sx={mobileCardSx}
                       >
                         <Box sx={mobileCardTitleSx}>
-                          <Box sx={{ mb: 1 }}>
+                          <Box sx={{ mr: 1.5, flexShrink: 0 }}>
                             {recipe.emoji ? (
                               <Typography variant="h4">{recipe.emoji}</Typography>
                             ) : (
                               <RestaurantMenu sx={recipeIconLargeSx} />
                             )}
                           </Box>
-                          <Typography variant="h6" sx={{ fontWeight: "medium" }}>
-                            {recipe.title}
-                          </Typography>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+                              {recipe.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(recipe.updatedAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
                         </Box>
                         {(allTags.length > 0 || rating) && (
-                          <Box sx={{ mb: 2, width: '100%' }}>
+                          <Box sx={{ width: '100%' }}>
                             {allTags.length > 0 && (
                               <Box sx={tagContainerMobileSx}>
                                 {allTags.slice(0, 5).map((tag) => (
@@ -957,11 +961,6 @@ function RecipesPageContent() {
                             )}
                           </Box>
                         )}
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Updated: {new Date(recipe.updatedAt).toLocaleDateString()}
-                          </Typography>
-                        </Box>
                       </Paper>
                     );
                   })}

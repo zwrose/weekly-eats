@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 
     const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : [];
     const ratings = ratingsParam ? ratingsParam.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !Number.isNaN(r)) : [];
-    const useAggregation = tags.length > 0 || ratings.length > 0;
+    const useAggregation = tags.length > 0 || ratings.length > 0 || sortBy === 'rating';
 
     if (useAggregation) {
       // Use aggregation pipeline to join with recipeUserData for tag/rating filtering

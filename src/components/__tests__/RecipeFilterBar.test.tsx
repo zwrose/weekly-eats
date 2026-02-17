@@ -56,11 +56,9 @@ describe('RecipeFilterBar', () => {
     expect(screen.getAllByText('quick').length).toBeGreaterThan(0);
   });
 
-  it('renders rating chips', () => {
+  it('renders rating dropdown', () => {
     render(<RecipeFilterBar {...defaultProps} />);
-    // Rating chips use star characters
-    expect(screen.getAllByText('★').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('★★★★★').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText(/rating/i).length).toBeGreaterThan(0);
   });
 
   it('renders mobile filter button', () => {
