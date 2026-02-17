@@ -19,12 +19,16 @@ import {
 import { ObjectId } from 'mongodb';
 import { RecipeIngredientList } from '@/types/recipe';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     const client = await getMongoClient();
     const db = client.db();
@@ -47,11 +51,22 @@ export async function GET() {
 
     const sharedOwnerIds = sharedOwners.map(owner => owner._id.toString());
 
+    // Build filter
+    const filter: Record<string, unknown> = {
+      userId: { $in: [session.user.id, ...sharedOwnerIds] }
+    };
+
+    // Add date-range filter if provided (startDate is YYYY-MM-DD string, lexicographic comparison works)
+    if (startDate || endDate) {
+      const dateFilter: Record<string, string> = {};
+      if (startDate) dateFilter.$gte = startDate;
+      if (endDate) dateFilter.$lte = endDate;
+      filter.startDate = dateFilter;
+    }
+
     // Get meal plans for current user AND shared owners
     const mealPlans = await mealPlansCollection
-      .find({
-        userId: { $in: [session.user.id, ...sharedOwnerIds] }
-      })
+      .find(filter)
       .sort({ startDate: -1 })
       .toArray();
 

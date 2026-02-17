@@ -27,11 +27,10 @@ vi.mock('@/lib/mongodb', () => ({
       collection: (name: string) => {
         if (name === 'mealPlans') {
           return {
-            find: () => ({
-              // Support both .toArray() and .sort().toArray()
+            find: findMock.mockImplementation(() => ({
               toArray: toArrayMock,
               sort: () => ({ toArray: toArrayMock }),
-            }),
+            })),
             insertOne: insertOneMock,
             findOne: findOneMock,
             updateOne: updateOneMock,
@@ -92,6 +91,7 @@ const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body 
 beforeEach(() => {
   vi.restoreAllMocks();
   (getServerSession as any).mockReset();
+  findMock.mockReset();
   toArrayMock.mockReset();
   findOneMock.mockReset();
   insertOneMock.mockReset();
@@ -101,23 +101,23 @@ beforeEach(() => {
 describe('api/meal-plans route', () => {
   it('GET requires auth', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(401);
   });
 
   it('GET returns user meal plans', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { 
-        _id: 'p1', 
-        name: 'Week A', 
-        templateId: 't1', 
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
         templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
         items: [],
-        createdAt: new Date() 
+        createdAt: new Date()
       },
     ]);
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(Array.isArray(json)).toBe(true);
@@ -167,7 +167,7 @@ describe('api/meal-plans route', () => {
       },
     ]);
     
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json[0].items[0].items[0].name).toBe('apples'); // Plural because quantity is 2
@@ -194,7 +194,7 @@ describe('api/meal-plans route', () => {
       },
     ]);
     
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json[0].items[0].items[0].name).toBe('Pasta Carbonara');
@@ -232,7 +232,7 @@ describe('api/meal-plans route', () => {
       },
     ]);
     
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
     const ingredientGroup = json[0].items[0].items[0];
@@ -265,7 +265,7 @@ describe('api/meal-plans route', () => {
       },
     ]);
     
-    const res = await routes.GET();
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
     // Should keep stored name as fallback when food item is deleted but name was stored
@@ -273,6 +273,51 @@ describe('api/meal-plans route', () => {
     // Should show 'Unknown' when no name was stored
     expect(json[0].items[0].items[1].name).toBe('Unknown');
   });
+
+  it('GET filters by startDate and endDate when provided', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    toArrayMock.mockResolvedValueOnce([
+      {
+        _id: 'p1',
+        name: 'Feb Week 1',
+        startDate: '2026-02-07',
+        endDate: '2026-02-13',
+        templateId: 't1',
+        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        items: [],
+        createdAt: new Date()
+      },
+    ]);
+
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans?startDate=2026-02-01&endDate=2026-02-28'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toHaveLength(1);
+    expect(json[0].name).toBe('Feb Week 1');
+
+    // Verify filter was applied to MongoDB query
+    const filterArg = findMock.mock.calls[findMock.mock.calls.length - 1][0];
+    expect(filterArg.startDate).toEqual({ $gte: '2026-02-01', $lte: '2026-02-28' });
+  });
+
+  it('GET returns all plans when no date filters provided', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    toArrayMock.mockResolvedValueOnce([
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
+        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        items: [],
+        createdAt: new Date()
+      },
+    ]);
+
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
+    expect(res.status).toBe(200);
+
+    // Verify no startDate filter was applied
+    const filterArg = findMock.mock.calls[findMock.mock.calls.length - 1][0];
+    expect(filterArg.startDate).toBeUndefined();
+  });
 });
-
-
