@@ -5,6 +5,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  createFilterOptions,
   Dialog,
   DialogActions as MuiDialogActions,
   DialogContent,
@@ -26,6 +27,10 @@ export type FoodItemOption = {
   pluralName: string;
   unit: string;
 };
+
+const ADD_NEW_ID = "__add_new_food_item__";
+
+const defaultFilter = createFilterOptions<FoodItemOption>();
 
 export type ItemEditorDraft = {
   foodItemId: string;
@@ -244,6 +249,20 @@ export default function ItemEditorDialog({
               options={selectableFoodItems}
               value={selectedFoodItem ?? (foodItemInputValue || null)}
               inputValue={foodItemInputValue}
+              filterOptions={(options, params) => {
+                const filtered = defaultFilter(options, params);
+                // Append "Add new" option when user has typed something
+                if (params.inputValue.trim()) {
+                  filtered.push({
+                    _id: ADD_NEW_ID,
+                    name: `Add "${params.inputValue.trim()}" as a Food Item`,
+                    singularName: "",
+                    pluralName: "",
+                    unit: "",
+                  });
+                }
+                return filtered;
+              }}
               onInputChange={(_, value, reason) => {
                 setFoodItemInputValue(value);
                 // If user types, treat as freeSolo unless they select an option.
@@ -255,6 +274,11 @@ export default function ItemEditorDialog({
                 if (typeof value === "string") {
                   setSelectedFoodItem(null);
                   setFoodItemInputValue(value);
+                  return;
+                }
+                // Handle "Add new" option
+                if (value?._id === ADD_NEW_ID) {
+                  handleRequestCreateFoodItem(foodItemInputValue.trim());
                   return;
                 }
                 setSelectedFoodItem(value);
@@ -270,6 +294,33 @@ export default function ItemEditorDialog({
               isOptionEqualToValue={(option, value) => {
                 if (typeof value === "string") return false;
                 return option._id === value?._id;
+              }}
+              renderOption={(props, option) => {
+                const { key, ...otherProps } = props;
+                if (option._id === ADD_NEW_ID) {
+                  return (
+                    <Box component="li" key={key} {...otherProps} sx={{ p: "8px !important" }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        fullWidth
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRequestCreateFoodItem(foodItemInputValue.trim());
+                        }}
+                        sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                      >
+                        {option.name}
+                      </Button>
+                    </Box>
+                  );
+                }
+                return (
+                  <Box component="li" key={key} {...otherProps}>
+                    {option.name}
+                  </Box>
+                );
               }}
               renderInput={(params) => (
                 <TextField
