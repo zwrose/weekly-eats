@@ -47,6 +47,51 @@ export async function GET(
       return NextResponse.json({ error: RECIPE_ERRORS.RECIPE_NOT_FOUND }, { status: 404 });
     }
 
+    // Resolve ingredient names from food items and recipes collections
+    const foodItemIds: string[] = [];
+    const recipeIngredientIds: string[] = [];
+    for (const group of recipe.ingredients || []) {
+      for (const ingredient of group.ingredients || []) {
+        if (ingredient.type === 'foodItem' && ingredient.id) {
+          foodItemIds.push(ingredient.id);
+        } else if (ingredient.type === 'recipe' && ingredient.id) {
+          recipeIngredientIds.push(ingredient.id);
+        }
+      }
+    }
+
+    const [foodItemsDocs, recipesDocs] = await Promise.all([
+      foodItemIds.length > 0
+        ? db.collection('foodItems').find({
+            _id: { $in: foodItemIds.map(fid => ObjectId.createFromHexString(fid)) },
+          }).toArray()
+        : Promise.resolve([]),
+      recipeIngredientIds.length > 0
+        ? recipesCollection.find({
+            _id: { $in: recipeIngredientIds.map(rid => ObjectId.createFromHexString(rid)) },
+          }).toArray()
+        : Promise.resolve([]),
+    ]);
+
+    const foodItemsMap = new Map(foodItemsDocs.map(fi => [fi._id.toString(), fi]));
+    const recipesMap = new Map(recipesDocs.map(r => [r._id.toString(), r]));
+
+    for (const group of recipe.ingredients || []) {
+      for (const ingredient of group.ingredients || []) {
+        if (ingredient.type === 'foodItem') {
+          const fi = foodItemsMap.get(ingredient.id);
+          if (fi) {
+            ingredient.name = ingredient.quantity === 1 ? fi.singularName : fi.pluralName;
+          }
+        } else if (ingredient.type === 'recipe') {
+          const r = recipesMap.get(ingredient.id);
+          if (r) {
+            ingredient.name = r.title;
+          }
+        }
+      }
+    }
+
     return NextResponse.json(recipe);
   } catch (error) {
     logError('Recipes GET [id]', error);
