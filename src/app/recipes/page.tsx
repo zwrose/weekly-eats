@@ -380,7 +380,12 @@ function RecipesPageContent() {
     type: "foodItem" | "recipe";
     id: string;
     quantity: number;
+    name?: string;
   }): string => {
+    // Prefer server-resolved name (populated by GET /api/recipes/[id])
+    if (ingredient.name) return ingredient.name;
+
+    // Fallback to client-side lookup for draft/unsaved recipes
     if (ingredient.type === "foodItem") {
       const foodItem = foodItems[ingredient.id];
       if (!foodItem) return "Unknown food item";

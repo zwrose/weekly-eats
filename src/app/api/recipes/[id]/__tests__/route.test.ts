@@ -19,15 +19,25 @@ vi.mock('@/lib/mongodb-adapter', () => ({
 const findOneMock = vi.fn();
 const updateOneMock = vi.fn();
 const deleteOneMock = vi.fn();
+const foodItemsFindMock = vi.fn();
+const recipesFindMock = vi.fn();
 
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
-      collection: () => ({
-        findOne: findOneMock,
-        updateOne: updateOneMock,
-        deleteOne: deleteOneMock,
-      }),
+      collection: (name: string) => {
+        if (name === 'foodItems') {
+          return {
+            find: foodItemsFindMock,
+          };
+        }
+        return {
+          findOne: findOneMock,
+          updateOne: updateOneMock,
+          deleteOne: deleteOneMock,
+          find: recipesFindMock,
+        };
+      },
     }),
   })),
 }));
@@ -46,6 +56,12 @@ beforeEach(() => {
   findOneMock.mockReset();
   updateOneMock.mockReset();
   deleteOneMock.mockReset();
+  foodItemsFindMock.mockReset();
+  recipesFindMock.mockReset();
+
+  // Default: no related food items or recipes to resolve
+  foodItemsFindMock.mockReturnValue({ toArray: () => Promise.resolve([]) });
+  recipesFindMock.mockReturnValue({ toArray: () => Promise.resolve([]) });
 });
 
 describe('api/recipes/[id] route', () => {
@@ -77,6 +93,85 @@ describe('api/recipes/[id] route', () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.title).toBe('Update');
+  });
+
+  it('GET resolves ingredient names from food items and recipes', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    const foodItemId = '64b7f8c2a2b7c2f1a2b7c2f2';
+    const subRecipeId = '64b7f8c2a2b7c2f1a2b7c2f3';
+
+    findOneMock.mockResolvedValueOnce({
+      _id: id,
+      title: 'Test Recipe',
+      createdBy: 'u1',
+      isGlobal: false,
+      ingredients: [{
+        title: '',
+        isStandalone: true,
+        ingredients: [
+          { type: 'foodItem', id: foodItemId, quantity: 2, unit: 'cup' },
+          { type: 'recipe', id: subRecipeId, quantity: 1 },
+        ],
+      }],
+    });
+
+    const { ObjectId } = await import('mongodb');
+    foodItemsFindMock.mockReturnValueOnce({
+      toArray: () => Promise.resolve([
+        { _id: ObjectId.createFromHexString(foodItemId), singularName: 'Tomato', pluralName: 'Tomatoes' },
+      ]),
+    });
+    recipesFindMock.mockReturnValueOnce({
+      toArray: () => Promise.resolve([
+        { _id: ObjectId.createFromHexString(subRecipeId), title: 'Tomato Sauce' },
+      ]),
+    });
+
+    const res = await routes.GET(
+      makeRequest(`http://localhost/api/recipes/${id}`),
+      { params: Promise.resolve({ id }) } as any
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    expect(json.ingredients[0].ingredients[0].name).toBe('Tomatoes');
+    expect(json.ingredients[0].ingredients[1].name).toBe('Tomato Sauce');
+  });
+
+  it('GET uses singular name when quantity is 1', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    const foodItemId = '64b7f8c2a2b7c2f1a2b7c2f2';
+
+    findOneMock.mockResolvedValueOnce({
+      _id: id,
+      title: 'Test Recipe',
+      createdBy: 'u1',
+      isGlobal: false,
+      ingredients: [{
+        title: '',
+        isStandalone: true,
+        ingredients: [
+          { type: 'foodItem', id: foodItemId, quantity: 1, unit: 'each' },
+        ],
+      }],
+    });
+
+    const { ObjectId } = await import('mongodb');
+    foodItemsFindMock.mockReturnValueOnce({
+      toArray: () => Promise.resolve([
+        { _id: ObjectId.createFromHexString(foodItemId), singularName: 'Tomato', pluralName: 'Tomatoes' },
+      ]),
+    });
+
+    const res = await routes.GET(
+      makeRequest(`http://localhost/api/recipes/${id}`),
+      { params: Promise.resolve({ id }) } as any
+    );
+    const json = await res.json();
+
+    expect(json.ingredients[0].ingredients[0].name).toBe('Tomato');
   });
 
   it('DELETE 401 when unauthenticated', async () => {
