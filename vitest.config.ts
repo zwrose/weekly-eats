@@ -28,11 +28,11 @@ export default defineConfig({
       // Sustainable fix: Only include source files, exclude all build artifacts
       include: [
         'src/**/*.{ts,tsx}',
-        '!src/**/*.{test,spec}.{ts,tsx}',
-        '!src/types/**',
-        '!src/**/*.d.ts',
       ],
       exclude: [
+        'src/**/*.{test,spec}.{ts,tsx}',
+        'src/types/**',
+        'src/**/*.d.ts',
         '**/*.config.{js,ts}',
         '**/*.setup.{js,ts}',
         '**/*.map',
