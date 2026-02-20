@@ -10,6 +10,14 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 - **Lint**: `npm run lint`
 - **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main` and `develop`
 
+## Documentation
+
+- **[Architecture](docs/architecture.md)** — system design, features, state management, auth, real-time, database
+- **[API Patterns](docs/api-patterns.md)** — REST conventions, auth, validation, error handling, responses
+- **[Testing](docs/testing.md)** — Vitest setup, mocking patterns, component/API/hook testing
+- **[Setup](docs/setup.md)** — environment, database, dev server, worktrees, CI, migration
+- **[Product](docs/product.md)** — product vision, features, UX guidelines, development principles
+
 ## Worktree / Multi-Agent Workflow
 
 This project supports running multiple Claude Code agents (or developers) in parallel using git worktrees. Each worktree gets an isolated port, database, and `node_modules`.
@@ -116,6 +124,12 @@ src/
 - MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`
 - Access pattern: `const client = await getMongoClient(); const db = client.db();`
 - Indexes defined in `src/lib/database-indexes.ts`, applied via `npm run setup-db`
+
+### Code Style
+
+- File naming: PascalCase for components (`MealEditor.tsx`), kebab-case for utilities (`date-utils.ts`)
+- TypeScript: prefer interfaces over type aliases, use `unknown` over `any`, avoid type assertions (`as`)
+- Exports: named exports only (no default exports)
 
 ## Gotchas
 
