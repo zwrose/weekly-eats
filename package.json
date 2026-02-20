@@ -63,7 +63,6 @@
     "msw": "^2.10.4",
     "typescript": "^5",
     "vite": "^7.1.1",
-    "vitest": "^3.2.4",
-    "web-streams-polyfill": "^4.2.0"
+    "vitest": "^3.2.4"
   }
 }
