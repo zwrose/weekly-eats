@@ -8,7 +8,7 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 - **Tests**: `npm test` (single run) or `npm run test:watch` (watch mode)
 - **Full validation**: `npm run check` (lint + test + build — run before pushing)
 - **Lint**: `npm run lint`
-- **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main` and `develop`
+- **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main`
 
 ## Documentation
 

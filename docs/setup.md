@@ -245,7 +245,7 @@ sudo apt-get install -y mongodb-database-tools
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `develop`.
+GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main`.
 
 ### What CI Does
 
@@ -258,7 +258,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to 
    NODE_ENV: test
    SKIP_DB_SETUP: true
    ```
-3. **Coverage upload** -- HTML coverage artifact uploaded, lcov sent to Codecov
+3. **Build** -- not run in CI; use `npm run check` locally to validate production builds
 
 CI does **not** run `next build`. The production build is tested locally via `npm run check`.
 

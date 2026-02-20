@@ -96,7 +96,7 @@ Write failing tests first, then implement the minimum code to make them pass, th
 ### Quality Standards
 
 - **Test coverage target:** >80% for all new code
-- **Zero lint warnings:** Enforced in CI via GitHub Actions on pushes and PRs to `main` and `develop`
+- **Zero lint warnings:** Enforced in CI via GitHub Actions on pushes and PRs to `main`
 - **Full validation before pushing:** Run `npm run check` (lint + test + build) before every push
 - **TypeScript strict mode:** No `any` casts or type workarounds without documented justification
 

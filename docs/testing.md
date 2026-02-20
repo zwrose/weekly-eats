@@ -555,7 +555,7 @@ npm run check         # Lint + test with coverage + build (run before pushing)
 
 Tests use fake environment variables (`MONGODB_URI='mongodb://localhost:27017/fake'` and `SKIP_DB_SETUP=true`) to prevent real database connections. These are set automatically via the setup files and `package.json` scripts.
 
-**CI:** GitHub Actions runs lint + test with coverage on pushes and PRs to `main` and `develop`. Coverage output is uploaded as a build artifact. Codecov integration is available when `CODECOV_TOKEN` is set in repo secrets.
+**CI:** GitHub Actions runs lint + test with coverage on pushes and PRs to `main`.
 
 **Troubleshooting:**
 
