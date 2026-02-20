@@ -26,11 +26,11 @@ vi.mock('next-auth/react', () => ({
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('Shopping Lists - Food Item Input Behaviors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     // Mock initial data loading
     mockFetch.mockImplementation((url) => {
       if (url.includes('/api/stores')) {
@@ -59,6 +59,7 @@ describe('Shopping Lists - Food Item Input Behaviors', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 

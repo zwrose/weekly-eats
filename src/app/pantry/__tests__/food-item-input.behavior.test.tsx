@@ -23,11 +23,11 @@ vi.mock('next-auth/react', () => ({
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('Pantry - Food Item Input Behaviors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => []
@@ -35,6 +35,7 @@ describe('Pantry - Food Item Input Behaviors', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
