@@ -8,14 +8,15 @@ import IngredientInput from '../IngredientInput';
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('IngredientInput', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
