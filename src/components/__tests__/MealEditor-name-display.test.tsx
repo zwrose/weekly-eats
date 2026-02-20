@@ -6,11 +6,11 @@ import { within } from '@testing-library/dom';
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('MealEditor - Name Display in Edit Mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     
     // Mock food items API response
     mockFetch.mockImplementation((url) => {
@@ -37,6 +37,7 @@ describe('MealEditor - Name Display in Edit Mode', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 

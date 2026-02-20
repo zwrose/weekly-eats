@@ -8,14 +8,15 @@ import MealEditor from '../MealEditor';
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('MealEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
