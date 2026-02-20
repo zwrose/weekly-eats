@@ -12,11 +12,9 @@ const mockFetch = vi.fn();
 describe('IngredientInput', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -255,6 +253,7 @@ describe('IngredientInput', () => {
     ];
 
     beforeEach(() => {
+      vi.stubGlobal('fetch', mockFetch);
       // Mock fetch for food items and recipes
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/api/food-items')) {
@@ -271,6 +270,10 @@ describe('IngredientInput', () => {
         }
         return Promise.reject(new Error('Unknown URL'));
       });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
     });
 
     it('does not show prep instructions UI when allowPrepInstructions is false', async () => {

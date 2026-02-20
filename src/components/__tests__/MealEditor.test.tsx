@@ -12,7 +12,6 @@ const mockFetch = vi.fn();
 describe('MealEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
@@ -21,6 +20,7 @@ describe('MealEditor', () => {
   });
 
   it('suppresses prep instructions UI for meal items', async () => {
+    vi.stubGlobal('fetch', mockFetch);
     // MealEditor loads food items + recipes on mount, IngredientInput also loads recipes on mount.
     // Make all fetches resolve quickly to avoid hanging tests.
     mockFetch.mockImplementation((url: string) => {
@@ -52,6 +52,7 @@ describe('MealEditor', () => {
   });
 
   it('suppresses prep instructions UI for ingredient group items', async () => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockImplementation((url: string) => {
       if (url.includes('/api/food-items')) {
         return Promise.resolve({ ok: true, json: async () => [] } as Response);
@@ -93,38 +94,12 @@ describe('MealEditor', () => {
   });
 
   it('auto-selects newly created food item in meal editor', async () => {
+    // This test uses MSW for all fetches (food items GET, recipes GET, food item POST).
+    // MSW's default POST handler returns { _id: 'new-food-id', ...body }.
     const user = userEvent.setup();
     const onChange = vi.fn();
     const onFoodItemAdded = vi.fn();
-    
-    // Mock the initial data loading
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [
-        { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
-      ]
-    });
-    
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [] // No recipes
-    });
-    
-    // Mock the food item creation API response
-    const newFoodItem = {
-      _id: 'new-food-789',
-      name: 'Fresh Avocado',
-      singularName: 'Fresh Avocado',
-      pluralName: 'Fresh Avocados',
-      unit: 'piece',
-      isGlobal: false
-    };
-    
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => newFoodItem
-    });
-    
+
     render(
       <MealEditor
         mealItems={[]}
