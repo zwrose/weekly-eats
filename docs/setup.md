@@ -151,7 +151,7 @@ Test files (`**/__tests__/**/*.{ts,tsx}`, `**/*.{test,spec}.{ts,tsx}`) have rela
 
 ### VS Code Integration
 
-Install the [ESLint extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint). The `.vscode/settings.json` in the repo configures ESLint to auto-fix on save.
+Install the [ESLint extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) and configure it to auto-fix on save.
 
 ## Worktree Workflow
 
