@@ -143,6 +143,13 @@ src/
 - **Dynamic route params**: Next.js 15 params are async — use `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params;`
 - **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
 - **`globals.css`**: Exists in `src/app/` for base resets only. All component styling uses MUI `sx` prop.
+- **Flaky test**: `IngredientInput.core-behaviors.test.tsx` "should display empty string when quantity is 0" intermittently fails in full suite but passes in isolation. Pre-existing test isolation issue.
+
+## Validation Workflow
+
+- **`npm run check`** runs lint, test:coverage, and build in one command. Run it once — don't re-run individual steps after.
+- **Subagent test runs count.** If a subagent already confirmed tests pass, don't re-run the full suite. Only run `npm run check` once at the end as final validation.
+- **Investigating test failures:** Run the specific failing test in verbose mode (`npx vitest run path/to/test.tsx`) to confirm it reproduces. If it passes in isolation, it's a flaky test — note it and move on. Don't stash/checkout to test on prior commits (causes merge conflicts on branches with many changes).
 
 ## Do Not Edit
 
