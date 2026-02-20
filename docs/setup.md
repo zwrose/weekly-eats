@@ -149,10 +149,6 @@ Test files (`**/__tests__/**/*.{ts,tsx}`, `**/*.{test,spec}.{ts,tsx}`) have rela
 - `@typescript-eslint/no-unused-vars` -- off
 - Vitest globals (`vi`, `describe`, `it`, `test`, `expect`, `beforeEach`, `afterEach`) are declared as read-only globals
 
-### VS Code Integration
-
-Install the [ESLint extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) and configure it to auto-fix on save.
-
 ## Worktree Workflow
 
 Git worktrees allow running multiple development branches simultaneously with fully isolated ports, databases, and `node_modules`. Worktrees live inside the project at `.worktrees/`, which keeps them within the Claude Code sandbox and avoids permission/consent issues.
