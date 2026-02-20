@@ -110,6 +110,8 @@ vi.mock('../../../components/shopping-list/StoreHistoryDialog', () => ({
 }));
 
 describe('ShoppingListsPage', () => {
+  const mockFetch = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset URL state for each test
@@ -123,7 +125,8 @@ describe('ShoppingListsPage', () => {
     mockFetchPurchaseHistory.mockResolvedValue([]);
 
     // Mock fetch for food items
-    global.fetch = vi.fn((url) => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -131,10 +134,11 @@ describe('ShoppingListsPage', () => {
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
-    }) as any;
+    });
   });
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     cleanup();
     // MUI Dialog/Modal can leave global body styles behind if unmounted mid-transition,
     // which can make subsequent tests flaky.
@@ -425,7 +429,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(freshList as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -713,7 +717,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -794,7 +798,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -861,7 +865,7 @@ describe('ShoppingListsPage', () => {
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
     mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -922,7 +926,7 @@ describe('ShoppingListsPage', () => {
     // with the new unit selector and keyboard support features
     mockFetchStores.mockResolvedValue([]);
 
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -930,7 +934,7 @@ describe('ShoppingListsPage', () => {
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
-    }) as any;
+    });
 
     render(<ShoppingListsPage />);
 
@@ -976,7 +980,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -1073,7 +1077,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -1207,7 +1211,7 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(mockStores);
     mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
 
-    (global.fetch as unknown as vi.Mock).mockImplementation((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,

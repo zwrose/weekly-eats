@@ -98,6 +98,8 @@ vi.mock('../../../components/MealPlanBrowser', () => ({
 // Import after mocks
 import MealPlansPage from '../page';
 
+const mockFetch = vi.fn();
+
 describe('MealPlansPage - Delete Functionality', () => {
   const mockMealPlan = {
     _id: 'meal-plan-123',
@@ -134,24 +136,26 @@ describe('MealPlansPage - Delete Functionality', () => {
     mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
     
     // Mock global fetch for user settings
-    global.fetch = vi.fn((url) => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/user/settings') {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
-            settings: { 
-              themeMode: 'system', 
+          json: () => Promise.resolve({
+            settings: {
+              themeMode: 'system',
               mealPlanSharing: { invitations: [] },
               defaultMealPlanOwner: undefined
-            } 
+            }
           })
         } as Response);
       }
       return Promise.reject(new Error('Not mocked'));
-    }) as any;
+    });
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -685,7 +689,8 @@ describe('MealPlansPage - Auto-focus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.fetch = vi.fn((url) => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/user/settings') {
         return Promise.resolve({
           ok: true,
@@ -700,10 +705,11 @@ describe('MealPlansPage - Auto-focus', () => {
         } as Response);
       }
       return Promise.reject(new Error('Not mocked'));
-    }) as any;
+    });
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -742,7 +748,8 @@ describe('MealPlansPage - View Mode Quantity Display', () => {
     vi.clearAllMocks();
 
     // Mock global fetch for user settings
-    global.fetch = vi.fn((url) => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/user/settings') {
         return Promise.resolve({
           ok: true,
@@ -757,10 +764,11 @@ describe('MealPlansPage - View Mode Quantity Display', () => {
         } as Response);
       }
       return Promise.reject(new Error('Not mocked'));
-    }) as any;
+    });
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
