@@ -143,7 +143,7 @@ src/
 - **Dynamic route params**: Next.js 15 params are async — use `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params;`
 - **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
 - **`globals.css`**: Exists in `src/app/` for base resets only. All component styling uses MUI `sx` prop.
-- **Flaky test**: `IngredientInput.core-behaviors.test.tsx` "should display empty string when quantity is 0" intermittently fails in full suite but passes in isolation. Pre-existing test isolation issue.
+- **Fetch mocking**: Use `vi.stubGlobal('fetch', mockFetch)` in `beforeEach` + `vi.unstubAllGlobals()` in `afterEach`. Never assign `global.fetch` at module scope — it leaks across test files in single-fork vitest. Tests using MSW (from `vitest.setup.ts`) should NOT stub `global.fetch`.
 
 ## Validation Workflow
 
