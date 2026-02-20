@@ -7,6 +7,8 @@ import { renderHook, act } from '@testing-library/react';
 import { useFoodItemSelector, type FoodItem, type Recipe } from '../use-food-item-selector';
 
 describe('useFoodItemSelector', () => {
+  const mockFetch = vi.fn();
+
   const mockFoodItems: FoodItem[] = [
     { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
     { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'each' },
@@ -20,9 +22,11 @@ describe('useFoodItemSelector', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -71,7 +75,7 @@ describe('useFoodItemSelector', () => {
   describe('API search when no food items provided', () => {
     it('handles paginated API response format correctly', async () => {
       // Mock fetch to return paginated response format
-      const mockFetch = vi.fn()
+      mockFetch.mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
@@ -89,7 +93,6 @@ describe('useFoodItemSelector', () => {
           json: async () => [],
         });
 
-      global.fetch = mockFetch;
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -117,7 +120,7 @@ describe('useFoodItemSelector', () => {
     });
 
     it('handles plain array API response format (backward compat)', async () => {
-      const mockFetch = vi.fn()
+      mockFetch.mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => [
@@ -129,7 +132,6 @@ describe('useFoodItemSelector', () => {
           json: async () => [],
         });
 
-      global.fetch = mockFetch;
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -152,7 +154,7 @@ describe('useFoodItemSelector', () => {
     });
 
     it('handles API search with recipes enabled', async () => {
-      const mockFetch = vi.fn()
+      mockFetch.mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
@@ -178,7 +180,6 @@ describe('useFoodItemSelector', () => {
           }),
         });
 
-      global.fetch = mockFetch;
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -202,11 +203,10 @@ describe('useFoodItemSelector', () => {
     });
 
     it('returns empty results when API fails', async () => {
-      const mockFetch = vi.fn()
+      mockFetch.mockReset()
         .mockResolvedValueOnce({ ok: false, json: async () => [] })
         .mockResolvedValueOnce({ ok: false, json: async () => [] });
 
-      global.fetch = mockFetch;
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
