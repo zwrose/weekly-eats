@@ -39,5 +39,5 @@ echo "   - If weekly-eats-dev has your data, keep using it"
 echo "   - If weekly-eats has your data, update .env.local to use weekly-eats"
 echo "   - You can merge them if both have important data"
 echo ""
-echo "📖 See docs/MONGODB_MIGRATION.md for merging instructions"
+echo "📖 See docs/setup.md for database migration instructions"
 
