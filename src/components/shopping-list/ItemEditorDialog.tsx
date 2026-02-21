@@ -40,6 +40,7 @@ interface SelectedFoodItem {
   singularName: string;
   pluralName: string;
   unit: string;
+  type: "foodItem";
 }
 
 export type ItemEditorDialogProps = {
@@ -90,6 +91,7 @@ export default function ItemEditorDialog({
         singularName: newFoodItem.singularName,
         pluralName: newFoodItem.pluralName,
         unit: newFoodItem.unit,
+        type: "foodItem",
       });
       setFoodItemInputValue(newFoodItem.name);
       if (!hasTouchedUnitRef.current) {
@@ -121,6 +123,31 @@ export default function ItemEditorDialog({
     hasTouchedUnitRef.current = false;
     const nextUnit = initialDraft?.unit ?? "each";
     setUnit(nextUnit);
+
+    // In edit mode, resolve the food item name from the API
+    if (initialDraft?.foodItemId) {
+      void (async () => {
+        try {
+          const res = await fetch(
+            `/api/food-items/${initialDraft.foodItemId}`,
+          );
+          if (res.ok) {
+            const item = await res.json();
+            setSelectedFoodItem({
+              _id: item._id,
+              name: item.name,
+              singularName: item.singularName,
+              pluralName: item.pluralName,
+              unit: item.unit,
+              type: "foodItem",
+            });
+            setFoodItemInputValue(item.name);
+          }
+        } catch {
+          /* ignore - user can still type */
+        }
+      })();
+    }
   }, [open, initialDraft]);
 
   // Keyboard inset tracking for mobile
@@ -253,13 +280,14 @@ export default function ItemEditorDialog({
                   handleRequestCreateFoodItem(foodItemInputValue.trim());
                   return;
                 }
-                if (value) {
+                if (value && value.type === "foodItem") {
                   setSelectedFoodItem({
                     _id: value._id,
                     name: value.name,
-                    singularName: value.singularName ?? "",
-                    pluralName: value.pluralName ?? "",
-                    unit: value.unit ?? "",
+                    singularName: value.singularName,
+                    pluralName: value.pluralName,
+                    unit: value.unit,
+                    type: "foodItem",
                   });
                   setFoodItemInputValue(value.name);
                   if (!hasTouchedUnitRef.current) {
@@ -272,7 +300,7 @@ export default function ItemEditorDialog({
               }}
               getOptionLabel={(option) => {
                 if (typeof option === "string") return option;
-                return option.name;
+                return option.type === "foodItem" ? option.name : option.title;
               }}
               isOptionEqualToValue={(option, value) => {
                 if (typeof value === "string") return false;
@@ -280,6 +308,8 @@ export default function ItemEditorDialog({
               }}
               renderOption={(props, option) => {
                 const { key, ...otherProps } = props;
+                const label =
+                  option.type === "foodItem" ? option.name : option.title;
                 if (option._id === ADD_NEW_ID) {
                   return (
                     <Box
@@ -304,14 +334,14 @@ export default function ItemEditorDialog({
                           textTransform: "none",
                         }}
                       >
-                        {option.name}
+                        {label}
                       </Button>
                     </Box>
                   );
                 }
                 return (
                   <Box component="li" key={key} {...otherProps}>
-                    {option.name}
+                    {label}
                   </Box>
                 );
               }}
