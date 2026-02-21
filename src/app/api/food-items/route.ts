@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const foodItemsCollection = db.collection('foodItems');
 
     // Build query based on filter parameters
-    const filter: Record<string, unknown> = {};
+    let filter: Record<string, unknown> = {};
 
     if (accessLevel === 'private' || userOnly) {
       filter.createdBy = session.user.id;
@@ -64,9 +64,17 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add search filter if query is provided
+    // Add search filter if query is provided (matches name, singularName, pluralName)
     if (query.trim()) {
-      filter.name = { $regex: query, $options: 'i' };
+      filter = {
+        $and: [filter, {
+          $or: [
+            { name: { $regex: query, $options: 'i' } },
+            { singularName: { $regex: query, $options: 'i' } },
+            { pluralName: { $regex: query, $options: 'i' } },
+          ],
+        }],
+      };
     }
 
     const result = await paginatedResponse(

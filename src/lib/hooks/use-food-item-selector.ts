@@ -144,92 +144,39 @@ export function useFoodItemSelector(
       }
 
       try {
-        // Determine if we should use local filtering or API search
-        // Use local filtering if:
-        // 1. Props are provided AND have data, OR
-        // 2. Props are provided but empty AND autoLoad is false (intentionally empty)
-        // Use API search if:
-        // 1. Props are not provided (undefined), OR
-        // 2. Props are provided but empty AND autoLoad is true (still loading)
-        const hasFoodItemsData = propFoodItems !== undefined && propFoodItems.length > 0;
-        const hasRecipesData = propRecipes !== undefined && propRecipes.length > 0;
-        const foodItemsProvidedButEmpty = propFoodItems !== undefined && propFoodItems.length === 0;
-        const recipesProvidedButEmpty = propRecipes !== undefined && propRecipes.length === 0;
-        
-        // If we have data in any prop, use local filtering
-        // If props are provided but empty, use API search only if autoLoad is true (treating as "still loading")
-        const shouldUseLocalFiltering = 
-          hasFoodItemsData || 
-          hasRecipesData || 
-          (foodItemsProvidedButEmpty && !autoLoad) ||
-          (recipesProvidedButEmpty && !autoLoad);
-        
-        if (shouldUseLocalFiltering) {
-          // Local filtering
-          const inputLower = input.toLowerCase();
-          const filteredFoodItems = foodItems.filter(item =>
-            item.name.toLowerCase().includes(inputLower) ||
-            item.singularName.toLowerCase().includes(inputLower) ||
-            item.pluralName.toLowerCase().includes(inputLower)
-          );
-          const filteredRecipes = recipes.filter(item =>
-            item.title.toLowerCase().includes(inputLower)
-          );
+        // Always use server-side search for typed queries.
+        // This scales to any number of food items — the API handles
+        // filtering and returns only matching results.
+        const [foodRes, recipeRes] = await Promise.all([
+          fetch(`/api/food-items?query=${encodeURIComponent(input)}&limit=50`),
+          allowRecipes
+            ? fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=50`)
+            : Promise.resolve({ ok: false, json: async () => [] }),
+        ]);
+        const foodItemsRaw = foodRes.ok ? await foodRes.json() : [];
+        const recipesRaw = recipeRes.ok ? await recipeRes.json() : [];
 
-          const allOptions: SearchOption[] = [
-            ...filteredFoodItems.map(item => ({ ...item, type: 'foodItem' as const })),
-            ...filteredRecipes.map(item => ({ ...item, type: 'recipe' as const })),
-          ];
-          const filtered = allOptions.filter(option =>
-            !excludeIds.includes(option._id || '') &&
-            !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-          );
-          setSearchOptions(filtered);
-          setIsLoading(false);
-        } else {
-          // API search
-          const [foodRes, recipeRes] = await Promise.all([
-            fetch(`/api/food-items?query=${encodeURIComponent(input)}&limit=20`),
-            allowRecipes
-              ? fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=20`)
-              : Promise.resolve({ ok: false, json: async () => [] }),
-          ]);
-          const foodItemsRaw = foodRes.ok ? await foodRes.json() : [];
-          const recipesRaw = recipeRes.ok ? await recipeRes.json() : [];
+        // Handle both paginated ({ data: [...] }) and plain array responses
+        const foodItemsData: FoodItem[] = Array.isArray(foodItemsRaw) ? foodItemsRaw : foodItemsRaw.data || [];
+        const recipesData: Recipe[] = Array.isArray(recipesRaw) ? recipesRaw : recipesRaw.data || [];
 
-          // Handle both paginated ({ data: [...] }) and plain array responses
-          const foodItemsData: FoodItem[] = Array.isArray(foodItemsRaw) ? foodItemsRaw : foodItemsRaw.data || [];
-          const recipesData: Recipe[] = Array.isArray(recipesRaw) ? recipesRaw : recipesRaw.data || [];
-
-          // Filter out items that don't actually match
-          const inputLower = input.toLowerCase();
-          const filteredFoodItems = foodItemsData.filter((item: FoodItem) =>
-            item.name.toLowerCase().includes(inputLower) ||
-            item.singularName.toLowerCase().includes(inputLower) ||
-            item.pluralName.toLowerCase().includes(inputLower)
-          );
-          const filteredRecipes = recipesData.filter((item: Recipe) =>
-            item.title.toLowerCase().includes(inputLower)
-          );
-
-          const allOptions: SearchOption[] = [
-            ...filteredFoodItems.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
-            ...filteredRecipes.map((item: Recipe) => ({ ...item, type: 'recipe' as const })),
-          ];
-          const filtered = allOptions.filter(option =>
-            !excludeIds.includes(option._id || '') &&
-            !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-          );
-          setSearchOptions(filtered);
-          setIsLoading(false);
-        }
+        const allOptions: SearchOption[] = [
+          ...foodItemsData.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
+          ...recipesData.map((item: Recipe) => ({ ...item, type: 'recipe' as const })),
+        ];
+        const filtered = allOptions.filter(option =>
+          !excludeIds.includes(option._id || '') &&
+          !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+        );
+        setSearchOptions(filtered);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error performing search:', error);
         setSearchOptions([]);
         setIsLoading(false);
       }
     }, DEBOUNCE_DELAY);
-  }, [foodItems, recipes, excludeIds, currentRecipeId, allowRecipes, propFoodItems, propRecipes, autoLoad]);
+  }, [foodItems, recipes, excludeIds, currentRecipeId, allowRecipes]);
 
   const handleInputChange = useCallback((value: string, reason: string) => {
     setInputValue(value);

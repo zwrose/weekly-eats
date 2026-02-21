@@ -271,7 +271,15 @@ describe('api/food-items route', () => {
       expect(res.status).toBe(200);
 
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
-      expect(filterArg.name).toEqual({ $regex: 'flour', $options: 'i' });
+      // Search uses $and to combine access filter with multi-field search
+      expect(filterArg.$and).toBeDefined();
+      expect(filterArg.$and).toHaveLength(2);
+      const searchCondition = filterArg.$and[1];
+      expect(searchCondition.$or).toEqual([
+        { name: { $regex: 'flour', $options: 'i' } },
+        { singularName: { $regex: 'flour', $options: 'i' } },
+        { pluralName: { $regex: 'flour', $options: 'i' } },
+      ]);
     });
   });
 
