@@ -190,14 +190,11 @@ function MealPlansPageContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch only recent meal plans (last 4 weeks) instead of all
-      const now = new Date();
-      const fourWeeksAgo = new Date(now);
-      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-      const recentStartDate = formatDateForAPI(fourWeeksAgo);
+      // Fetch current meal plans (those that include today or future dates)
+      const today = formatDateForAPI(new Date());
 
       const [plans, userTemplate, pendingInvites, invitedUsers, owners, settingsResponse] = await Promise.all([
-        fetchMealPlans({ startDate: recentStartDate }),
+        fetchMealPlans({ minEndDate: today }),
         fetchMealPlanTemplate(),
         fetchPendingMealPlanSharingInvitations(),
         fetchSharedMealPlanUsers(), // Users YOU invited
@@ -816,9 +813,9 @@ function MealPlansPageContent() {
             </Paper>
           )}
 
-          {/* Recent Meal Plans */}
+          {/* Current Meal Plans */}
           <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Recent Meal Plans</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>Current Meal Plans</Typography>
 
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -922,7 +919,7 @@ function MealPlansPageContent() {
                   </>
                 ) : (
                   <Alert severity="info">
-                    No recent meal plans. Create your first meal plan to get started!
+                    No current meal plans. Create your first meal plan to get started!
                   </Alert>
                 )}
               </>
