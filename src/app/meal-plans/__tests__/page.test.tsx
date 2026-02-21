@@ -676,10 +676,12 @@ describe('MealPlansPage - Delete Functionality', () => {
       expect(screen.getAllByText(mealPlanSkipped.name).length).toBeGreaterThan(0);
     });
 
-    // Skip checkbox label and reason should be visible
-    const skipLabels = screen.getAllByText(/Skip this meal/i);
-    expect(skipLabels.length).toBeGreaterThan(0);
-    expect(screen.getByDisplayValue('Leftovers')).toBeInTheDocument();
+    // Skip checkbox label and reason should be visible (may render after dialog opens)
+    await waitFor(() => {
+      const skipLabels = screen.getAllByText(/Skip this meal/i);
+      expect(skipLabels.length).toBeGreaterThan(0);
+      expect(screen.getByDisplayValue('Leftovers')).toBeInTheDocument();
+    });
 
     unmount();
   });
