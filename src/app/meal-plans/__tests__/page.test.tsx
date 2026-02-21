@@ -518,9 +518,11 @@ describe('MealPlansPage - Delete Functionality', () => {
       // Should show the meal plan dialog is open
       expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
     });
-    
-    // Should show Weekly Staples section
-    expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
+
+    // Should show Weekly Staples section (may need to wait for dynamic import)
+    await waitFor(() => {
+      expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
+    });
     // Should show editable description
     expect(screen.getByText(/add, edit, or remove staples for this specific meal plan/i)).toBeInTheDocument();
     // Should show the MealEditor component for staples
@@ -568,9 +570,11 @@ describe('MealPlansPage - Delete Functionality', () => {
       // Should show the meal plan dialog is open
       expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
     });
-    
-    // Should show Weekly Staples section even when empty
-    expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
+
+    // Should show Weekly Staples section even when empty (may need to wait for dynamic import)
+    await waitFor(() => {
+      expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
+    });
     // Should show editable MealEditor for staples
     const mealEditors = screen.getAllByTestId('meal-editor');
     // Should have at least one MealEditor (for staples + for the meal days)

@@ -31,8 +31,23 @@ describe('useFoodItemSelector', () => {
     vi.restoreAllMocks();
   });
 
-  describe('local filtering with provided food items', () => {
-    it('filters food items by name match', async () => {
+  describe('server-side search (always uses API)', () => {
+    it('searches via API even when food items prop is provided', async () => {
+      mockFetch.mockReset()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+            ],
+            total: 1, page: 1, limit: 50, totalPages: 1,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => [],
+        });
+
       const { result } = renderHook(() =>
         useFoodItemSelector({
           foodItems: mockFoodItems,
@@ -47,12 +62,34 @@ describe('useFoodItemSelector', () => {
         vi.advanceTimersByTime(800);
       });
 
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/food-items?query=app')
+      );
       expect(result.current.options.length).toBeGreaterThan(0);
       expect(result.current.options.some(o => o._id === 'f1')).toBe(true); // Apple matches
-      expect(result.current.options.some(o => o._id === 'f2')).toBe(false); // Banana doesn't match
     });
 
-    it('excludes IDs in excludeIds', async () => {
+    it('excludes IDs from API search results', async () => {
+      mockFetch.mockReset()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+              { _id: 'f3', name: 'Carrot', singularName: 'Carrot', pluralName: 'Carrots', unit: 'each' },
+            ],
+            total: 2, page: 1, limit: 50, totalPages: 1,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => [],
+        });
+
       const { result } = renderHook(() =>
         useFoodItemSelector({
           foodItems: mockFoodItems,
@@ -68,7 +105,12 @@ describe('useFoodItemSelector', () => {
         vi.advanceTimersByTime(800);
       });
 
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+
       expect(result.current.options.some(o => o._id === 'f1')).toBe(false); // excluded
+      expect(result.current.options.some(o => o._id === 'f3')).toBe(true); // not excluded
     });
   });
 

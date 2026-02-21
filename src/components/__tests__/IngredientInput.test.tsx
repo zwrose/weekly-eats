@@ -85,12 +85,18 @@ describe('IngredientInput', () => {
     };
     
     server.use(
+      http.get('/api/food-items', () => {
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+      }),
+      http.get('/api/recipes', () => {
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+      }),
       http.post('/api/food-items', async ({ request }) => {
         const body = await request.json() as any;
         return HttpResponse.json(newFoodItem, { status: 201 });
       })
     );
-    
+
     render(
       <IngredientInput
         ingredient={{ type: 'foodItem', id: '', quantity: 1, unit: 'cup' }}
@@ -100,19 +106,19 @@ describe('IngredientInput', () => {
         slotId="test-slot"
       />
     );
-    
+
     // Type a new food item name
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'Fresh Spinach');
-    
+
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
-    
+
     // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Fresh Spinach');
-    
+
     // Select unit (not "each" in this case, so no singular/plural fields)
     const unitCombobox = screen.getByRole('combobox', { name: /typical usage unit/i });
     await user.click(unitCombobox);
@@ -121,15 +127,15 @@ describe('IngredientInput', () => {
     // Get the first "bag" option if multiple exist
     const bagOptions = within(listbox).getAllByRole('option', { name: /bag/i });
     await user.click(bagOptions[0]);
-    
+
     // Verify the submit button is enabled
     const addButton = screen.getByRole('button', { name: /add food item/i });
     expect(addButton).not.toBeDisabled();
-    
+
     // Submit the form - onAdd will be called (which is handleCreate in FoodItemAutocomplete)
     // which calls creator.handleCreate, which makes the fetch call
     await user.click(addButton);
-    
+
     // Wait for the food item to be added - this will happen after the fetch completes
     await waitFor(() => {
       expect(onFoodItemAdded).toHaveBeenCalledWith({
@@ -141,7 +147,7 @@ describe('IngredientInput', () => {
         isGlobal: true
       });
     }, { timeout: 5000 });
-    
+
     // Wait for the auto-selection to happen (via onItemCreated callback in creator)
     await waitFor(() => {
       expect(onIngredientChange).toHaveBeenCalledWith(
@@ -159,11 +165,11 @@ describe('IngredientInput', () => {
     const user = userEvent.setup();
     const onIngredientChange = vi.fn();
     const onFoodItemAdded = vi.fn();
-    
+
     const propFoodItems = [
       { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
     ];
-    
+
     // Override MSW handler for food item creation to return our test data
     // Note: The dialog defaults to isGlobal: true, so the API should return true
     const newFoodItem = {
@@ -174,14 +180,20 @@ describe('IngredientInput', () => {
       unit: 'bunch',
       isGlobal: true
     };
-    
+
     server.use(
+      http.get('/api/food-items', () => {
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+      }),
+      http.get('/api/recipes', () => {
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+      }),
       http.post('/api/food-items', async ({ request }) => {
         const body = await request.json() as any;
         return HttpResponse.json(newFoodItem, { status: 201 });
       })
     );
-    
+
     render(
       <IngredientInput
         ingredient={{ type: 'foodItem', id: '', quantity: 1, unit: 'cup' }}
@@ -192,7 +204,7 @@ describe('IngredientInput', () => {
         slotId="test-slot"
       />
     );
-    
+
     // Type a new food item name
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'Organic Kale');

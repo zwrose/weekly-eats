@@ -13,6 +13,7 @@ import {
   Box,
   Typography,
   Button,
+  CircularProgress,
 } from "@mui/material";
 import {
   useFoodItemSelector,
@@ -193,8 +194,9 @@ export default function FoodItemAutocomplete({
   // Include the "Add New Food Item" option at the bottom only if:
   // 1. There is input text
   // 2. The input doesn't match an excluded item
+  // 3. Not currently loading (otherwise MUI can't show the loading indicator)
   const shouldShowAddNewOption =
-    selector.inputValue.trim() && !inputMatchesExcludedItem;
+    selector.inputValue.trim() && !inputMatchesExcludedItem && !selector.isLoading;
   const optionsWithAddNew = shouldShowAddNewOption
     ? [...selector.options, ADD_NEW_FOOD_ITEM_OPTION]
     : selector.options;
@@ -316,7 +318,7 @@ export default function FoodItemAutocomplete({
 
                 // The hook's handleKeyDown will trigger creation when there are no search options.
                 // We need to prevent that if "Add New Food Item" option isn't available.
-                if (!shouldShowAddNewOption && selector.inputValue.trim()) {
+                if (!shouldShowAddNewOption && !selector.isLoading && selector.inputValue.trim()) {
                   // Prevent the hook from triggering creation when option isn't available
                   e.preventDefault();
                   return;
@@ -328,6 +330,14 @@ export default function FoodItemAutocomplete({
             disabled={disabled}
           />
         )}
+        loadingText={
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="text.secondary">
+              Searching...
+            </Typography>
+          </Box>
+        }
         noOptionsText={
           selector.inputValue.trim() ? (
             <Box>

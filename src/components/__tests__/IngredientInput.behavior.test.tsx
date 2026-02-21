@@ -171,8 +171,16 @@ describe('IngredientInput - Behavior Tests', () => {
     it('should open create dialog when Enter pressed with no matching options', async () => {
       const user = userEvent.setup();
       const onIngredientChange = vi.fn();
-      
+
       const foodItems: any[] = [];
+
+      // Mock API search to return empty results (typed queries always use server-side search)
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/food-items') || url.includes('/api/recipes')) {
+          return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
 
       await act(async () => {
         render(
@@ -624,6 +632,25 @@ describe('IngredientInput - Behavior Tests', () => {
     it('should close dropdown after selecting an item', async () => {
       const user = userEvent.setup();
       const onIngredientChange = vi.fn();
+
+      // Mock API search to return Apple
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/food-items')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              data: [{ _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece' }],
+            }),
+          });
+        }
+        if (url.includes('/api/recipes')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ data: [] }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      });
 
       await act(async () => {
         render(
