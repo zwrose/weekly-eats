@@ -300,6 +300,32 @@ describe('api/meal-plans route', () => {
     expect(filterArg.startDate).toEqual({ $gte: '2026-02-01', $lte: '2026-02-28' });
   });
 
+  it('GET filters by minEndDate when provided', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    toArrayMock.mockResolvedValueOnce([
+      {
+        _id: 'p1',
+        name: 'Current Week',
+        startDate: '2026-02-16',
+        endDate: '2026-02-22',
+        templateId: 't1',
+        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        items: [],
+        createdAt: new Date()
+      },
+    ]);
+
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans?minEndDate=2026-02-21'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toHaveLength(1);
+    expect(json[0].name).toBe('Current Week');
+
+    // Verify endDate filter was applied to MongoDB query
+    const filterArg = findMock.mock.calls[findMock.mock.calls.length - 1][0];
+    expect(filterArg.endDate).toEqual({ $gte: '2026-02-21' });
+  });
+
   it('GET returns all plans when no date filters provided', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([

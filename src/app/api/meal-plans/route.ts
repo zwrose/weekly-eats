@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const minEndDate = searchParams.get('minEndDate');
 
     const client = await getMongoClient();
     const db = client.db();
@@ -62,6 +63,11 @@ export async function GET(request: NextRequest) {
       if (startDate) dateFilter.$gte = startDate;
       if (endDate) dateFilter.$lte = endDate;
       filter.startDate = dateFilter;
+    }
+
+    // Filter by minimum endDate (e.g., to find plans that include today or future dates)
+    if (minEndDate) {
+      filter.endDate = { $gte: minEndDate };
     }
 
     // Get meal plans for current user AND shared owners

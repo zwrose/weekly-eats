@@ -118,10 +118,11 @@ export const updateMealPlanTemplate = async (template: UpdateMealPlanTemplateReq
 };
 
 // Meal Plans
-export const fetchMealPlans = async (opts?: { startDate?: string; endDate?: string }): Promise<MealPlanWithTemplate[]> => {
+export const fetchMealPlans = async (opts?: { startDate?: string; endDate?: string; minEndDate?: string }): Promise<MealPlanWithTemplate[]> => {
   const params = new URLSearchParams();
   if (opts?.startDate) params.set('startDate', opts.startDate);
   if (opts?.endDate) params.set('endDate', opts.endDate);
+  if (opts?.minEndDate) params.set('minEndDate', opts.minEndDate);
   const qs = params.toString();
   const response = await fetch(`/api/meal-plans${qs ? `?${qs}` : ''}`);
   if (!response.ok) {
