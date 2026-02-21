@@ -1,10 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { extractFoodItemsFromMealPlans, combineExtractedItems, mergeWithShoppingList } from '../meal-plan-to-shopping-list';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 
 describe('meal-plan-to-shopping-list utilities', () => {
+  const mockFetch = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('extractFoodItemsFromMealPlans', () => {
@@ -109,7 +116,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
     });
 
     it('recursively extracts food items from recipes', async () => {
-      global.fetch = vi.fn((url) => {
+      mockFetch.mockImplementation((url) => {
         if (url === '/api/recipes/r1') {
           return Promise.resolve({
             ok: true,
@@ -129,7 +136,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
-      }) as any;
+      });
 
       const mealPlan: MealPlanWithTemplate = {
         _id: 'mp1',
@@ -173,7 +180,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
     });
 
     it('multiplies recipe ingredient quantities by meal plan recipe quantity', async () => {
-      global.fetch = vi.fn((url) => {
+      mockFetch.mockImplementation((url) => {
         if (url === '/api/recipes/r1') {
           return Promise.resolve({
             ok: true,
@@ -193,7 +200,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
-      }) as any;
+      });
 
       const mealPlan: MealPlanWithTemplate = {
         _id: 'mp1',
@@ -239,7 +246,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
     });
 
     it('multiplies nested recipe quantities correctly', async () => {
-      global.fetch = vi.fn((url) => {
+      mockFetch.mockImplementation((url) => {
         if (url === '/api/recipes/r1') {
           return Promise.resolve({
             ok: true,
@@ -277,7 +284,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
-      }) as any;
+      });
 
       const mealPlan: MealPlanWithTemplate = {
         _id: 'mp1',
@@ -325,7 +332,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
     });
 
     it('multiplies recipe quantities in ingredient groups correctly', async () => {
-      global.fetch = vi.fn((url) => {
+      mockFetch.mockImplementation((url) => {
         if (url === '/api/recipes/r1') {
           return Promise.resolve({
             ok: true,
@@ -344,7 +351,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
-      }) as any;
+      });
 
       const mealPlan: MealPlanWithTemplate = {
         _id: 'mp1',
@@ -400,7 +407,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
     });
 
     it('handles missing recipe quantity in meal plan (defaults to 1)', async () => {
-      global.fetch = vi.fn((url) => {
+      mockFetch.mockImplementation((url) => {
         if (url === '/api/recipes/r1') {
           return Promise.resolve({
             ok: true,
@@ -419,7 +426,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
-      }) as any;
+      });
 
       const mealPlan: MealPlanWithTemplate = {
         _id: 'mp1',

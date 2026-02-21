@@ -1,4 +1,28 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Write",
+      "Edit",
+      "Task",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "mcp__plugin_context7_context7",
+      "mcp__plugin_github_github",
+      "mcp__plugin_playwright_playwright",
+      "mcp__plugin_episodic-memory_episodic-memory"
+    ],
+    "deny": [
+      "Bash(rm *)",
+      "Bash(rm -rf *)",
+      "Bash(rmdir *)",
+      "Bash(sudo *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

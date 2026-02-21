@@ -4,36 +4,11 @@ import userEvent from '@testing-library/user-event';
 import MealEditor from '../MealEditor';
 import { within } from '@testing-library/dom';
 
-// Mock fetch for API calls
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// API responses are handled by MSW server in vitest.setup.ts
 
 describe('MealEditor - Name Display in Edit Mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Mock food items API response
-    mockFetch.mockImplementation((url) => {
-      if (url.includes('/api/food-items')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => [
-            { _id: 'food-1', name: 'Apple', singularName: 'apple', pluralName: 'apples', unit: 'piece', isGlobal: false },
-            { _id: 'food-2', name: 'Banana', singularName: 'banana', pluralName: 'bananas', unit: 'piece', isGlobal: false }
-          ]
-        });
-      }
-      if (url.includes('/api/recipes')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => [
-            { _id: 'recipe-1', title: 'Pasta Carbonara', emoji: '🍝', isGlobal: false },
-            { _id: 'recipe-2', title: 'Caesar Salad', emoji: '🥗', isGlobal: false }
-          ]
-        });
-      }
-      return Promise.resolve({ ok: false });
-    });
   });
 
   afterEach(() => {

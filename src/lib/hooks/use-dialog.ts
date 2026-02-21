@@ -146,26 +146,6 @@ export const usePersistentDialog = (dialogKey: string): UsePersistentDialogRetur
   };
 };
 
-// Helper function to create dialog keys
-export const createDialogKey = (baseKey: string, suffix?: string): string => {
-  return suffix ? `${baseKey}_${suffix}` : baseKey;
-};
-
-// Specific hook for recipe modals
-export const useRecipeModal = () => {
-  return usePersistentDialog('recipe');
-};
-
-// Specific hook for food item modals
-export const useFoodItemModal = () => {
-  return usePersistentDialog('foodItem');
-};
-
-// Specific hook for meal plan modals
-export const useMealPlanModal = () => {
-  return usePersistentDialog('mealPlan');
-};
-
 interface UseConfirmDialogReturn<T = unknown> {
   open: boolean;
   data: T | null;

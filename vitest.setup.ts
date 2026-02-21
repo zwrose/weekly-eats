@@ -16,7 +16,7 @@ vi.mock('@mui/material/Zoom', () => ({ default: ({ children }: { children: React
 // You can extend here as the test suite grows
 
 // Prevent real DB adapter connection attempts during tests
-vi.mock('/Users/zach.rose/weekly-eats/src/lib/mongodb-adapter.ts', () => ({
+vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
 }));
 

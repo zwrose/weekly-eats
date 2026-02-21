@@ -20,12 +20,15 @@ describe('IngredientInput - Edit Mode Display', () => {
 
   const mockOnChange = vi.fn();
   const mockOnRemove = vi.fn();
+  const mockFetch = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -39,7 +42,7 @@ describe('IngredientInput - Edit Mode Display', () => {
     };
 
     // Mock fetch to return empty recipes list (simulating the recipe not being loaded)
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -53,7 +56,7 @@ describe('IngredientInput - Edit Mode Display', () => {
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
-    }) as any;
+    });
 
     render(
       <IngredientInput
@@ -82,7 +85,7 @@ describe('IngredientInput - Edit Mode Display', () => {
     };
 
     // Mock fetch to return food items list without this specific item
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -96,7 +99,7 @@ describe('IngredientInput - Edit Mode Display', () => {
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
-    }) as any;
+    });
 
     render(
       <IngredientInput
@@ -124,7 +127,7 @@ describe('IngredientInput - Edit Mode Display', () => {
     };
 
     // Mock fetch to return empty lists
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
@@ -138,7 +141,7 @@ describe('IngredientInput - Edit Mode Display', () => {
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
-    }) as any;
+    });
 
     render(
       <IngredientInput
@@ -157,4 +160,3 @@ describe('IngredientInput - Edit Mode Display', () => {
     });
   });
 });
-

@@ -12,16 +12,17 @@ import IngredientInput from '../IngredientInput';
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('IngredientInput - Behavior Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     // Note: MSW handles API mocking globally via vitest.setup.ts
     // Only override mockFetch if needed for specific test cases
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 

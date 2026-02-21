@@ -128,9 +128,6 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => ({
 export const lightTheme = createTheme(createThemeOptions('light'));
 export const darkTheme = createTheme(createThemeOptions('dark'));
 
-// Export theme options for potential customization
-export { createThemeOptions }; 
-
 // Reusable responsive dialog styling for full-screen mobile experience
 export const responsiveDialogStyle = {
   '& .MuiDialog-paper': {

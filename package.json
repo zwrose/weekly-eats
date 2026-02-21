@@ -5,22 +5,19 @@
   "type": "module",
   "scripts": {
     "clean": "rm -rf .next",
-    "dev": "npm run setup-db && next dev --turbopack",
-    "dev:fast": "next dev --turbopack",
+    "dev": "node scripts/dev-server.js",
+    "dev:fast": "node scripts/dev-server.js --skip-setup",
     "dev:clean": "npm run clean && npm run dev",
     "build": "npm run setup-db && next build",
     "start": "next start",
     "lint": "next lint",
     "setup-db": "node scripts/setup-database.js",
-    "migrate-meal-plans": "node scripts/migrate-meal-plans.js",
-    "postinstall": "npm run setup-db",
+    "postinstall": "node scripts/setup-worktree.js",
     "test": "vitest run --run --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "test:watch": "vitest",
     "test:coverage": "vitest run --run --coverage --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "check": "npm run lint -- --max-warnings=0 && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run test:coverage && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run build",
-    "worktree:create": "./scripts/worktree-create.sh",
-    "worktree:list": "./scripts/worktree-list.sh",
-    "worktree:remove": "./scripts/worktree-remove.sh"
+    "worktree:remove": "node scripts/worktree-remove.js"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.9.1",
@@ -36,7 +33,6 @@
     "@mui/material": "^7.1.2",
     "@mui/material-nextjs": "^7.3.8",
     "@mui/x-date-pickers": "^8.5.3",
-    "@types/mongodb": "^4.0.6",
     "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",
     "ably": "^1.2.48",
     "convert": "^6.0.0",
@@ -67,7 +63,6 @@
     "msw": "^2.10.4",
     "typescript": "^5",
     "vite": "^7.1.1",
-    "vitest": "^3.2.4",
-    "web-streams-polyfill": "^4.2.0"
+    "vitest": "^3.2.4"
   }
 }

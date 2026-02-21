@@ -5,7 +5,6 @@ import React from 'react';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 import MealPlanBrowser from '../MealPlanBrowser';
 
@@ -45,6 +44,7 @@ function getUrlString(input: string | URL | Request): string {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal('fetch', mockFetch);
   // Default: summary returns data
   mockFetch.mockImplementation((input: string | URL | Request) => {
     const url = getUrlString(input);
@@ -59,6 +59,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   cleanup();
 });
 

@@ -17,11 +17,11 @@ import IngredientInput from '../IngredientInput';
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('IngredientInput - Core Behaviors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => []
@@ -29,6 +29,7 @@ describe('IngredientInput - Core Behaviors', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 

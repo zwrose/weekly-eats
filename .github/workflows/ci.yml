@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ develop, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ develop, main ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -28,26 +28,10 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
         env:
-          # Prevent real DB connections during tests
           MONGODB_URI: mongodb://localhost:27017/fake
           GOOGLE_CLIENT_ID: fake
           GOOGLE_CLIENT_SECRET: fake
           NODE_ENV: test
           CI: true
           SKIP_DB_SETUP: true
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-html
-          path: coverage
-
-      - name: Upload lcov to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          fail_ci_if_error: false
-        continue-on-error: true
-
 

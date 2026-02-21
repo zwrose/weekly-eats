@@ -115,5 +115,5 @@ echo "   1. Edit .env.local with your configuration"
 echo "   2. Run 'npm run dev' to start the development server"
 echo "   3. Visit http://localhost:3000"
 echo ""
-echo "📖 For more details, see docs/SETUP.md"
+echo "📖 For more details, see docs/setup.md"
 
