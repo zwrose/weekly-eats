@@ -65,15 +65,33 @@ export async function POST(
     const shoppingList = await db.collection('shoppingLists').findOne({ storeId });
     const currentItems = shoppingList?.items || [];
 
-    // Build upsert operations for purchase history
+    // Re-resolve food item names from the database before persisting
     const now = new Date();
     const checkedFoodItemIds = new Set(checkedItems.map(i => i.foodItemId));
-    const bulkOps = checkedItems.map((item: CheckedItem) => ({
+    const validFoodItemIds = checkedItems
+      .map(i => i.foodItemId)
+      .filter(id => ObjectId.isValid(id));
+    const foodItems = validFoodItemIds.length > 0
+      ? await db.collection('foodItems')
+          .find({ _id: { $in: validFoodItemIds.map(id => new ObjectId(id)) } })
+          .toArray()
+      : [];
+    const foodItemMap = new Map(
+      foodItems.map(fi => [fi._id.toString(), fi])
+    );
+
+    // Build upsert operations for purchase history
+    const bulkOps = checkedItems.map((item: CheckedItem) => {
+      const foodItem = foodItemMap.get(item.foodItemId);
+      const resolvedName = foodItem
+        ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
+        : item.name;
+      return {
       updateOne: {
         filter: { storeId, foodItemId: item.foodItemId },
         update: {
           $set: {
-            name: item.name,
+            name: resolvedName,
             quantity: item.quantity,
             unit: item.unit,
             lastPurchasedAt: now,
@@ -85,7 +103,8 @@ export async function POST(
         },
         upsert: true,
       },
-    }));
+    };
+    });
 
     await db.collection('purchaseHistory').bulkWrite(bulkOps);
 
