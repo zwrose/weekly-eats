@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Autocomplete,
   Box,
@@ -212,8 +212,22 @@ export default function ItemEditorDialog({
     handleRequestCreateFoodItem(trimmed);
   };
 
+  // Check if input matches an excluded item (suppress "Add New" in that case)
+  const inputMatchesExcludedItem = useMemo(() => {
+    if (!selector.inputValue?.trim()) return false;
+    const inputLower = selector.inputValue.toLowerCase().trim();
+    return selector.options.some(
+      (option) =>
+        option.isExcluded &&
+        option.type === "foodItem" &&
+        (option.name.toLowerCase() === inputLower ||
+          option.singularName.toLowerCase() === inputLower ||
+          option.pluralName.toLowerCase() === inputLower)
+    );
+  }, [selector.inputValue, selector.options]);
+
   const shouldShowAddNewOption =
-    selector.inputValue.trim() && !selector.isLoading;
+    selector.inputValue.trim() && !selector.isLoading && !inputMatchesExcludedItem;
   const addNewOption: SearchOption[] = shouldShowAddNewOption
     ? [
         {
@@ -270,6 +284,11 @@ export default function ItemEditorDialog({
                   setSelectedFoodItem(null);
                 }
               }}
+              getOptionDisabled={(option) =>
+                typeof option !== "string" &&
+                option._id !== ADD_NEW_ID &&
+                option.isExcluded === true
+              }
               onChange={(_, value) => {
                 if (typeof value === "string") {
                   setSelectedFoodItem(null);
@@ -278,6 +297,10 @@ export default function ItemEditorDialog({
                 }
                 if (value?._id === ADD_NEW_ID) {
                   handleRequestCreateFoodItem(foodItemInputValue.trim());
+                  return;
+                }
+                // Safety net: don't select excluded items
+                if (value && value.isExcluded) {
                   return;
                 }
                 if (value && value.type === "foodItem") {
@@ -341,7 +364,16 @@ export default function ItemEditorDialog({
                 }
                 return (
                   <Box component="li" key={key} {...otherProps}>
-                    {label}
+                    <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                      <Typography color={option.isExcluded ? "text.disabled" : undefined}>
+                        {label}
+                      </Typography>
+                      {option.isExcluded && (
+                        <Typography variant="body2" color="text.disabled" sx={{ ml: 1, whiteSpace: "nowrap" }}>
+                          Already on list
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 );
               }}
