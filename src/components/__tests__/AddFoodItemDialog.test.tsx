@@ -393,4 +393,62 @@ describe('AddFoodItemDialog', () => {
 
     expect(handleAdd).toHaveBeenCalledWith(expect.objectContaining({ isGlobal: false }));
   });
+
+  it('shows error when onAdd rejects with an error', async () => {
+    const user = userEvent.setup();
+    handleAdd.mockRejectedValueOnce(new Error('Food item already exists'));
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
+
+    // Fill the form
+    await user.type(screen.getByLabelText(/default name/i), 'Flour');
+
+    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: /cup/i }));
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /add food item/i }));
+
+    // Assert the alert shows the error message
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Food item already exists');
+    });
+
+    // Assert the form was NOT reset (name field still has "Flour")
+    expect(screen.getByLabelText(/default name/i)).toHaveValue('Flour');
+  });
+
+  it('clears error and resets form on successful onAdd after failure', async () => {
+    const user = userEvent.setup();
+    handleAdd
+      .mockRejectedValueOnce(new Error('Food item already exists'))
+      .mockResolvedValueOnce(undefined);
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
+
+    // Fill the form
+    await user.type(screen.getByLabelText(/default name/i), 'Flour');
+
+    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: /cup/i }));
+
+    // First submit - fails
+    await user.click(screen.getByRole('button', { name: /add food item/i }));
+
+    // Verify alert is shown
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Food item already exists');
+    });
+
+    // Second submit - succeeds
+    await user.click(screen.getByRole('button', { name: /add food item/i }));
+
+    // Verify alert is gone and form is reset
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(/default name/i)).toHaveValue('');
+  });
 });

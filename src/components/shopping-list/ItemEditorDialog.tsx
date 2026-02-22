@@ -5,7 +5,7 @@ import {
   Autocomplete,
   Box,
   Button,
-  createFilterOptions,
+  CircularProgress,
   Dialog,
   DialogActions as MuiDialogActions,
   DialogContent,
@@ -17,20 +17,16 @@ import { responsiveDialogStyle } from '@/lib/theme';
 import QuantityInput from '@/components/food-item-inputs/QuantityInput';
 import UnitSelector from '@/components/food-item-inputs/UnitSelector';
 import AddFoodItemDialog from '@/components/AddFoodItemDialog';
+import {
+  useFoodItemSelector,
+  type FoodItem,
+  type SearchOption,
+} from '@/lib/hooks/use-food-item-selector';
+import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
 
 export type ItemEditorMode = 'add' | 'edit';
 
-export type FoodItemOption = {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-};
-
 const ADD_NEW_ID = '__add_new_food_item__';
-
-const defaultFilter = createFilterOptions<FoodItemOption>();
 
 export type ItemEditorDraft = {
   foodItemId: string;
@@ -38,74 +34,120 @@ export type ItemEditorDraft = {
   unit: string;
 };
 
+interface SelectedFoodItem {
+  _id: string;
+  name: string;
+  singularName: string;
+  pluralName: string;
+  unit: string;
+  type: 'foodItem';
+}
+
 export type ItemEditorDialogProps = {
   open: boolean;
   mode: ItemEditorMode;
   title?: string;
-
-  foodItems: FoodItemOption[];
   excludeFoodItemIds?: string[];
-
   initialDraft?: ItemEditorDraft | null;
-
   onClose: () => void;
   onSave: (draft: ItemEditorDraft) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
-
-  onFoodItemCreated?: (foodItem: FoodItemOption) => void;
+  onFoodItemAdded?: (foodItem: FoodItem) => Promise<void>;
 };
 
 export default function ItemEditorDialog({
   open,
   mode,
   title,
-  foodItems,
   excludeFoodItemIds = [],
   initialDraft,
   onClose,
   onSave,
   onDelete,
-  onFoodItemCreated,
+  onFoodItemAdded,
 }: ItemEditorDialogProps) {
-  const initialFoodItem = useMemo(() => {
-    if (!initialDraft?.foodItemId) return null;
-    return foodItems.find((f) => f._id === initialDraft.foodItemId) ?? null;
-  }, [foodItems, initialDraft?.foodItemId]);
-
-  const [selectedFoodItem, setSelectedFoodItem] = useState<FoodItemOption | null>(null);
+  const [selectedFoodItem, setSelectedFoodItem] = useState<SelectedFoodItem | null>(null);
   const [foodItemInputValue, setFoodItemInputValue] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState('each');
   const hasTouchedUnitRef = useRef(false);
 
-  const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
-  const [prefillFoodItemName, setPrefillFoodItemName] = useState('');
-  const pendingSaveRef = useRef<null | { quantity: number; unit: string }>(null);
   const [keyboardInsetPx, setKeyboardInsetPx] = useState(0);
+  const pendingSaveRef = useRef<null | { quantity: number; unit: string }>(null);
 
-  const selectableFoodItems = useMemo(() => {
-    const exclude = new Set(excludeFoodItemIds);
-    // In edit mode, allow the currently-selected item even if it is excluded.
-    if (initialDraft?.foodItemId) {
-      exclude.delete(initialDraft.foodItemId);
-    }
-    return foodItems.filter((f) => !exclude.has(f._id));
-  }, [excludeFoodItemIds, foodItems, initialDraft?.foodItemId]);
+  const selector = useFoodItemSelector({
+    allowRecipes: false,
+    excludeIds: excludeFoodItemIds,
+    autoLoad: false,
+  });
 
+  const creator = useFoodItemCreator({
+    onFoodItemAdded,
+    onItemCreated: (newFoodItem) => {
+      setSelectedFoodItem({
+        _id: newFoodItem._id,
+        name: newFoodItem.name,
+        singularName: newFoodItem.singularName,
+        pluralName: newFoodItem.pluralName,
+        unit: newFoodItem.unit,
+        type: 'foodItem',
+      });
+      setFoodItemInputValue(newFoodItem.name);
+      if (!hasTouchedUnitRef.current) {
+        setUnit(newFoodItem.unit);
+      }
+
+      if (pendingSaveRef.current) {
+        const pending = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        void onSave({
+          foodItemId: newFoodItem._id!,
+          quantity: pending.quantity,
+          unit: pending.unit,
+        });
+      }
+    },
+  });
+
+  // Reset form state when dialog opens
   useEffect(() => {
     if (!open) return;
 
-    setSelectedFoodItem(initialFoodItem);
-    setFoodItemInputValue(initialFoodItem?.name ?? '');
+    setSelectedFoodItem(null);
+    setFoodItemInputValue('');
 
     const nextQty = initialDraft?.quantity ?? 1;
     setQuantity(nextQty);
 
     hasTouchedUnitRef.current = false;
-    const nextUnit = initialDraft?.unit ?? initialFoodItem?.unit ?? 'each';
+    const nextUnit = initialDraft?.unit ?? 'each';
     setUnit(nextUnit);
-  }, [open, initialDraft, initialFoodItem]);
 
+    // In edit mode, resolve the food item name from the API
+    if (initialDraft?.foodItemId) {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/food-items/${initialDraft.foodItemId}`);
+          if (res.ok) {
+            const item = await res.json();
+            setSelectedFoodItem({
+              _id: item._id,
+              name: item.name,
+              singularName: item.singularName,
+              pluralName: item.pluralName,
+              unit: item.unit,
+              type: 'foodItem',
+            });
+            setFoodItemInputValue(item.name);
+          }
+        } catch {
+          /* ignore - user can still type */
+        }
+      })();
+    }
+  }, [open, initialDraft]);
+
+  // Keyboard inset tracking for mobile
   useEffect(() => {
     if (!open) {
       setKeyboardInsetPx(0);
@@ -116,12 +158,10 @@ export default function ItemEditorDialog({
     if (!visualViewport) return;
 
     const update = () => {
-      // Approximate keyboard height / bottom inset.
       const inset = Math.max(
         0,
         window.innerHeight - (visualViewport.height + visualViewport.offsetTop)
       );
-      // Avoid tiny values that can cause jitter.
       setKeyboardInsetPx(inset >= 16 ? inset : 0);
     };
 
@@ -138,65 +178,18 @@ export default function ItemEditorDialog({
 
   const handleClose = () => {
     pendingSaveRef.current = null;
-    setAddFoodItemDialogOpen(false);
-    setPrefillFoodItemName('');
+    creator.closeDialog();
     onClose();
   };
 
   const handleRequestCreateFoodItem = (name: string) => {
-    setPrefillFoodItemName(name);
-    setAddFoodItemDialogOpen(true);
+    creator.openDialog(name);
   };
 
-  const handleCreateFoodItem = async (foodItemData: {
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-    isGlobal: boolean;
-    addToPantry: boolean;
-  }) => {
-    // Mirrors the existing creation flow behavior, but keeps the orchestration local to this dialog.
-    const payload = {
-      name: foodItemData.name,
-      singularName: foodItemData.singularName,
-      pluralName: foodItemData.pluralName,
-      unit: foodItemData.unit,
-      isGlobal: foodItemData.isGlobal,
-    };
-    const response = await fetch('/api/food-items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to add food item');
-    }
-
-    const newFoodItem = (await response.json()) as FoodItemOption;
-    onFoodItemCreated?.(newFoodItem);
-
-    // Close create dialog and select the new item
-    setAddFoodItemDialogOpen(false);
-    setSelectedFoodItem(newFoodItem);
-    setFoodItemInputValue(newFoodItem.name);
-    setPrefillFoodItemName('');
-
-    if (!hasTouchedUnitRef.current) {
-      setUnit(newFoodItem.unit);
-    }
-
-    // If this create was initiated by Save, complete the save now.
-    if (pendingSaveRef.current) {
-      const pending = pendingSaveRef.current;
-      pendingSaveRef.current = null;
-      await onSave({
-        foodItemId: newFoodItem._id,
-        quantity: pending.quantity,
-        unit: pending.unit,
-      });
+  const handleCreateFoodItem = async (foodItemData: Parameters<typeof creator.handleCreate>[0]) => {
+    const newItem = await creator.handleCreate(foodItemData);
+    if (!newItem) {
+      throw new Error(creator.lastError.current || 'Failed to add food item');
     }
   };
 
@@ -209,10 +202,40 @@ export default function ItemEditorDialog({
 
     if (!trimmed) return;
 
-    // freeSolo typed value: prompt creation via the existing AddFoodItemDialog flow.
+    // freeSolo typed value: prompt creation via the AddFoodItemDialog flow.
     pendingSaveRef.current = { quantity, unit };
     handleRequestCreateFoodItem(trimmed);
   };
+
+  // Check if input matches an excluded item (suppress "Add New" in that case)
+  const inputMatchesExcludedItem = useMemo(() => {
+    if (!selector.inputValue?.trim()) return false;
+    const inputLower = selector.inputValue.toLowerCase().trim();
+    return selector.options.some(
+      (option) =>
+        option.isExcluded &&
+        option.type === 'foodItem' &&
+        (option.name.toLowerCase() === inputLower ||
+          option.singularName.toLowerCase() === inputLower ||
+          option.pluralName.toLowerCase() === inputLower)
+    );
+  }, [selector.inputValue, selector.options]);
+
+  const shouldShowAddNewOption =
+    selector.inputValue.trim() && !selector.isLoading && !inputMatchesExcludedItem;
+  const addNewOption: SearchOption[] = shouldShowAddNewOption
+    ? [
+        {
+          _id: ADD_NEW_ID,
+          name: `Add "${selector.inputValue.trim()}" as a Food Item`,
+          singularName: '',
+          pluralName: '',
+          unit: '',
+          type: 'foodItem' as const,
+        },
+      ]
+    : [];
+  const optionsWithAddNew = [...selector.options, ...addNewOption];
 
   const isSaveDisabled = !foodItemInputValue.trim() || quantity <= 0;
   const dialogTitle = title ?? (mode === 'add' ? 'Add Item' : 'Edit Item');
@@ -243,50 +266,57 @@ export default function ItemEditorDialog({
             <Autocomplete
               freeSolo
               autoHighlight
-              options={selectableFoodItems}
+              options={optionsWithAddNew}
+              loading={selector.isLoading}
               value={selectedFoodItem ?? (foodItemInputValue || null)}
               inputValue={foodItemInputValue}
-              filterOptions={(options, params) => {
-                const filtered = defaultFilter(options, params);
-                // Append "Add new" option when user has typed something
-                if (params.inputValue.trim()) {
-                  filtered.push({
-                    _id: ADD_NEW_ID,
-                    name: `Add "${params.inputValue.trim()}" as a Food Item`,
-                    singularName: '',
-                    pluralName: '',
-                    unit: '',
-                  });
-                }
-                return filtered;
-              }}
               onInputChange={(_, value, reason) => {
                 setFoodItemInputValue(value);
-                // If user types, treat as freeSolo unless they select an option.
+                selector.handleInputChange(value, reason);
                 if (reason === 'input') {
                   setSelectedFoodItem(null);
                 }
               }}
+              getOptionDisabled={(option) =>
+                typeof option !== 'string' &&
+                option._id !== ADD_NEW_ID &&
+                option.isExcluded === true
+              }
               onChange={(_, value) => {
                 if (typeof value === 'string') {
                   setSelectedFoodItem(null);
                   setFoodItemInputValue(value);
                   return;
                 }
-                // Handle "Add new" option
                 if (value?._id === ADD_NEW_ID) {
                   handleRequestCreateFoodItem(foodItemInputValue.trim());
                   return;
                 }
-                setSelectedFoodItem(value);
-                setFoodItemInputValue(value?.name ?? '');
-                if (value && !hasTouchedUnitRef.current) {
-                  setUnit(value.unit);
+                // Safety net: don't select excluded items
+                if (value && value.isExcluded) {
+                  return;
+                }
+                if (value && value.type === 'foodItem') {
+                  setSelectedFoodItem({
+                    _id: value._id,
+                    name: value.name,
+                    singularName: value.singularName,
+                    pluralName: value.pluralName,
+                    unit: value.unit,
+                    type: 'foodItem',
+                  });
+                  setFoodItemInputValue(value.name);
+                  if (!hasTouchedUnitRef.current) {
+                    setUnit(value.unit ?? 'each');
+                  }
+                } else {
+                  setSelectedFoodItem(null);
+                  setFoodItemInputValue('');
                 }
               }}
               getOptionLabel={(option) => {
                 if (typeof option === 'string') return option;
-                return option.name;
+                return option.type === 'foodItem' ? option.name : option.title;
               }}
               isOptionEqualToValue={(option, value) => {
                 if (typeof value === 'string') return false;
@@ -294,6 +324,7 @@ export default function ItemEditorDialog({
               }}
               renderOption={(props, option) => {
                 const { key, ...otherProps } = props;
+                const label = option.type === 'foodItem' ? option.name : option.title;
                 if (option._id === ADD_NEW_ID) {
                   return (
                     <Box component="li" key={key} {...otherProps} sx={{ p: '8px !important' }}>
@@ -306,25 +337,69 @@ export default function ItemEditorDialog({
                           e.stopPropagation();
                           handleRequestCreateFoodItem(foodItemInputValue.trim());
                         }}
-                        sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                        sx={{
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                        }}
                       >
-                        {option.name}
+                        {label}
                       </Button>
                     </Box>
                   );
                 }
                 return (
                   <Box component="li" key={key} {...otherProps}>
-                    {option.name}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Typography color={option.isExcluded ? 'text.disabled' : undefined}>
+                        {label}
+                      </Typography>
+                      {option.isExcluded && (
+                        <Typography
+                          variant="body2"
+                          color="text.disabled"
+                          sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                        >
+                          Already on list
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 );
               }}
               renderInput={(params) => (
                 <TextField {...params} label="Item Name" placeholder="Start typing…" autoFocus />
               )}
+              loadingText={
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    py: 1,
+                  }}
+                >
+                  <CircularProgress size={20} />
+                  <Typography variant="body2" color="text.secondary">
+                    Searching...
+                  </Typography>
+                </Box>
+              }
             />
 
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                flexDirection: { xs: 'column', sm: 'row' },
+              }}
+            >
               <QuantityInput
                 value={quantity}
                 onChange={setQuantity}
@@ -363,10 +438,8 @@ export default function ItemEditorDialog({
 
         <MuiDialogActions
           sx={{
-            // Match DialogContent padding so buttons don't hug the edges.
             px: { xs: 2, sm: 3 },
             pb: { xs: 2, sm: 3 },
-            // Mobile: keep Save visible above the on-screen keyboard.
             position: { xs: 'sticky', sm: 'static' },
             bottom: { xs: keyboardInsetPx, sm: 'auto' },
             bgcolor: 'background.paper',
@@ -407,14 +480,13 @@ export default function ItemEditorDialog({
       </Dialog>
 
       <AddFoodItemDialog
-        open={addFoodItemDialogOpen}
+        open={creator.isDialogOpen}
         onClose={() => {
           pendingSaveRef.current = null;
-          setAddFoodItemDialogOpen(false);
-          setPrefillFoodItemName('');
+          creator.closeDialog();
         }}
         onAdd={handleCreateFoodItem}
-        prefillName={prefillFoodItemName}
+        prefillName={creator.prefillName}
       />
     </>
   );

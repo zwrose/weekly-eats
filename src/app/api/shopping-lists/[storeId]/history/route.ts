@@ -49,18 +49,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .map((h) => h.foodItemId)
         .filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id));
       if (foodItemIds.length > 0) {
-        const foodItems = await db.collection('foodItems')
+        const foodItems = await db
+          .collection('foodItems')
           .find({ _id: { $in: foodItemIds.map((id) => new ObjectId(id)) } })
           .toArray();
-        const foodItemMap = new Map(
-          foodItems.map((fi) => [fi._id.toString(), fi])
-        );
+        const foodItemMap = new Map(foodItems.map((fi) => [fi._id.toString(), fi]));
         for (const record of history) {
           const foodItem = foodItemMap.get(String(record.foodItemId));
           if (foodItem) {
-            record.name = record.quantity === 1
-              ? foodItem.singularName
-              : foodItem.pluralName;
+            record.name = record.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
           }
         }
       }

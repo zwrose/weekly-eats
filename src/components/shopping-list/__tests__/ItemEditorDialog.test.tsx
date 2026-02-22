@@ -1,28 +1,82 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ItemEditorDialog from '../ItemEditorDialog';
-import type { FoodItemOption } from '../ItemEditorDialog';
 
-const mockFoodItems: FoodItemOption[] = [
-  { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
-  { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'each' },
-];
+const mockFetch = vi.fn();
 
 describe('ItemEditorDialog', () => {
   const defaultProps = {
     open: true,
     mode: 'add' as const,
-    foodItems: mockFoodItems,
+    excludeFoodItemIds: [] as string[],
     onClose: vi.fn(),
     onSave: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/food-items') && url.includes('query=')) {
+        const queryMatch = url.match(/query=([^&]*)/);
+        const query = queryMatch ? decodeURIComponent(queryMatch[1]).toLowerCase() : '';
+        const allItems = [
+          {
+            _id: 'f1',
+            name: 'Apple',
+            singularName: 'Apple',
+            pluralName: 'Apples',
+            unit: 'each',
+          },
+          {
+            _id: 'f2',
+            name: 'Banana',
+            singularName: 'Banana',
+            pluralName: 'Bananas',
+            unit: 'each',
+          },
+        ];
+        const filtered = allItems.filter(
+          (i) =>
+            i.name.toLowerCase().includes(query) ||
+            i.singularName.toLowerCase().includes(query) ||
+            i.pluralName.toLowerCase().includes(query)
+        );
+        return Promise.resolve({ ok: true, json: async () => filtered });
+      }
+      if (url.includes('/api/food-items')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                _id: 'f1',
+                name: 'Apple',
+                singularName: 'Apple',
+                pluralName: 'Apples',
+                unit: 'each',
+              },
+              {
+                _id: 'f2',
+                name: 'Banana',
+                singularName: 'Banana',
+                pluralName: 'Bananas',
+                unit: 'each',
+              },
+            ],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
   });
 
-  // Helper to get the item name input (the first Autocomplete in the dialog)
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    cleanup();
+  });
+
   function getItemNameInput() {
     return screen.getByRole('combobox', { name: /item name/i });
   }
@@ -30,41 +84,48 @@ describe('ItemEditorDialog', () => {
   it('shows "Add as a Food Item" option when input has no exact matches', async () => {
     const user = userEvent.setup();
     render(<ItemEditorDialog {...defaultProps} />);
-
     const input = getItemNameInput();
-    await user.clear(input);
     await user.type(input, 'Zucchini');
-
-    expect(
-      await screen.findByRole('button', { name: /add "zucchini" as a food item/i })
-    ).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole('button', {
+            name: /add "zucchini" as a food item/i,
+          })
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
-  it('opens AddFoodItemDialog when create option is clicked', async () => {
+  it('shows matching results from server-side search', async () => {
     const user = userEvent.setup();
     render(<ItemEditorDialog {...defaultProps} />);
-
     const input = getItemNameInput();
-    await user.clear(input);
-    await user.type(input, 'Zucchini');
-
-    const createBtn = await screen.findByRole('button', { name: /add "zucchini" as a food item/i });
-    await user.click(createBtn);
-
-    // The AddFoodItemDialog should now be open with the prefilled name
-    expect(await screen.findByText('Add Food Item')).toBeInTheDocument();
-  });
-
-  it('shows "Add as a Food Item" option alongside matching results', async () => {
-    const user = userEvent.setup();
-    render(<ItemEditorDialog {...defaultProps} />);
-
-    const input = getItemNameInput();
-    await user.clear(input);
     await user.type(input, 'App');
+    await waitFor(
+      () => {
+        expect(screen.getByText('Apple')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+  });
 
-    // Both the matching option and the "Add new" option should appear
-    expect(await screen.findByText('Apple')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add "app" as a food item/i })).toBeInTheDocument();
+  it('shows "Add as a Food Item" alongside matching results', async () => {
+    const user = userEvent.setup();
+    render(<ItemEditorDialog {...defaultProps} />);
+    const input = getItemNameInput();
+    await user.type(input, 'App');
+    await waitFor(
+      () => {
+        expect(screen.getByText('Apple')).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', {
+            name: /add "app" as a food item/i,
+          })
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 });

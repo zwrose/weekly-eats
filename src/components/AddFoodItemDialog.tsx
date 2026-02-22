@@ -90,34 +90,39 @@ export default function AddFoodItemDialog({
     }
 
     // If unit is "each", validate singular/plural names
-    if (unit === 'each') {
-      if (!singularName.trim() || !pluralName.trim()) {
-        setError('Both singular and plural names are required');
-        return;
-      }
-
-      await onAdd({
-        name: singularName.trim(),
-        singularName: singularName.trim(),
-        pluralName: pluralName.trim(),
-        unit,
-        isGlobal,
-        addToPantry,
-      });
-    } else {
-      // For non-"each" units, use the default name for both singular and plural
-      const trimmedName = name.trim();
-      await onAdd({
-        name: trimmedName,
-        singularName: trimmedName,
-        pluralName: trimmedName,
-        unit,
-        isGlobal,
-        addToPantry,
-      });
+    if (unit === 'each' && (!singularName.trim() || !pluralName.trim())) {
+      setError('Both singular and plural names are required');
+      return;
     }
 
-    // Reset form
+    // Build payload
+    const payload =
+      unit === 'each'
+        ? {
+            name: singularName.trim(),
+            singularName: singularName.trim(),
+            pluralName: pluralName.trim(),
+            unit,
+            isGlobal,
+            addToPantry,
+          }
+        : {
+            name: name.trim(),
+            singularName: name.trim(),
+            pluralName: name.trim(),
+            unit,
+            isGlobal,
+            addToPantry,
+          };
+
+    try {
+      await onAdd(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add food item');
+      return;
+    }
+
+    // Reset form on success
     setName('');
     setUnit(null);
     setIsGlobal(true);
