@@ -4,7 +4,7 @@
  * Handles the creation of new food items via API and manages dialog state.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { FoodItem } from './use-food-item-selector';
 import { createPantryItem } from '../pantry-utils';
 
@@ -17,6 +17,7 @@ export interface UseFoodItemCreatorReturn {
   isDialogOpen: boolean;
   prefillName: string;
   error: string | null;
+  lastError: React.RefObject<string | null>;
   openDialog: (prefillName?: string) => void;
   closeDialog: () => void;
   handleCreate: (foodItemData: {
@@ -38,6 +39,7 @@ export function useFoodItemCreator(
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [prefillName, setPrefillName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const lastErrorRef = useRef<string | null>(null);
 
   const openDialog = useCallback((prefill?: string) => {
     setPrefillName(prefill || '');
@@ -79,7 +81,7 @@ export function useFoodItemCreator(
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add food item');
+        throw new Error(errorData.details || errorData.error || 'Failed to add food item');
       }
 
       const newFoodItem: FoodItem = await response.json();
@@ -110,6 +112,7 @@ export function useFoodItemCreator(
       return newFoodItem;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add food item';
+      lastErrorRef.current = errorMessage;
       setError(errorMessage);
       console.error('Error adding food item:', err);
       return null;
@@ -120,6 +123,7 @@ export function useFoodItemCreator(
     isDialogOpen,
     prefillName,
     error,
+    lastError: lastErrorRef,
     openDialog,
     closeDialog,
     handleCreate,

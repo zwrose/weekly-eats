@@ -129,14 +129,15 @@ export default function FoodItemAutocomplete({
     addToPantry?: boolean;
   }) => {
     const newItem = await creator.handleCreate(foodItemData);
-    if (newItem) {
-      // Auto-select the newly created item
-      const searchOption: SearchOption = {
-        ...newItem,
-        type: "foodItem" as const,
-      };
-      handleSelect(searchOption);
+    if (!newItem) {
+      throw new Error(creator.lastError.current || "Failed to add food item");
     }
+    // Auto-select the newly created item
+    const searchOption: SearchOption = {
+      ...newItem,
+      type: "foodItem" as const,
+    };
+    handleSelect(searchOption);
   };
 
   // Open create dialog when button is clicked

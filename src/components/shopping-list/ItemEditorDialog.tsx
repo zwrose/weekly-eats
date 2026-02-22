@@ -194,7 +194,7 @@ export default function ItemEditorDialog({
   ) => {
     const newItem = await creator.handleCreate(foodItemData);
     if (!newItem) {
-      throw new Error(creator.error || "Failed to add food item");
+      throw new Error(creator.lastError.current || "Failed to add food item");
     }
   };
 
