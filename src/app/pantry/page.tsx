@@ -304,7 +304,6 @@ export default function PantryPage() {
             <FoodItemAutocomplete
               allowRecipes={false}
               excludeIds={pantryItems.map((item) => item.foodItem._id)}
-              excludedItemLabel="Already in pantry"
               foodItems={foodItems}
               autoLoad={false}
               value={selectedFoodItem}
