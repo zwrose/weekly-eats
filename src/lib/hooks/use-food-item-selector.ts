@@ -22,7 +22,9 @@ export interface Recipe {
   emoji?: string;
 }
 
-export type SearchOption = (FoodItem & { type: 'foodItem' }) | (Recipe & { type: 'recipe' });
+export type SearchOption =
+  | (FoodItem & { type: 'foodItem'; isExcluded?: boolean })
+  | (Recipe & { type: 'recipe'; isExcluded?: boolean });
 
 export interface UseFoodItemSelectorOptions {
   allowRecipes?: boolean;
@@ -137,12 +139,16 @@ export function useFoodItemSelector(
             ...foodItems.map((item) => ({ ...item, type: 'foodItem' as const })),
             ...recipes.map((item) => ({ ...item, type: 'recipe' as const })),
           ];
-          const filtered = allOptions.filter(
-            (option) =>
-              !excludeIds.includes(option._id || '') &&
-              !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-          );
-          setSearchOptions(filtered);
+          const marked = allOptions
+            .filter(
+              (option) =>
+                !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+            )
+            .map((option) => ({
+              ...option,
+              isExcluded: excludeIds.includes(option._id || ''),
+            }));
+          setSearchOptions(marked);
           setIsLoading(false);
           return;
         }
@@ -172,12 +178,16 @@ export function useFoodItemSelector(
             ...foodItemsData.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
             ...recipesData.map((item: Recipe) => ({ ...item, type: 'recipe' as const })),
           ];
-          const filtered = allOptions.filter(
-            (option) =>
-              !excludeIds.includes(option._id || '') &&
-              !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-          );
-          setSearchOptions(filtered);
+          const marked = allOptions
+            .filter(
+              (option) =>
+                !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+            )
+            .map((option) => ({
+              ...option,
+              isExcluded: excludeIds.includes(option._id || ''),
+            }));
+          setSearchOptions(marked);
           setIsLoading(false);
         } catch (error) {
           console.error('Error performing search:', error);
@@ -219,7 +229,7 @@ export function useFoodItemSelector(
         // If there are search results, select the first one (or currently highlighted one)
         if (searchOptions.length > 0) {
           const selectedOption = searchOptions[selectedIndex || 0];
-          if (selectedOption) {
+          if (selectedOption && !selectedOption.isExcluded) {
             handleSelect(selectedOption);
             return;
           }

@@ -133,8 +133,13 @@ describe('useFoodItemSelector', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(result.current.options.some((o) => o._id === 'f1')).toBe(false); // excluded
-      expect(result.current.options.some((o) => o._id === 'f3')).toBe(true); // not excluded
+      const f1Option = result.current.options.find((o) => o._id === 'f1');
+      expect(f1Option).toBeDefined();
+      expect(f1Option?.isExcluded).toBe(true); // marked as excluded, not filtered out
+
+      const f3Option = result.current.options.find((o) => o._id === 'f3');
+      expect(f3Option).toBeDefined();
+      expect(f3Option?.isExcluded).toBe(false); // not excluded
     });
   });
 

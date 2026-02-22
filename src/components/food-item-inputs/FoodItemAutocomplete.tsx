@@ -54,6 +54,9 @@ export interface FoodItemAutocompleteProps {
 
   // Create dialog
   onCreateItem?: (item: FoodItem) => void;
+
+  // Excluded item label (shown on disabled items already in the list)
+  excludedItemLabel?: string;
 }
 
 export default function FoodItemAutocomplete({
@@ -73,6 +76,7 @@ export default function FoodItemAutocomplete({
   autoFocus = false,
   disabled = false,
   onCreateItem,
+  excludedItemLabel = 'Already added',
 }: FoodItemAutocompleteProps) {
   const creator = useFoodItemCreator({
     onFoodItemAdded,
@@ -118,14 +122,15 @@ export default function FoodItemAutocomplete({
     addToPantry?: boolean;
   }) => {
     const newItem = await creator.handleCreate(foodItemData);
-    if (newItem) {
-      // Auto-select the newly created item
-      const searchOption: SearchOption = {
-        ...newItem,
-        type: 'foodItem' as const,
-      };
-      handleSelect(searchOption);
+    if (!newItem) {
+      throw new Error(creator.lastError.current || 'Failed to add food item');
     }
+    // Auto-select the newly created item
+    const searchOption: SearchOption = {
+      ...newItem,
+      type: 'foodItem' as const,
+    };
+    handleSelect(searchOption);
   };
 
   // Open create dialog when button is clicked
@@ -134,27 +139,20 @@ export default function FoodItemAutocomplete({
     creator.openDialog(selector.inputValue);
   };
 
-  // Check if the input text matches any excluded food items
+  // Check if the input text matches any excluded food items (now via hook options)
   const inputMatchesExcludedItem = useMemo(() => {
-    if (!selector.inputValue || !foodItems || excludeIds.length === 0) {
-      return false;
-    }
-
+    if (!selector.inputValue?.trim()) return false;
     const inputLower = selector.inputValue.toLowerCase().trim();
-    if (!inputLower) return false;
-
-    // Check if any excluded food item matches the input
-    return foodItems.some((item) => {
-      if (!excludeIds.includes(item._id)) return false;
-
-      // Check if input matches name, singularName, or pluralName
-      return (
-        item.name.toLowerCase() === inputLower ||
-        item.singularName.toLowerCase() === inputLower ||
-        item.pluralName.toLowerCase() === inputLower
-      );
-    });
-  }, [selector.inputValue, foodItems, excludeIds]);
+    return selector.options.some(
+      (option) =>
+        option.isExcluded &&
+        (option.type === 'foodItem'
+          ? option.name.toLowerCase() === inputLower ||
+            option.singularName.toLowerCase() === inputLower ||
+            option.pluralName.toLowerCase() === inputLower
+          : option.title.toLowerCase() === inputLower)
+    );
+  }, [selector.inputValue, selector.options]);
 
   // Create a special "Add New Food Item" option that appears at the bottom
   const ADD_NEW_FOOD_ITEM_OPTION: SearchOptionWithAddNew = {
@@ -204,10 +202,15 @@ export default function FoodItemAutocomplete({
             setIsOpen(false);
           }
         }}
+        getOptionDisabled={(option) => !isAddNewOption(option) && option.isExcluded === true}
         onChange={(_, value) => {
           // If the "Add New Food Item" option was selected, open the dialog instead
           if (isAddNewOption(value)) {
             creator.openDialog(selector.inputValue);
+            return;
+          }
+          // Safety net: don't select excluded items
+          if (value && !isAddNewOption(value) && value.isExcluded) {
             return;
           }
           handleSelect(value);
@@ -253,11 +256,16 @@ export default function FoodItemAutocomplete({
           return (
             <Box component="li" key={key} {...otherProps}>
               <Box>
-                <Typography variant="body1">
+                <Typography variant="body1" color={option.isExcluded ? 'text.disabled' : undefined}>
                   {option.type === 'foodItem' ? option.name : option.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  ({option.type === 'foodItem' ? 'Food Item' : 'Recipe'})
+                <Typography
+                  variant="body2"
+                  color={option.isExcluded ? 'text.disabled' : 'text.secondary'}
+                >
+                  {option.isExcluded
+                    ? excludedItemLabel
+                    : `(${option.type === 'foodItem' ? 'Food Item' : 'Recipe'})`}
                 </Typography>
               </Box>
             </Box>
@@ -281,12 +289,11 @@ export default function FoodItemAutocomplete({
                 }
 
                 // If there are search results, select the currently highlighted option (or first one)
-                if (selector.options.length > 0) {
+                // Skip excluded items
+                const selectableOptions = selector.options.filter((o) => !o.isExcluded);
+                if (selectableOptions.length > 0) {
                   e.preventDefault();
-                  // Use the hook's selectedIndex to get the currently highlighted option
-                  const highlightedIndex = selector.selectedIndex || 0;
-                  const optionToSelect = selector.options[highlightedIndex] || selector.options[0];
-                  // Trigger the Autocomplete's onChange to properly select the item
+                  const optionToSelect = selectableOptions[0];
                   handleSelect(optionToSelect);
                   return;
                 }
