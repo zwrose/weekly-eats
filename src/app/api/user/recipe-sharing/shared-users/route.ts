@@ -18,15 +18,17 @@ export async function GET() {
     const usersCollection = db.collection('users');
 
     // Get the current user's document to find who THEY have invited
-    const currentUser = await usersCollection.findOne({ _id: ObjectId.createFromHexString(session.user.id) });
-    
+    const currentUser = await usersCollection.findOne({
+      _id: ObjectId.createFromHexString(session.user.id),
+    });
+
     const acceptedInvitations = (currentUser?.settings?.recipeSharing?.invitations?.filter(
       (inv: RecipeSharingInvitation) => inv.status === 'accepted'
     ) || []) as RecipeSharingInvitation[];
 
     // Get user info for each accepted invitation
     const sharedUserIds = acceptedInvitations.map((inv: RecipeSharingInvitation) => inv.userId);
-    
+
     if (sharedUserIds.length === 0) {
       return NextResponse.json([]);
     }
@@ -36,7 +38,7 @@ export async function GET() {
       .toArray();
 
     // Return user info for each shared user with their sharing types
-    const sharedUsers = sharedUsersData.map(user => {
+    const sharedUsers = sharedUsersData.map((user) => {
       const invitation = acceptedInvitations.find(
         (inv: RecipeSharingInvitation) => inv.userId === user._id.toString()
       );
@@ -44,7 +46,7 @@ export async function GET() {
         userId: user._id.toString(),
         email: user.email,
         name: user.name,
-        sharingTypes: invitation?.sharingTypes || []
+        sharingTypes: invitation?.sharingTypes || [],
       };
     });
 
@@ -54,5 +56,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-

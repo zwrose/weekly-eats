@@ -22,10 +22,7 @@ export const createDatabaseIndexes = async () => {
       { userId: 1, createdAt: -1 },
       { name: 'mealPlans_userId_createdAt' }
     );
-    await mealPlansCollection.createIndex(
-      { templateId: 1 },
-      { name: 'mealPlans_templateId' }
-    );
+    await mealPlansCollection.createIndex({ templateId: 1 }, { name: 'mealPlans_templateId' });
 
     // Meal Plan Templates Collection
     const templatesCollection = db.collection('mealPlanTemplates');
@@ -40,14 +37,8 @@ export const createDatabaseIndexes = async () => {
       { createdBy: 1, isGlobal: 1 },
       { name: 'foodItems_createdBy_isGlobal' }
     );
-    await foodItemsCollection.createIndex(
-      { isGlobal: 1 },
-      { name: 'foodItems_isGlobal' }
-    );
-    await foodItemsCollection.createIndex(
-      { name: 1 },
-      { name: 'foodItems_name' }
-    );
+    await foodItemsCollection.createIndex({ isGlobal: 1 }, { name: 'foodItems_isGlobal' });
+    await foodItemsCollection.createIndex({ name: 1 }, { name: 'foodItems_name' });
 
     // Recipes Collection
     const recipesCollection = db.collection('recipes');
@@ -55,14 +46,8 @@ export const createDatabaseIndexes = async () => {
       { createdBy: 1, isGlobal: 1 },
       { name: 'recipes_createdBy_isGlobal' }
     );
-    await recipesCollection.createIndex(
-      { isGlobal: 1 },
-      { name: 'recipes_isGlobal' }
-    );
-    await recipesCollection.createIndex(
-      { title: 1 },
-      { name: 'recipes_title' }
-    );
+    await recipesCollection.createIndex({ isGlobal: 1 }, { name: 'recipes_isGlobal' });
+    await recipesCollection.createIndex({ title: 1 }, { name: 'recipes_title' });
 
     // Recipes: support pagination with updatedAt sort
     await recipesCollection.createIndex(
@@ -79,10 +64,7 @@ export const createDatabaseIndexes = async () => {
 
     // Pantry Collection
     const pantryCollection = db.collection('pantry');
-    await pantryCollection.createIndex(
-      { userId: 1 },
-      { name: 'pantry_userId' }
-    );
+    await pantryCollection.createIndex({ userId: 1 }, { name: 'pantry_userId' });
     await pantryCollection.createIndex(
       { userId: 1, foodItemId: 1 },
       { name: 'pantry_userId_foodItemId', unique: true }
@@ -119,14 +101,8 @@ export const createDatabaseIndexes = async () => {
 
     // Users Collection (if you have one)
     const usersCollection = db.collection('users');
-    await usersCollection.createIndex(
-      { email: 1 },
-      { name: 'users_email', unique: true }
-    );
-    await usersCollection.createIndex(
-      { isApproved: 1 },
-      { name: 'users_isApproved' }
-    );
+    await usersCollection.createIndex({ email: 1 }, { name: 'users_email', unique: true });
+    await usersCollection.createIndex({ isApproved: 1 }, { name: 'users_isApproved' });
 
     console.log('Database indexes created successfully');
   } catch (error) {
@@ -155,7 +131,7 @@ export const dropAllIndexes = async () => {
       'users',
       'storeItemPositions',
       'shoppingLists',
-      'purchaseHistory'
+      'purchaseHistory',
     ];
 
     for (const collectionName of collections) {
@@ -169,4 +145,4 @@ export const dropAllIndexes = async () => {
     console.error('Error dropping database indexes:', error);
     throw error;
   }
-}; 
+};

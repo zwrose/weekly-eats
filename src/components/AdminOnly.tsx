@@ -17,4 +17,4 @@ export const AdminOnly = ({ children, fallback = null }: AdminOnlyProps) => {
   }
 
   return <>{children}</>;
-}; 
+};

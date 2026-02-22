@@ -21,17 +21,17 @@ export async function GET() {
         'settings.mealPlanSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       })
       .toArray();
 
     // Return user info for each owner
-    const sharedOwners = owners.map(owner => ({
+    const sharedOwners = owners.map((owner) => ({
       userId: owner._id.toString(),
       email: owner.email,
-      name: owner.name
+      name: owner.name,
     }));
 
     return NextResponse.json(sharedOwners);
@@ -40,4 +40,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

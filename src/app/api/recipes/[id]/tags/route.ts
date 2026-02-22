@@ -3,21 +3,13 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { 
-  AUTH_ERRORS, 
-  RECIPE_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -55,10 +47,7 @@ export async function POST(
     // Verify recipe exists and is accessible
     const recipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(recipeId),
-      $or: [
-        { isGlobal: true },
-        { createdBy: session.user.id }
-      ]
+      $or: [{ isGlobal: true }, { createdBy: session.user.id }],
     });
 
     if (!recipe) {
@@ -71,18 +60,18 @@ export async function POST(
     await recipeUserDataCollection.updateOne(
       {
         userId: session.user.id,
-        recipeId: recipeId
+        recipeId: recipeId,
       },
       {
         $set: {
           tags: processedTags,
-          updatedAt: now
+          updatedAt: now,
         },
         $setOnInsert: {
           userId: session.user.id,
           recipeId: recipeId,
-          createdAt: now
-        }
+          createdAt: now,
+        },
       },
       { upsert: true }
     );
@@ -93,4 +82,3 @@ export async function POST(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

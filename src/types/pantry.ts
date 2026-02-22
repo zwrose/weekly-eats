@@ -25,4 +25,4 @@ export interface PantryItemWithFoodItem extends PantryItem {
     pluralName: string;
     unit?: string;
   };
-} 
+}

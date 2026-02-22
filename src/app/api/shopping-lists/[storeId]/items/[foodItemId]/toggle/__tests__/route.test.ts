@@ -33,9 +33,9 @@ vi.mock('@/lib/mongodb', () => ({
           return { findOne: findOneMock };
         }
         if (name === 'shoppingLists') {
-          return { 
+          return {
             findOne: findOneMock,
-            updateOne: updateOneMock
+            updateOne: updateOneMock,
           };
         }
         return {};
@@ -48,7 +48,7 @@ const { getServerSession } = await import('next-auth/next');
 const { publishShoppingEvent } = await import('@/lib/realtime/ably-server');
 const routes = await import('../route');
 
-const makeRequest = () => ({} as any);
+const makeRequest = () => ({}) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -66,31 +66,31 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
     it('PATCH returns 401 when unauthenticated', async () => {
       (getServerSession as any).mockResolvedValueOnce(null);
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
       expect(res.status).toBe(401);
     });
 
     it('PATCH returns 400 when storeId is invalid', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user1', email: 'user@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user1', email: 'user@test.com' },
       });
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId: 'invalid', foodItemId })
+        params: Promise.resolve({ storeId: 'invalid', foodItemId }),
       });
       expect(res.status).toBe(400);
     });
 
     it('PATCH returns 404 when user does not have access to store', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user1', email: 'user@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user1', email: 'user@test.com' },
       });
-      
+
       // Store not found or user has no access
       findOneMock.mockResolvedValueOnce(null);
-      
+
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
       expect(res.status).toBe(404);
     });
@@ -98,8 +98,8 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Item Toggle Functionality', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user1', email: 'user@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user1', email: 'user@test.com' },
       });
     });
 
@@ -109,25 +109,21 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }],
         });
 
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
 
       expect(res.status).toBe(200);
@@ -141,25 +137,21 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }],
         });
 
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
 
       expect(res.status).toBe(200);
@@ -172,17 +164,15 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'different-food', quantity: 1, unit: 'each', checked: false }
-          ]
+          items: [{ foodItemId: 'different-food', quantity: 1, unit: 'each', checked: false }],
         });
 
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId: 'non-existent' })
+        params: Promise.resolve({ storeId, foodItemId: 'non-existent' }),
       });
 
       expect(res.status).toBe(404);
@@ -191,8 +181,8 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
     });
 
     it('PATCH works for shared user with accepted invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user2', email: 'user2@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user2', email: 'user2@test.com' },
       });
 
       // Store owned by user1, but user2 has accepted invitation
@@ -200,27 +190,21 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: [
-            { userId: 'user2', status: 'accepted' }
-          ]
+          invitations: [{ userId: 'user2', status: 'accepted' }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }],
         });
 
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
 
       expect(res.status).toBe(200);
@@ -229,8 +213,8 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Broadcasting', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user1', email: 'user@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user1', email: 'user@test.com' },
       });
     });
 
@@ -239,25 +223,21 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }],
         });
 
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
       await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
 
       // Verify publishShoppingEvent was called with correct parameters
@@ -267,7 +247,7 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         expect.objectContaining({
           foodItemId,
           checked: true,
-          updatedBy: 'user@test.com'
+          updatedBy: 'user@test.com',
         })
       );
     });
@@ -277,15 +257,15 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: []
+          items: [],
         });
 
       await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId: 'non-existent' })
+        params: Promise.resolve({ storeId, foodItemId: 'non-existent' }),
       });
 
       // Should not publish when item not found
@@ -295,33 +275,29 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Response Format', () => {
     it('PATCH returns success with item data', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ 
-        user: { id: 'user1', email: 'user@test.com' } 
+      (getServerSession as any).mockResolvedValueOnce({
+        user: { id: 'user1', email: 'user@test.com' },
       });
 
       findOneMock
         .mockResolvedValueOnce({
           _id: ObjectId.createFromHexString(storeId),
           userId: 'user1',
-          invitations: []
+          invitations: [],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: false }],
         })
         .mockResolvedValueOnce({
           storeId,
-          items: [
-            { foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }
-          ]
+          items: [{ foodItemId: 'food-123', quantity: 2, unit: 'cup', checked: true }],
         });
 
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
       const res = await routes.PATCH(makeRequest(), {
-        params: Promise.resolve({ storeId, foodItemId })
+        params: Promise.resolve({ storeId, foodItemId }),
       });
 
       const data = await res.json();
@@ -334,4 +310,3 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
     });
   });
 });
-

@@ -32,16 +32,22 @@ vi.mock('@/lib/mongodb', () => ({
         return {
           find: (...args: unknown[]) => {
             findMock(...args);
-            return { sort: (...sArgs: unknown[]) => {
-              sortMock(...sArgs);
-              return { skip: (...skArgs: unknown[]) => {
-                skipMock(...skArgs);
-                return { limit: (...lArgs: unknown[]) => {
-                  limitMock(...lArgs);
-                  return { toArray: toArrayMock };
-                }};
-              }};
-            }};
+            return {
+              sort: (...sArgs: unknown[]) => {
+                sortMock(...sArgs);
+                return {
+                  skip: (...skArgs: unknown[]) => {
+                    skipMock(...skArgs);
+                    return {
+                      limit: (...lArgs: unknown[]) => {
+                        limitMock(...lArgs);
+                        return { toArray: toArrayMock };
+                      },
+                    };
+                  },
+                };
+              },
+            };
           },
           aggregate: (...args: unknown[]) => {
             aggregateMock(...args);
@@ -58,8 +64,7 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeReq = (url: string, body?: unknown) =>
-  ({ url, json: async () => body }) as any;
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 const mockSession = { user: { id: 'user1', isAdmin: false, isApproved: true } };
 
@@ -130,9 +135,7 @@ describe('GET /api/recipes', () => {
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(50);
 
-    const res = await routes.GET(
-      makeReq('http://localhost/api/recipes?page=2&limit=10')
-    );
+    const res = await routes.GET(makeReq('http://localhost/api/recipes?page=2&limit=10'));
     const json = await res.json();
 
     expect(json.page).toBe(2);
@@ -146,9 +149,7 @@ describe('GET /api/recipes', () => {
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?sortBy=title&sortOrder=asc')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?sortBy=title&sortOrder=asc'));
 
     expect(sortMock).toHaveBeenCalledWith({ title: 1 });
   });
@@ -170,9 +171,7 @@ describe('GET /api/recipes', () => {
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?accessLevel=private')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?accessLevel=private'));
 
     const filter = findMock.mock.calls[0][0];
     const filterStr = JSON.stringify(filter);
@@ -186,9 +185,7 @@ describe('GET /api/recipes', () => {
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?accessLevel=shared-by-you')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?accessLevel=shared-by-you'));
 
     const filter = findMock.mock.calls[0][0];
     const filterStr = JSON.stringify(filter);
@@ -202,9 +199,7 @@ describe('GET /api/recipes', () => {
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?accessLevel=shared-by-others')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?accessLevel=shared-by-others'));
 
     const filter = findMock.mock.calls[0][0];
     const filterStr = JSON.stringify(filter);
@@ -228,12 +223,21 @@ describe('GET /api/recipes', () => {
   it('uses aggregation pipeline when tags param is provided', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
-      { total: 1, data: [{ _id: 'r1', title: 'Tagged', createdBy: 'user1', isGlobal: false, userData: { tags: ['italian'], rating: 4 } }] },
+      {
+        total: 1,
+        data: [
+          {
+            _id: 'r1',
+            title: 'Tagged',
+            createdBy: 'user1',
+            isGlobal: false,
+            userData: { tags: ['italian'], rating: 4 },
+          },
+        ],
+      },
     ]);
 
-    const res = await routes.GET(
-      makeReq('http://localhost/api/recipes?tags=italian')
-    );
+    const res = await routes.GET(makeReq('http://localhost/api/recipes?tags=italian'));
     const json = await res.json();
 
     expect(aggregateMock).toHaveBeenCalled();
@@ -244,12 +248,21 @@ describe('GET /api/recipes', () => {
   it('uses aggregation pipeline when ratings param is provided', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
-      { total: 1, data: [{ _id: 'r1', title: 'Rated', createdBy: 'user1', isGlobal: true, userData: { tags: [], rating: 5 } }] },
+      {
+        total: 1,
+        data: [
+          {
+            _id: 'r1',
+            title: 'Rated',
+            createdBy: 'user1',
+            isGlobal: true,
+            userData: { tags: [], rating: 5 },
+          },
+        ],
+      },
     ]);
 
-    const res = await routes.GET(
-      makeReq('http://localhost/api/recipes?ratings=4,5')
-    );
+    const res = await routes.GET(makeReq('http://localhost/api/recipes?ratings=4,5'));
     const json = await res.json();
 
     expect(aggregateMock).toHaveBeenCalled();
@@ -258,13 +271,9 @@ describe('GET /api/recipes', () => {
 
   it('filters by multiple tags (comma-separated)', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
-    aggregateToArrayMock.mockResolvedValue([
-      { total: 0, data: [] },
-    ]);
+    aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?tags=italian,quick')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?tags=italian,quick'));
 
     const pipeline = aggregateMock.mock.calls[0][0];
     const pipelineStr = JSON.stringify(pipeline);
@@ -274,9 +283,7 @@ describe('GET /api/recipes', () => {
 
   it('combines tags, ratings, and accessLevel filters', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
-    aggregateToArrayMock.mockResolvedValue([
-      { total: 0, data: [] },
-    ]);
+    aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
     await routes.GET(
       makeReq('http://localhost/api/recipes?tags=dinner&ratings=3,4&accessLevel=private')
@@ -293,9 +300,7 @@ describe('GET /api/recipes', () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([]);
 
-    const res = await routes.GET(
-      makeReq('http://localhost/api/recipes?tags=nonexistent')
-    );
+    const res = await routes.GET(makeReq('http://localhost/api/recipes?tags=nonexistent'));
     const json = await res.json();
 
     expect(json.data).toEqual([]);
@@ -305,13 +310,9 @@ describe('GET /api/recipes', () => {
 
   it('sorts by rating when sortBy=rating with aggregation', async () => {
     (getServerSession as any).mockResolvedValueOnce(mockSession);
-    aggregateToArrayMock.mockResolvedValue([
-      { total: 0, data: [] },
-    ]);
+    aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
-    await routes.GET(
-      makeReq('http://localhost/api/recipes?tags=any&sortBy=rating&sortOrder=desc')
-    );
+    await routes.GET(makeReq('http://localhost/api/recipes?tags=any&sortBy=rating&sortOrder=desc'));
 
     const pipeline = aggregateMock.mock.calls[0][0];
     const pipelineStr = JSON.stringify(pipeline);

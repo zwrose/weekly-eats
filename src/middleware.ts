@@ -21,9 +21,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if user is authenticated
-  const token = await getToken({ 
+  const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET 
+    secret: process.env.NEXTAUTH_SECRET,
   });
 
   // If not authenticated, redirect to home page (login)
@@ -54,4 +54,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };
-

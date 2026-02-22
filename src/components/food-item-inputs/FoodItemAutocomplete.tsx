@@ -4,24 +4,13 @@
  * Uses the useFoodItemSelector hook for consistent behavior.
  */
 
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import {
-  Autocomplete,
-  TextField,
-  Box,
-  Typography,
-  Button,
-  CircularProgress,
-} from "@mui/material";
-import {
-  useFoodItemSelector,
-  SearchOption,
-  FoodItem,
-} from "@/lib/hooks/use-food-item-selector";
-import { useFoodItemCreator } from "@/lib/hooks/use-food-item-creator";
-import AddFoodItemDialog from "../AddFoodItemDialog";
+import { useMemo, useState } from 'react';
+import { Autocomplete, TextField, Box, Typography, Button, CircularProgress } from '@mui/material';
+import { useFoodItemSelector, SearchOption, FoodItem } from '@/lib/hooks/use-food-item-selector';
+import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
+import AddFoodItemDialog from '../AddFoodItemDialog';
 
 // Extended SearchOption type for the special "Add New Food Item" option
 type SearchOptionWithAddNew = SearchOption & {
@@ -58,16 +47,13 @@ export interface FoodItemAutocompleteProps {
   // UI customization
   label?: string;
   placeholder?: string;
-  size?: "small" | "medium";
+  size?: 'small' | 'medium';
   fullWidth?: boolean;
   autoFocus?: boolean;
   disabled?: boolean;
 
   // Create dialog
   onCreateItem?: (item: FoodItem) => void;
-
-  // Excluded item label (shown on disabled items already in the list)
-  excludedItemLabel?: string;
 }
 
 export default function FoodItemAutocomplete({
@@ -80,14 +66,13 @@ export default function FoodItemAutocomplete({
   autoLoad = true,
   value,
   onChange, // Client component callback - not a server action
-  label = "Food Item or Recipe",
+  label = 'Food Item or Recipe',
   placeholder,
-  size = "small",
+  size = 'small',
   fullWidth = false,
   autoFocus = false,
   disabled = false,
   onCreateItem,
-  excludedItemLabel = "Already added",
 }: FoodItemAutocompleteProps) {
   const creator = useFoodItemCreator({
     onFoodItemAdded,
@@ -133,15 +118,14 @@ export default function FoodItemAutocomplete({
     addToPantry?: boolean;
   }) => {
     const newItem = await creator.handleCreate(foodItemData);
-    if (!newItem) {
-      throw new Error(creator.lastError.current || "Failed to add food item");
+    if (newItem) {
+      // Auto-select the newly created item
+      const searchOption: SearchOption = {
+        ...newItem,
+        type: 'foodItem' as const,
+      };
+      handleSelect(searchOption);
     }
-    // Auto-select the newly created item
-    const searchOption: SearchOption = {
-      ...newItem,
-      type: "foodItem" as const,
-    };
-    handleSelect(searchOption);
   };
 
   // Open create dialog when button is clicked
@@ -150,43 +134,42 @@ export default function FoodItemAutocomplete({
     creator.openDialog(selector.inputValue);
   };
 
-  // Check if the input text matches any excluded food items (now via hook options)
+  // Check if the input text matches any excluded food items
   const inputMatchesExcludedItem = useMemo(() => {
-    if (!selector.inputValue?.trim()) return false;
+    if (!selector.inputValue || !foodItems || excludeIds.length === 0) {
+      return false;
+    }
+
     const inputLower = selector.inputValue.toLowerCase().trim();
-    return selector.options.some(
-      (option) =>
-        option.isExcluded &&
-        (option.type === "foodItem"
-          ? option.name.toLowerCase() === inputLower ||
-            option.singularName.toLowerCase() === inputLower ||
-            option.pluralName.toLowerCase() === inputLower
-          : option.title.toLowerCase() === inputLower)
-    );
-  }, [selector.inputValue, selector.options]);
+    if (!inputLower) return false;
+
+    // Check if any excluded food item matches the input
+    return foodItems.some((item) => {
+      if (!excludeIds.includes(item._id)) return false;
+
+      // Check if input matches name, singularName, or pluralName
+      return (
+        item.name.toLowerCase() === inputLower ||
+        item.singularName.toLowerCase() === inputLower ||
+        item.pluralName.toLowerCase() === inputLower
+      );
+    });
+  }, [selector.inputValue, foodItems, excludeIds]);
 
   // Create a special "Add New Food Item" option that appears at the bottom
   const ADD_NEW_FOOD_ITEM_OPTION: SearchOptionWithAddNew = {
-    _id: "__add_new_food_item__",
-    name: selector.inputValue
-      ? `Add "${selector.inputValue}" as a Food Item`
-      : "Add New Food Item",
-    singularName: "",
-    pluralName: "",
-    unit: "cup",
-    type: "foodItem" as const,
+    _id: '__add_new_food_item__',
+    name: selector.inputValue ? `Add "${selector.inputValue}" as a Food Item` : 'Add New Food Item',
+    singularName: '',
+    pluralName: '',
+    unit: 'cup',
+    type: 'foodItem' as const,
     isAddNewOption: true, // Special marker
   };
 
   // Helper to check if an option is the "Add New Food Item" option
-  const isAddNewOption = (
-    option: SearchOption | null
-  ): option is SearchOptionWithAddNew => {
-    return (
-      option !== null &&
-      "isAddNewOption" in option &&
-      option.isAddNewOption === true
-    );
+  const isAddNewOption = (option: SearchOption | null): option is SearchOptionWithAddNew => {
+    return option !== null && 'isAddNewOption' in option && option.isAddNewOption === true;
   };
 
   // Include the "Add New Food Item" option at the bottom only if:
@@ -221,26 +204,19 @@ export default function FoodItemAutocomplete({
             setIsOpen(false);
           }
         }}
-        getOptionDisabled={(option) =>
-          !isAddNewOption(option) && option.isExcluded === true
-        }
         onChange={(_, value) => {
           // If the "Add New Food Item" option was selected, open the dialog instead
           if (isAddNewOption(value)) {
             creator.openDialog(selector.inputValue);
             return;
           }
-          // Safety net: don't select excluded items
-          if (value && !isAddNewOption(value) && value.isExcluded) {
-            return;
-          }
           handleSelect(value);
         }}
         getOptionLabel={(option) => {
-          if (isAddNewOption(option) && option.type === "foodItem") {
+          if (isAddNewOption(option) && option.type === 'foodItem') {
             return option.name;
           }
-          return option.type === "foodItem" ? option.name : option.title;
+          return option.type === 'foodItem' ? option.name : option.title;
         }}
         isOptionEqualToValue={(option, value) => {
           if (isAddNewOption(option) || isAddNewOption(value)) {
@@ -252,15 +228,10 @@ export default function FoodItemAutocomplete({
           const { key, ...otherProps } = props;
 
           // Special rendering for "Add New Food Item" option
-          if (isAddNewOption(option) && option.type === "foodItem") {
+          if (isAddNewOption(option) && option.type === 'foodItem') {
             const addNewName = option.name;
             return (
-              <Box
-                component="li"
-                key={key}
-                {...otherProps}
-                sx={{ p: "8px !important" }}
-              >
+              <Box component="li" key={key} {...otherProps} sx={{ p: '8px !important' }}>
                 <Button
                   size="small"
                   variant="outlined"
@@ -270,7 +241,7 @@ export default function FoodItemAutocomplete({
                     e.stopPropagation();
                     creator.openDialog(selector.inputValue);
                   }}
-                  sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                  sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                 >
                   {addNewName}
                 </Button>
@@ -282,16 +253,11 @@ export default function FoodItemAutocomplete({
           return (
             <Box component="li" key={key} {...otherProps}>
               <Box>
-                <Typography
-                  variant="body1"
-                  color={option.isExcluded ? "text.disabled" : undefined}
-                >
-                  {option.type === "foodItem" ? option.name : option.title}
+                <Typography variant="body1">
+                  {option.type === 'foodItem' ? option.name : option.title}
                 </Typography>
-                <Typography variant="body2" color={option.isExcluded ? "text.disabled" : "text.secondary"}>
-                  {option.isExcluded
-                    ? excludedItemLabel
-                    : `(${option.type === "foodItem" ? "Food Item" : "Recipe"})`}
+                <Typography variant="body2" color="text.secondary">
+                  ({option.type === 'foodItem' ? 'Food Item' : 'Recipe'})
                 </Typography>
               </Box>
             </Box>
@@ -307,7 +273,7 @@ export default function FoodItemAutocomplete({
             inputRef={selector.autocompleteRef}
             onKeyDown={(e) => {
               // Override Enter key handling to ensure proper selection
-              if (e.key === "Enter") {
+              if (e.key === 'Enter') {
                 // If an item is already selected, don't do anything
                 if (selectedItem) {
                   e.preventDefault();
@@ -315,11 +281,12 @@ export default function FoodItemAutocomplete({
                 }
 
                 // If there are search results, select the currently highlighted option (or first one)
-                // Skip excluded items
-                const selectableOptions = selector.options.filter(o => !o.isExcluded);
-                if (selectableOptions.length > 0) {
+                if (selector.options.length > 0) {
                   e.preventDefault();
-                  const optionToSelect = selectableOptions[0];
+                  // Use the hook's selectedIndex to get the currently highlighted option
+                  const highlightedIndex = selector.selectedIndex || 0;
+                  const optionToSelect = selector.options[highlightedIndex] || selector.options[0];
+                  // Trigger the Autocomplete's onChange to properly select the item
                   handleSelect(optionToSelect);
                   return;
                 }
@@ -339,7 +306,7 @@ export default function FoodItemAutocomplete({
           />
         )}
         loadingText={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" color="text.secondary">
               Searching...
@@ -350,16 +317,10 @@ export default function FoodItemAutocomplete({
           selector.inputValue.trim() ? (
             <Box>
               <Typography variant="body2" color="text.secondary" mb={1}>
-                {allowRecipes
-                  ? "No food items or recipes found"
-                  : "No food items found"}
+                {allowRecipes ? 'No food items or recipes found' : 'No food items found'}
               </Typography>
               {!inputMatchesExcludedItem && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleOpenCreate}
-                >
+                <Button size="small" variant="outlined" onClick={handleOpenCreate}>
                   {`Add "${selector.inputValue}" as a Food Item`}
                 </Button>
               )}
@@ -367,8 +328,8 @@ export default function FoodItemAutocomplete({
           ) : (
             <Typography variant="body2" color="text.secondary">
               {allowRecipes
-                ? "Start typing to search for food items or recipes"
-                : "Start typing to search for food items"}
+                ? 'Start typing to search for food items or recipes'
+                : 'Start typing to search for food items'}
             </Typography>
           )
         }

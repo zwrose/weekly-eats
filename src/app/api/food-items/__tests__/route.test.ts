@@ -69,7 +69,7 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeRequest = (url: string, body?: unknown) => ({ url, json: async () => body } as any);
+const makeRequest = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -104,9 +104,7 @@ describe('api/food-items route', () => {
     it('returns paginated response with defaults', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' },
-        ],
+        data: [{ _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
         page: 1,
         limit: 10,
@@ -142,7 +140,9 @@ describe('api/food-items route', () => {
       });
 
       const res = await routes.GET(
-        makeRequest('http://localhost/api/food-items?page=2&limit=10&sortBy=updatedAt&sortOrder=desc')
+        makeRequest(
+          'http://localhost/api/food-items?page=2&limit=10&sortBy=updatedAt&sortOrder=desc'
+        )
       );
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -171,10 +171,7 @@ describe('api/food-items route', () => {
 
       // Verify unified filter passed to paginatedResponse
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
-      expect(filterArg.$or).toEqual([
-        { isGlobal: true },
-        { createdBy: 'u1' },
-      ]);
+      expect(filterArg.$or).toEqual([{ isGlobal: true }, { createdBy: 'u1' }]);
 
       // Verify accessLevel annotation
       expect(json.data[0].accessLevel).toBe('private');
@@ -185,9 +182,7 @@ describe('api/food-items route', () => {
     it('filters by accessLevel=private', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' },
-        ],
+        data: [{ _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
         page: 1,
         limit: 10,
@@ -208,9 +203,7 @@ describe('api/food-items route', () => {
     it('filters by accessLevel=shared-by-others', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' },
-        ],
+        data: [{ _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' }],
         total: 1,
         page: 1,
         limit: 10,
@@ -231,9 +224,7 @@ describe('api/food-items route', () => {
     it('filters by accessLevel=shared-by-you', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f3', name: 'Shared Salt', isGlobal: true, createdBy: 'u1' },
-        ],
+        data: [{ _id: 'f3', name: 'Shared Salt', isGlobal: true, createdBy: 'u1' }],
         total: 1,
         page: 1,
         limit: 10,
@@ -256,18 +247,14 @@ describe('api/food-items route', () => {
     it('filters by query string (name search)', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' },
-        ],
+        data: [{ _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
         page: 1,
         limit: 10,
         totalPages: 1,
       });
 
-      const res = await routes.GET(
-        makeRequest('http://localhost/api/food-items?query=flour')
-      );
+      const res = await routes.GET(makeRequest('http://localhost/api/food-items?query=flour'));
       expect(res.status).toBe(200);
 
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
@@ -287,18 +274,14 @@ describe('api/food-items route', () => {
     it('supports legacy userOnly param', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' },
-        ],
+        data: [{ _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
         page: 1,
         limit: 10,
         totalPages: 1,
       });
 
-      const res = await routes.GET(
-        makeRequest('http://localhost/api/food-items?userOnly=true')
-      );
+      const res = await routes.GET(makeRequest('http://localhost/api/food-items?userOnly=true'));
       expect(res.status).toBe(200);
 
       const filterArg = mockPaginatedResponse.mock.calls[0][1];
@@ -308,9 +291,7 @@ describe('api/food-items route', () => {
     it('supports legacy globalOnly param', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       mockPaginatedResponse.mockResolvedValueOnce({
-        data: [
-          { _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' },
-        ],
+        data: [{ _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' }],
         total: 1,
         page: 1,
         limit: 10,
@@ -342,7 +323,13 @@ describe('api/food-items route', () => {
       findOneMock
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ _id: 'new-food-id', name: 'Sugar' });
-      const body = { name: 'Sugar', singularName: 'sugar', pluralName: 'sugars', unit: 'gram', isGlobal: false };
+      const body = {
+        name: 'Sugar',
+        singularName: 'sugar',
+        pluralName: 'sugars',
+        unit: 'gram',
+        isGlobal: false,
+      };
       const res = await routes.POST(makeRequest('http://localhost/api/food-items', body));
       expect(res.status).toBe(201);
       const json = await res.json();

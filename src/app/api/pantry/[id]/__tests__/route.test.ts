@@ -9,7 +9,7 @@ const deleteOneMock = vi.fn();
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
-      collection: () => ({ findOne: findOneMock, deleteOne: deleteOneMock })
+      collection: () => ({ findOne: findOneMock, deleteOne: deleteOneMock }),
     }),
   })),
 }));
@@ -30,13 +30,17 @@ describe('api/pantry/[id] DELETE', () => {
   it('401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(401);
   });
 
   it('400 when invalid id', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
-    const res = await routes.DELETE(makeReq('http://localhost/api/pantry/bad'), { params: Promise.resolve({ id: 'bad' }) } as any);
+    const res = await routes.DELETE(makeReq('http://localhost/api/pantry/bad'), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
     expect(res.status).toBe(400);
   });
 
@@ -44,7 +48,9 @@ describe('api/pantry/[id] DELETE', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(404);
   });
 
@@ -53,9 +59,9 @@ describe('api/pantry/[id] DELETE', () => {
     findOneMock.mockResolvedValueOnce({ _id: 'x', userId: 'u1' });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(200);
   });
 });
-
-

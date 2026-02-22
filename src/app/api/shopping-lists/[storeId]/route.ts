@@ -10,10 +10,7 @@ type RouteParams = {
   params: Promise<{ storeId: string }>;
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -36,8 +33,8 @@ export async function GET(
       _id: ObjectId.createFromHexString(storeId),
       $or: [
         { userId: session.user.id },
-        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-      ]
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' },
+      ],
     });
 
     if (!store) {
@@ -54,7 +51,7 @@ export async function GET(
         userId: session.user.id,
         items: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
       const insertResult = await shoppingListsCollection.insertOne(newList);
       shoppingList = await shoppingListsCollection.findOne({ _id: insertResult.insertedId });
@@ -65,28 +62,32 @@ export async function GET(
 
     // Populate food item names, but preserve per-list units and quantities
     if (shoppingList.items && shoppingList.items.length > 0) {
-      const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) => 
+      const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) =>
         ObjectId.createFromHexString(item.foodItemId)
       );
-      const foodItems = await foodItemsCollection.find({
-        _id: { $in: foodItemIds }
-      }).toArray();
+      const foodItems = await foodItemsCollection
+        .find({
+          _id: { $in: foodItemIds },
+        })
+        .toArray();
 
-      const foodItemMap = new Map(
-        foodItems.map(item => [item._id.toString(), item])
+      const foodItemMap = new Map(foodItems.map((item) => [item._id.toString(), item]));
+
+      shoppingList.items = shoppingList.items.map(
+        (item: { foodItemId: string; quantity: number; unit?: string }) => {
+          const foodItem = foodItemMap.get(item.foodItemId);
+          return {
+            ...item,
+            name: foodItem
+              ? item.quantity === 1
+                ? foodItem.singularName
+                : foodItem.pluralName
+              : 'Unknown',
+            // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+            unit: item.unit ?? foodItem?.unit ?? 'piece',
+          };
+        }
       );
-
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string; name?: string }) => {
-        const foodItem = foodItemMap.get(String(item.foodItemId));
-        return {
-          ...item,
-          name: foodItem
-            ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
-            : (item.name && item.name !== 'Unknown' ? item.name : 'Unknown'),
-          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
-          unit: item.unit ?? foodItem?.unit ?? 'piece'
-        };
-      });
     }
 
     return NextResponse.json(shoppingList);
@@ -96,10 +97,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -119,10 +117,13 @@ export async function PUT(
     }
 
     // Check for duplicate food items
-    const foodItemIds = items.map(item => item.foodItemId);
+    const foodItemIds = items.map((item) => item.foodItemId);
     const uniqueFoodItemIds = new Set(foodItemIds);
     if (foodItemIds.length !== uniqueFoodItemIds.size) {
-      return NextResponse.json({ error: SHOPPING_LIST_ERRORS.DUPLICATE_FOOD_ITEM }, { status: 400 });
+      return NextResponse.json(
+        { error: SHOPPING_LIST_ERRORS.DUPLICATE_FOOD_ITEM },
+        { status: 400 }
+      );
     }
 
     const client = await getMongoClient();
@@ -136,8 +137,8 @@ export async function PUT(
       _id: ObjectId.createFromHexString(storeId),
       $or: [
         { userId: session.user.id },
-        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-      ]
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' },
+      ],
     });
 
     if (!store) {
@@ -156,12 +157,12 @@ export async function PUT(
       {
         $set: {
           items,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         $setOnInsert: {
           userId: session.user.id,
-          createdAt: new Date()
-        }
+          createdAt: new Date(),
+        },
       },
       { upsert: true }
     );
@@ -170,28 +171,32 @@ export async function PUT(
     const shoppingList = await shoppingListsCollection.findOne({ storeId });
 
     if (shoppingList && shoppingList.items && shoppingList.items.length > 0) {
-      const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) => 
+      const foodItemIds = shoppingList.items.map((item: { foodItemId: string }) =>
         ObjectId.createFromHexString(item.foodItemId)
       );
-      const foodItems = await foodItemsCollection.find({
-        _id: { $in: foodItemIds }
-      }).toArray();
+      const foodItems = await foodItemsCollection
+        .find({
+          _id: { $in: foodItemIds },
+        })
+        .toArray();
 
-      const foodItemMap = new Map(
-        foodItems.map(item => [item._id.toString(), item])
+      const foodItemMap = new Map(foodItems.map((item) => [item._id.toString(), item]));
+
+      shoppingList.items = shoppingList.items.map(
+        (item: { foodItemId: string; quantity: number; unit?: string }) => {
+          const foodItem = foodItemMap.get(item.foodItemId);
+          return {
+            ...item,
+            name: foodItem
+              ? item.quantity === 1
+                ? foodItem.singularName
+                : foodItem.pluralName
+              : 'Unknown',
+            // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
+            unit: item.unit ?? foodItem?.unit ?? 'piece',
+          };
+        }
       );
-
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string; name?: string }) => {
-        const foodItem = foodItemMap.get(String(item.foodItemId));
-        return {
-          ...item,
-          name: foodItem
-            ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
-            : (item.name && item.name !== 'Unknown' ? item.name : 'Unknown'),
-          // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
-          unit: item.unit ?? foodItem?.unit ?? 'piece'
-        };
-      });
     }
 
     const timestamp = new Date().toISOString();
@@ -199,14 +204,12 @@ export async function PUT(
     // Detect deleted items and broadcast item_deleted events
     if (previousItems.length > 0) {
       const newItemIds = new Set(
-        (shoppingList?.items || []).map(
-          (item: { foodItemId: string }) => item.foodItemId
-        )
+        (shoppingList?.items || []).map((item: { foodItemId: string }) => item.foodItemId)
       );
 
       const deletedItemIds = previousItems
-        .map(item => item.foodItemId)
-        .filter(foodItemId => !newItemIds.has(foodItemId));
+        .map((item) => item.foodItemId)
+        .filter((foodItemId) => !newItemIds.has(foodItemId));
 
       await Promise.all(
         deletedItemIds.map((foodItemId) =>
@@ -232,4 +235,3 @@ export async function PUT(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

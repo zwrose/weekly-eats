@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
-import { 
-  AUTH_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 /**
  * GET /api/recipes/tags
@@ -26,9 +22,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const recipeUserDataCollection = db.collection('recipeUserData');
 
     // Get all user data for the current user
-    const userDataList = await recipeUserDataCollection
-      .find({ userId: session.user.id })
-      .toArray();
+    const userDataList = await recipeUserDataCollection.find({ userId: session.user.id }).toArray();
 
     // Collect all unique tags
     const tagsSet = new Set<string>();
@@ -51,4 +45,3 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

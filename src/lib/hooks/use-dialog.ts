@@ -13,13 +13,13 @@ export const useDialog = (initialState = false): UseDialogReturn => {
 
   const openDialog = useCallback(() => setOpen(true), []);
   const closeDialog = useCallback(() => setOpen(false), []);
-  const toggleDialog = useCallback(() => setOpen(prev => !prev), []);
+  const toggleDialog = useCallback(() => setOpen((prev) => !prev), []);
 
   return {
     open,
     openDialog,
     closeDialog,
-    toggleDialog
+    toggleDialog,
   };
 };
 
@@ -36,15 +36,15 @@ export const usePersistentDialog = (dialogKey: string): UsePersistentDialogRetur
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   // Use ref to track current search params
   const searchParamsRef = useRef(searchParams);
   searchParamsRef.current = searchParams;
-  
+
   // Check if dialog should be open based on URL params
   const isOpenFromUrl = searchParams.get(dialogKey) === 'true';
   const [open, setOpen] = useState(isOpenFromUrl);
-  
+
   // Extract data from URL params
   const getDataFromUrl = useCallback(() => {
     const data: Record<string, string> = {};
@@ -66,39 +66,41 @@ export const usePersistentDialog = (dialogKey: string): UsePersistentDialogRetur
     setData(getDataFromUrl());
   }, [searchParams, dialogKey, getDataFromUrl]);
 
-  const openDialog = useCallback((dialogData?: Record<string, string>) => {
-    
-    // Immediately update local state
-    setOpen(true);
-    setData(dialogData || null);
-    
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set(dialogKey, 'true');
-    
-    // Add data to URL params
-    if (dialogData) {
-      Object.entries(dialogData).forEach(([key, value]) => {
-        newSearchParams.set(`${dialogKey}_${key}`, value);
-      });
-    }
-    
-    const newUrl = `${pathname}?${newSearchParams.toString()}`;
-    // Use setTimeout to avoid conflicts with Next.js
-    setTimeout(() => {
-      router.push(newUrl);
-    }, 200);
-  }, [router, pathname, searchParams, dialogKey]);
+  const openDialog = useCallback(
+    (dialogData?: Record<string, string>) => {
+      // Immediately update local state
+      setOpen(true);
+      setData(dialogData || null);
 
-    const closeDialog = useCallback(() => {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set(dialogKey, 'true');
+
+      // Add data to URL params
+      if (dialogData) {
+        Object.entries(dialogData).forEach(([key, value]) => {
+          newSearchParams.set(`${dialogKey}_${key}`, value);
+        });
+      }
+
+      const newUrl = `${pathname}?${newSearchParams.toString()}`;
+      // Use setTimeout to avoid conflicts with Next.js
+      setTimeout(() => {
+        router.push(newUrl);
+      }, 200);
+    },
+    [router, pathname, searchParams, dialogKey]
+  );
+
+  const closeDialog = useCallback(() => {
     // Immediately update local state
     setOpen(false);
     setData(null);
-    
+
     // Use setTimeout to avoid conflicts with Next.js
     setTimeout(() => {
       const newSearchParams = new URLSearchParams(searchParamsRef.current);
       newSearchParams.delete(dialogKey);
-      
+
       // Remove all data params for this dialog
       const keysToDelete: string[] = [];
       newSearchParams.forEach((value, key) => {
@@ -106,27 +108,30 @@ export const usePersistentDialog = (dialogKey: string): UsePersistentDialogRetur
           keysToDelete.push(key);
         }
       });
-      keysToDelete.forEach(key => newSearchParams.delete(key));
-      
+      keysToDelete.forEach((key) => newSearchParams.delete(key));
+
       router.replace(`${pathname}?${newSearchParams.toString()}`);
     }, 100);
   }, [router, pathname, dialogKey]);
 
-  const removeDialogData = useCallback((dataKey: string) => {
-    // Immediately update local state
-    if (data) {
-      const newData = { ...data };
-      delete newData[dataKey];
-      setData(Object.keys(newData).length > 0 ? newData : null);
-    }
-    
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete(`${dialogKey}_${dataKey}`);
-    // Use setTimeout to avoid conflicts with Next.js
-    setTimeout(() => {
-      router.replace(`${pathname}?${newSearchParams.toString()}`);
-    }, 100);
-  }, [router, pathname, searchParams, dialogKey, data]);
+  const removeDialogData = useCallback(
+    (dataKey: string) => {
+      // Immediately update local state
+      if (data) {
+        const newData = { ...data };
+        delete newData[dataKey];
+        setData(Object.keys(newData).length > 0 ? newData : null);
+      }
+
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete(`${dialogKey}_${dataKey}`);
+      // Use setTimeout to avoid conflicts with Next.js
+      setTimeout(() => {
+        router.replace(`${pathname}?${newSearchParams.toString()}`);
+      }, 100);
+    },
+    [router, pathname, searchParams, dialogKey, data]
+  );
 
   const toggleDialog = useCallback(() => {
     if (open) {
@@ -142,7 +147,7 @@ export const usePersistentDialog = (dialogKey: string): UsePersistentDialogRetur
     closeDialog,
     toggleDialog,
     removeDialogData,
-    data
+    data,
   };
 };
 
@@ -185,6 +190,6 @@ export const useConfirmDialog = <T = unknown>(): UseConfirmDialogReturn<T> => {
     openDialog,
     closeDialog,
     confirm,
-    cancel
+    cancel,
   };
-}; 
+};

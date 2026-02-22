@@ -97,7 +97,13 @@ const pantryItem2 = {
   foodItemId: 'f2',
   userId: 'user-123',
   addedAt: '2024-01-02',
-  foodItem: { _id: 'f2', name: 'Banana', singularName: 'banana', pluralName: 'bananas', unit: 'each' },
+  foodItem: {
+    _id: 'f2',
+    name: 'Banana',
+    singularName: 'banana',
+    pluralName: 'bananas',
+    unit: 'each',
+  },
 };
 
 describe('PantryPage - Server Paginated', () => {

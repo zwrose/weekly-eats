@@ -22,23 +22,24 @@ export async function GET() {
         'settings.recipeSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       })
       .toArray();
 
     // Return user info for each owner with their sharing types
-    const sharedOwners = owners.map(owner => {
+    const sharedOwners = owners.map((owner) => {
       const invitation = (owner.settings?.recipeSharing?.invitations || []).find(
-        (inv: RecipeSharingInvitation) => inv.userId === session.user.id && inv.status === 'accepted'
+        (inv: RecipeSharingInvitation) =>
+          inv.userId === session.user.id && inv.status === 'accepted'
       ) as RecipeSharingInvitation | undefined;
 
       return {
         userId: owner._id.toString(),
         email: owner.email,
         name: owner.name,
-        sharingTypes: invitation?.sharingTypes || []
+        sharingTypes: invitation?.sharingTypes || [],
       };
     });
 
@@ -48,5 +49,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-

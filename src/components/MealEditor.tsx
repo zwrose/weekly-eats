@@ -1,12 +1,7 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  Box,
-  Button,
-  Typography,
-  Alert,
-} from '@mui/material';
+import { Box, Button, Typography, Alert } from '@mui/material';
 import { Group, Add } from '@mui/icons-material';
 import { RecipeIngredientList } from '../types/recipe';
 import IngredientInput from './IngredientInput';
@@ -39,20 +34,26 @@ interface MealItem {
 interface MealEditorProps {
   mealItems: MealItem[];
   onChange: (items: MealItem[]) => void;
-  onFoodItemAdded?: (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
+  onFoodItemAdded?: (newFoodItem: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   removeItemButtonText?: string; // Text for remove button on items within ingredient groups
 }
 
-export default function MealEditor({ 
-  mealItems, 
-  onChange, 
+export default function MealEditor({
+  mealItems,
+  onChange,
   onFoodItemAdded,
-  removeItemButtonText = "Remove Meal Item"
+  removeItemButtonText = 'Remove Meal Item',
 }: MealEditorProps) {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [error, setError] = useState('');
-  
+
   // Store the last created food item temporarily for auto-selection
   const lastCreatedFoodItemRef = useRef<FoodItem | null>(null);
 
@@ -62,7 +63,7 @@ export default function MealEditor({
       try {
         const [foodRes, recipeRes] = await Promise.all([
           fetch('/api/food-items?limit=1000'),
-          fetch('/api/recipes?limit=1000')
+          fetch('/api/recipes?limit=1000'),
         ]);
         const foodItemsJson = foodRes.ok ? await foodRes.json() : { data: [] };
         const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
@@ -72,27 +73,39 @@ export default function MealEditor({
         console.error('Error loading data:', error);
       }
     };
-    
+
     loadData();
   }, []);
 
   // Handle food item creation and update local state
-  const handleFoodItemAdded = async (newFoodItem: FoodItem | { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => {
+  const handleFoodItemAdded = async (
+    newFoodItem:
+      | FoodItem
+      | { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }
+  ) => {
     // Add the new food item to local state if it has _id (already created)
     if ('_id' in newFoodItem) {
-      setFoodItems(prev => {
+      setFoodItems((prev) => {
         const newItems = [...prev, newFoodItem as FoodItem];
         return newItems;
       });
-      
+
       // Store the newly created food item temporarily so we can use it in onIngredientChange
       // This will be used when the auto-selection happens before the state update
       lastCreatedFoodItemRef.current = newFoodItem;
     }
-    
+
     // Also notify parent component if callback exists
     if (onFoodItemAdded) {
-      await onFoodItemAdded(newFoodItem as { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean });
+      await onFoodItemAdded(
+        newFoodItem as {
+          name: string;
+          singularName: string;
+          pluralName: string;
+          unit: string;
+          isGlobal: boolean;
+        }
+      );
     }
   };
 
@@ -102,7 +115,7 @@ export default function MealEditor({
       id: '',
       name: '',
       quantity: 1,
-      unit: 'cup'
+      unit: 'cup',
     };
     onChange([...mealItems, newItem]);
   };
@@ -112,10 +125,12 @@ export default function MealEditor({
       type: 'ingredientGroup',
       id: '',
       name: '',
-      ingredients: [{
-        title: '',
-        ingredients: []
-      }]
+      ingredients: [
+        {
+          title: '',
+          ingredients: [],
+        },
+      ],
     };
     onChange([...mealItems, newItem]);
   };
@@ -136,7 +151,7 @@ export default function MealEditor({
     if (newItems[index].type === 'ingredientGroup') {
       newItems[index] = {
         ...newItems[index],
-        ingredients
+        ingredients,
       };
       onChange(newItems);
     }
@@ -144,9 +159,7 @@ export default function MealEditor({
 
   // Get all selected IDs for exclusion
   const getAllSelectedIds = () => {
-    return mealItems
-      .filter(item => item.id && item.id.trim() !== '')
-      .map(item => item.id);
+    return mealItems.filter((item) => item.id && item.id.trim() !== '').map((item) => item.id);
   };
 
   return (
@@ -160,39 +173,44 @@ export default function MealEditor({
       {/* Meal Items */}
       {mealItems.map((item, index) => (
         <Box key={index} sx={{ mb: 2 }}>
-
           {(item.type === 'foodItem' || item.type === 'recipe') && (
             <IngredientInput
               ingredient={{
                 type: item.type, // Use the actual type from the meal item
                 id: item.id,
                 quantity: item.quantity ?? 1,
-                unit: item.type === 'foodItem' ? (item.unit || 'cup') : undefined,
-                name: item.name // ✅ Preserve the name from the meal item
+                unit: item.type === 'foodItem' ? item.unit || 'cup' : undefined,
+                name: item.name, // ✅ Preserve the name from the meal item
               }}
               autoFocus={!item.id || item.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
                 let itemName = updatedIngredient.name || ''; // Start with the name from IngredientInput
-                
+
                 // If we have the data loaded, look up the name to ensure it's correct (especially for singular/plural)
                 if (updatedIngredient.id && (foodItems.length > 0 || recipes.length > 0)) {
-                  const foodItem = foodItems.find(f => f._id === updatedIngredient.id);
-                  const recipe = recipes.find(r => r._id === updatedIngredient.id);
-                  
+                  const foodItem = foodItems.find((f) => f._id === updatedIngredient.id);
+                  const recipe = recipes.find((r) => r._id === updatedIngredient.id);
+
                   if (foodItem) {
                     // For food items, use singular/plural based on quantity
-                    itemName = updatedIngredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
+                    itemName =
+                      updatedIngredient.quantity === 1
+                        ? foodItem.singularName
+                        : foodItem.pluralName;
                   } else if (recipe) {
                     // For recipes, use the title
                     itemName = recipe.title;
-                  } else if (lastCreatedFoodItemRef.current && lastCreatedFoodItemRef.current._id === updatedIngredient.id) {
+                  } else if (
+                    lastCreatedFoodItemRef.current &&
+                    lastCreatedFoodItemRef.current._id === updatedIngredient.id
+                  ) {
                     // Use newly created food item (before it's in foodItems state)
                     itemName = lastCreatedFoodItemRef.current.name;
                     lastCreatedFoodItemRef.current = null;
                   }
                   // If lookup fails but we have a name from updatedIngredient, keep it
                 }
-                
+
                 // Update the meal item with the ingredient data
                 handleItemChange(index, {
                   type: updatedIngredient.type,
@@ -208,7 +226,7 @@ export default function MealEditor({
               onRemove={() => handleRemoveItem(index)}
               foodItems={foodItems}
               onFoodItemAdded={handleFoodItemAdded}
-              selectedIds={getAllSelectedIds().filter(id => id !== item.id)}
+              selectedIds={getAllSelectedIds().filter((id) => id !== item.id)}
               slotId={`meal-item-${index}`}
               removeButtonText="Remove Meal Item"
               allowPrepInstructions={false}
@@ -239,12 +257,7 @@ export default function MealEditor({
 
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', gap: 1, mt: 3, flexWrap: 'wrap' }}>
-        <Button
-          startIcon={<Add />}
-          onClick={handleAddMealItem}
-          variant="outlined"
-          size="small"
-        >
+        <Button startIcon={<Add />} onClick={handleAddMealItem} variant="outlined" size="small">
           Add Meal Item
         </Button>
         <Button

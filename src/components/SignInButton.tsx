@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import { signIn } from "next-auth/react";
-import { Button } from "@mui/material";
-import { useSearchParams } from "next/navigation";
+import { signIn } from 'next-auth/react';
+import { Button } from '@mui/material';
+import { useSearchParams } from 'next/navigation';
 
 export default function SignInButton() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/meal-plans";
+  const callbackUrl = searchParams.get('callbackUrl') || '/meal-plans';
 
   return (
     <Button
       variant="contained"
       color="inherit"
       size="large"
-      onClick={() => signIn("google", { callbackUrl })}
+      onClick={() => signIn('google', { callbackUrl })}
       sx={{
-        textTransform: "none",
-        bgcolor: "background.paper",
-        color: "text.primary",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-        "&:hover": {
-          bgcolor: "grey.100",
+        textTransform: 'none',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+        '&:hover': {
+          bgcolor: 'grey.100',
         },
       }}
       startIcon={
@@ -47,4 +47,4 @@ export default function SignInButton() {
       Sign in with Google
     </Button>
   );
-} 
+}

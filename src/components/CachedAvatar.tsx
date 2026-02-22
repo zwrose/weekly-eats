@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Avatar, AvatarProps } from "@mui/material";
-import AccountCircle from "@mui/icons-material/AccountCircle";
+import { useState } from 'react';
+import { Avatar, AvatarProps } from '@mui/material';
+import AccountCircle from '@mui/icons-material/AccountCircle';
 
 interface CachedAvatarProps extends Omit<AvatarProps, 'src' | 'imgProps'> {
   src?: string | null;
@@ -31,19 +31,17 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
   // If no src or error occurred, show fallback
   if (!src || imageError) {
     return (
-      <Avatar
-        {...props}
-        sx={sx}
-      >
+      <Avatar {...props} sx={sx}>
         {fallbackIcon || <AccountCircle />}
       </Avatar>
     );
   }
 
   // Use proxy API route for Google images to add caching and handle 429 errors
-  const imageSrc = useProxy && src.startsWith('https://lh3.googleusercontent.com/')
-    ? `/api/avatar?url=${encodeURIComponent(src)}`
-    : src;
+  const imageSrc =
+    useProxy && src.startsWith('https://lh3.googleusercontent.com/')
+      ? `/api/avatar?url=${encodeURIComponent(src)}`
+      : src;
 
   return (
     <Avatar
@@ -61,4 +59,3 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
     />
   );
 };
-

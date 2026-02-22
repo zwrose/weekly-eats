@@ -1,12 +1,7 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Typography,
-  Alert,
-} from '@mui/material';
+import { Box, Button, Typography, Alert } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { RecipeIngredientList, RecipeIngredient } from '../types/recipe';
 import IngredientInput from './IngredientInput';
@@ -15,8 +10,20 @@ import IngredientGroup from './IngredientGroup';
 interface RecipeIngredientsProps {
   ingredients: RecipeIngredientList[];
   onChange: (ingredients: RecipeIngredientList[]) => void;
-  foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
-  onFoodItemAdded?: (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
+  foodItems?: Array<{
+    _id: string;
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+  }>;
+  onFoodItemAdded?: (newFoodItem: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   // Custom text overrides
   addIngredientButtonText?: string;
   addIngredientGroupButtonText?: string;
@@ -25,16 +32,16 @@ interface RecipeIngredientsProps {
   removeIngredientButtonText?: string;
 }
 
-export default function RecipeIngredients({ 
-  ingredients, 
-  onChange, 
+export default function RecipeIngredients({
+  ingredients,
+  onChange,
   foodItems,
-  onFoodItemAdded, 
-  addIngredientButtonText = "Add Ingredient",
-  addIngredientGroupButtonText = "Add Ingredient Group",
-  emptyGroupText = "No ingredients in this group. Click \"Add Ingredient\" to get started.",
-  emptyNoGroupsText = "No ingredients added yet. Click \"Add Ingredient\" to get started.",
-  removeIngredientButtonText = "Remove Ingredient"
+  onFoodItemAdded,
+  addIngredientButtonText = 'Add Ingredient',
+  addIngredientGroupButtonText = 'Add Ingredient Group',
+  emptyGroupText = 'No ingredients in this group. Click "Add Ingredient" to get started.',
+  emptyNoGroupsText = 'No ingredients added yet. Click "Add Ingredient" to get started.',
+  removeIngredientButtonText = 'Remove Ingredient',
 }: RecipeIngredientsProps) {
   const [error, setError] = useState('');
 
@@ -45,7 +52,7 @@ export default function RecipeIngredients({
       const newStandaloneGroup: RecipeIngredientList & { isStandalone?: boolean } = {
         title: '', // Empty title indicates standalone
         ingredients: [],
-        isStandalone: true
+        isStandalone: true,
       };
       onChange([newStandaloneGroup]);
     }
@@ -67,7 +74,7 @@ export default function RecipeIngredients({
               const newStandaloneGroup: RecipeIngredientList & { isStandalone?: boolean } = {
                 title: '',
                 ingredients: [],
-                isStandalone: true
+                isStandalone: true,
               };
               onChange([newStandaloneGroup]);
             }}
@@ -86,8 +93,9 @@ export default function RecipeIngredients({
   }
 
   // Check if we're in standalone mode (single group with empty title and isStandalone flag)
-  const isStandaloneMode = ingredients.length === 1 && 
-    ingredients[0].title === '' && 
+  const isStandaloneMode =
+    ingredients.length === 1 &&
+    ingredients[0].title === '' &&
     (ingredients[0] as RecipeIngredientList & { isStandalone?: boolean }).isStandalone;
 
   const handleAddIngredient = () => {
@@ -97,12 +105,12 @@ export default function RecipeIngredients({
         type: 'foodItem',
         id: '',
         quantity: 1,
-        unit: 'cup'
+        unit: 'cup',
       };
       const updatedIngredients = [...ingredients];
       updatedIngredients[0] = {
         ...updatedIngredients[0],
-        ingredients: [...updatedIngredients[0].ingredients, newIngredient]
+        ingredients: [...updatedIngredients[0].ingredients, newIngredient],
       };
       onChange(updatedIngredients);
     } else {
@@ -111,18 +119,20 @@ export default function RecipeIngredients({
         type: 'foodItem',
         id: '',
         quantity: 1,
-        unit: 'cup'
+        unit: 'cup',
       };
       if (ingredients.length === 0) {
-        onChange([{
-          title: '',
-          ingredients: [newIngredient]
-        }]);
+        onChange([
+          {
+            title: '',
+            ingredients: [newIngredient],
+          },
+        ]);
       } else {
         const updatedIngredients = [...ingredients];
         updatedIngredients[0] = {
           ...updatedIngredients[0],
-          ingredients: [...updatedIngredients[0].ingredients, newIngredient]
+          ingredients: [...updatedIngredients[0].ingredients, newIngredient],
         };
         onChange(updatedIngredients);
       }
@@ -132,7 +142,7 @@ export default function RecipeIngredients({
   const handleAddGroup = () => {
     const newGroup: RecipeIngredientList = {
       title: '',
-      ingredients: []
+      ingredients: [],
     };
     onChange([...ingredients, newGroup]);
   };
@@ -141,16 +151,18 @@ export default function RecipeIngredients({
     if (isStandaloneMode) {
       if (ingredients[0].ingredients.length > 0) {
         // Convert standalone ingredients to groups
-        const groups: RecipeIngredientList[] = ingredients[0].ingredients.map((ingredient, index) => ({
-          title: `Group ${index + 1}`,
-          ingredients: [ingredient]
-        }));
+        const groups: RecipeIngredientList[] = ingredients[0].ingredients.map(
+          (ingredient, index) => ({
+            title: `Group ${index + 1}`,
+            ingredients: [ingredient],
+          })
+        );
         onChange(groups);
       } else {
         // Convert to empty group mode
         const emptyGroup: RecipeIngredientList = {
           title: '',
-          ingredients: []
+          ingredients: [],
         };
         onChange([emptyGroup]);
       }
@@ -168,11 +180,9 @@ export default function RecipeIngredients({
     onChange(newIngredients);
   };
 
-
-
   const getAllSelectedIds = (): string[] => {
-    return ingredients.flatMap(group => 
-      group.ingredients.map(ingredient => ingredient.id).filter(id => id !== '')
+    return ingredients.flatMap((group) =>
+      group.ingredients.map((ingredient) => ingredient.id).filter((id) => id !== '')
     );
   };
 
@@ -187,7 +197,6 @@ export default function RecipeIngredients({
       {isStandaloneMode ? (
         // Standalone mode - single group without title
         <Box>
-
           {ingredients[0].ingredients.map((ingredient, index) => (
             <IngredientInput
               key={index}
@@ -199,7 +208,7 @@ export default function RecipeIngredients({
                   ...newIngredients[0],
                   ingredients: newIngredients[0].ingredients.map((ing, i) =>
                     i === index ? updatedIngredient : ing
-                  )
+                  ),
                 };
                 onChange(newIngredients);
               }}
@@ -207,13 +216,13 @@ export default function RecipeIngredients({
                 const newIngredients = [...ingredients];
                 newIngredients[0] = {
                   ...newIngredients[0],
-                  ingredients: newIngredients[0].ingredients.filter((_, i) => i !== index)
+                  ingredients: newIngredients[0].ingredients.filter((_, i) => i !== index),
                 };
                 onChange(newIngredients);
               }}
               foodItems={foodItems}
               onFoodItemAdded={onFoodItemAdded}
-              selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
+              selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
               slotId={`standalone-${index}`}
               removeButtonText={removeIngredientButtonText}
             />
@@ -224,9 +233,9 @@ export default function RecipeIngredients({
             onClick={handleAddIngredient}
             variant="outlined"
             size="small"
-            sx={{ 
+            sx={{
               mt: 1,
-              width: { xs: '100%', sm: 'auto' }
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {addIngredientButtonText}
@@ -239,11 +248,7 @@ export default function RecipeIngredients({
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
-            <Button
-              onClick={handleConvertToGroups}
-              variant="outlined"
-              size="small"
-            >
+            <Button onClick={handleConvertToGroups} variant="outlined" size="small">
               Convert to Groups
             </Button>
           </Box>
@@ -251,7 +256,6 @@ export default function RecipeIngredients({
       ) : (
         // Group mode - multiple groups with titles
         <Box>
-
           {ingredients.map((group, groupIndex) => (
             <IngredientGroup
               key={groupIndex}
@@ -273,11 +277,7 @@ export default function RecipeIngredients({
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
-            <Button
-              onClick={handleAddGroup}
-              variant="outlined"
-              size="small"
-            >
+            <Button onClick={handleAddGroup} variant="outlined" size="small">
               {addIngredientGroupButtonText}
             </Button>
           </Box>

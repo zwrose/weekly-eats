@@ -3,16 +3,19 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, STORE_INVITATION_ERRORS, logError } from '@/lib/errors';
+import {
+  AUTH_ERRORS,
+  API_ERRORS,
+  STORE_ERRORS,
+  STORE_INVITATION_ERRORS,
+  logError,
+} from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -46,7 +49,7 @@ export async function POST(
     // Verify store exists and user is owner
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (!store) {
@@ -75,15 +78,15 @@ export async function POST(
       userEmail: normalizedEmail,
       status: 'pending',
       invitedBy: session.user.id,
-      invitedAt: new Date()
+      invitedAt: new Date(),
     };
 
     await storesCollection.updateOne(
       { _id: ObjectId.createFromHexString(id) },
-      { 
+      {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         $push: { invitations: newInvitation } as any,
-        $set: { updatedAt: new Date() }
+        $set: { updatedAt: new Date() },
       }
     );
 
@@ -93,4 +96,3 @@ export async function POST(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

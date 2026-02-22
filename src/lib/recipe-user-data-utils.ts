@@ -36,7 +36,10 @@ export async function fetchRecipeUserDataBatch(
 /**
  * Update tags for a recipe
  */
-export async function updateRecipeTags(recipeId: string, tags: string[]): Promise<{ tags: string[] }> {
+export async function updateRecipeTags(
+  recipeId: string,
+  tags: string[]
+): Promise<{ tags: string[] }> {
   const response = await fetch(`/api/recipes/${recipeId}/tags`, {
     method: 'POST',
     headers: {
@@ -54,7 +57,10 @@ export async function updateRecipeTags(recipeId: string, tags: string[]): Promis
 /**
  * Update rating for a recipe
  */
-export async function updateRecipeRating(recipeId: string, rating: number): Promise<{ rating: number }> {
+export async function updateRecipeRating(
+  recipeId: string,
+  rating: number
+): Promise<{ rating: number }> {
   const response = await fetch(`/api/recipes/${recipeId}/rating`, {
     method: 'POST',
     headers: {
@@ -94,4 +100,3 @@ export async function fetchUserTags(): Promise<string[]> {
   const data = await response.json();
   return data.tags || [];
 }
-

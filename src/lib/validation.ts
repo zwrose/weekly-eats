@@ -4,7 +4,13 @@ import { DayOfWeek, MealType } from '../types/meal-plan';
  * Valid day of week values
  */
 export const VALID_DAYS_OF_WEEK: DayOfWeek[] = [
-  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
 ];
 
 /**
@@ -27,8 +33,8 @@ export const isValidMealsConfig = (meals: unknown): meals is Record<MealType, bo
     return false;
   }
 
-  return VALID_MEAL_TYPES.every(mealType => 
-    typeof (meals as Record<string, unknown>)[mealType] === 'boolean'
+  return VALID_MEAL_TYPES.every(
+    (mealType) => typeof (meals as Record<string, unknown>)[mealType] === 'boolean'
   );
 };
 
@@ -65,15 +71,15 @@ export const isValidObjectId = (id: string): boolean => {
  * Validate required fields in an object
  */
 export const validateRequiredFields = <T extends Record<string, unknown>>(
-  obj: T, 
+  obj: T,
   requiredFields: (keyof T)[]
 ): { isValid: boolean; missingFields: (keyof T)[] } => {
-  const missingFields = requiredFields.filter(field => 
-    obj[field] === undefined || obj[field] === null || obj[field] === ''
+  const missingFields = requiredFields.filter(
+    (field) => obj[field] === undefined || obj[field] === null || obj[field] === ''
   );
 
   return {
     isValid: missingFields.length === 0,
-    missingFields
+    missingFields,
   };
-}; 
+};

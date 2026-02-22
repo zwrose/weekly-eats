@@ -23,10 +23,7 @@ interface CheckedItem {
   unit: string;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -49,8 +46,8 @@ export async function POST(
       _id: ObjectId.createFromHexString(storeId),
       $or: [
         { userId: session.user.id },
-        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-      ]
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' },
+      ],
     });
 
     if (!store) {
@@ -58,40 +55,25 @@ export async function POST(
     }
 
     if (!Array.isArray(checkedItems) || checkedItems.length === 0) {
-      return NextResponse.json({ error: PURCHASE_HISTORY_ERRORS.NO_CHECKED_ITEMS }, { status: 400 });
+      return NextResponse.json(
+        { error: PURCHASE_HISTORY_ERRORS.NO_CHECKED_ITEMS },
+        { status: 400 }
+      );
     }
 
     // Get current shopping list
     const shoppingList = await db.collection('shoppingLists').findOne({ storeId });
     const currentItems = shoppingList?.items || [];
 
-    // Re-resolve food item names from the database before persisting
-    const now = new Date();
-    const checkedFoodItemIds = new Set(checkedItems.map(i => i.foodItemId));
-    const validFoodItemIds = checkedItems
-      .map(i => i.foodItemId)
-      .filter(id => ObjectId.isValid(id));
-    const foodItems = validFoodItemIds.length > 0
-      ? await db.collection('foodItems')
-          .find({ _id: { $in: validFoodItemIds.map(id => new ObjectId(id)) } })
-          .toArray()
-      : [];
-    const foodItemMap = new Map(
-      foodItems.map(fi => [fi._id.toString(), fi])
-    );
-
     // Build upsert operations for purchase history
-    const bulkOps = checkedItems.map((item: CheckedItem) => {
-      const foodItem = foodItemMap.get(item.foodItemId);
-      const resolvedName = foodItem
-        ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
-        : item.name;
-      return {
+    const now = new Date();
+    const checkedFoodItemIds = new Set(checkedItems.map((i) => i.foodItemId));
+    const bulkOps = checkedItems.map((item: CheckedItem) => ({
       updateOne: {
         filter: { storeId, foodItemId: item.foodItemId },
         update: {
           $set: {
-            name: resolvedName,
+            name: item.name,
             quantity: item.quantity,
             unit: item.unit,
             lastPurchasedAt: now,
@@ -103,8 +85,7 @@ export async function POST(
         },
         upsert: true,
       },
-    };
-    });
+    }));
 
     await db.collection('purchaseHistory').bulkWrite(bulkOps);
 
@@ -113,10 +94,9 @@ export async function POST(
       (item: { foodItemId: string }) => !checkedFoodItemIds.has(item.foodItemId)
     );
 
-    await db.collection('shoppingLists').updateOne(
-      { storeId },
-      { $set: { items: remainingItems, updatedAt: now } }
-    );
+    await db
+      .collection('shoppingLists')
+      .updateOne({ storeId }, { $set: { items: remainingItems, updatedAt: now } });
 
     // Broadcast update via Ably
     await publishShoppingEvent(storeId, 'list_updated', {

@@ -82,13 +82,13 @@ describe('RecipeInstructionsView', () => {
       // Render with spaces between headings to ensure proper parsing
       const instructions = '# Title\n\n## Section\n\n### Subsection';
       render(<RecipeInstructionsView instructions={instructions} />);
-      
+
       // Check that at least one heading is rendered
       const headings = screen.getAllByRole('heading');
       expect(headings.length).toBeGreaterThan(0);
-      
+
       // Verify headings contain expected text (might be in different formats)
-      const headingText = headings.map(h => h.textContent).join(' ');
+      const headingText = headings.map((h) => h.textContent).join(' ');
       expect(headingText.toLowerCase()).toMatch(/title/i);
       expect(headingText.toLowerCase()).toMatch(/section/i);
       expect(headingText.toLowerCase()).toMatch(/subsection/i);
@@ -139,7 +139,9 @@ describe('RecipeInstructionsView', () => {
     });
 
     it('renders ordered lists', () => {
-      render(<RecipeInstructionsView instructions="1. First step\n2. Second step\n3. Third step" />);
+      render(
+        <RecipeInstructionsView instructions="1. First step\n2. Second step\n3. Third step" />
+      );
       const list = document.querySelector('ol');
       expect(list).toBeInTheDocument();
       // Text might be in list items with different structure
@@ -150,9 +152,7 @@ describe('RecipeInstructionsView', () => {
 
     it('renders nested lists', () => {
       render(
-        <RecipeInstructionsView
-          instructions="- Parent 1\n  - Child 1.1\n  - Child 1.2\n- Parent 2"
-        />
+        <RecipeInstructionsView instructions="- Parent 1\n  - Child 1.1\n  - Child 1.2\n- Parent 2" />
       );
       // Check for all list items
       expect(screen.getByText(/Parent 1/i)).toBeInTheDocument();
@@ -164,9 +164,7 @@ describe('RecipeInstructionsView', () => {
 
   describe('Link rendering', () => {
     it('renders links with correct href', () => {
-      render(
-        <RecipeInstructionsView instructions="Check out [this link](https://example.com)" />
-      );
+      render(<RecipeInstructionsView instructions="Check out [this link](https://example.com)" />);
       const link = screen.getByRole('link', { name: /this link/i });
       expect(link).toHaveAttribute('href', 'https://example.com');
       expect(link).toHaveAttribute('target', '_blank');
@@ -175,9 +173,7 @@ describe('RecipeInstructionsView', () => {
 
     it('renders inline links in paragraphs', () => {
       render(
-        <RecipeInstructionsView
-          instructions="Visit [Example](https://example.com) for more info."
-        />
+        <RecipeInstructionsView instructions="Visit [Example](https://example.com) for more info." />
       );
       expect(screen.getByRole('link', { name: /example/i })).toBeInTheDocument();
       expect(screen.getByText(/for more info/i)).toBeInTheDocument();
@@ -207,9 +203,7 @@ describe('RecipeInstructionsView', () => {
 
     it('renders multiple inline code snippets', () => {
       render(
-        <RecipeInstructionsView
-          instructions="Use `const` for constants and `let` for variables."
-        />
+        <RecipeInstructionsView instructions="Use `const` for constants and `let` for variables." />
       );
       const codes = document.querySelectorAll('code');
       expect(codes.length).toBeGreaterThan(0);
@@ -218,9 +212,7 @@ describe('RecipeInstructionsView', () => {
 
   describe('Blockquote rendering', () => {
     it('renders blockquotes', () => {
-      render(
-        <RecipeInstructionsView instructions="> This is a quote\n> with multiple lines" />
-      );
+      render(<RecipeInstructionsView instructions="> This is a quote\n> with multiple lines" />);
       const blockquote = document.querySelector('blockquote');
       expect(blockquote).toBeInTheDocument();
       expect(blockquote).toHaveTextContent(/This is a quote/i);
@@ -233,8 +225,8 @@ describe('RecipeInstructionsView', () => {
       // Verify surrounding text is present (the divider should be between them)
       expect(screen.getByText(/Before/i)).toBeInTheDocument();
       expect(screen.getByText(/After/i)).toBeInTheDocument();
-      
-      // MUI Divider should render as <hr> element, but if not found, 
+
+      // MUI Divider should render as <hr> element, but if not found,
       // verify the content structure indicates a divider was rendered
       const hr = document.querySelector('hr');
       // Divider might be present or markdown might render it differently
@@ -341,9 +333,7 @@ baking_time = 12
 
     it('handles instructions with special characters', () => {
       render(
-        <RecipeInstructionsView
-          instructions="Mix ingredients at 350°F for 10-15 minutes. Use 1/2 cup water."
-        />
+        <RecipeInstructionsView instructions="Mix ingredients at 350°F for 10-15 minutes. Use 1/2 cup water." />
       );
       expect(screen.getByText(/350°F/i)).toBeInTheDocument();
       expect(screen.getByText(/10-15 minutes/i)).toBeInTheDocument();
@@ -351,11 +341,7 @@ baking_time = 12
     });
 
     it('preserves line breaks in paragraphs', () => {
-      render(
-        <RecipeInstructionsView
-          instructions="Line 1\nLine 2\n\nNew paragraph"
-        />
-      );
+      render(<RecipeInstructionsView instructions="Line 1\nLine 2\n\nNew paragraph" />);
       expect(screen.getByText(/Line 1/i)).toBeInTheDocument();
       expect(screen.getByText(/Line 2/i)).toBeInTheDocument();
       expect(screen.getByText(/New paragraph/i)).toBeInTheDocument();
@@ -386,4 +372,3 @@ baking_time = 12
     });
   });
 });
-

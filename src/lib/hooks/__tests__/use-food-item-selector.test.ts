@@ -33,14 +33,24 @@ describe('useFoodItemSelector', () => {
 
   describe('server-side search (always uses API)', () => {
     it('searches via API even when food items prop is provided', async () => {
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [
-              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+              {
+                _id: 'f1',
+                name: 'Apple',
+                singularName: 'Apple',
+                pluralName: 'Apples',
+                unit: 'each',
+              },
             ],
-            total: 1, page: 1, limit: 50, totalPages: 1,
+            total: 1,
+            page: 1,
+            limit: 50,
+            totalPages: 1,
           }),
         })
         .mockResolvedValueOnce({
@@ -66,23 +76,37 @@ describe('useFoodItemSelector', () => {
         await vi.runAllTimersAsync();
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/food-items?query=app')
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/food-items?query=app'));
       expect(result.current.options.length).toBeGreaterThan(0);
-      expect(result.current.options.some(o => o._id === 'f1')).toBe(true); // Apple matches
+      expect(result.current.options.some((o) => o._id === 'f1')).toBe(true); // Apple matches
     });
 
     it('excludes IDs from API search results', async () => {
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [
-              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
-              { _id: 'f3', name: 'Carrot', singularName: 'Carrot', pluralName: 'Carrots', unit: 'each' },
+              {
+                _id: 'f1',
+                name: 'Apple',
+                singularName: 'Apple',
+                pluralName: 'Apples',
+                unit: 'each',
+              },
+              {
+                _id: 'f3',
+                name: 'Carrot',
+                singularName: 'Carrot',
+                pluralName: 'Carrots',
+                unit: 'each',
+              },
             ],
-            total: 2, page: 1, limit: 50, totalPages: 1,
+            total: 2,
+            page: 1,
+            limit: 50,
+            totalPages: 1,
           }),
         })
         .mockResolvedValueOnce({
@@ -109,25 +133,27 @@ describe('useFoodItemSelector', () => {
         await vi.runAllTimersAsync();
       });
 
-      const f1Option = result.current.options.find(o => o._id === 'f1');
-      expect(f1Option).toBeDefined();
-      expect(f1Option?.isExcluded).toBe(true); // marked as excluded, not filtered out
-
-      const f3Option = result.current.options.find(o => o._id === 'f3');
-      expect(f3Option).toBeDefined();
-      expect(f3Option?.isExcluded).toBe(false); // not excluded
+      expect(result.current.options.some((o) => o._id === 'f1')).toBe(false); // excluded
+      expect(result.current.options.some((o) => o._id === 'f3')).toBe(true); // not excluded
     });
   });
 
   describe('API search when no food items provided', () => {
     it('handles paginated API response format correctly', async () => {
       // Mock fetch to return paginated response format
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [
-              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+              {
+                _id: 'f1',
+                name: 'Apple',
+                singularName: 'Apple',
+                pluralName: 'Apples',
+                unit: 'each',
+              },
             ],
             total: 1,
             page: 1,
@@ -139,7 +165,6 @@ describe('useFoodItemSelector', () => {
           ok: false,
           json: async () => [],
         });
-
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -167,18 +192,24 @@ describe('useFoodItemSelector', () => {
     });
 
     it('handles plain array API response format (backward compat)', async () => {
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => [
-            { _id: 'f2', name: 'Banana', singularName: 'Banana', pluralName: 'Bananas', unit: 'each' },
+            {
+              _id: 'f2',
+              name: 'Banana',
+              singularName: 'Banana',
+              pluralName: 'Bananas',
+              unit: 'each',
+            },
           ],
         })
         .mockResolvedValueOnce({
           ok: false,
           json: async () => [],
         });
-
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -201,12 +232,19 @@ describe('useFoodItemSelector', () => {
     });
 
     it('handles API search with recipes enabled', async () => {
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [
-              { _id: 'f1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'each' },
+              {
+                _id: 'f1',
+                name: 'Apple',
+                singularName: 'Apple',
+                pluralName: 'Apples',
+                unit: 'each',
+              },
             ],
             total: 1,
             page: 1,
@@ -217,16 +255,13 @@ describe('useFoodItemSelector', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            data: [
-              { _id: 'r1', title: 'Apple Pie', emoji: '🥧' },
-            ],
+            data: [{ _id: 'r1', title: 'Apple Pie', emoji: '🥧' }],
             total: 1,
             page: 1,
             limit: 20,
             totalPages: 1,
           }),
         });
-
 
       const { result } = renderHook(() =>
         useFoodItemSelector({
@@ -245,15 +280,17 @@ describe('useFoodItemSelector', () => {
       });
 
       expect(result.current.options.length).toBe(2);
-      expect(result.current.options.some(o => o._id === 'f1' && o.type === 'foodItem')).toBe(true);
-      expect(result.current.options.some(o => o._id === 'r1' && o.type === 'recipe')).toBe(true);
+      expect(result.current.options.some((o) => o._id === 'f1' && o.type === 'foodItem')).toBe(
+        true
+      );
+      expect(result.current.options.some((o) => o._id === 'r1' && o.type === 'recipe')).toBe(true);
     });
 
     it('returns empty results when API fails', async () => {
-      mockFetch.mockReset()
+      mockFetch
+        .mockReset()
         .mockResolvedValueOnce({ ok: false, json: async () => [] })
         .mockResolvedValueOnce({ ok: false, json: async () => [] });
-
 
       const { result } = renderHook(() =>
         useFoodItemSelector({

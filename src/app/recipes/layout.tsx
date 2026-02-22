@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Recipes",
+  title: 'Recipes',
 };
 
 export default function RecipesLayout({ children }: { children: React.ReactNode }) {

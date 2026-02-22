@@ -35,9 +35,7 @@ describe('MealEditor', () => {
 
     render(
       <MealEditor
-        mealItems={[
-          { type: 'foodItem', id: 'f1', name: 'Onion', quantity: 1, unit: 'cup' },
-        ]}
+        mealItems={[{ type: 'foodItem', id: 'f1', name: 'Onion', quantity: 1, unit: 'cup' }]}
         onChange={vi.fn()}
         onFoodItemAdded={vi.fn()}
       />
@@ -74,7 +72,14 @@ describe('MealEditor', () => {
               {
                 title: 'Group 1',
                 ingredients: [
-                  { type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup', name: 'Onion', prepInstructions: 'chopped' } as any,
+                  {
+                    type: 'foodItem',
+                    id: 'f1',
+                    quantity: 1,
+                    unit: 'cup',
+                    name: 'Onion',
+                    prepInstructions: 'chopped',
+                  } as any,
                 ],
               },
             ],
@@ -100,18 +105,12 @@ describe('MealEditor', () => {
     const onChange = vi.fn();
     const onFoodItemAdded = vi.fn();
 
-    render(
-      <MealEditor
-        mealItems={[]}
-        onChange={onChange}
-        onFoodItemAdded={onFoodItemAdded}
-      />
-    );
-    
+    render(<MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />);
+
     // Add a meal item
     const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
     await user.click(addMealItemButton);
-    
+
     // Verify that onChange was called with a new meal item
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -119,13 +118,13 @@ describe('MealEditor', () => {
         id: '',
         name: '',
         quantity: 1,
-        unit: 'cup'
-      })
+        unit: 'cup',
+      }),
     ]);
-    
+
     // Get the updated meal items from the last onChange call
     const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    
+
     // Re-render with the updated meal items
     render(
       <MealEditor
@@ -134,42 +133,42 @@ describe('MealEditor', () => {
         onFoodItemAdded={onFoodItemAdded}
       />
     );
-    
+
     // Type a new food item name in the ingredient input
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'Fresh Avocado');
-    
+
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
-    
+
     // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Fresh Avocado');
-    
+
     // Select unit (using "each" so singular/plural fields will appear)
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
     await user.click(within(listbox).getByRole('option', { name: /each/i }));
-    
+
     // Wait for singular/plural fields to appear
     await waitFor(() => {
       expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
     });
-    
+
     // Fill in singular/plural fields
     const singularField = screen.getByLabelText(/singular name/i);
     await user.clear(singularField);
     await user.type(singularField, 'Fresh Avocado');
-    
+
     const pluralField = screen.getByLabelText(/plural name/i);
     await user.clear(pluralField);
     await user.type(pluralField, 'Fresh Avocados');
-    
+
     // Submit the form
     const addButton = screen.getByRole('button', { name: /add food item/i });
     await user.click(addButton);
-    
+
     // Wait for the auto-selection to happen and verify the meal item was updated
     await waitFor(() => {
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
@@ -180,11 +179,11 @@ describe('MealEditor', () => {
           id: 'new-food-id',
           name: 'Fresh Avocado',
           quantity: 1,
-          unit: 'each'
+          unit: 'each',
         })
       );
     });
-    
+
     // Verify that onFoodItemAdded was called with the new food item
     expect(onFoodItemAdded).toHaveBeenCalledWith({
       _id: 'new-food-id',
@@ -192,7 +191,7 @@ describe('MealEditor', () => {
       singularName: 'Fresh Avocado',
       pluralName: 'Fresh Avocados',
       unit: 'each',
-      isGlobal: true
+      isGlobal: true,
     });
   });
 
@@ -200,20 +199,27 @@ describe('MealEditor', () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const onFoodItemAdded = vi.fn();
-    
+
     // Mock the initial data loading
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [
-        { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
-      ]
+        {
+          _id: 'existing1',
+          name: 'Apple',
+          singularName: 'Apple',
+          pluralName: 'Apples',
+          unit: 'piece',
+          isGlobal: false,
+        },
+      ],
     });
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [] // No recipes
+      json: async () => [], // No recipes
     });
-    
+
     // Override MSW handler for food item creation to return our test data
     // Note: The unit should match what the dialog sends (cup in this case)
     const newFoodItem = {
@@ -221,32 +227,26 @@ describe('MealEditor', () => {
       name: 'Organic Blueberries',
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',
-      unit: 'cup',  // Matches what the test selects
-      isGlobal: true  // Dialog defaults to global
+      unit: 'cup', // Matches what the test selects
+      isGlobal: true, // Dialog defaults to global
     };
-    
+
     server.use(
       http.post('/api/food-items', async ({ request }) => {
-        const body = await request.json() as any;
+        const body = (await request.json()) as any;
         return HttpResponse.json(newFoodItem, { status: 201 });
       })
     );
-    
-    render(
-      <MealEditor
-        mealItems={[]}
-        onChange={onChange}
-        onFoodItemAdded={onFoodItemAdded}
-      />
-    );
-    
+
+    render(<MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />);
+
     // Add a meal item
     const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
     await user.click(addMealItemButton);
-    
+
     // Get the updated meal items
     const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    
+
     // Re-render with the updated meal items
     render(
       <MealEditor
@@ -255,29 +255,29 @@ describe('MealEditor', () => {
         onFoodItemAdded={onFoodItemAdded}
       />
     );
-    
+
     // Type a new food item name
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'Organic Blueberries');
-    
+
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
-    
+
     // Fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Organic Blueberries');
-    
+
     // Select unit (not "each", so no singular/plural fields needed)
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
     // Select a non-"each" unit (e.g., "cup")
     await user.click(within(listbox).getByRole('option', { name: /cup/i }));
-    
+
     // Submit the form (no Step 2 needed - single page form)
     const addButton = screen.getByRole('button', { name: /add food item/i });
     await user.click(addButton);
-    
+
     // Wait for the auto-selection to happen
     await waitFor(() => {
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
@@ -288,11 +288,11 @@ describe('MealEditor', () => {
           id: 'new-food-timing-test',
           name: 'Organic Blueberries',
           quantity: 1,
-          unit: 'cup'  // Matches what was selected in the dialog
+          unit: 'cup', // Matches what was selected in the dialog
         })
       );
     });
-    
+
     // Verify that the ref-based fallback worked correctly
     expect(onFoodItemAdded).toHaveBeenCalledWith({
       _id: 'new-food-timing-test',
@@ -300,37 +300,31 @@ describe('MealEditor', () => {
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',
       unit: 'cup',
-      isGlobal: true
+      isGlobal: true,
     });
   });
 
   it('adds meal item group correctly', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    
+
     // Mock the initial data loading
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
-    
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
-    
-    render(
-      <MealEditor
-        mealItems={[]}
-        onChange={onChange}
-        onFoodItemAdded={async () => {}}
-      />
-    );
-    
+
+    render(<MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={async () => {}} />);
+
     // Add a meal item group
     const addGroupButton = screen.getByRole('button', { name: /add meal item group/i });
     await user.click(addGroupButton);
-    
+
     // Verify that onChange was called with a new ingredient group
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -340,10 +334,10 @@ describe('MealEditor', () => {
         ingredients: [
           expect.objectContaining({
             title: '',
-            ingredients: []
-          })
-        ]
-      })
+            ingredients: [],
+          }),
+        ],
+      }),
     ]);
   });
 });

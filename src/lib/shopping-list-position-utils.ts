@@ -3,10 +3,7 @@ import { ShoppingListItem } from '../types/shopping-list';
 /**
  * Get remembered position for a food item in a store
  */
-export async function getItemPosition(
-  storeId: string,
-  foodItemId: string
-): Promise<number | null> {
+export async function getItemPosition(storeId: string, foodItemId: string): Promise<number | null> {
   try {
     const response = await fetch(
       `/api/shopping-lists/${storeId}/positions?foodItemId=${foodItemId}`
@@ -25,9 +22,7 @@ export async function getItemPosition(
 /**
  * Get all remembered positions for a store
  */
-export async function getStorePositions(
-  storeId: string
-): Promise<Map<string, number>> {
+export async function getStorePositions(storeId: string): Promise<Map<string, number>> {
   try {
     const response = await fetch(`/api/shopping-lists/${storeId}/positions`);
     if (!response.ok) {
@@ -50,14 +45,11 @@ export async function getStorePositions(
 /**
  * Calculate and save relative positions from current list order
  */
-export async function saveItemPositions(
-  storeId: string,
-  items: ShoppingListItem[]
-): Promise<void> {
+export async function saveItemPositions(storeId: string, items: ShoppingListItem[]): Promise<void> {
   try {
     // Calculate relative positions: position = index / totalItems
     const positions: Array<{ foodItemId: string; position: number }> = [];
-    
+
     if (items.length === 0) {
       return;
     }
@@ -183,4 +175,3 @@ export async function insertItemsWithPositions(
 
   return result;
 }
-

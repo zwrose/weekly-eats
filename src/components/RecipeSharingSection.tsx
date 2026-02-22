@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useRef } from "react";
+import React, { useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,16 +16,11 @@ import {
   ListItemText,
   Checkbox,
   FormControlLabel,
-} from "@mui/material";
-import {
-  Check,
-  Close as CloseIcon,
-  PersonAdd,
-  Delete,
-} from "@mui/icons-material";
-import { responsiveDialogStyle } from "@/lib/theme";
-import { DialogActions, DialogTitle } from "@/components/ui";
-import { PendingRecipeInvitation, SharedUser } from "@/lib/recipe-sharing-utils";
+} from '@mui/material';
+import { Check, Close as CloseIcon, PersonAdd, Delete } from '@mui/icons-material';
+import { responsiveDialogStyle } from '@/lib/theme';
+import { DialogActions, DialogTitle } from '@/components/ui';
+import { PendingRecipeInvitation, SharedUser } from '@/lib/recipe-sharing-utils';
 
 export interface RecipeSharingSectionProps {
   // Pending invitations
@@ -68,15 +63,14 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
     <>
       {/* Pending Recipe Sharing Invitations */}
       {pendingInvitations && pendingInvitations.length > 0 && (
-        <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
+        <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
           <Typography
             variant="h6"
             gutterBottom
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
           >
             <PersonAdd />
-            Pending Recipe Sharing Invitations (
-            {pendingInvitations?.length || 0})
+            Pending Recipe Sharing Invitations ({pendingInvitations?.length || 0})
           </Typography>
           <List>
             {pendingInvitations?.map((inv) => (
@@ -84,8 +78,8 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
                 <ListItem>
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 1,
                       flex: 1,
                     }}
@@ -96,19 +90,17 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
                         <>
                           {`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
                           <br />
-                          Sharing: {inv.invitation.sharingTypes.join(", ")}
+                          Sharing: {inv.invitation.sharingTypes.join(', ')}
                         </>
                       }
                     />
                   </Box>
-                  <Box sx={{ display: "flex", gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <IconButton
                       color="success"
                       size="small"
                       title="Accept"
-                      onClick={() =>
-                        onAcceptInvitation(inv.invitation.userId)
-                      }
+                      onClick={() => onAcceptInvitation(inv.invitation.userId)}
                     >
                       <Check fontSize="small" />
                     </IconButton>
@@ -116,9 +108,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
                       color="error"
                       size="small"
                       title="Reject"
-                      onClick={() =>
-                        onRejectInvitation(inv.invitation.userId)
-                      }
+                      onClick={() => onRejectInvitation(inv.invitation.userId)}
                     >
                       <CloseIcon fontSize="small" />
                     </IconButton>
@@ -142,17 +132,10 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
           onEntered: () => shareEmailRef.current?.focus(),
         }}
       >
-        <DialogTitle onClose={onShareDialogClose}>
-          Share Recipe Data
-        </DialogTitle>
+        <DialogTitle onClose={onShareDialogClose}>Share Recipe Data</DialogTitle>
         <DialogContent>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mb: 2 }}
-          >
-            Invite users by email. Select what to share: tags, ratings, or
-            both.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Invite users by email. Select what to share: tags, ratings, or both.
           </Typography>
 
           {/* Sharing Type Selection */}
@@ -178,7 +161,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
           </Box>
 
           {/* Invite Section */}
-          <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <TextField
               inputRef={shareEmailRef}
               label="Email Address"
@@ -186,7 +169,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
               value={shareEmail}
               onChange={(e) => onShareEmailChange(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === "Enter" && shareEmail.trim()) {
+                if (e.key === 'Enter' && shareEmail.trim()) {
                   onInviteUser();
                 }
               }}
@@ -207,11 +190,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
           {/* Shared Users List */}
           {sharedUsers && sharedUsers.length > 0 && (
             <>
-              <Typography
-                variant="subtitle2"
-                gutterBottom
-                sx={{ mt: 3 }}
-              >
+              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
                 Shared With:
               </Typography>
               <List>
@@ -219,7 +198,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
                   <ListItem key={user.userId}>
                     <ListItemText
                       primary={user.name || user.email}
-                      secondary={`${user.email} - Sharing: ${user.sharingTypes.join(", ")}`}
+                      secondary={`${user.email} - Sharing: ${user.sharingTypes.join(', ')}`}
                     />
                     <IconButton
                       size="small"
@@ -236,10 +215,7 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
           )}
 
           <DialogActions primaryButtonIndex={0}>
-            <Button
-              onClick={onShareDialogClose}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
+            <Button onClick={onShareDialogClose} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Done
             </Button>
           </DialogActions>

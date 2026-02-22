@@ -44,7 +44,7 @@ const { getServerSession } = await import('next-auth/next');
 
 const routes = await import('../route');
 
-const makeRequest = () => ({} as any);
+const makeRequest = () => ({}) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();

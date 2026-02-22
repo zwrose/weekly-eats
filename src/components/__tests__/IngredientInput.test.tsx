@@ -32,12 +32,15 @@ describe('IngredientInput', () => {
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'app');
     // Wait for search results to appear (should have food item options + "Add New" at the bottom)
-    const listbox = await waitFor(async () => {
-      const lb = await screen.findByRole('listbox');
-      const opts = within(lb).getAllByRole('option');
-      expect(opts.length).toBeGreaterThan(1); // Should have at least one food item + "Add New"
-      return lb;
-    }, { timeout: 3000 });
+    const listbox = await waitFor(
+      async () => {
+        const lb = await screen.findByRole('listbox');
+        const opts = within(lb).getAllByRole('option');
+        expect(opts.length).toBeGreaterThan(1); // Should have at least one food item + "Add New"
+        return lb;
+      },
+      { timeout: 3000 }
+    );
     // Press Enter to select first option (without using arrow keys)
     await user.keyboard('{Enter}');
     // Should select the first option
@@ -61,7 +64,9 @@ describe('IngredientInput', () => {
     );
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'zzz');
-    expect(await screen.findByRole('button', { name: /add "zzz" as a food item/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /add "zzz" as a food item/i })
+    ).toBeInTheDocument();
     await user.keyboard('{Enter}');
     // Dialog should appear with prefilled Default Name
     const nameField = await screen.findByLabelText(/default name/i);
@@ -72,7 +77,7 @@ describe('IngredientInput', () => {
     const user = userEvent.setup();
     const onIngredientChange = vi.fn();
     const onFoodItemAdded = vi.fn();
-    
+
     // Override MSW handler for food item creation to return our test data
     // Note: The dialog defaults to isGlobal: true, so the API should return true
     const newFoodItem = {
@@ -81,9 +86,9 @@ describe('IngredientInput', () => {
       singularName: 'Fresh Spinach',
       pluralName: 'Fresh Spinach',
       unit: 'bag',
-      isGlobal: true
+      isGlobal: true,
     };
-    
+
     server.use(
       http.get('/api/food-items', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
@@ -92,7 +97,7 @@ describe('IngredientInput', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
       }),
       http.post('/api/food-items', async ({ request }) => {
-        const body = await request.json() as any;
+        const body = (await request.json()) as any;
         return HttpResponse.json(newFoodItem, { status: 201 });
       })
     );
@@ -137,28 +142,34 @@ describe('IngredientInput', () => {
     await user.click(addButton);
 
     // Wait for the food item to be added - this will happen after the fetch completes
-    await waitFor(() => {
-      expect(onFoodItemAdded).toHaveBeenCalledWith({
-        _id: 'new-food-123',
-        name: 'Fresh Spinach',
-        singularName: 'Fresh Spinach',
-        pluralName: 'Fresh Spinach',
-        unit: 'bag',
-        isGlobal: true
-      });
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(onFoodItemAdded).toHaveBeenCalledWith({
+          _id: 'new-food-123',
+          name: 'Fresh Spinach',
+          singularName: 'Fresh Spinach',
+          pluralName: 'Fresh Spinach',
+          unit: 'bag',
+          isGlobal: true,
+        });
+      },
+      { timeout: 5000 }
+    );
 
     // Wait for the auto-selection to happen (via onItemCreated callback in creator)
-    await waitFor(() => {
-      expect(onIngredientChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'foodItem',
-          id: 'new-food-123',
-          quantity: 1,
-          unit: 'bag'
-        })
-      );
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(onIngredientChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'foodItem',
+            id: 'new-food-123',
+            quantity: 1,
+            unit: 'bag',
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('auto-selection works when using prop foodItems', async () => {
@@ -167,7 +178,14 @@ describe('IngredientInput', () => {
     const onFoodItemAdded = vi.fn();
 
     const propFoodItems = [
-      { _id: 'existing1', name: 'Apple', singularName: 'Apple', pluralName: 'Apples', unit: 'piece', isGlobal: false }
+      {
+        _id: 'existing1',
+        name: 'Apple',
+        singularName: 'Apple',
+        pluralName: 'Apples',
+        unit: 'piece',
+        isGlobal: false,
+      },
     ];
 
     // Override MSW handler for food item creation to return our test data
@@ -178,7 +196,7 @@ describe('IngredientInput', () => {
       singularName: 'Organic Kale',
       pluralName: 'Organic Kale',
       unit: 'bunch',
-      isGlobal: true
+      isGlobal: true,
     };
 
     server.use(
@@ -189,7 +207,7 @@ describe('IngredientInput', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
       }),
       http.post('/api/food-items', async ({ request }) => {
-        const body = await request.json() as any;
+        const body = (await request.json()) as any;
         return HttpResponse.json(newFoodItem, { status: 201 });
       })
     );
@@ -208,15 +226,15 @@ describe('IngredientInput', () => {
     // Type a new food item name
     const input = screen.getByLabelText(/food item or recipe/i);
     await user.type(input, 'Organic Kale');
-    
+
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
-    
+
     // Wait for the dialog to appear and fill in the form (single page now)
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Organic Kale');
-    
+
     // Select unit (not "each", so no singular/plural fields shown)
     const unitCombobox = screen.getByRole('combobox', { name: /typical usage unit/i });
     await user.click(unitCombobox);
@@ -225,43 +243,49 @@ describe('IngredientInput', () => {
     // Get the first "bunch" option if multiple exist
     const bunchOptions = within(listbox).getAllByRole('option', { name: /bunch/i });
     await user.click(bunchOptions[0]);
-    
+
     // Verify the submit button is enabled
     const addButton = screen.getByRole('button', { name: /add food item/i });
     expect(addButton).not.toBeDisabled();
-    
+
     // Submit the form - onAdd will be called (which is handleCreate in FoodItemAutocomplete)
     // which calls creator.handleCreate, which makes the fetch call
     await user.click(addButton);
-    
+
     // Wait for the food item to be added - this will happen after the fetch completes
-    await waitFor(() => {
-      expect(onFoodItemAdded).toHaveBeenCalledWith({
-        _id: 'new-food-456',
-        name: 'Organic Kale',
-        singularName: 'Organic Kale',
-        pluralName: 'Organic Kale',
-        unit: 'bunch',
-        isGlobal: true
-      });
-    }, { timeout: 5000 });
-    
+    await waitFor(
+      () => {
+        expect(onFoodItemAdded).toHaveBeenCalledWith({
+          _id: 'new-food-456',
+          name: 'Organic Kale',
+          singularName: 'Organic Kale',
+          pluralName: 'Organic Kale',
+          unit: 'bunch',
+          isGlobal: true,
+        });
+      },
+      { timeout: 5000 }
+    );
+
     // Wait for the auto-selection to happen (via onItemCreated callback in creator)
-    await waitFor(() => {
-      expect(onIngredientChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'foodItem',
-          id: 'new-food-456',
-          quantity: 1,
-          unit: 'bunch'
-        })
-      );
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(onIngredientChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'foodItem',
+            id: 'new-food-456',
+            quantity: 1,
+            unit: 'bunch',
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 
   describe('Prep Instructions', () => {
     const mockFoodItems = [
-      { _id: 'f1', name: 'Onion', singularName: 'Onion', pluralName: 'Onions', unit: 'cup' }
+      { _id: 'f1', name: 'Onion', singularName: 'Onion', pluralName: 'Onions', unit: 'cup' },
     ];
 
     beforeEach(() => {
@@ -271,13 +295,13 @@ describe('IngredientInput', () => {
         if (url.includes('/api/food-items')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockFoodItems
+            json: async () => mockFoodItems,
           } as Response);
         }
         if (url.includes('/api/recipes')) {
           return Promise.resolve({
             ok: true,
-            json: async () => []
+            json: async () => [],
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -345,7 +369,7 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
       expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/prep instructions/i)).not.toBeInTheDocument();
     });
@@ -360,7 +384,7 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
       expect(screen.queryByText(/add prep instructions/i)).not.toBeInTheDocument();
     });
 
@@ -374,7 +398,7 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
       await waitFor(() => {
         expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
       });
@@ -391,14 +415,14 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
       await waitFor(() => {
         expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
       });
-      
+
       const addButton = screen.getByText(/add prep instructions/i);
       await user.click(addButton);
-      
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
       });
@@ -434,20 +458,20 @@ describe('IngredientInput', () => {
       const onIngredientChange = vi.fn();
       render(
         <IngredientInput
-          ingredient={{ 
-            type: 'foodItem', 
-            id: 'f1', 
-            quantity: 2, 
-            unit: 'cup', 
+          ingredient={{
+            type: 'foodItem',
+            id: 'f1',
+            quantity: 2,
+            unit: 'cup',
             name: 'Onions',
-            prepInstructions: 'chopped'
+            prepInstructions: 'chopped',
           }}
           onIngredientChange={onIngredientChange}
           onRemove={() => {}}
           slotId="test-slot"
         />
       );
-      
+
       await waitFor(() => {
         const prepField = screen.getByPlaceholderText(/e.g., chopped/i);
         expect(prepField).toBeInTheDocument();
@@ -457,71 +481,17 @@ describe('IngredientInput', () => {
 
     it('saves prep instructions when typed', async () => {
       const user = userEvent.setup();
-      let currentIngredient = { type: 'foodItem' as const, id: 'f1', quantity: 1, unit: 'cup' as const, name: 'Onion' };
-      const onIngredientChange = vi.fn((newIngredient) => {
-        currentIngredient = { ...currentIngredient, ...newIngredient };
-      });
-      
-      render(
-        <IngredientInput
-          ingredient={currentIngredient}
-          onIngredientChange={onIngredientChange}
-          onRemove={() => {}}
-          foodItems={mockFoodItems}
-          slotId="test-slot"
-        />
-      );
-      
-      // Wait for button to appear
-      await waitFor(() => {
-        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
-      });
-      
-      // Expand the field
-      const addButton = screen.getByText(/add prep instructions/i);
-      await user.click(addButton);
-      
-      // Wait for the prep instructions field to appear
-      const prepField = await waitFor(() => {
-        return screen.getByPlaceholderText(/e.g., chopped/i) as HTMLInputElement;
-      });
-      
-      // Use fireEvent.change to simulate typing (more reliable for controlled inputs)
-      fireEvent.change(prepField, { target: { value: 'chopped' } });
-      
-      // Wait for onChange to be called with prepInstructions
-      await waitFor(() => {
-        expect(onIngredientChange).toHaveBeenCalled();
-        const allCalls = onIngredientChange.mock.calls;
-        
-        // Check that we got at least one call with prepInstructions
-        const hasPrepInstructions = allCalls.some(call => 
-          call[0].prepInstructions && typeof call[0].prepInstructions === 'string' && call[0].prepInstructions.length > 0
-        );
-        expect(hasPrepInstructions).toBe(true);
-        
-        // Check for 'chopped' value
-        const callsWithChopped = allCalls.filter(call => 
-          call[0].prepInstructions === 'chopped'
-        );
-        expect(callsWithChopped.length).toBeGreaterThan(0);
-      }, { timeout: 3000 });
-    });
-
-    it('updates prep instructions when edited', async () => {
-      const user = userEvent.setup();
-      let currentIngredient = { 
-        type: 'foodItem' as const, 
-        id: 'f1', 
-        quantity: 1, 
-        unit: 'cup' as const, 
+      let currentIngredient = {
+        type: 'foodItem' as const,
+        id: 'f1',
+        quantity: 1,
+        unit: 'cup' as const,
         name: 'Onion',
-        prepInstructions: 'chopped'
       };
       const onIngredientChange = vi.fn((newIngredient) => {
         currentIngredient = { ...currentIngredient, ...newIngredient };
       });
-      
+
       render(
         <IngredientInput
           ingredient={currentIngredient}
@@ -531,28 +501,95 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
+      // Wait for button to appear
+      await waitFor(() => {
+        expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
+      });
+
+      // Expand the field
+      const addButton = screen.getByText(/add prep instructions/i);
+      await user.click(addButton);
+
+      // Wait for the prep instructions field to appear
       const prepField = await waitFor(() => {
         return screen.getByPlaceholderText(/e.g., chopped/i) as HTMLInputElement;
       });
-      
+
+      // Use fireEvent.change to simulate typing (more reliable for controlled inputs)
+      fireEvent.change(prepField, { target: { value: 'chopped' } });
+
+      // Wait for onChange to be called with prepInstructions
+      await waitFor(
+        () => {
+          expect(onIngredientChange).toHaveBeenCalled();
+          const allCalls = onIngredientChange.mock.calls;
+
+          // Check that we got at least one call with prepInstructions
+          const hasPrepInstructions = allCalls.some(
+            (call) =>
+              call[0].prepInstructions &&
+              typeof call[0].prepInstructions === 'string' &&
+              call[0].prepInstructions.length > 0
+          );
+          expect(hasPrepInstructions).toBe(true);
+
+          // Check for 'chopped' value
+          const callsWithChopped = allCalls.filter(
+            (call) => call[0].prepInstructions === 'chopped'
+          );
+          expect(callsWithChopped.length).toBeGreaterThan(0);
+        },
+        { timeout: 3000 }
+      );
+    });
+
+    it('updates prep instructions when edited', async () => {
+      const user = userEvent.setup();
+      let currentIngredient = {
+        type: 'foodItem' as const,
+        id: 'f1',
+        quantity: 1,
+        unit: 'cup' as const,
+        name: 'Onion',
+        prepInstructions: 'chopped',
+      };
+      const onIngredientChange = vi.fn((newIngredient) => {
+        currentIngredient = { ...currentIngredient, ...newIngredient };
+      });
+
+      render(
+        <IngredientInput
+          ingredient={currentIngredient}
+          onIngredientChange={onIngredientChange}
+          onRemove={() => {}}
+          foodItems={mockFoodItems}
+          slotId="test-slot"
+        />
+      );
+
+      const prepField = await waitFor(() => {
+        return screen.getByPlaceholderText(/e.g., chopped/i) as HTMLInputElement;
+      });
+
       // Verify initial value
       expect(prepField.value).toBe('chopped');
-      
+
       // Use fireEvent.change to simulate typing new value
       fireEvent.change(prepField, { target: { value: 'diced' } });
-      
+
       // Wait for onChange to be called with 'diced'
-      await waitFor(() => {
-        expect(onIngredientChange).toHaveBeenCalled();
-        const allCalls = onIngredientChange.mock.calls;
-        
-        // Check that we got a call with 'diced'
-        const callsWithDiced = allCalls.filter(call => 
-          call[0].prepInstructions === 'diced'
-        );
-        expect(callsWithDiced.length).toBeGreaterThan(0);
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          expect(onIngredientChange).toHaveBeenCalled();
+          const allCalls = onIngredientChange.mock.calls;
+
+          // Check that we got a call with 'diced'
+          const callsWithDiced = allCalls.filter((call) => call[0].prepInstructions === 'diced');
+          expect(callsWithDiced.length).toBeGreaterThan(0);
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('removes prep instructions when field is cleared', async () => {
@@ -560,34 +597,34 @@ describe('IngredientInput', () => {
       const onIngredientChange = vi.fn();
       render(
         <IngredientInput
-          ingredient={{ 
-            type: 'foodItem', 
-            id: 'f1', 
-            quantity: 1, 
-            unit: 'cup', 
+          ingredient={{
+            type: 'foodItem',
+            id: 'f1',
+            quantity: 1,
+            unit: 'cup',
             name: 'Onion',
-            prepInstructions: 'chopped'
+            prepInstructions: 'chopped',
           }}
           onIngredientChange={onIngredientChange}
           onRemove={() => {}}
           slotId="test-slot"
         />
       );
-      
+
       await waitFor(() => {
         const field = screen.getByPlaceholderText(/e.g., chopped/i);
         expect(field).toBeInTheDocument();
       });
-      
+
       const prepField = screen.getByPlaceholderText(/e.g., chopped/i);
       await user.clear(prepField);
-      
+
       // Should call with undefined prepInstructions (check last call)
       await waitFor(() => {
         const calls = onIngredientChange.mock.calls;
         const lastCall = calls[calls.length - 1];
         expect(lastCall[0]).toMatchObject({
-          prepInstructions: undefined
+          prepInstructions: undefined,
         });
       });
     });
@@ -597,28 +634,28 @@ describe('IngredientInput', () => {
       const onIngredientChange = vi.fn();
       render(
         <IngredientInput
-          ingredient={{ 
-            type: 'foodItem', 
-            id: 'f1', 
-            quantity: 1, 
-            unit: 'cup', 
+          ingredient={{
+            type: 'foodItem',
+            id: 'f1',
+            quantity: 1,
+            unit: 'cup',
             name: 'Onion',
-            prepInstructions: 'chopped'
+            prepInstructions: 'chopped',
           }}
           onIngredientChange={onIngredientChange}
           onRemove={() => {}}
           slotId="test-slot"
         />
       );
-      
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
       });
-      
+
       // Find collapse button by aria-label
       const collapseButton = screen.getByLabelText(/collapse prep instructions/i);
       await user.click(collapseButton);
-      
+
       // Field should be hidden, "Show prep instructions" button should appear
       await waitFor(() => {
         expect(screen.queryByPlaceholderText(/e.g., chopped/i)).not.toBeInTheDocument();
@@ -637,36 +674,34 @@ describe('IngredientInput', () => {
           slotId="test-slot"
         />
       );
-      
+
       // Wait for button and expand
       await waitFor(() => {
         expect(screen.getByText(/add prep instructions/i)).toBeInTheDocument();
       });
-      
+
       const addButton = screen.getByText(/add prep instructions/i);
       await user.click(addButton);
-      
+
       // Wait for field to appear
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/e.g., chopped/i)).toBeInTheDocument();
       });
-      
+
       // Collapse without entering anything
       const collapseButton = screen.getByLabelText(/collapse prep instructions/i);
       await user.click(collapseButton);
-      
+
       // Should call with undefined prepInstructions (check last call)
       await waitFor(() => {
         const calls = onIngredientChange.mock.calls;
         if (calls.length > 0) {
           const lastCall = calls[calls.length - 1];
           expect(lastCall[0]).toMatchObject({
-            prepInstructions: undefined
+            prepInstructions: undefined,
           });
         }
       });
     });
   });
 });
-
-

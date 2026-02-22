@@ -3,22 +3,14 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { 
-  AUTH_ERRORS, 
-  RECIPE_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { RecipeSharingInvitation } from '@/lib/user-settings';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -39,10 +31,7 @@ export async function GET(
     // Verify recipe exists and is accessible
     const recipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(recipeId),
-      $or: [
-        { isGlobal: true },
-        { createdBy: session.user.id }
-      ]
+      $or: [{ isGlobal: true }, { createdBy: session.user.id }],
     });
 
     if (!recipe) {
@@ -52,7 +41,7 @@ export async function GET(
     // Get user's own data
     const userData = await recipeUserDataCollection.findOne({
       userId: session.user.id,
-      recipeId: recipeId
+      recipeId: recipeId,
     });
 
     const tags = userData?.tags || [];
@@ -64,20 +53,28 @@ export async function GET(
         'settings.recipeSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       })
       .toArray();
 
     // Collect shared tags and ratings
     const sharedTagsSet = new Set<string>();
-    const sharedRatings: Array<{ userId: string; userName?: string; userEmail: string; rating: number }> = [];
+    const sharedRatings: Array<{
+      userId: string;
+      userName?: string;
+      userEmail: string;
+      rating: number;
+    }> = [];
 
     for (const owner of sharingOwners) {
-      const invitations = (owner.settings as { recipeSharing?: { invitations?: RecipeSharingInvitation[] } })?.recipeSharing?.invitations || [];
+      const invitations =
+        (owner.settings as { recipeSharing?: { invitations?: RecipeSharingInvitation[] } })
+          ?.recipeSharing?.invitations || [];
       const invitation = invitations.find(
-        (inv: RecipeSharingInvitation) => inv.userId === session.user.id && inv.status === 'accepted'
+        (inv: RecipeSharingInvitation) =>
+          inv.userId === session.user.id && inv.status === 'accepted'
       );
 
       if (!invitation) continue;
@@ -86,7 +83,7 @@ export async function GET(
       if (invitation.sharingTypes.includes('tags') || invitation.sharingTypes.includes('ratings')) {
         const ownerUserData = await recipeUserDataCollection.findOne({
           userId: owner._id.toString(),
-          recipeId: recipeId
+          recipeId: recipeId,
         });
 
         if (ownerUserData) {
@@ -101,7 +98,7 @@ export async function GET(
               userId: owner._id.toString(),
               userName: owner.name,
               userEmail: owner.email,
-              rating: ownerUserData.rating
+              rating: ownerUserData.rating,
             });
           }
         }
@@ -114,11 +111,10 @@ export async function GET(
       tags,
       rating,
       sharedTags: sharedTags.length > 0 ? sharedTags : undefined,
-      sharedRatings: sharedRatings.length > 0 ? sharedRatings : undefined
+      sharedRatings: sharedRatings.length > 0 ? sharedRatings : undefined,
     });
   } catch (error) {
     logError('Recipes User Data GET', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

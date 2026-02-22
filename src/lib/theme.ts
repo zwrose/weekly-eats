@@ -98,9 +98,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => ({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: mode === 'light' 
-            ? '0 2px 8px rgba(0,0,0,0.1)' 
-            : '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: mode === 'light' ? '0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.3)',
           borderRadius: 12,
         },
       },
@@ -108,9 +106,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => ({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: mode === 'light' 
-            ? '0 1px 3px rgba(0,0,0,0.1)' 
-            : '0 1px 3px rgba(0,0,0,0.3)',
+          boxShadow: mode === 'light' ? '0 1px 3px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.3)',
         },
       },
     },
@@ -134,6 +130,6 @@ export const responsiveDialogStyle = {
     margin: { xs: 0, sm: 'auto', md: 'auto', lg: 'auto', xl: 'auto' },
     width: { xs: '100%' },
     height: { xs: '100%', sm: 'auto', md: 'auto', lg: 'auto', xl: 'auto' },
-    maxHeight: { xs: '100%', sm: '90vh', md: '90vh', lg: '90vh', xl: '90vh' }
-  }
-}; 
+    maxHeight: { xs: '100%', sm: '90vh', md: '90vh', lg: '90vh', xl: '90vh' },
+  },
+};

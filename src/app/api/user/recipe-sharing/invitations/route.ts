@@ -21,26 +21,28 @@ export async function GET() {
         'settings.recipeSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'pending'
-          }
-        }
+            status: 'pending',
+          },
+        },
       })
       .toArray();
 
     // Extract only the relevant invitation for this user from each owner
-    const pendingInvitations = owners.map(owner => {
-      const userInvitation = owner.settings?.recipeSharing?.invitations?.find(
-        (inv: { userId: string; status: string }) =>
-          inv.userId === session.user.id && inv.status === 'pending'
-      );
+    const pendingInvitations = owners
+      .map((owner) => {
+        const userInvitation = owner.settings?.recipeSharing?.invitations?.find(
+          (inv: { userId: string; status: string }) =>
+            inv.userId === session.user.id && inv.status === 'pending'
+        );
 
-      return {
-        ownerId: owner._id.toString(),
-        ownerEmail: owner.email,
-        ownerName: owner.name,
-        invitation: userInvitation
-      };
-    }).filter(item => item.invitation);
+        return {
+          ownerId: owner._id.toString(),
+          ownerEmail: owner.email,
+          ownerName: owner.name,
+          invitation: userInvitation,
+        };
+      })
+      .filter((item) => item.invitation);
 
     return NextResponse.json(pendingInvitations);
   } catch (error) {
@@ -48,5 +50,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-

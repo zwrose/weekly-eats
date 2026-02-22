@@ -14,9 +14,7 @@ export interface UseDebouncedSearchReturn {
   clearSearch: () => void;
 }
 
-export function useDebouncedSearch(
-  options?: UseDebouncedSearchOptions
-): UseDebouncedSearchReturn {
+export function useDebouncedSearch(options?: UseDebouncedSearchOptions): UseDebouncedSearchReturn {
   const delay = options?.delay ?? 300;
   const onSearchRef = useRef(options?.onSearch);
   onSearchRef.current = options?.onSearch;

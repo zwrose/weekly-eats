@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractFoodItemsFromMealPlans, combineExtractedItems, mergeWithShoppingList } from '../meal-plan-to-shopping-list';
+import {
+  extractFoodItemsFromMealPlans,
+  combineExtractedItems,
+  mergeWithShoppingList,
+} from '../meal-plan-to-shopping-list';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 
 describe('meal-plan-to-shopping-list utilities', () => {
@@ -25,7 +29,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -33,10 +37,8 @@ describe('meal-plan-to-shopping-list utilities', () => {
             mealPlanId: 'mp1',
             dayOfWeek: 'saturday',
             mealType: 'breakfast',
-            items: [
-              { type: 'foodItem', id: 'f1', name: 'Apple', quantity: 2, unit: 'piece' }
-            ]
-          }
+            items: [{ type: 'foodItem', id: 'f1', name: 'Apple', quantity: 2, unit: 'piece' }],
+          },
         ],
         template: {
           _id: 't1',
@@ -44,19 +46,19 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(1);
       expect(items[0]).toEqual({
         foodItemId: 'f1',
         quantity: 2,
-        unit: 'piece'
+        unit: 'piece',
       });
     });
 
@@ -70,7 +72,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -88,13 +90,13 @@ describe('meal-plan-to-shopping-list utilities', () => {
                     title: 'Veggies',
                     ingredients: [
                       { type: 'foodItem', id: 'f1', quantity: 1, unit: 'head' },
-                      { type: 'foodItem', id: 'f2', quantity: 2, unit: 'piece' }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
+                      { type: 'foodItem', id: 'f2', quantity: 2, unit: 'piece' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
         ],
         template: {
           _id: 't1',
@@ -102,14 +104,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(2);
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 1, unit: 'head' });
       expect(items).toContainEqual({ foodItemId: 'f2', quantity: 2, unit: 'piece' });
@@ -128,11 +130,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
                   title: 'Main',
                   ingredients: [
                     { type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' },
-                    { type: 'foodItem', id: 'f2', quantity: 2, unit: 'cup' }
-                  ]
-                }
-              ]
-            })
+                    { type: 'foodItem', id: 'f2', quantity: 2, unit: 'cup' },
+                  ],
+                },
+              ],
+            }),
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -147,7 +149,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -155,10 +157,8 @@ describe('meal-plan-to-shopping-list utilities', () => {
             mealPlanId: 'mp1',
             dayOfWeek: 'saturday',
             mealType: 'dinner',
-            items: [
-              { type: 'recipe', id: 'r1', name: 'Pasta', quantity: 1 }
-            ]
-          }
+            items: [{ type: 'recipe', id: 'r1', name: 'Pasta', quantity: 1 }],
+          },
         ],
         template: {
           _id: 't1',
@@ -166,14 +166,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(2);
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 1, unit: 'pound' });
       expect(items).toContainEqual({ foodItemId: 'f2', quantity: 2, unit: 'cup' });
@@ -192,11 +192,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
                   title: 'Main',
                   ingredients: [
                     { type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' },
-                    { type: 'foodItem', id: 'f2', quantity: 2, unit: 'cup' }
-                  ]
-                }
-              ]
-            })
+                    { type: 'foodItem', id: 'f2', quantity: 2, unit: 'cup' },
+                  ],
+                },
+              ],
+            }),
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -211,7 +211,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -219,10 +219,8 @@ describe('meal-plan-to-shopping-list utilities', () => {
             mealPlanId: 'mp1',
             dayOfWeek: 'saturday',
             mealType: 'dinner',
-            items: [
-              { type: 'recipe', id: 'r1', name: 'Pasta', quantity: 3 }
-            ]
-          }
+            items: [{ type: 'recipe', id: 'r1', name: 'Pasta', quantity: 3 }],
+          },
         ],
         template: {
           _id: 't1',
@@ -230,14 +228,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(2);
       // 1 pound * 3 recipes = 3 pounds
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 3, unit: 'pound' });
@@ -258,11 +256,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
                   title: 'Main',
                   ingredients: [
                     { type: 'foodItem', id: 'f1', quantity: 2, unit: 'pound' },
-                    { type: 'recipe', id: 'r2', quantity: 2 }
-                  ]
-                }
-              ]
-            })
+                    { type: 'recipe', id: 'r2', quantity: 2 },
+                  ],
+                },
+              ],
+            }),
           } as Response);
         }
         if (url === '/api/recipes/r2') {
@@ -276,11 +274,11 @@ describe('meal-plan-to-shopping-list utilities', () => {
                   title: 'Ingredients',
                   ingredients: [
                     { type: 'foodItem', id: 'f2', quantity: 1, unit: 'cup' },
-                    { type: 'foodItem', id: 'f3', quantity: 3, unit: 'piece' }
-                  ]
-                }
-              ]
-            })
+                    { type: 'foodItem', id: 'f3', quantity: 3, unit: 'piece' },
+                  ],
+                },
+              ],
+            }),
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -295,7 +293,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -303,10 +301,8 @@ describe('meal-plan-to-shopping-list utilities', () => {
             mealPlanId: 'mp1',
             dayOfWeek: 'saturday',
             mealType: 'dinner',
-            items: [
-              { type: 'recipe', id: 'r1', name: 'Dinner', quantity: 3 }
-            ]
-          }
+            items: [{ type: 'recipe', id: 'r1', name: 'Dinner', quantity: 3 }],
+          },
         ],
         template: {
           _id: 't1',
@@ -314,14 +310,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(3);
       // f1: 2 pounds * 3 recipes = 6 pounds
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 6, unit: 'pound' });
@@ -342,12 +338,10 @@ describe('meal-plan-to-shopping-list utilities', () => {
               ingredients: [
                 {
                   title: 'Main',
-                  ingredients: [
-                    { type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }
-                  ]
-                }
-              ]
-            })
+                  ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }],
+                },
+              ],
+            }),
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -362,7 +356,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -378,14 +372,12 @@ describe('meal-plan-to-shopping-list utilities', () => {
                 ingredients: [
                   {
                     title: 'Recipes',
-                    ingredients: [
-                      { type: 'recipe', id: 'r1', quantity: 2 }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
+                    ingredients: [{ type: 'recipe', id: 'r1', quantity: 2 }],
+                  },
+                ],
+              },
+            ],
+          },
         ],
         template: {
           _id: 't1',
@@ -393,14 +385,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(1);
       // 1 cup * 2 recipes = 2 cups
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 2, unit: 'cup' });
@@ -417,12 +409,10 @@ describe('meal-plan-to-shopping-list utilities', () => {
               ingredients: [
                 {
                   title: 'Main',
-                  ingredients: [
-                    { type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' }
-                  ]
-                }
-              ]
-            })
+                  ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'pound' }],
+                },
+              ],
+            }),
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -437,7 +427,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         templateId: 't1',
         templateSnapshot: {
           startDay: 'saturday',
-          meals: { breakfast: true, lunch: true, dinner: true, staples: false }
+          meals: { breakfast: true, lunch: true, dinner: true, staples: false },
         },
         items: [
           {
@@ -446,9 +436,9 @@ describe('meal-plan-to-shopping-list utilities', () => {
             dayOfWeek: 'saturday',
             mealType: 'dinner',
             items: [
-              { type: 'recipe', id: 'r1', name: 'Pasta' } // No quantity specified
-            ]
-          }
+              { type: 'recipe', id: 'r1', name: 'Pasta' }, // No quantity specified
+            ],
+          },
         ],
         template: {
           _id: 't1',
@@ -456,14 +446,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
           startDay: 'saturday',
           meals: { breakfast: true, lunch: true, dinner: true, staples: false },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const items = await extractFoodItemsFromMealPlans([mealPlan]);
-      
+
       expect(items).toHaveLength(1);
       // Should default to quantity 1 if not specified
       expect(items).toContainEqual({ foodItemId: 'f1', quantity: 1, unit: 'pound' });
@@ -475,7 +465,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'cup' },
         { foodItemId: 'f1', quantity: 3, unit: 'cup' },
-        { foodItemId: 'f2', quantity: 1, unit: 'piece' }
+        { foodItemId: 'f2', quantity: 1, unit: 'piece' },
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
@@ -490,14 +480,14 @@ describe('meal-plan-to-shopping-list utilities', () => {
       // 2 cups + 1 pint (= 2 cups) → convertible, shown as conflict with suggestion
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'cup' },
-        { foodItemId: 'f1', quantity: 1, unit: 'pint' }
+        { foodItemId: 'f1', quantity: 1, unit: 'pint' },
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
 
       // Should appear as a conflict for user review
       expect(conflicts).toHaveLength(1);
-      const conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      const conflict = conflicts.find((c) => c.foodItemId === 'f1')!;
       expect(conflict).toBeDefined();
       expect(conflict.isAutoConverted).toBe(true);
       expect(conflict.suggestedQuantity).toBeGreaterThan(0);
@@ -510,7 +500,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       ]);
 
       // Placeholder should still exist in combinedItems
-      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      const f1 = combinedItems.find((i) => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
     });
 
@@ -518,13 +508,13 @@ describe('meal-plan-to-shopping-list utilities', () => {
       // cans vs pounds — different families, cannot auto-convert
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'can' },
-        { foodItemId: 'f1', quantity: 1, unit: 'pound' }
+        { foodItemId: 'f1', quantity: 1, unit: 'pound' },
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
 
       expect(conflicts).toHaveLength(1);
-      const conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      const conflict = conflicts.find((c) => c.foodItemId === 'f1')!;
       expect(conflict).toBeDefined();
       expect(conflict.isAutoConverted).toBe(false);
       expect(conflict.suggestedQuantity).toBeUndefined();
@@ -534,7 +524,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         { quantity: 1, unit: 'pound' },
       ]);
       // Item should still appear in combinedItems as a placeholder
-      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      const f1 = combinedItems.find((i) => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
       expect(f1!.quantity).toBe(2);
       expect(f1!.unit).toBe('can');
@@ -549,7 +539,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
         { foodItemId: 'f2', quantity: 2, unit: 'can' },
         { foodItemId: 'f2', quantity: 1, unit: 'pound' },
         // f3: single entry (no combining needed)
-        { foodItemId: 'f3', quantity: 3, unit: 'piece' }
+        { foodItemId: 'f3', quantity: 3, unit: 'piece' },
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
@@ -558,18 +548,18 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflicts).toHaveLength(2);
 
       // f1: convertible conflict with suggestion
-      const f1Conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      const f1Conflict = conflicts.find((c) => c.foodItemId === 'f1')!;
       expect(f1Conflict).toBeDefined();
       expect(f1Conflict.isAutoConverted).toBe(true);
       expect(f1Conflict.suggestedQuantity).toBeGreaterThan(0);
-      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      const f1 = combinedItems.find((i) => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
 
       // f2: non-convertible conflict
-      const f2Conflict = conflicts.find(c => c.foodItemId === 'f2')!;
+      const f2Conflict = conflicts.find((c) => c.foodItemId === 'f2')!;
       expect(f2Conflict).toBeDefined();
       expect(f2Conflict.isAutoConverted).toBe(false);
-      const f2 = combinedItems.find(i => i.foodItemId === 'f2');
+      const f2 = combinedItems.find((i) => i.foodItemId === 'f2');
       expect(f2).toBeDefined();
 
       // f3 passes through as-is
@@ -578,12 +568,8 @@ describe('meal-plan-to-shopping-list utilities', () => {
 
     it('combines existing shopping list items with extracted items in unified flow', () => {
       // Simulates the unified pre-merge: existing list has 2 cups, extracted has 1 pint
-      const existingAsExtracted = [
-        { foodItemId: 'f1', quantity: 2, unit: 'cup' },
-      ];
-      const extractedItems = [
-        { foodItemId: 'f1', quantity: 1, unit: 'pint' },
-      ];
+      const existingAsExtracted = [{ foodItemId: 'f1', quantity: 2, unit: 'cup' }];
+      const extractedItems = [{ foodItemId: 'f1', quantity: 1, unit: 'pint' }];
 
       const { combinedItems, conflicts } = combineExtractedItems([
         ...existingAsExtracted,
@@ -592,7 +578,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
 
       // Should produce one conflict (convertible) with unitBreakdown summing per-unit
       expect(conflicts).toHaveLength(1);
-      const conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      const conflict = conflicts.find((c) => c.foodItemId === 'f1')!;
       expect(conflict.isAutoConverted).toBe(true);
       expect(conflict.unitBreakdown).toEqual([
         { quantity: 2, unit: 'cup' },
@@ -601,7 +587,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflict.suggestedQuantity).toBeGreaterThan(0);
 
       // Placeholder in combinedItems
-      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      const f1 = combinedItems.find((i) => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
     });
 
@@ -624,13 +610,13 @@ describe('meal-plan-to-shopping-list utilities', () => {
       const items = [
         { foodItemId: 'f1', quantity: 2, unit: 'cup' },
         { foodItemId: 'f1', quantity: 1, unit: 'pint' },
-        { foodItemId: 'f1', quantity: 1, unit: 'quart' }
+        { foodItemId: 'f1', quantity: 1, unit: 'quart' },
       ];
 
       const { combinedItems, conflicts } = combineExtractedItems(items);
 
       expect(conflicts).toHaveLength(1);
-      const conflict = conflicts.find(c => c.foodItemId === 'f1')!;
+      const conflict = conflicts.find((c) => c.foodItemId === 'f1')!;
       expect(conflict).toBeDefined();
       expect(conflict.isAutoConverted).toBe(true);
       // 2 cups + 2 cups (1 pint) + 4 cups (1 quart) = 8 cups total
@@ -639,7 +625,7 @@ describe('meal-plan-to-shopping-list utilities', () => {
       expect(conflict.items).toHaveLength(3);
 
       // Placeholder in combinedItems
-      const f1 = combinedItems.find(i => i.foodItemId === 'f1');
+      const f1 = combinedItems.find((i) => i.foodItemId === 'f1');
       expect(f1).toBeDefined();
     });
   });
@@ -647,52 +633,56 @@ describe('meal-plan-to-shopping-list utilities', () => {
   describe('mergeWithShoppingList', () => {
     it('adds new items to shopping list', () => {
       const existingItems = [
-        { foodItemId: 'f1', name: 'Apples', quantity: 2, unit: 'piece', checked: false }
+        { foodItemId: 'f1', name: 'Apples', quantity: 2, unit: 'piece', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f2', quantity: 1, unit: 'gallon' }
-      ];
+      const extractedItems = [{ foodItemId: 'f2', quantity: 1, unit: 'gallon' }];
 
       const foodItemsMap = new Map([
-        ['f2', { singularName: 'milk', pluralName: 'milks', unit: 'gallon' }]
+        ['f2', { singularName: 'milk', pluralName: 'milks', unit: 'gallon' }],
       ]);
 
-      const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
-      
+      const { mergedItems, conflicts } = mergeWithShoppingList(
+        existingItems,
+        extractedItems,
+        foodItemsMap
+      );
+
       expect(mergedItems).toHaveLength(2);
-      expect(mergedItems.find(i => i.foodItemId === 'f2')).toEqual({
+      expect(mergedItems.find((i) => i.foodItemId === 'f2')).toEqual({
         foodItemId: 'f2',
         name: 'milk',
         quantity: 1,
         unit: 'gallon',
-        checked: false
+        checked: false,
       });
       expect(conflicts).toHaveLength(0);
     });
 
     it('combines quantities for items with same unit', () => {
       const existingItems = [
-        { foodItemId: 'f1', name: 'Apples', quantity: 2, unit: 'piece', checked: false }
+        { foodItemId: 'f1', name: 'Apples', quantity: 2, unit: 'piece', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f1', quantity: 3, unit: 'piece' }
-      ];
+      const extractedItems = [{ foodItemId: 'f1', quantity: 3, unit: 'piece' }];
 
       const foodItemsMap = new Map([
-        ['f1', { singularName: 'apple', pluralName: 'apples', unit: 'piece' }]
+        ['f1', { singularName: 'apple', pluralName: 'apples', unit: 'piece' }],
       ]);
 
-      const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
-      
+      const { mergedItems, conflicts } = mergeWithShoppingList(
+        existingItems,
+        extractedItems,
+        foodItemsMap
+      );
+
       expect(mergedItems).toHaveLength(1);
       expect(mergedItems[0]).toEqual({
         foodItemId: 'f1',
         name: 'apples',
         quantity: 5,
         unit: 'piece',
-        checked: false
+        checked: false,
       });
       expect(conflicts).toHaveLength(0);
     });
@@ -700,15 +690,13 @@ describe('meal-plan-to-shopping-list utilities', () => {
     it('auto-converts and pre-fills conflict for convertible units', () => {
       // Existing: 2 cups, extracted: 8 tablespoons (= 0.5 cups)
       const existingItems = [
-        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
+        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f1', quantity: 8, unit: 'tablespoon' }
-      ];
+      const extractedItems = [{ foodItemId: 'f1', quantity: 8, unit: 'tablespoon' }];
 
       const foodItemsMap = new Map([
-        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }]
+        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }],
       ]);
 
       const { conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
@@ -722,15 +710,13 @@ describe('meal-plan-to-shopping-list utilities', () => {
     it('flags non-convertible units as manual conflicts', () => {
       // Existing: 2 cans, extracted: 1 pound — different families
       const existingItems = [
-        { foodItemId: 'f1', name: 'Tomatoes', quantity: 2, unit: 'can', checked: false }
+        { foodItemId: 'f1', name: 'Tomatoes', quantity: 2, unit: 'can', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f1', quantity: 1, unit: 'pound' }
-      ];
+      const extractedItems = [{ foodItemId: 'f1', quantity: 1, unit: 'pound' }];
 
       const foodItemsMap = new Map([
-        ['f1', { singularName: 'tomato', pluralName: 'tomatoes', unit: 'can' }]
+        ['f1', { singularName: 'tomato', pluralName: 'tomatoes', unit: 'can' }],
       ]);
 
       const { conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
@@ -746,18 +732,20 @@ describe('meal-plan-to-shopping-list utilities', () => {
 
     it('still sums quantities for same units (existing behavior)', () => {
       const existingItems = [
-        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
+        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f1', quantity: 3, unit: 'cup' }
-      ];
+      const extractedItems = [{ foodItemId: 'f1', quantity: 3, unit: 'cup' }];
 
       const foodItemsMap = new Map([
-        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }]
+        ['f1', { singularName: 'milk', pluralName: 'milks', unit: 'cup' }],
       ]);
 
-      const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
+      const { mergedItems, conflicts } = mergeWithShoppingList(
+        existingItems,
+        extractedItems,
+        foodItemsMap
+      );
 
       expect(conflicts).toHaveLength(0);
       expect(mergedItems).toHaveLength(1);
@@ -767,23 +755,24 @@ describe('meal-plan-to-shopping-list utilities', () => {
 
     it('still adds new items directly (existing behavior)', () => {
       const existingItems = [
-        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false }
+        { foodItemId: 'f1', name: 'milk', quantity: 2, unit: 'cup', checked: false },
       ];
 
-      const extractedItems = [
-        { foodItemId: 'f2', quantity: 1, unit: 'pound' }
-      ];
+      const extractedItems = [{ foodItemId: 'f2', quantity: 1, unit: 'pound' }];
 
       const foodItemsMap = new Map([
-        ['f2', { singularName: 'flour', pluralName: 'flours', unit: 'pound' }]
+        ['f2', { singularName: 'flour', pluralName: 'flours', unit: 'pound' }],
       ]);
 
-      const { mergedItems, conflicts } = mergeWithShoppingList(existingItems, extractedItems, foodItemsMap);
+      const { mergedItems, conflicts } = mergeWithShoppingList(
+        existingItems,
+        extractedItems,
+        foodItemsMap
+      );
 
       expect(conflicts).toHaveLength(0);
       expect(mergedItems).toHaveLength(2);
-      expect(mergedItems.find(i => i.foodItemId === 'f2')?.quantity).toBe(1);
+      expect(mergedItems.find((i) => i.foodItemId === 'f2')?.quantity).toBe(1);
     });
   });
 });
-

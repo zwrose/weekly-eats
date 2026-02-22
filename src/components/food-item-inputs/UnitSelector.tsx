@@ -1,10 +1,10 @@
 /**
  * Reusable Unit Selector component
- * 
+ *
  * Displays unit options with proper singular/plural forms based on quantity.
  */
 
-"use client";
+'use client';
 
 import { Autocomplete, TextField, SxProps, Theme } from '@mui/material';
 import { getUnitOptions, getUnitForm } from '@/lib/food-items-utils';
@@ -31,7 +31,7 @@ export default function UnitSelector({
   sx,
 }: UnitSelectorProps) {
   const unitOptions = getUnitOptions();
-  const selectedOption = unitOptions.find(option => option.value === value);
+  const selectedOption = unitOptions.find((option) => option.value === value);
 
   return (
     <Autocomplete
@@ -44,15 +44,8 @@ export default function UnitSelector({
       disableClearable={true}
       fullWidth={fullWidth}
       disabled={disabled}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label={label}
-          size={size}
-        />
-      )}
+      renderInput={(params) => <TextField {...params} label={label} size={size} />}
       sx={sx}
     />
   );
 }
-

@@ -106,14 +106,18 @@ describe('api/food-items/[id] route', () => {
   it('PUT 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: 'A' }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: 'A' }), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(401);
   });
 
   it('PUT 400 when name missing', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: '' }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: '' }), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(400);
   });
 
@@ -121,7 +125,10 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: 'New' }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, { name: 'New' }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(404);
   });
 
@@ -129,7 +136,10 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: 'New' }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, { name: 'New' }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(403);
   });
 
@@ -139,21 +149,24 @@ describe('api/food-items/[id] route', () => {
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
     // findOne called again to fetch updated item
-    findOneMock.mockResolvedValueOnce({ 
-      _id: id, 
-      name: 'Updated', 
-      singularName: 'Updated',
-      pluralName: 'Updated',
-      unit: 'cup',
-      isGlobal: false, 
-      createdBy: 'u1' 
-    });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { 
+    findOneMock.mockResolvedValueOnce({
+      _id: id,
       name: 'Updated',
       singularName: 'Updated',
       pluralName: 'Updated',
-      unit: 'cup'
-    }), { params: Promise.resolve({ id }) } as any);
+      unit: 'cup',
+      isGlobal: false,
+      createdBy: 'u1',
+    });
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, {
+        name: 'Updated',
+        singularName: 'Updated',
+        pluralName: 'Updated',
+        unit: 'cup',
+      }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.name).toBe('Updated');
@@ -167,21 +180,24 @@ describe('api/food-items/[id] route', () => {
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: true });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
-    findOneMock.mockResolvedValueOnce({ 
-      _id: id, 
-      name: 'Updated Global', 
-      singularName: 'Updated Global',
-      pluralName: 'Updated Globals',
-      unit: 'each',
-      isGlobal: true, 
-      createdBy: 'u1' 
-    });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { 
+    findOneMock.mockResolvedValueOnce({
+      _id: id,
       name: 'Updated Global',
       singularName: 'Updated Global',
       pluralName: 'Updated Globals',
-      unit: 'each'
-    }), { params: Promise.resolve({ id }) } as any);
+      unit: 'each',
+      isGlobal: true,
+      createdBy: 'u1',
+    });
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, {
+        name: 'Updated Global',
+        singularName: 'Updated Global',
+        pluralName: 'Updated Globals',
+        unit: 'each',
+      }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.name).toBe('Updated Global');
@@ -191,7 +207,10 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u2', isGlobal: true });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: 'Updated' }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, { name: 'Updated' }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(403);
   });
 
@@ -199,10 +218,13 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: true });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { 
-      name: 'Updated',
-      isGlobal: false 
-    }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, {
+        name: 'Updated',
+        isGlobal: false,
+      }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(400);
   });
 
@@ -210,10 +232,13 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { 
-      name: 'Updated',
-      isGlobal: true 
-    }), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, {
+        name: 'Updated',
+        isGlobal: true,
+      }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(403);
   });
 
@@ -222,16 +247,19 @@ describe('api/food-items/[id] route', () => {
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
-    findOneMock.mockResolvedValueOnce({ 
-      _id: id, 
-      name: 'Updated', 
-      isGlobal: true, 
-      createdBy: 'u1' 
-    });
-    const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { 
+    findOneMock.mockResolvedValueOnce({
+      _id: id,
       name: 'Updated',
-      isGlobal: true 
-    }), { params: Promise.resolve({ id }) } as any);
+      isGlobal: true,
+      createdBy: 'u1',
+    });
+    const res = await routes.PUT(
+      makeReq(`http://localhost/api/food-items/${id}`, {
+        name: 'Updated',
+        isGlobal: true,
+      }),
+      { params: Promise.resolve({ id }) } as any
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.isGlobal).toBe(true);
@@ -240,7 +268,9 @@ describe('api/food-items/[id] route', () => {
   it('DELETE 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(401);
   });
 
@@ -248,7 +278,9 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(404);
   });
 
@@ -256,7 +288,9 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: true });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(403);
   });
 
@@ -265,7 +299,9 @@ describe('api/food-items/[id] route', () => {
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.message).toBe('Food item deleted successfully');
@@ -276,7 +312,9 @@ describe('api/food-items/[id] route', () => {
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: true });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.message).toBe('Food item deleted successfully');
@@ -287,7 +325,9 @@ describe('api/food-items/[id] route', () => {
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(200);
   });
 
@@ -295,7 +335,9 @@ describe('api/food-items/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(403);
   });
 
@@ -304,9 +346,9 @@ describe('api/food-items/[id] route', () => {
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 0 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(404);
   });
 });
-
-

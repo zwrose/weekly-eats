@@ -23,7 +23,7 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body } as any);
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -44,8 +44,18 @@ describe('api/meal-plans/template route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null); // existing template
     insertOneMock.mockResolvedValueOnce({ insertedId: 't1' });
-    findOneMock.mockResolvedValueOnce({ _id: 't1', userId: 'u1', startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true } });
-    const res = await routes.POST(makeReq('http://localhost/api/meal-plans/template', { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true } }));
+    findOneMock.mockResolvedValueOnce({
+      _id: 't1',
+      userId: 'u1',
+      startDay: 'saturday',
+      meals: { breakfast: true, lunch: true, dinner: true },
+    });
+    const res = await routes.POST(
+      makeReq('http://localhost/api/meal-plans/template', {
+        startDay: 'saturday',
+        meals: { breakfast: true, lunch: true, dinner: true },
+      })
+    );
     expect(res.status).toBe(201);
   });
 
@@ -53,10 +63,18 @@ describe('api/meal-plans/template route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce({ _id: 't1', userId: 'u1' }); // existing
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
-    findOneMock.mockResolvedValueOnce({ _id: 't1', userId: 'u1', startDay: 'monday', meals: { breakfast: true, lunch: true, dinner: true } });
-    const res = await routes.PUT(makeReq('http://localhost/api/meal-plans/template', { startDay: 'monday', meals: { breakfast: true, lunch: true, dinner: true } }));
+    findOneMock.mockResolvedValueOnce({
+      _id: 't1',
+      userId: 'u1',
+      startDay: 'monday',
+      meals: { breakfast: true, lunch: true, dinner: true },
+    });
+    const res = await routes.PUT(
+      makeReq('http://localhost/api/meal-plans/template', {
+        startDay: 'monday',
+        meals: { breakfast: true, lunch: true, dinner: true },
+      })
+    );
     expect(res.status).toBe(200);
   });
 });
-
-

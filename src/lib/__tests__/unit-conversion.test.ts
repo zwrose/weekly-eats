@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  toConvertUnit,
-  areSameFamily,
-  tryConvert,
-  pickBestUnit,
-} from '../unit-conversion';
+import { toConvertUnit, areSameFamily, tryConvert, pickBestUnit } from '../unit-conversion';
 
 describe('unit-conversion', () => {
   describe('toConvertUnit', () => {

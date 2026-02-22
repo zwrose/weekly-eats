@@ -10,26 +10,23 @@ describe('IngredientGroup', () => {
     const onChange = vi.fn();
     const group = {
       title: '',
-      ingredients: []
+      ingredients: [],
     };
-    render(
-      <IngredientGroup
-        group={group}
-        onChange={onChange}
-      />
-    );
-    
+    render(<IngredientGroup group={group} onChange={onChange} />);
+
     // Should show the group title field and "Add Ingredient" button
     expect(screen.getByPlaceholderText('Group title (required)')).toBeInTheDocument();
     expect(screen.getByText('Add Ingredient')).toBeInTheDocument();
-    expect(screen.getByText('No ingredients in this group. Click "Add Ingredient" to get started.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No ingredients in this group. Click "Add Ingredient" to get started.')
+    ).toBeInTheDocument();
   });
 
   it('renders with custom text props', () => {
     const onChange = vi.fn();
     const group = {
       title: 'Test Group',
-      ingredients: []
+      ingredients: [],
     };
     render(
       <IngredientGroup
@@ -40,7 +37,7 @@ describe('IngredientGroup', () => {
         removeIngredientButtonText="Remove Meal Item"
       />
     );
-    
+
     // Should show the group title field with the provided title
     expect(screen.getByDisplayValue('Test Group')).toBeInTheDocument();
     // Should show the custom "Add Meal Item" button
@@ -54,9 +51,9 @@ describe('IngredientGroup', () => {
     const onRemove = vi.fn();
     const group = {
       title: 'Test Group',
-      ingredients: []
+      ingredients: [],
     };
-    
+
     render(
       <IngredientGroup
         group={group}
@@ -65,15 +62,15 @@ describe('IngredientGroup', () => {
         showRemoveButton={true}
       />
     );
-    
+
     // Should show both delete buttons (responsive design)
     const deleteIcons = screen.getAllByTestId('DeleteIcon');
     expect(deleteIcons).toHaveLength(2); // One for inline, one for bottom button
-    
+
     // Should show the bottom delete button with text
     const bottomDeleteButton = screen.getByText('Remove Group');
     expect(bottomDeleteButton).toBeInTheDocument();
-    
+
     // Click the bottom delete button
     fireEvent.click(bottomDeleteButton);
     expect(onRemove).toHaveBeenCalledTimes(1);
@@ -84,9 +81,9 @@ describe('IngredientGroup', () => {
     const onRemove = vi.fn();
     const group = {
       title: 'Test Group',
-      ingredients: []
+      ingredients: [],
     };
-    
+
     render(
       <IngredientGroup
         group={group}
@@ -95,11 +92,11 @@ describe('IngredientGroup', () => {
         showRemoveButton={true}
       />
     );
-    
+
     // Should show the bottom delete button with text
     const bottomDeleteButton = screen.getByText('Remove Group');
     expect(bottomDeleteButton).toBeInTheDocument();
-    
+
     // Click the bottom delete button
     fireEvent.click(bottomDeleteButton);
     expect(onRemove).toHaveBeenCalledTimes(1);
@@ -110,9 +107,9 @@ describe('IngredientGroup', () => {
     const onRemove = vi.fn();
     const group = {
       title: 'Test Group',
-      ingredients: []
+      ingredients: [],
     };
-    
+
     render(
       <IngredientGroup
         group={group}
@@ -121,7 +118,7 @@ describe('IngredientGroup', () => {
         showRemoveButton={false}
       />
     );
-    
+
     // Should not show any delete buttons
     expect(screen.queryByTestId('DeleteIcon')).not.toBeInTheDocument();
     expect(screen.queryByText('Remove Group')).not.toBeInTheDocument();
@@ -131,17 +128,11 @@ describe('IngredientGroup', () => {
     const onChange = vi.fn();
     const group = {
       title: 'Test Group',
-      ingredients: []
+      ingredients: [],
     };
-    
-    render(
-      <IngredientGroup
-        group={group}
-        onChange={onChange}
-        showRemoveButton={true}
-      />
-    );
-    
+
+    render(<IngredientGroup group={group} onChange={onChange} showRemoveButton={true} />);
+
     // Should not show any delete buttons
     expect(screen.queryByTestId('DeleteIcon')).not.toBeInTheDocument();
     expect(screen.queryByText('Remove Group')).not.toBeInTheDocument();

@@ -37,7 +37,7 @@ export interface UserSettings {
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   themeMode: 'system',
   mealPlanSharing: {
-    invitations: []
+    invitations: [],
   },
-  defaultMealPlanOwner: undefined // Will default to the current user if not set
-}; 
+  defaultMealPlanOwner: undefined, // Will default to the current user if not set
+};

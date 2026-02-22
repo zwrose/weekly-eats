@@ -51,9 +51,24 @@ describe('api/meal-plans/summary route', () => {
   it('GET returns year/month summary with plan counts', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { _id: { year: '2026', month: '02' }, count: 4, earliest: '2026-02-07', latest: '2026-02-28' },
-      { _id: { year: '2026', month: '01' }, count: 3, earliest: '2026-01-03', latest: '2026-01-24' },
-      { _id: { year: '2025', month: '12' }, count: 2, earliest: '2025-12-06', latest: '2025-12-20' },
+      {
+        _id: { year: '2026', month: '02' },
+        count: 4,
+        earliest: '2026-02-07',
+        latest: '2026-02-28',
+      },
+      {
+        _id: { year: '2026', month: '01' },
+        count: 3,
+        earliest: '2026-01-03',
+        latest: '2026-01-24',
+      },
+      {
+        _id: { year: '2025', month: '12' },
+        count: 2,
+        earliest: '2025-12-06',
+        latest: '2025-12-20',
+      },
     ]);
 
     const res = await routes.GET();

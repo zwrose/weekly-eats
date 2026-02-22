@@ -2,20 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { CreateMealPlanRequest, MealPlan, DayOfWeek, MealItem, MealType, MealPlanItem } from '@/types/meal-plan';
-import { 
-  generateMealPlanNameFromString, 
-  calculateEndDateAsString
-} from '@/lib/date-utils';
+import {
+  CreateMealPlanRequest,
+  MealPlan,
+  DayOfWeek,
+  MealItem,
+  MealType,
+  MealPlanItem,
+} from '@/types/meal-plan';
+import { generateMealPlanNameFromString, calculateEndDateAsString } from '@/lib/date-utils';
 import { checkMealPlanOverlap } from '@/lib/meal-plan-utils';
 import { isValidDateString } from '@/lib/validation';
-import { 
-  AUTH_ERRORS, 
-  MEAL_PLAN_ERRORS, 
-  TEMPLATE_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, MEAL_PLAN_ERRORS, TEMPLATE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { ObjectId } from 'mongodb';
 import { RecipeIngredientList } from '@/types/recipe';
 
@@ -44,17 +42,17 @@ export async function GET(request: NextRequest) {
         'settings.mealPlanSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       })
       .toArray();
 
-    const sharedOwnerIds = sharedOwners.map(owner => owner._id.toString());
+    const sharedOwnerIds = sharedOwners.map((owner) => owner._id.toString());
 
     // Build filter
     const filter: Record<string, unknown> = {
-      userId: { $in: [session.user.id, ...sharedOwnerIds] }
+      userId: { $in: [session.user.id, ...sharedOwnerIds] },
     };
 
     // Add date-range filter if provided (startDate is YYYY-MM-DD string, lexicographic comparison works)
@@ -71,10 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get meal plans for current user AND shared owners
-    const mealPlans = await mealPlansCollection
-      .find(filter)
-      .sort({ startDate: -1 })
-      .toArray();
+    const mealPlans = await mealPlansCollection.find(filter).sort({ startDate: -1 }).toArray();
 
     // Collect all food item and recipe IDs referenced in meal plans
     const foodItemIds = new Set<string>();
@@ -105,15 +100,19 @@ export async function GET(request: NextRequest) {
     // Batch fetch all referenced food items and recipes
     const [foodItemDocs, recipeDocs] = await Promise.all([
       foodItemIds.size > 0
-        ? foodItemsCollection.find({ _id: { $in: [...foodItemIds].map(id => ObjectId.createFromHexString(id)) } }).toArray()
+        ? foodItemsCollection
+            .find({ _id: { $in: [...foodItemIds].map((id) => ObjectId.createFromHexString(id)) } })
+            .toArray()
         : Promise.resolve([]),
       recipeIds.size > 0
-        ? recipesCollection.find({ _id: { $in: [...recipeIds].map(id => ObjectId.createFromHexString(id)) } }).toArray()
+        ? recipesCollection
+            .find({ _id: { $in: [...recipeIds].map((id) => ObjectId.createFromHexString(id)) } })
+            .toArray()
         : Promise.resolve([]),
     ]);
 
-    const foodItemMap = new Map(foodItemDocs.map(fi => [fi._id.toString(), fi]));
-    const recipeMap = new Map(recipeDocs.map(r => [r._id.toString(), r]));
+    const foodItemMap = new Map(foodItemDocs.map((fi) => [fi._id.toString(), fi]));
+    const recipeMap = new Map(recipeDocs.map((r) => [r._id.toString(), r]));
 
     // Populate names using the lookup maps
     const populateMealItemName = (mealItem: MealItem): MealItem => {
@@ -121,13 +120,17 @@ export async function GET(request: NextRequest) {
         const foodItem = foodItemMap.get(mealItem.id);
         return {
           ...mealItem,
-          name: foodItem ? (mealItem.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : mealItem.name || 'Unknown'
+          name: foodItem
+            ? mealItem.quantity === 1
+              ? foodItem.singularName
+              : foodItem.pluralName
+            : mealItem.name || 'Unknown',
         };
       } else if (mealItem.type === 'recipe' && mealItem.id) {
         const recipe = recipeMap.get(mealItem.id);
         return {
           ...mealItem,
-          name: recipe ? recipe.title : mealItem.name || 'Unknown'
+          name: recipe ? recipe.title : mealItem.name || 'Unknown',
         };
       } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
         const populatedIngredients = mealItem.ingredients.map((group: RecipeIngredientList) => ({
@@ -137,13 +140,17 @@ export async function GET(request: NextRequest) {
               const foodItem = foodItemMap.get(ingredient.id);
               return {
                 ...ingredient,
-                name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown'
+                name: foodItem
+                  ? ingredient.quantity === 1
+                    ? foodItem.singularName
+                    : foodItem.pluralName
+                  : 'Unknown',
               };
             } else if (ingredient.type === 'recipe' && ingredient.id) {
               const recipe = recipeMap.get(ingredient.id);
               return {
                 ...ingredient,
-                name: recipe ? recipe.title : 'Unknown'
+                name: recipe ? recipe.title : 'Unknown',
               };
             }
             return ingredient;
@@ -169,8 +176,8 @@ export async function GET(request: NextRequest) {
           userId: session.user.id,
           ...plan.templateSnapshot,
           createdAt: plan.createdAt,
-          updatedAt: plan.createdAt
-        }
+          updatedAt: plan.createdAt,
+        },
       };
     });
 
@@ -204,7 +211,7 @@ export async function POST(request: NextRequest) {
 
     // Determine the owner of this meal plan
     let targetUserId = session.user.id;
-    
+
     if (ownerId && ownerId !== session.user.id) {
       // Verify the current user has permission to create meal plans for this owner
       const owner = await usersCollection.findOne({
@@ -212,9 +219,9 @@ export async function POST(request: NextRequest) {
         'settings.mealPlanSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       });
 
       if (!owner) {
@@ -228,18 +235,23 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Overlap validation ---
-    const existingPlans = (await mealPlansCollection.find({ userId: targetUserId }).toArray()) as unknown as MealPlan[];
+    const existingPlans = (await mealPlansCollection
+      .find({ userId: targetUserId })
+      .toArray()) as unknown as MealPlan[];
     const overlapResult = checkMealPlanOverlap(startDate, existingPlans);
     if (overlapResult.isOverlapping) {
-      return NextResponse.json({
-        error: `Meal plan dates overlap with "${overlapResult.conflict!.planName}" (${overlapResult.conflict!.startDate} to ${overlapResult.conflict!.endDate})`
-      }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: `Meal plan dates overlap with "${overlapResult.conflict!.planName}" (${overlapResult.conflict!.startDate} to ${overlapResult.conflict!.endDate})`,
+        },
+        { status: 409 }
+      );
     }
     // --- End overlap validation ---
 
     // Get or create target user's template
     let template = await templatesCollection.findOne({
-      userId: targetUserId
+      userId: targetUserId,
     });
 
     if (!template) {
@@ -250,18 +262,21 @@ export async function POST(request: NextRequest) {
         meals: {
           breakfast: true,
           lunch: true,
-          dinner: true
+          dinner: true,
         },
         weeklyStaples: [], // Initialize with empty staples
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const templateResult = await templatesCollection.insertOne(defaultTemplate);
       template = await templatesCollection.findOne({ _id: templateResult.insertedId });
-      
+
       if (!template) {
-        return NextResponse.json({ error: TEMPLATE_ERRORS.TEMPLATE_CREATION_FAILED }, { status: 500 });
+        return NextResponse.json(
+          { error: TEMPLATE_ERRORS.TEMPLATE_CREATION_FAILED },
+          { status: 500 }
+        );
       }
     }
 
@@ -275,12 +290,20 @@ export async function POST(request: NextRequest) {
     const items = [];
     const startDateObj = new Date(startDate);
     const endDateObj = new Date(endDateString);
-    
+
     // Generate items for each day in the meal plan
     for (let date = new Date(startDateObj); date <= endDateObj; date.setDate(date.getDate() + 1)) {
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayNames = [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+      ];
       const dayOfWeek = dayNames[date.getDay()] as DayOfWeek;
-      
+
       // Add meals based on template
       if (template.meals.breakfast) {
         items.push({
@@ -289,10 +312,10 @@ export async function POST(request: NextRequest) {
           dayOfWeek,
           mealType: 'breakfast',
           items: [],
-          notes: ''
+          notes: '',
         });
       }
-      
+
       if (template.meals.lunch) {
         items.push({
           _id: new ObjectId().toString(),
@@ -300,10 +323,10 @@ export async function POST(request: NextRequest) {
           dayOfWeek,
           mealType: 'lunch',
           items: [],
-          notes: ''
+          notes: '',
         });
       }
-      
+
       if (template.meals.dinner) {
         items.push({
           _id: new ObjectId().toString(),
@@ -311,11 +334,11 @@ export async function POST(request: NextRequest) {
           dayOfWeek,
           mealType: 'dinner',
           items: [],
-          notes: ''
+          notes: '',
         });
       }
     }
-    
+
     // Add weekly staples once for the entire meal plan (not per day)
     if (template.weeklyStaples && template.weeklyStaples.length > 0) {
       items.push({
@@ -325,9 +348,9 @@ export async function POST(request: NextRequest) {
         mealType: 'staples' as MealType, // Special meal type for staples
         items: template.weeklyStaples.map((staple: MealItem) => ({
           ...staple,
-          _id: new ObjectId().toString()
+          _id: new ObjectId().toString(),
         })),
-        notes: 'Weekly Staples'
+        notes: 'Weekly Staples',
       });
     }
 
@@ -340,29 +363,32 @@ export async function POST(request: NextRequest) {
       templateSnapshot: {
         startDay: template.startDay,
         meals: template.meals,
-        weeklyStaples: template.weeklyStaples || [] // Include staples in snapshot
+        weeklyStaples: template.weeklyStaples || [], // Include staples in snapshot
       },
       userId: targetUserId,
       items, // Populated based on template
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     const result = await mealPlansCollection.insertOne(mealPlan);
     const createdMealPlan = await mealPlansCollection.findOne({ _id: result.insertedId });
 
     if (!createdMealPlan) {
-      return NextResponse.json({ error: MEAL_PLAN_ERRORS.MEAL_PLAN_CREATION_FAILED }, { status: 500 });
+      return NextResponse.json(
+        { error: MEAL_PLAN_ERRORS.MEAL_PLAN_CREATION_FAILED },
+        { status: 500 }
+      );
     }
 
     // Update meal plan items with the correct meal plan ID
     if (items.length > 0) {
       await mealPlansCollection.updateOne(
         { _id: result.insertedId },
-        { 
-          $set: { 
-            'items': items.map(item => ({ ...item, mealPlanId: result.insertedId.toString() }))
-          }
+        {
+          $set: {
+            items: items.map((item) => ({ ...item, mealPlanId: result.insertedId.toString() })),
+          },
         }
       );
     }
@@ -370,14 +396,14 @@ export async function POST(request: NextRequest) {
     // Return with template snapshot data
     const mealPlanWithTemplate = {
       ...createdMealPlan,
-      items: items.map(item => ({ ...item, mealPlanId: result.insertedId.toString() })),
+      items: items.map((item) => ({ ...item, mealPlanId: result.insertedId.toString() })),
       template: {
         _id: template._id.toString(),
         userId: session.user.id,
         ...createdMealPlan.templateSnapshot,
         createdAt: now,
-        updatedAt: now
-      }
+        updatedAt: now,
+      },
     };
 
     return NextResponse.json(mealPlanWithTemplate, { status: 201 });
@@ -385,4 +411,4 @@ export async function POST(request: NextRequest) {
     logError('MealPlans POST', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

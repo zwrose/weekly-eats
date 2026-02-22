@@ -3,17 +3,20 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, STORE_INVITATION_ERRORS, logError } from '@/lib/errors';
+import {
+  AUTH_ERRORS,
+  API_ERRORS,
+  STORE_ERRORS,
+  STORE_INVITATION_ERRORS,
+  logError,
+} from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string; userId: string }>;
 };
 
 // Accept or reject invitation
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -44,24 +47,27 @@ export async function PUT(
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
       'invitations.userId': userId,
-      'invitations.status': 'pending'
+      'invitations.status': 'pending',
     });
 
     if (!store) {
-      return NextResponse.json({ error: STORE_INVITATION_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
+      return NextResponse.json(
+        { error: STORE_INVITATION_ERRORS.INVITATION_NOT_FOUND },
+        { status: 404 }
+      );
     }
 
     // Update invitation status
     await storesCollection.updateOne(
-      { 
+      {
         _id: ObjectId.createFromHexString(id),
-        'invitations.userId': userId
+        'invitations.userId': userId,
       },
-      { 
-        $set: { 
+      {
+        $set: {
           'invitations.$.status': action === 'accept' ? 'accepted' : 'rejected',
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       }
     );
 
@@ -73,10 +79,7 @@ export async function PUT(
 }
 
 // Remove user from store (owner removes user OR user leaves)
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -93,7 +96,7 @@ export async function DELETE(
     const storesCollection = db.collection('stores');
 
     const store = await storesCollection.findOne({
-      _id: ObjectId.createFromHexString(id)
+      _id: ObjectId.createFromHexString(id),
     });
 
     if (!store) {
@@ -111,10 +114,10 @@ export async function DELETE(
     // Remove the invitation
     await storesCollection.updateOne(
       { _id: ObjectId.createFromHexString(id) },
-      { 
+      {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         $pull: { invitations: { userId } } as any,
-        $set: { updatedAt: new Date() }
+        $set: { updatedAt: new Date() },
       }
     );
 
@@ -124,4 +127,3 @@ export async function DELETE(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

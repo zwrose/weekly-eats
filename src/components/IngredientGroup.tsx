@@ -1,15 +1,7 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Typography,
-  Paper,
-  IconButton,
-  Alert,
-  TextField,
-} from '@mui/material';
+import { Box, Button, Typography, Paper, IconButton, Alert, TextField } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 import { RecipeIngredientList, RecipeIngredient } from '../types/recipe';
 import IngredientInput from './IngredientInput';
@@ -18,8 +10,20 @@ interface IngredientGroupProps {
   group: RecipeIngredientList;
   onChange: (group: RecipeIngredientList) => void;
   onRemove?: () => void;
-  foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
-  onFoodItemAdded?: (newFoodItem: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
+  foodItems?: Array<{
+    _id: string;
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+  }>;
+  onFoodItemAdded?: (newFoodItem: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   // Custom text overrides
   addIngredientButtonText?: string;
   emptyGroupText?: string;
@@ -28,17 +32,17 @@ interface IngredientGroupProps {
   allowPrepInstructions?: boolean; // Whether to show prep instructions editing (default: true)
 }
 
-export default function IngredientGroup({ 
-  group, 
-  onChange, 
+export default function IngredientGroup({
+  group,
+  onChange,
   onRemove,
   foodItems,
-  onFoodItemAdded, 
-  addIngredientButtonText = "Add Ingredient",
-  emptyGroupText = "No ingredients in this group. Click \"Add Ingredient\" to get started.",
-  removeIngredientButtonText = "Remove Ingredient",
+  onFoodItemAdded,
+  addIngredientButtonText = 'Add Ingredient',
+  emptyGroupText = 'No ingredients in this group. Click "Add Ingredient" to get started.',
+  removeIngredientButtonText = 'Remove Ingredient',
   showRemoveButton = true,
-  allowPrepInstructions = true
+  allowPrepInstructions = true,
 }: IngredientGroupProps) {
   const [error, setError] = useState('');
 
@@ -47,11 +51,11 @@ export default function IngredientGroup({
       type: 'foodItem',
       id: '',
       quantity: 1,
-      unit: 'cup'
+      unit: 'cup',
     };
     onChange({
       ...group,
-      ingredients: [...group.ingredients, newIngredient]
+      ingredients: [...group.ingredients, newIngredient],
     });
   };
 
@@ -61,7 +65,7 @@ export default function IngredientGroup({
     );
     onChange({
       ...group,
-      ingredients: newIngredients
+      ingredients: newIngredients,
     });
   };
 
@@ -69,12 +73,12 @@ export default function IngredientGroup({
     const newIngredients = group.ingredients.filter((_, index) => index !== ingredientIndex);
     onChange({
       ...group,
-      ingredients: newIngredients
+      ingredients: newIngredients,
     });
   };
 
   const getAllSelectedIds = (): string[] => {
-    return group.ingredients.map(ingredient => ingredient.id).filter(id => id !== '');
+    return group.ingredients.map((ingredient) => ingredient.id).filter((id) => id !== '');
   };
 
   return (
@@ -85,7 +89,9 @@ export default function IngredientGroup({
         </Alert>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+      >
         <TextField
           placeholder="Group title (required)"
           value={group.title || ''}
@@ -94,12 +100,12 @@ export default function IngredientGroup({
           required
           error={!group.title || group.title.trim() === ''}
           helperText={!group.title || group.title.trim() === '' ? 'Group title is required' : ''}
-          sx={{ 
-            flex: 1, 
+          sx={{
+            flex: 1,
             mr: 2,
             '& .MuiOutlinedInput-root': {
-              backgroundColor: 'transparent'
-            }
+              backgroundColor: 'transparent',
+            },
           }}
         />
         {showRemoveButton && onRemove && (
@@ -107,9 +113,9 @@ export default function IngredientGroup({
             onClick={onRemove}
             color="error"
             size="small"
-            sx={{ 
+            sx={{
               display: { xs: 'none', sm: 'flex' },
-              alignSelf: 'flex-start'
+              alignSelf: 'flex-start',
             }}
           >
             <Delete />
@@ -122,11 +128,13 @@ export default function IngredientGroup({
           key={ingredientIndex}
           ingredient={ingredient}
           autoFocus={!ingredient.id || ingredient.id.trim() === ''}
-          onIngredientChange={(updatedIngredient) => handleIngredientChange(ingredientIndex, updatedIngredient)}
+          onIngredientChange={(updatedIngredient) =>
+            handleIngredientChange(ingredientIndex, updatedIngredient)
+          }
           onRemove={() => handleRemoveIngredient(ingredientIndex)}
           foodItems={foodItems}
           onFoodItemAdded={onFoodItemAdded}
-          selectedIds={getAllSelectedIds().filter(id => id !== ingredient.id)}
+          selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
           slotId={`group-${ingredientIndex}`}
           removeButtonText={removeIngredientButtonText}
           allowPrepInstructions={allowPrepInstructions}
@@ -138,9 +146,9 @@ export default function IngredientGroup({
         onClick={handleAddIngredient}
         variant="outlined"
         size="small"
-        sx={{ 
+        sx={{
           mt: 1,
-          width: { xs: '100%', sm: 'auto' }
+          width: { xs: '100%', sm: 'auto' },
         }}
       >
         {addIngredientButtonText}
@@ -160,9 +168,9 @@ export default function IngredientGroup({
             variant="outlined"
             size="small"
             startIcon={<Delete />}
-            sx={{ 
+            sx={{
               display: { xs: 'flex', sm: 'none' },
-              width: '100%'
+              width: '100%',
             }}
           >
             Remove Group

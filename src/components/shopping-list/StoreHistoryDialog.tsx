@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,18 +17,20 @@ import {
   Chip,
   CircularProgress,
   InputAdornment,
-} from "@mui/material";
-import { Add, Search } from "@mui/icons-material";
-import { DialogTitle } from "@/components/ui/DialogTitle";
-import { responsiveDialogStyle } from "@/lib/theme";
-import { PurchaseHistoryRecord, ShoppingListItem } from "@/types/shopping-list";
+} from '@mui/material';
+import { Add, Search } from '@mui/icons-material';
+import { DialogTitle } from '@/components/ui/DialogTitle';
+import { responsiveDialogStyle } from '@/lib/theme';
+import { PurchaseHistoryRecord, ShoppingListItem } from '@/types/shopping-list';
 
 interface StoreHistoryDialogProps {
   open: boolean;
   onClose: () => void;
   historyItems: PurchaseHistoryRecord[];
   currentItems: ShoppingListItem[];
-  onAddItems: (items: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>) => void;
+  onAddItems: (
+    items: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
+  ) => void;
   loading: boolean;
 }
 
@@ -38,15 +40,15 @@ function formatRelativeDate(date: Date): string {
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
   if (diffDays < 30) {
     const weeks = Math.floor(diffDays / 7);
-    return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
+    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
   }
   const months = Math.floor(diffDays / 30);
-  return months === 1 ? "1 month ago" : `${months} months ago`;
+  return months === 1 ? '1 month ago' : `${months} months ago`;
 }
 
 export default function StoreHistoryDialog({
@@ -57,7 +59,7 @@ export default function StoreHistoryDialog({
   onAddItems,
   loading,
 }: StoreHistoryDialogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const currentFoodItemIds = useMemo(
@@ -108,29 +110,21 @@ export default function StoreHistoryDialog({
   };
 
   const handleClose = () => {
-    setSearchQuery("");
+    setSearchQuery('');
     setSelectedIds(new Set());
     onClose();
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      sx={responsiveDialogStyle}
-    >
-      <DialogTitle onClose={handleClose}>
-        Purchase History
-      </DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth sx={responsiveDialogStyle}>
+      <DialogTitle onClose={handleClose}>Purchase History</DialogTitle>
       <DialogContent sx={{ px: { xs: 1, sm: 3 }, pb: 2 }}>
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
         ) : historyItems.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 4 }}>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography color="text.secondary">
               No purchase history yet. Items will appear here after you finish shopping.
             </Typography>
@@ -156,10 +150,8 @@ export default function StoreHistoryDialog({
             />
 
             {filteredItems.length === 0 ? (
-              <Box sx={{ textAlign: "center", py: 3 }}>
-                <Typography color="text.secondary">
-                  No items match your search.
-                </Typography>
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography color="text.secondary">No items match your search.</Typography>
               </Box>
             ) : (
               <List dense disablePadding>
@@ -187,7 +179,7 @@ export default function StoreHistoryDialog({
                       />
                       <ListItemText
                         primary={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body1">{item.name}</Typography>
                             {isOnList && (
                               <Chip label="On list" size="small" color="info" variant="outlined" />
@@ -214,12 +206,10 @@ export default function StoreHistoryDialog({
             )}
 
             {selectedIds.size > 0 && (
-              <Box sx={{ position: "sticky", bottom: 0, pt: 1, pb: 1, bgcolor: "background.paper" }}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={handleAddSelected}
-                >
+              <Box
+                sx={{ position: 'sticky', bottom: 0, pt: 1, pb: 1, bgcolor: 'background.paper' }}
+              >
+                <Button variant="contained" fullWidth onClick={handleAddSelected}>
                   Add Selected ({selectedIds.size})
                 </Button>
               </Box>

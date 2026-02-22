@@ -34,9 +34,10 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeRequest = (body: unknown) => ({
-  json: async () => body,
-} as any);
+const makeRequest = (body: unknown) =>
+  ({
+    json: async () => body,
+  }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -65,7 +66,7 @@ describe('api/admin/users/toggle-admin route', () => {
     it('POST returns 400 when userId is missing', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
+
       const res = await routes.POST(makeRequest({ isAdmin: true }));
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -75,7 +76,7 @@ describe('api/admin/users/toggle-admin route', () => {
     it('POST returns 400 when isAdmin is missing', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
+
       const res = await routes.POST(makeRequest({ userId: 'test-id' }));
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -85,7 +86,7 @@ describe('api/admin/users/toggle-admin route', () => {
     it('POST returns 400 when isAdmin is not a boolean', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
+
       const res = await routes.POST(makeRequest({ userId: 'test-id', isAdmin: 'true' }));
       expect(res.status).toBe(400);
     });
@@ -97,7 +98,7 @@ describe('api/admin/users/toggle-admin route', () => {
     it('POST rejects request with "admin" instead of "isAdmin"', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
+
       const res = await routes.POST(makeRequest({ userId: 'test-id', admin: true }));
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -110,11 +111,13 @@ describe('api/admin/users/toggle-admin route', () => {
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true }) // current user check
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false }); // target user check
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isAdmin: true 
-      }));
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isAdmin: true,
+        })
+      );
       expect(res.status).toBe(200);
     });
   });
@@ -129,7 +132,7 @@ describe('api/admin/users/toggle-admin route', () => {
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isAdmin: true }));
 
@@ -144,7 +147,7 @@ describe('api/admin/users/toggle-admin route', () => {
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: true });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isAdmin: false }));
 
@@ -158,12 +161,14 @@ describe('api/admin/users/toggle-admin route', () => {
       findOneMock
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce(null); // target user not found
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isAdmin: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isAdmin: true,
+        })
+      );
+
       expect(res.status).toBe(404);
     });
 
@@ -171,12 +176,14 @@ describe('api/admin/users/toggle-admin route', () => {
       findOneMock
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true }); // same email
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isAdmin: false 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isAdmin: false,
+        })
+      );
+
       expect(res.status).toBe(400);
       expect(updateOneMock).not.toHaveBeenCalled();
     });
@@ -186,13 +193,13 @@ describe('api/admin/users/toggle-admin route', () => {
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isAdmin: true }));
 
       const callArgs = updateOneMock.mock.calls[0];
       const queryFilter = callArgs[0];
-      
+
       expect(queryFilter._id).toBeInstanceOf(ObjectId);
       expect(queryFilter._id.toString()).toBe(userId);
     });
@@ -202,12 +209,14 @@ describe('api/admin/users/toggle-admin route', () => {
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isAdmin: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isAdmin: true,
+        })
+      );
+
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data).toEqual({ success: true });
@@ -220,12 +229,14 @@ describe('api/admin/users/toggle-admin route', () => {
       findOneMock
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockRejectedValueOnce(new Error('Database connection failed'));
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isAdmin: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isAdmin: true,
+        })
+      );
+
       expect(res.status).toBe(500);
       const data = await res.json();
       expect(data.error).toBeDefined();
@@ -233,16 +244,16 @@ describe('api/admin/users/toggle-admin route', () => {
 
     it('POST handles invalid ObjectId format', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
-      findOneMock
-        .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: 'invalid-id', 
-        isAdmin: true 
-      }));
-      
+      findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: 'invalid-id',
+          isAdmin: true,
+        })
+      );
+
       expect(res.status).toBe(500);
     });
   });
 });
-

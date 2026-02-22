@@ -35,9 +35,7 @@ export function parsePaginationParams(
   const sortOrderParam = searchParams.get('sortOrder') || defaultSortOrder;
 
   const page = Number.isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
-  const limit = Number.isNaN(rawLimit)
-    ? defaultLimit
-    : Math.min(Math.max(rawLimit, 1), 100);
+  const limit = Number.isNaN(rawLimit) ? defaultLimit : Math.min(Math.max(rawLimit, 1), 100);
   const sortOrder: 1 | -1 = sortOrderParam === 'asc' ? 1 : -1;
 
   return { page, limit, sortBy, sortOrder };

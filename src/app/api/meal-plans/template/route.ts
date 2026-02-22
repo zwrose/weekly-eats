@@ -2,18 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
-import { CreateMealPlanTemplateRequest, UpdateMealPlanTemplateRequest, MealItem } from '@/types/meal-plan';
-import { RecipeIngredientList } from '@/types/recipe';
+import {
+  CreateMealPlanTemplateRequest,
+  UpdateMealPlanTemplateRequest,
+  MealItem,
+} from '@/types/meal-plan';
 import { isValidDayOfWeek, isValidMealsConfig } from '@/lib/validation';
 import { DEFAULT_TEMPLATE } from '@/lib/meal-plan-utils';
-import {
-  AUTH_ERRORS,
-  TEMPLATE_ERRORS,
-  MEAL_PLAN_ERRORS,
-  API_ERRORS,
-  logError
-} from '@/lib/errors';
+import { AUTH_ERRORS, TEMPLATE_ERRORS, MEAL_PLAN_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 export async function GET() {
   try {
@@ -27,62 +23,6 @@ export async function GET() {
     const templatesCollection = db.collection('mealPlanTemplates');
 
     const template = await templatesCollection.findOne({ userId: session.user.id });
-
-    if (!template) {
-      return NextResponse.json(null);
-    }
-
-    // Resolve food item and recipe names server-side (same pattern as meal plan GET)
-    if (template.weeklyStaples?.length > 0) {
-      const foodItemsCollection = db.collection('foodItems');
-      const recipesCollection = db.collection('recipes');
-
-      const populateMealItemName = async (mealItem: MealItem): Promise<MealItem> => {
-        if (mealItem.type === 'foodItem' && mealItem.id && ObjectId.isValid(mealItem.id)) {
-          const foodItem = await foodItemsCollection.findOne({ _id: new ObjectId(mealItem.id) });
-          return {
-            ...mealItem,
-            name: foodItem ? (mealItem.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : mealItem.name || 'Unknown'
-          };
-        } else if (mealItem.type === 'recipe' && mealItem.id && ObjectId.isValid(mealItem.id)) {
-          const recipe = await recipesCollection.findOne({ _id: new ObjectId(mealItem.id) });
-          return {
-            ...mealItem,
-            name: recipe ? recipe.title : mealItem.name || 'Unknown'
-          };
-        } else if (mealItem.type === 'ingredientGroup' && mealItem.ingredients) {
-          const populatedIngredients = await Promise.all(
-            mealItem.ingredients.map(async (group: RecipeIngredientList) => {
-              const populatedGroupIngredients = await Promise.all(
-                (group.ingredients || []).map(async (ingredient) => {
-                  if (ingredient.type === 'foodItem' && ingredient.id && ObjectId.isValid(ingredient.id)) {
-                    const foodItem = await foodItemsCollection.findOne({ _id: new ObjectId(ingredient.id) });
-                    return {
-                      ...ingredient,
-                      name: foodItem ? (ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : ingredient.name || 'Unknown'
-                    };
-                  } else if (ingredient.type === 'recipe' && ingredient.id && ObjectId.isValid(ingredient.id)) {
-                    const recipe = await recipesCollection.findOne({ _id: new ObjectId(ingredient.id) });
-                    return {
-                      ...ingredient,
-                      name: recipe ? recipe.title : ingredient.name || 'Unknown'
-                    };
-                  }
-                  return ingredient;
-                })
-              );
-              return { ...group, ingredients: populatedGroupIngredients };
-            })
-          );
-          return { ...mealItem, ingredients: populatedIngredients, name: mealItem.name || '' };
-        }
-        return mealItem;
-      };
-
-      template.weeklyStaples = await Promise.all(
-        template.weeklyStaples.map((item: MealItem) => populateMealItemName(item))
-      );
-    }
 
     return NextResponse.json(template);
   } catch (error) {
@@ -117,7 +57,10 @@ export async function POST(request: NextRequest) {
     // Check if user already has a template
     const existingTemplate = await templatesCollection.findOne({ userId: session.user.id });
     if (existingTemplate) {
-      return NextResponse.json({ error: MEAL_PLAN_ERRORS.TEMPLATE_ALREADY_EXISTS }, { status: 409 });
+      return NextResponse.json(
+        { error: MEAL_PLAN_ERRORS.TEMPLATE_ALREADY_EXISTS },
+        { status: 409 }
+      );
     }
 
     const now = new Date();
@@ -127,7 +70,7 @@ export async function POST(request: NextRequest) {
       weeklyStaples: weeklyStaples || [], // Include weekly staples
       userId: session.user.id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     const result = await templatesCollection.insertOne(template);
@@ -156,7 +99,7 @@ export async function PUT(request: NextRequest) {
 
     // Check if template exists
     const existingTemplate = await templatesCollection.findOne({ userId: session.user.id });
-    
+
     if (!existingTemplate) {
       // Create new template if it doesn't exist
       const now = new Date();
@@ -166,16 +109,19 @@ export async function PUT(request: NextRequest) {
         meals: meals || DEFAULT_TEMPLATE.meals,
         weeklyStaples: weeklyStaples || [], // Include weekly staples
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       };
 
       const result = await templatesCollection.insertOne(newTemplate);
       const createdTemplate = await templatesCollection.findOne({ _id: result.insertedId });
-      
+
       if (!createdTemplate) {
-        return NextResponse.json({ error: TEMPLATE_ERRORS.TEMPLATE_CREATION_FAILED }, { status: 500 });
+        return NextResponse.json(
+          { error: TEMPLATE_ERRORS.TEMPLATE_CREATION_FAILED },
+          { status: 500 }
+        );
       }
-      
+
       return NextResponse.json(createdTemplate);
     }
 
@@ -220,4 +166,4 @@ export async function PUT(request: NextRequest) {
     logError('MealPlanTemplate PUT', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

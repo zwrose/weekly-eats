@@ -56,9 +56,10 @@ const { ObjectId } = await import('mongodb');
 // Import the route module after mocks are set up
 const routes = await import('../route');
 
-const makeRequest = (recipeId: string, body?: unknown) => ({
-  json: async () => body,
-}) as any;
+const makeRequest = (recipeId: string, body?: unknown) =>
+  ({
+    json: async () => body,
+  }) as any;
 
 const makeParams = (id: string) => ({
   params: Promise.resolve({ id }),
@@ -82,7 +83,10 @@ describe('api/recipes/[id]/rating route', () => {
   describe('POST', () => {
     it('returns 401 when unauthenticated', async () => {
       (getServerSession as any).mockResolvedValueOnce(null);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 5 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 5 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(401);
       const data = await res.json();
       expect(data.error).toBe('Unauthorized');
@@ -90,7 +94,10 @@ describe('api/recipes/[id]/rating route', () => {
 
     it('returns 400 for invalid recipe ID', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
-      const res = await routes.POST(makeRequest('invalid-id', { rating: 5 }), makeParams('invalid-id'));
+      const res = await routes.POST(
+        makeRequest('invalid-id', { rating: 5 }),
+        makeParams('invalid-id')
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe('Invalid recipe ID');
@@ -99,7 +106,10 @@ describe('api/recipes/[id]/rating route', () => {
     it('returns 400 when rating is not a number', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
       findOneMock.mockResolvedValueOnce(mockRecipe);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: '5' }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: '5' }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe('Rating must be an integer between 1 and 5');
@@ -108,7 +118,10 @@ describe('api/recipes/[id]/rating route', () => {
     it('returns 400 when rating is less than 1', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
       findOneMock.mockResolvedValueOnce(mockRecipe);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 0 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 0 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe('Rating must be an integer between 1 and 5');
@@ -117,7 +130,10 @@ describe('api/recipes/[id]/rating route', () => {
     it('returns 400 when rating is greater than 5', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
       findOneMock.mockResolvedValueOnce(mockRecipe);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 6 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 6 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe('Rating must be an integer between 1 and 5');
@@ -126,7 +142,10 @@ describe('api/recipes/[id]/rating route', () => {
     it('returns 400 when rating is not an integer', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
       findOneMock.mockResolvedValueOnce(mockRecipe);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 3.5 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 3.5 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe('Rating must be an integer between 1 and 5');
@@ -135,7 +154,10 @@ describe('api/recipes/[id]/rating route', () => {
     it('returns 404 when recipe does not exist', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
       findOneMock.mockResolvedValueOnce(null);
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 5 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 5 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(404);
       const data = await res.json();
       expect(data.error).toBe('Recipe not found');
@@ -147,7 +169,10 @@ describe('api/recipes/[id]/rating route', () => {
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
       const rating = 5;
-      const res = await routes.POST(makeRequest(validRecipeId, { rating }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.rating).toBe(rating);
@@ -178,7 +203,10 @@ describe('api/recipes/[id]/rating route', () => {
       findOneMock.mockResolvedValueOnce(mockRecipe);
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 1 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 1 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.rating).toBe(1);
@@ -189,7 +217,10 @@ describe('api/recipes/[id]/rating route', () => {
       findOneMock.mockResolvedValueOnce(mockRecipe);
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
-      const res = await routes.POST(makeRequest(validRecipeId, { rating: 5 }), makeParams(validRecipeId));
+      const res = await routes.POST(
+        makeRequest(validRecipeId, { rating: 5 }),
+        makeParams(validRecipeId)
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.rating).toBe(5);
@@ -244,4 +275,3 @@ describe('api/recipes/[id]/rating route', () => {
     });
   });
 });
-

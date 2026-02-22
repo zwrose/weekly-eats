@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
@@ -111,9 +111,7 @@ export function ThemeProviderWrapper({
 
   return (
     <ThemeContext.Provider value={contextValue}>
-      <ThemeProvider theme={theme}>
-        {children}
-      </ThemeProvider>
+      <ThemeProvider theme={theme}>{children}</ThemeProvider>
     </ThemeContext.Provider>
   );
 }

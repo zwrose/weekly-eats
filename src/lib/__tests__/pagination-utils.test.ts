@@ -111,16 +111,23 @@ describe('paginatedResponse', () => {
   });
 
   it('returns paginated data with metadata', async () => {
-    const mockData = [{ _id: '1', name: 'Item 1' }, { _id: '2', name: 'Item 2' }];
+    const mockData = [
+      { _id: '1', name: 'Item 1' },
+      { _id: '2', name: 'Item 2' },
+    ];
     mockCursor.toArray.mockResolvedValue(mockData);
     mockCollection.countDocuments.mockResolvedValue(50);
 
-    const result = await paginatedResponse(mockCollection as any, {}, {
-      page: 1,
-      limit: 10,
-      sortBy: 'updatedAt',
-      sortOrder: -1,
-    });
+    const result = await paginatedResponse(
+      mockCollection as any,
+      {},
+      {
+        page: 1,
+        limit: 10,
+        sortBy: 'updatedAt',
+        sortOrder: -1,
+      }
+    );
 
     expect(result).toEqual({
       data: mockData,
@@ -151,12 +158,16 @@ describe('paginatedResponse', () => {
     mockCursor.toArray.mockResolvedValue([]);
     mockCollection.countDocuments.mockResolvedValue(100);
 
-    await paginatedResponse(mockCollection as any, {}, {
-      page: 3,
-      limit: 10,
-      sortBy: 'title',
-      sortOrder: 1,
-    });
+    await paginatedResponse(
+      mockCollection as any,
+      {},
+      {
+        page: 3,
+        limit: 10,
+        sortBy: 'title',
+        sortOrder: 1,
+      }
+    );
 
     expect(mockCursor.sort).toHaveBeenCalledWith({ title: 1 });
     expect(mockCursor.skip).toHaveBeenCalledWith(20); // (3-1) * 10
@@ -167,12 +178,16 @@ describe('paginatedResponse', () => {
     mockCursor.toArray.mockResolvedValue([]);
     mockCollection.countDocuments.mockResolvedValue(51);
 
-    const result = await paginatedResponse(mockCollection as any, {}, {
-      page: 1,
-      limit: 10,
-      sortBy: 'updatedAt',
-      sortOrder: -1,
-    });
+    const result = await paginatedResponse(
+      mockCollection as any,
+      {},
+      {
+        page: 1,
+        limit: 10,
+        sortBy: 'updatedAt',
+        sortOrder: -1,
+      }
+    );
 
     expect(result.totalPages).toBe(6); // ceil(51/10)
   });
@@ -181,12 +196,16 @@ describe('paginatedResponse', () => {
     mockCursor.toArray.mockResolvedValue([]);
     mockCollection.countDocuments.mockResolvedValue(0);
 
-    const result = await paginatedResponse(mockCollection as any, {}, {
-      page: 1,
-      limit: 10,
-      sortBy: 'updatedAt',
-      sortOrder: -1,
-    });
+    const result = await paginatedResponse(
+      mockCollection as any,
+      {},
+      {
+        page: 1,
+        limit: 10,
+        sortBy: 'updatedAt',
+        sortOrder: -1,
+      }
+    );
 
     expect(result.totalPages).toBe(0);
     expect(result.total).toBe(0);
@@ -197,12 +216,16 @@ describe('paginatedResponse', () => {
     mockCursor.toArray.mockResolvedValue([]);
     mockCollection.countDocuments.mockResolvedValue(0);
 
-    await paginatedResponse(mockCollection as any, {}, {
-      page: 1,
-      limit: 10,
-      sortBy: 'updatedAt',
-      sortOrder: -1,
-    });
+    await paginatedResponse(
+      mockCollection as any,
+      {},
+      {
+        page: 1,
+        limit: 10,
+        sortBy: 'updatedAt',
+        sortOrder: -1,
+      }
+    );
 
     expect(mockCollection.find).toHaveBeenCalledTimes(1);
     expect(mockCollection.countDocuments).toHaveBeenCalledTimes(1);

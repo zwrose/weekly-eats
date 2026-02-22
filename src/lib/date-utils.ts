@@ -29,14 +29,22 @@ export const getTodayAsString = (): string => {
  */
 export const dayOfWeekToIndex = (day: DayOfWeek): number => {
   switch (day) {
-    case 'sunday': return 0;
-    case 'monday': return 1;
-    case 'tuesday': return 2;
-    case 'wednesday': return 3;
-    case 'thursday': return 4;
-    case 'friday': return 5;
-    case 'saturday': return 6;
-    default: return 0;
+    case 'sunday':
+      return 0;
+    case 'monday':
+      return 1;
+    case 'tuesday':
+      return 2;
+    case 'wednesday':
+      return 3;
+    case 'thursday':
+      return 4;
+    case 'friday':
+      return 5;
+    case 'saturday':
+      return 6;
+    default:
+      return 0;
   }
 };
 
@@ -47,18 +55,18 @@ export const dayOfWeekToIndex = (day: DayOfWeek): number => {
  */
 export const getNextDayOfWeekAsString = (dayOfWeek: number): string => {
   const today = startOfDay(new Date());
-  
+
   // If today is the target day, use today
   if (getDay(today) === dayOfWeek) {
     return formatDateForAPI(today);
   }
-  
+
   // Calculate days to add
   let daysToAdd = dayOfWeek - getDay(today);
   if (daysToAdd <= 0) {
     daysToAdd += 7; // Move to next week
   }
-  
+
   const nextDate = addDays(today, daysToAdd);
   return formatDateForAPI(nextDate);
 };
@@ -71,18 +79,18 @@ export const getNextDayOfWeekAsString = (dayOfWeek: number): string => {
 export const getNextDayOfWeek = (date: Date, dayOfWeek: number): Date => {
   const startDate = startOfDay(date);
   const currentDay = getDay(startDate);
-  
+
   // If today is the target day, use today
   if (currentDay === dayOfWeek) {
     return startDate;
   }
-  
+
   // Calculate days to add
   let daysToAdd = dayOfWeek - currentDay;
   if (daysToAdd <= 0) {
     daysToAdd += 7; // Move to next week
   }
-  
+
   return addDays(startDate, daysToAdd);
 };
 
@@ -108,4 +116,4 @@ export const calculateEndDateAsString = (startDateString: string): string => {
  */
 export const calculateEndDate = (startDate: Date): Date => {
   return addDays(startDate, 6); // 7 days total
-}; 
+};

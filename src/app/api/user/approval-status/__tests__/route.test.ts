@@ -8,7 +8,7 @@ const findOneMock = vi.fn();
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
-      collection: () => ({ findOne: findOneMock })
+      collection: () => ({ findOne: findOneMock }),
     }),
   })),
 }));
@@ -38,5 +38,3 @@ describe('api/user/approval-status GET', () => {
     expect(json).toEqual({ isApproved: true, isAdmin: false });
   });
 });
-
-

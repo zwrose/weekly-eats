@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useRef } from "react";
-import dynamic from "next/dynamic";
+import React, { useRef } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
@@ -11,13 +11,13 @@ import {
   IconButton,
   Divider,
   Button,
-} from "@mui/material";
-import { EmojiEmotions, Public, Person } from "@mui/icons-material";
-import { CreateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
-import { responsiveDialogStyle } from "@/lib/theme";
-import { DialogActions, DialogTitle } from "@/components/ui";
+} from '@mui/material';
+import { EmojiEmotions, Public, Person } from '@mui/icons-material';
+import { CreateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
+import { responsiveDialogStyle } from '@/lib/theme';
+import { DialogActions, DialogTitle } from '@/components/ui';
 
-const RecipeIngredients = dynamic(() => import("@/components/RecipeIngredients"), { ssr: false });
+const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients'), { ssr: false });
 
 interface FoodItemOption {
   _id: string;
@@ -36,7 +36,13 @@ export interface RecipeEditorDialogProps {
   onEmojiPickerOpen: () => void;
   onIngredientsChange: (ingredients: RecipeIngredientList[]) => void;
   foodItemsList: FoodItemOption[];
-  onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
+  onFoodItemAdded: (item: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
 }
 
@@ -63,28 +69,26 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
       sx={responsiveDialogStyle}
       TransitionProps={{ onEntered: () => titleRef.current?.focus() }}
     >
-      <DialogTitle onClose={onClose}>
-        Create New Recipe
-      </DialogTitle>
+      <DialogTitle onClose={onClose}>Create New Recipe</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
           <Box
             sx={{
-              display: "flex",
+              display: 'flex',
               gap: 2,
               mb: 3,
-              flexDirection: { xs: "column", sm: "row" },
-              alignItems: { xs: "stretch", sm: "flex-start" },
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'flex-start' },
             }}
           >
             <IconButton
               onClick={onEmojiPickerOpen}
               sx={{
-                border: "1px solid #ccc",
+                border: '1px solid #ccc',
                 width: { xs: 56, sm: 56 },
                 height: { xs: 56, sm: 56 },
-                fontSize: "1.5rem",
-                alignSelf: { xs: "flex-start", sm: "flex-start" },
+                fontSize: '1.5rem',
+                alignSelf: { xs: 'flex-start', sm: 'flex-start' },
               }}
             >
               {recipe.emoji || <EmojiEmotions />}
@@ -93,9 +97,7 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
               inputRef={titleRef}
               label="Recipe Title"
               value={recipe.title}
-              onChange={(e) =>
-                onRecipeChange({ ...recipe, title: e.target.value })
-              }
+              onChange={(e) => onRecipeChange({ ...recipe, title: e.target.value })}
               fullWidth
               required
             />
@@ -107,28 +109,24 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
             </Typography>
             <Box
               sx={{
-                display: "flex",
+                display: 'flex',
                 gap: 2,
-                flexDirection: { xs: "column", sm: "row" },
+                flexDirection: { xs: 'column', sm: 'row' },
               }}
             >
               <Button
-                variant={recipe.isGlobal ? "contained" : "outlined"}
-                onClick={() =>
-                  onRecipeChange({ ...recipe, isGlobal: true })
-                }
+                variant={recipe.isGlobal ? 'contained' : 'outlined'}
+                onClick={() => onRecipeChange({ ...recipe, isGlobal: true })}
                 startIcon={<Public />}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Global (visible to all users)
               </Button>
               <Button
-                variant={recipe.isGlobal ? "outlined" : "contained"}
-                onClick={() =>
-                  onRecipeChange({ ...recipe, isGlobal: false })
-                }
+                variant={recipe.isGlobal ? 'outlined' : 'contained'}
+                onClick={() => onRecipeChange({ ...recipe, isGlobal: false })}
                 startIcon={<Person />}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Personal (only visible to you)
               </Button>
@@ -154,9 +152,7 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
           <TextField
             label="Cooking Instructions"
             value={recipe.instructions}
-            onChange={(e) =>
-              onRecipeChange({ ...recipe, instructions: e.target.value })
-            }
+            onChange={(e) => onRecipeChange({ ...recipe, instructions: e.target.value })}
             multiline
             rows={6}
             fullWidth
@@ -164,16 +160,12 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
           />
 
           <DialogActions primaryButtonIndex={1}>
-            <Button onClick={onClose}>
-              Cancel
-            </Button>
+            <Button onClick={onClose}>Cancel</Button>
             <Button
               onClick={onSubmit}
               variant="contained"
               disabled={
-                !recipe.title ||
-                !recipe.instructions ||
-                !hasValidIngredients(recipe.ingredients)
+                !recipe.title || !recipe.instructions || !hasValidIngredients(recipe.ingredients)
               }
             >
               Create Recipe

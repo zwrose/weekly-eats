@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { getMongoClient } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
-import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, FOOD_ITEM_ERRORS, logError } from "@/lib/errors";
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { getMongoClient } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
+import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, FOOD_ITEM_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ storeId: string }>;
@@ -17,10 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: AUTH_ERRORS.UNAUTHORIZED },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { storeId } = await params;
@@ -30,8 +27,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const client = await getMongoClient();
     const db = client.db();
-    const storesCollection = db.collection("stores");
-    const positionsCollection = db.collection("storeItemPositions");
+    const storesCollection = db.collection('stores');
+    const positionsCollection = db.collection('storeItemPositions');
 
     // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
@@ -39,8 +36,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       $or: [
         { userId: session.user.id },
         {
-          "invitations.userId": session.user.id,
-          "invitations.status": "accepted",
+          'invitations.userId': session.user.id,
+          'invitations.status': 'accepted',
         },
       ],
     });
@@ -51,15 +48,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check if querying for a specific food item
     const { searchParams } = new URL(request.url);
-    const foodItemId = searchParams.get("foodItemId");
+    const foodItemId = searchParams.get('foodItemId');
 
     if (foodItemId) {
       // Return position for specific food item
       if (!ObjectId.isValid(foodItemId)) {
-        return NextResponse.json(
-          { error: FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID }, { status: 400 });
       }
 
       const position = await positionsCollection.findOne({
@@ -74,10 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ position: position.position });
     } else {
       // Return all positions for the store
-      const positions = await positionsCollection
-        .find({ storeId })
-        .sort({ position: 1 })
-        .toArray();
+      const positions = await positionsCollection.find({ storeId }).sort({ position: 1 }).toArray();
 
       return NextResponse.json({
         positions: positions.map((p) => ({
@@ -88,11 +79,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     }
   } catch (error) {
-    logError("Store Positions GET", error);
-    return NextResponse.json(
-      { error: API_ERRORS.INTERNAL_SERVER_ERROR },
-      { status: 500 }
-    );
+    logError('Store Positions GET', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
 
@@ -104,10 +92,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: AUTH_ERRORS.UNAUTHORIZED },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
     const { storeId } = await params;
@@ -119,42 +104,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { positions } = body;
 
     if (!Array.isArray(positions)) {
-      return NextResponse.json(
-        { error: "Positions must be an array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Positions must be an array' }, { status: 400 });
     }
 
     // Validate positions
     for (const pos of positions) {
-      if (!pos.foodItemId || typeof pos.foodItemId !== "string") {
-        return NextResponse.json(
-          { error: "Invalid foodItemId in positions" },
-          { status: 400 }
-        );
+      if (!pos.foodItemId || typeof pos.foodItemId !== 'string') {
+        return NextResponse.json({ error: 'Invalid foodItemId in positions' }, { status: 400 });
       }
-      if (
-        typeof pos.position !== "number" ||
-        pos.position < 0 ||
-        pos.position > 1
-      ) {
+      if (typeof pos.position !== 'number' || pos.position < 0 || pos.position > 1) {
         return NextResponse.json(
-          { error: "Position must be a number between 0 and 1" },
+          { error: 'Position must be a number between 0 and 1' },
           { status: 400 }
         );
       }
       if (!ObjectId.isValid(pos.foodItemId)) {
-        return NextResponse.json(
-          { error: "Invalid food item ID format" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Invalid food item ID format' }, { status: 400 });
       }
     }
 
     const client = await getMongoClient();
     const db = client.db();
-    const storesCollection = db.collection("stores");
-    const positionsCollection = db.collection("storeItemPositions");
+    const storesCollection = db.collection('stores');
+    const positionsCollection = db.collection('storeItemPositions');
 
     // Verify store exists and user has access (owner or accepted invitation)
     const store = await storesCollection.findOne({
@@ -162,8 +134,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       $or: [
         { userId: session.user.id },
         {
-          "invitations.userId": session.user.id,
-          "invitations.status": "accepted",
+          'invitations.userId': session.user.id,
+          'invitations.status': 'accepted',
         },
       ],
     });
@@ -174,22 +146,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Upsert positions
     const now = new Date();
-    const operations = positions.map(
-      (pos: { foodItemId: string; position: number }) => ({
-        updateOne: {
-          filter: { storeId, foodItemId: pos.foodItemId },
-          update: {
-            $set: {
-              storeId,
-              foodItemId: pos.foodItemId,
-              position: pos.position,
-              updatedAt: now,
-            },
+    const operations = positions.map((pos: { foodItemId: string; position: number }) => ({
+      updateOne: {
+        filter: { storeId, foodItemId: pos.foodItemId },
+        update: {
+          $set: {
+            storeId,
+            foodItemId: pos.foodItemId,
+            position: pos.position,
+            updatedAt: now,
           },
-          upsert: true,
         },
-      })
-    );
+        upsert: true,
+      },
+    }));
 
     if (operations.length > 0) {
       await positionsCollection.bulkWrite(operations);
@@ -197,10 +167,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logError("Store Positions POST", error);
-    return NextResponse.json(
-      { error: API_ERRORS.INTERNAL_SERVER_ERROR },
-      { status: 500 }
-    );
+    logError('Store Positions POST', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }

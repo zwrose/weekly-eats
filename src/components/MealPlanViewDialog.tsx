@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,28 +13,28 @@ import {
   TextField,
   Checkbox,
   Divider,
-} from "@mui/material";
-import { Edit, Delete } from "@mui/icons-material";
+} from '@mui/material';
+import { Edit, Delete } from '@mui/icons-material';
 import {
   MealPlanWithTemplate,
   MealType,
   DayOfWeek,
   MealPlanItem,
   MealItem,
-} from "@/types/meal-plan";
-import { getUnitForm } from "@/lib/food-items-utils";
-import { responsiveDialogStyle } from "@/lib/theme";
-import { DialogTitle } from "@/components/ui";
-import MealEditor from "@/components/MealEditor";
+} from '@/types/meal-plan';
+import { getUnitForm } from '@/lib/food-items-utils';
+import { responsiveDialogStyle } from '@/lib/theme';
+import { DialogTitle } from '@/components/ui';
+import MealEditor from '@/components/MealEditor';
 
 const recipeLinkSx = {
-  color: "primary.main",
-  cursor: "pointer",
-  textDecoration: "underline",
-  textDecorationColor: "transparent",
-  transition: "text-decoration-color 0.2s",
-  "&:hover": {
-    textDecorationColor: "currentcolor",
+  color: 'primary.main',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textDecorationColor: 'transparent',
+  transition: 'text-decoration-color 0.2s',
+  '&:hover': {
+    textDecorationColor: 'currentcolor',
   },
 } as const;
 
@@ -93,10 +93,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
     }
   };
 
-  const updateMealPlanItem = (
-    updatedMealPlan: MealPlanWithTemplate,
-    skipValidation?: boolean
-  ) => {
+  const updateMealPlanItem = (updatedMealPlan: MealPlanWithTemplate, skipValidation?: boolean) => {
     onMealPlanChange(updatedMealPlan);
     if (!skipValidation) {
       const validation = validateMealPlan(updatedMealPlan.items);
@@ -105,38 +102,30 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      sx={responsiveDialogStyle}
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth sx={responsiveDialogStyle}>
       <DialogTitle
         onClose={onClose}
         actions={
           editMode ? (
             <Box
               sx={{
-                display: { xs: "none", sm: "flex" },
+                display: { xs: 'none', sm: 'flex' },
                 gap: 1,
-                alignItems: "center",
+                alignItems: 'center',
               }}
             >
-              <Button onClick={onCancelEdit} size="small" sx={{ minWidth: "auto" }}>
+              <Button onClick={onCancelEdit} size="small" sx={{ minWidth: 'auto' }}>
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveClick}
-                variant={
-                  mealPlanValidationErrors.length > 0 ? "outlined" : "contained"
-                }
+                variant={mealPlanValidationErrors.length > 0 ? 'outlined' : 'contained'}
                 size="small"
                 sx={{
-                  minWidth: "auto",
+                  minWidth: 'auto',
                   ...(mealPlanValidationErrors.length > 0 && {
-                    color: "text.secondary",
-                    borderColor: "text.secondary",
+                    color: 'text.secondary',
+                    borderColor: 'text.secondary',
                   }),
                 }}
               >
@@ -150,116 +139,93 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
           )
         }
       >
-        <Typography variant="h6">
-          {selectedMealPlan?.name || "This Meal Plan"}
-        </Typography>
+        <Typography variant="h6">{selectedMealPlan?.name || 'This Meal Plan'}</Typography>
       </DialogTitle>
       <DialogContent>
         {selectedMealPlan && (
           <Box sx={{ mt: 2 }}>
             {editMode ? (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="h6" gutterBottom>
                   Edit Meal Plan Items
                 </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
-                  Add food items, recipes, or ingredient groups to each meal.
-                  Each meal can contain any combination of these types.
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Add food items, recipes, or ingredient groups to each meal. Each meal can contain
+                  any combination of these types.
                 </Typography>
 
                 {/* Validation Errors Display */}
-                {showValidationErrors &&
-                  mealPlanValidationErrors.length > 0 && (
-                    <Alert
-                      severity="warning"
-                      sx={{ mb: 2 }}
-                      onClose={() => onShowValidationErrors(false)}
-                    >
-                      <Typography variant="subtitle2" gutterBottom>
-                        Please fix the following issues before saving:
-                      </Typography>
-                      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
-                        {mealPlanValidationErrors.map((error, index) => (
-                          <Typography
-                            key={index}
-                            component="li"
-                            variant="body2"
-                            sx={{ mb: 0.5 }}
-                          >
-                            {error}
-                          </Typography>
-                        ))}
-                      </Box>
-                    </Alert>
-                  )}
+                {showValidationErrors && mealPlanValidationErrors.length > 0 && (
+                  <Alert
+                    severity="warning"
+                    sx={{ mb: 2 }}
+                    onClose={() => onShowValidationErrors(false)}
+                  >
+                    <Typography variant="subtitle2" gutterBottom>
+                      Please fix the following issues before saving:
+                    </Typography>
+                    <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                      {mealPlanValidationErrors.map((error, index) => (
+                        <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
+                          {error}
+                        </Typography>
+                      ))}
+                    </Box>
+                  </Alert>
+                )}
 
                 {/* Weekly Staples Section - Editable */}
                 {(() => {
                   const staplesItems = selectedMealPlan.items.filter(
-                    (item) => item.mealType === "staples"
+                    (item) => item.mealType === 'staples'
                   );
-                  const staples =
-                    staplesItems.length > 0 ? staplesItems[0].items : [];
+                  const staples = staplesItems.length > 0 ? staplesItems[0].items : [];
 
                   return (
                     <Paper
                       elevation={1}
                       sx={{
                         mb: 3,
-                        border: "1px solid",
-                        borderColor: "primary.main",
+                        border: '1px solid',
+                        borderColor: 'primary.main',
                         borderRadius: 2,
-                        overflow: "hidden",
+                        overflow: 'hidden',
                       }}
                     >
                       <Box
                         sx={{
                           p: 2,
-                          backgroundColor: "primary.main",
-                          color: "primary.contrastText",
-                          borderBottom: "1px solid",
-                          borderColor: "divider",
+                          backgroundColor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
                         }}
                       >
-                        <Typography
-                          variant="h6"
-                          sx={{ fontWeight: "bold", textAlign: "center" }}
-                        >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
                           Weekly Staples
                         </Typography>
                       </Box>
 
                       <Box sx={{ p: 3 }}>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 2 }}
-                        >
-                          Add, edit, or remove staples for this specific meal
-                          plan.
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Add, edit, or remove staples for this specific meal plan.
                         </Typography>
                         <MealEditor
                           mealItems={staples}
                           onChange={(newStaples: MealItem[]) => {
                             const updatedMealPlan = { ...selectedMealPlan };
-                            const existingStaplesIndex =
-                              updatedMealPlan.items.findIndex(
-                                (item) => item.mealType === "staples"
-                              );
+                            const existingStaplesIndex = updatedMealPlan.items.findIndex(
+                              (item) => item.mealType === 'staples'
+                            );
 
                             if (existingStaplesIndex !== -1) {
-                              updatedMealPlan.items[existingStaplesIndex].items =
-                                newStaples;
+                              updatedMealPlan.items[existingStaplesIndex].items = newStaples;
                             } else {
                               updatedMealPlan.items.push({
                                 _id: `temp-${Date.now()}`,
                                 mealPlanId: selectedMealPlan._id,
-                                dayOfWeek: "saturday",
-                                mealType: "staples",
+                                dayOfWeek: 'saturday',
+                                mealType: 'staples',
                                 items: newStaples,
                               });
                             }
@@ -276,21 +242,14 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                 {/* Edit meals by day */}
                 {getDaysInOrder().map((dayOfWeek) => {
                   const dayItems = selectedMealPlan.items.filter(
-                    (item) =>
-                      item.dayOfWeek === dayOfWeek &&
-                      item.mealType !== "staples"
+                    (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                   );
-                  const meals = ["breakfast", "lunch", "dinner"] as MealType[];
+                  const meals = ['breakfast', 'lunch', 'dinner'] as MealType[];
 
                   const dayMeals = meals
-                    .filter(
-                      (mealType) =>
-                        selectedMealPlan.template.meals[mealType]
-                    )
+                    .filter((mealType) => selectedMealPlan.template.meals[mealType])
                     .map((mealType) => {
-                      const mealPlanItem = dayItems.find(
-                        (item) => item.mealType === mealType
-                      );
+                      const mealPlanItem = dayItems.find((item) => item.mealType === mealType);
 
                       return {
                         mealType,
@@ -305,25 +264,22 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                       elevation={1}
                       sx={{
                         mb: 3,
-                        border: "1px solid",
-                        borderColor: "divider",
+                        border: '1px solid',
+                        borderColor: 'divider',
                         borderRadius: 2,
-                        overflow: "hidden",
+                        overflow: 'hidden',
                       }}
                     >
                       <Box
                         sx={{
                           p: 2,
-                          backgroundColor: "primary.main",
-                          color: "primary.contrastText",
-                          borderBottom: "1px solid",
-                          borderColor: "divider",
+                          backgroundColor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
                         }}
                       >
-                        <Typography
-                          variant="h6"
-                          sx={{ fontWeight: "bold", textAlign: "center" }}
-                        >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
                           {getDateForDay(dayOfWeek)}
                         </Typography>
                       </Box>
@@ -331,30 +287,26 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                       <Box sx={{ p: 3 }}>
                         {dayMeals.map((meal, mealIndex) => {
                           const hasItems = (meal.items?.length ?? 0) > 0;
-                          const isSkipped =
-                            !hasItems && (meal.planItem?.skipped ?? false);
-                          const skipReason = !hasItems
-                            ? (meal.planItem?.skipReason ?? "")
-                            : "";
+                          const isSkipped = !hasItems && (meal.planItem?.skipped ?? false);
+                          const skipReason = !hasItems ? (meal.planItem?.skipReason ?? '') : '';
 
                           return (
                             <Box
                               key={meal.mealType}
                               sx={{
-                                mb:
-                                  mealIndex === dayMeals.length - 1 ? 0 : 3,
+                                mb: mealIndex === dayMeals.length - 1 ? 0 : 3,
                               }}
                             >
                               <Typography
                                 variant="subtitle1"
                                 sx={{
                                   mb: 2,
-                                  fontWeight: "bold",
-                                  color: "text.primary",
-                                  borderBottom: "2px solid",
-                                  borderColor: "primary.light",
+                                  fontWeight: 'bold',
+                                  color: 'text.primary',
+                                  borderBottom: '2px solid',
+                                  borderColor: 'primary.light',
                                   pb: 0.5,
-                                  display: "inline-block",
+                                  display: 'inline-block',
                                 }}
                               >
                                 {getMealTypeName(meal.mealType)}
@@ -363,17 +315,17 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                               {!hasItems && (
                                 <Box
                                   sx={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "flex-start",
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
                                     gap: 1,
                                     mb: 1.5,
                                   }}
                                 >
                                   <Box
                                     sx={{
-                                      display: "flex",
-                                      alignItems: "center",
+                                      display: 'flex',
+                                      alignItems: 'center',
                                       gap: 1,
                                     }}
                                   >
@@ -385,48 +337,37 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                         const updatedMealPlan = {
                                           ...selectedMealPlan,
                                         };
-                                        const existingIndex =
-                                          updatedMealPlan.items.findIndex(
-                                            (item) =>
-                                              item.dayOfWeek === dayOfWeek &&
-                                              item.mealType === meal.mealType
-                                          );
+                                        const existingIndex = updatedMealPlan.items.findIndex(
+                                          (item) =>
+                                            item.dayOfWeek === dayOfWeek &&
+                                            item.mealType === meal.mealType
+                                        );
 
                                         if (existingIndex !== -1) {
-                                          updatedMealPlan.items[existingIndex] =
-                                            {
-                                              ...updatedMealPlan.items[
-                                                existingIndex
-                                              ],
-                                              skipped: e.target.checked,
-                                              skipReason: e.target.checked
-                                                ? updatedMealPlan.items[
-                                                    existingIndex
-                                                  ].skipReason || ""
-                                                : undefined,
-                                            };
+                                          updatedMealPlan.items[existingIndex] = {
+                                            ...updatedMealPlan.items[existingIndex],
+                                            skipped: e.target.checked,
+                                            skipReason: e.target.checked
+                                              ? updatedMealPlan.items[existingIndex].skipReason ||
+                                                ''
+                                              : undefined,
+                                          };
                                         } else {
                                           updatedMealPlan.items.push({
                                             _id: `temp-${Date.now()}`,
                                             mealPlanId: selectedMealPlan._id,
                                             dayOfWeek: dayOfWeek as DayOfWeek,
-                                            mealType:
-                                              meal.mealType as MealType,
+                                            mealType: meal.mealType as MealType,
                                             items: [],
                                             skipped: e.target.checked,
-                                            skipReason: e.target.checked
-                                              ? ""
-                                              : undefined,
+                                            skipReason: e.target.checked ? '' : undefined,
                                           });
                                         }
 
                                         updateMealPlanItem(updatedMealPlan);
                                       }}
                                     />
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                    >
+                                    <Typography variant="body2" color="text.secondary">
                                       Skip this meal
                                     </Typography>
                                   </Box>
@@ -442,39 +383,31 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                         const updatedMealPlan = {
                                           ...selectedMealPlan,
                                         };
-                                        const existingIndex =
-                                          updatedMealPlan.items.findIndex(
-                                            (item) =>
-                                              item.dayOfWeek === dayOfWeek &&
-                                              item.mealType === meal.mealType
-                                          );
+                                        const existingIndex = updatedMealPlan.items.findIndex(
+                                          (item) =>
+                                            item.dayOfWeek === dayOfWeek &&
+                                            item.mealType === meal.mealType
+                                        );
 
                                         if (existingIndex !== -1) {
-                                          updatedMealPlan.items[existingIndex] =
-                                            {
-                                              ...updatedMealPlan.items[
-                                                existingIndex
-                                              ],
-                                              skipped: true,
-                                              skipReason: e.target.value,
-                                            };
+                                          updatedMealPlan.items[existingIndex] = {
+                                            ...updatedMealPlan.items[existingIndex],
+                                            skipped: true,
+                                            skipReason: e.target.value,
+                                          };
                                         } else {
                                           updatedMealPlan.items.push({
                                             _id: `temp-${Date.now()}`,
                                             mealPlanId: selectedMealPlan._id,
                                             dayOfWeek: dayOfWeek as DayOfWeek,
-                                            mealType:
-                                              meal.mealType as MealType,
+                                            mealType: meal.mealType as MealType,
                                             items: [],
                                             skipped: true,
                                             skipReason: e.target.value,
                                           });
                                         }
 
-                                        updateMealPlanItem(
-                                          updatedMealPlan,
-                                          true
-                                        );
+                                        updateMealPlanItem(updatedMealPlan, true);
                                       }}
                                     />
                                   )}
@@ -497,12 +430,8 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                       );
 
                                     if (existingMealPlanItemIndex !== -1) {
-                                      updatedMealPlan.items[
-                                        existingMealPlanItemIndex
-                                      ] = {
-                                        ...updatedMealPlan.items[
-                                          existingMealPlanItemIndex
-                                        ],
+                                      updatedMealPlan.items[existingMealPlanItemIndex] = {
+                                        ...updatedMealPlan.items[existingMealPlanItemIndex],
                                         items: newItems,
                                       };
                                     } else {
@@ -529,15 +458,13 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                 })}
               </Box>
             ) : (
-              <Box
-                sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-              >
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Divider />
 
                 {/* Weekly Staples Section - View */}
                 {(() => {
                   const staplesItems = selectedMealPlan.items.filter(
-                    (item) => item.mealType === "staples"
+                    (item) => item.mealType === 'staples'
                   );
                   if (staplesItems.length > 0) {
                     return (
@@ -545,90 +472,73 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                         elevation={1}
                         sx={{
                           mb: 3,
-                          border: "1px solid",
-                          borderColor: "primary.main",
+                          border: '1px solid',
+                          borderColor: 'primary.main',
                           borderRadius: 2,
-                          overflow: "hidden",
+                          overflow: 'hidden',
                         }}
                       >
                         <Box
                           sx={{
                             p: 2,
-                            backgroundColor: "primary.main",
-                            color: "primary.contrastText",
-                            borderBottom: "1px solid",
-                            borderColor: "divider",
+                            backgroundColor: 'primary.main',
+                            color: 'primary.contrastText',
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
                           }}
                         >
-                          <Typography
-                            variant="h6"
-                            sx={{ fontWeight: "bold", textAlign: "center" }}
-                          >
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
                             Weekly Staples
                           </Typography>
                         </Box>
 
                         <Box sx={{ p: 3 }}>
                           {staplesItems[0].items.map((staple, index) => {
-                            if (staple.type === "ingredientGroup") {
+                            if (staple.type === 'ingredientGroup') {
                               return (
                                 <Box key={index} sx={{ mb: 1 }}>
                                   {staple.ingredients &&
-                                    staple.ingredients.map(
-                                      (group, groupIndex) => (
-                                        <Box
-                                          key={groupIndex}
-                                          sx={{ mb: 1 }}
-                                        >
-                                          {group.title && (
+                                    staple.ingredients.map((group, groupIndex) => (
+                                      <Box key={groupIndex} sx={{ mb: 1 }}>
+                                        {group.title && (
+                                          <Typography
+                                            variant="body2"
+                                            sx={{
+                                              fontWeight: 'bold',
+                                              mb: 0.5,
+                                            }}
+                                          >
+                                            {group.title}:
+                                          </Typography>
+                                        )}
+                                        <Box sx={{ pl: 2 }}>
+                                          {group.ingredients.map((ingredient, ingIndex) => (
                                             <Typography
+                                              key={ingIndex}
                                               variant="body2"
-                                              sx={{
-                                                fontWeight: "bold",
-                                                mb: 0.5,
-                                              }}
+                                              sx={{ mb: 0.5 }}
                                             >
-                                              {group.title}:
+                                              &bull; {ingredient.quantity}{' '}
+                                              {ingredient.type === 'foodItem' &&
+                                              ingredient.unit &&
+                                              ingredient.unit !== 'each'
+                                                ? getUnitForm(
+                                                    ingredient.unit,
+                                                    ingredient.quantity
+                                                  ) + ' '
+                                                : ''}
+                                              {ingredient.name || 'Unknown'}
                                             </Typography>
-                                          )}
-                                          <Box sx={{ pl: 2 }}>
-                                            {group.ingredients.map(
-                                              (ingredient, ingIndex) => (
-                                                <Typography
-                                                  key={ingIndex}
-                                                  variant="body2"
-                                                  sx={{ mb: 0.5 }}
-                                                >
-                                                  &bull;{" "}
-                                                  {ingredient.quantity}{" "}
-                                                  {ingredient.type ===
-                                                    "foodItem" &&
-                                                  ingredient.unit &&
-                                                  ingredient.unit !== "each"
-                                                    ? getUnitForm(
-                                                        ingredient.unit,
-                                                        ingredient.quantity
-                                                      ) + " "
-                                                    : ""}
-                                                  {ingredient.name ||
-                                                    "Unknown"}
-                                                </Typography>
-                                              )
-                                            )}
-                                          </Box>
+                                          ))}
                                         </Box>
-                                      )
-                                    )}
+                                      </Box>
+                                    ))}
                                 </Box>
                               );
-                            } else if (staple.type === "recipe") {
+                            } else if (staple.type === 'recipe') {
                               return (
-                                <Typography
-                                  key={index}
-                                  variant="body2"
-                                  sx={{ mb: 0.5 }}
-                                >
-                                  &bull;{" "}
+                                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                  &bull;{' '}
                                   <Box
                                     component="a"
                                     href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${staple.id}`}
@@ -639,10 +549,8 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     {staple.name}
                                   </Box>
                                   {staple.quantity && (
-                                    <span
-                                      style={{ color: "text.secondary" }}
-                                    >
-                                      {" "}
+                                    <span style={{ color: 'text.secondary' }}>
+                                      {' '}
                                       ({staple.quantity}x)
                                     </span>
                                   )}
@@ -650,27 +558,15 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                               );
                             } else {
                               return (
-                                <Typography
-                                  key={index}
-                                  variant="body2"
-                                  sx={{ mb: 0.5 }}
-                                >
+                                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
                                   &bull; {staple.name}
-                                  {staple.type === "foodItem" &&
-                                    staple.quantity &&
-                                    staple.unit && (
-                                      <span
-                                        style={{ color: "text.secondary" }}
-                                      >
-                                        {" "}
-                                        ({staple.quantity}{" "}
-                                        {getUnitForm(
-                                          staple.unit,
-                                          staple.quantity
-                                        )}
-                                        )
-                                      </span>
-                                    )}
+                                  {staple.type === 'foodItem' && staple.quantity && staple.unit && (
+                                    <span style={{ color: 'text.secondary' }}>
+                                      {' '}
+                                      ({staple.quantity} {getUnitForm(staple.unit, staple.quantity)}
+                                      )
+                                    </span>
+                                  )}
                                 </Typography>
                               );
                             }
@@ -685,9 +581,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                 {/* Show meals by day */}
                 {getDaysInOrder().map((dayOfWeek) => {
                   const dayItems = selectedMealPlan.items.filter(
-                    (item) =>
-                      item.dayOfWeek === dayOfWeek &&
-                      item.mealType !== "staples"
+                    (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                   );
 
                   return (
@@ -696,46 +590,34 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                       elevation={1}
                       sx={{
                         mb: 3,
-                        border: "1px solid",
-                        borderColor: "divider",
+                        border: '1px solid',
+                        borderColor: 'divider',
                         borderRadius: 2,
-                        overflow: "hidden",
+                        overflow: 'hidden',
                       }}
                     >
                       <Box
                         sx={{
                           p: 2,
-                          backgroundColor: "primary.main",
-                          color: "primary.contrastText",
-                          borderBottom: "1px solid",
-                          borderColor: "divider",
+                          backgroundColor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
                         }}
                       >
-                        <Typography
-                          variant="h6"
-                          sx={{ fontWeight: "bold", textAlign: "center" }}
-                        >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
                           {getDateForDay(dayOfWeek)}
                         </Typography>
                       </Box>
 
                       <Box sx={{ p: 3 }}>
-                        {(
-                          ["breakfast", "lunch", "dinner"] as MealType[]
-                        )
-                          .filter(
-                            (mealType) =>
-                              selectedMealPlan.template.meals[mealType]
-                          )
+                        {(['breakfast', 'lunch', 'dinner'] as MealType[])
+                          .filter((mealType) => selectedMealPlan.template.meals[mealType])
                           .map((mealType) => {
-                            const mealItems = dayItems.filter(
-                              (item) => item.mealType === mealType
-                            );
+                            const mealItems = dayItems.filter((item) => item.mealType === mealType);
                             const mealPlanItem = mealItems[0];
-                            const isSkipped =
-                              mealPlanItem?.skipped ?? false;
-                            const skipReason =
-                              mealPlanItem?.skipReason ?? "";
+                            const isSkipped = mealPlanItem?.skipped ?? false;
+                            const skipReason = mealPlanItem?.skipReason ?? '';
 
                             return (
                               <Box key={mealType} sx={{ mb: 3 }}>
@@ -743,12 +625,12 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                   variant="subtitle1"
                                   sx={{
                                     mb: 2,
-                                    fontWeight: "bold",
-                                    color: "text.primary",
-                                    borderBottom: "2px solid",
-                                    borderColor: "primary.light",
+                                    fontWeight: 'bold',
+                                    color: 'text.primary',
+                                    borderBottom: '2px solid',
+                                    borderColor: 'primary.light',
                                     pb: 0.5,
-                                    display: "inline-block",
+                                    display: 'inline-block',
                                   }}
                                 >
                                   {getMealTypeName(mealType)}
@@ -759,162 +641,126 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     color="text.secondary"
                                     sx={{
                                       pl: 2,
-                                      fontStyle: "italic",
+                                      fontStyle: 'italic',
                                     }}
                                   >
                                     Skipped
-                                    {skipReason
-                                      ? `: ${skipReason}`
-                                      : ""}
+                                    {skipReason ? `: ${skipReason}` : ''}
                                   </Typography>
                                 ) : mealItems.length > 0 ? (
                                   <Box sx={{ pl: 2 }}>
                                     {mealItems.map((item, index) => (
                                       <Box key={index}>
-                                        {item.items.map(
-                                          (mealItem, mealIndex) => {
-                                            if (
-                                              mealItem.type ===
-                                              "ingredientGroup"
-                                            ) {
-                                              return (
-                                                <Box
-                                                  key={mealIndex}
-                                                  sx={{ mb: 1 }}
-                                                >
-                                                  {mealItem.ingredients &&
-                                                    mealItem.ingredients.map(
-                                                      (
-                                                        group,
-                                                        groupIndex
-                                                      ) => (
-                                                        <Box
-                                                          key={groupIndex}
-                                                          sx={{ mb: 1 }}
+                                        {item.items.map((mealItem, mealIndex) => {
+                                          if (mealItem.type === 'ingredientGroup') {
+                                            return (
+                                              <Box key={mealIndex} sx={{ mb: 1 }}>
+                                                {mealItem.ingredients &&
+                                                  mealItem.ingredients.map((group, groupIndex) => (
+                                                    <Box key={groupIndex} sx={{ mb: 1 }}>
+                                                      {group.title && (
+                                                        <Typography
+                                                          variant="body2"
+                                                          sx={{
+                                                            fontWeight: 'bold',
+                                                            mb: 0.5,
+                                                          }}
                                                         >
-                                                          {group.title && (
+                                                          {group.title}:
+                                                        </Typography>
+                                                      )}
+                                                      <Box sx={{ pl: 2 }}>
+                                                        {group.ingredients.map(
+                                                          (ingredient, ingIndex) => (
                                                             <Typography
+                                                              key={ingIndex}
                                                               variant="body2"
                                                               sx={{
-                                                                fontWeight:
-                                                                  "bold",
                                                                 mb: 0.5,
                                                               }}
                                                             >
-                                                              {group.title}:
-                                                            </Typography>
-                                                          )}
-                                                          <Box
-                                                            sx={{ pl: 2 }}
-                                                          >
-                                                            {group.ingredients.map(
-                                                              (
-                                                                ingredient,
-                                                                ingIndex
-                                                              ) => (
-                                                                <Typography
-                                                                  key={
-                                                                    ingIndex
-                                                                  }
-                                                                  variant="body2"
-                                                                  sx={{
-                                                                    mb: 0.5,
-                                                                  }}
-                                                                >
-                                                                  &bull;{" "}
-                                                                  {
+                                                              &bull; {ingredient.quantity}{' '}
+                                                              {ingredient.type === 'foodItem' &&
+                                                              ingredient.unit &&
+                                                              ingredient.unit !== 'each'
+                                                                ? getUnitForm(
+                                                                    ingredient.unit,
                                                                     ingredient.quantity
-                                                                  }{" "}
-                                                                  {ingredient.type ===
-                                                                    "foodItem" &&
-                                                                  ingredient.unit &&
-                                                                  ingredient.unit !==
-                                                                    "each"
-                                                                    ? getUnitForm(
-                                                                        ingredient.unit,
-                                                                        ingredient.quantity
-                                                                      ) +
-                                                                      " "
-                                                                    : ""}
-                                                                  {ingredient.name ||
-                                                                    "Unknown"}
-                                                                </Typography>
-                                                              )
-                                                            )}
-                                                          </Box>
-                                                        </Box>
-                                                      )
-                                                    )}
-                                                </Box>
-                                              );
-                                            } else if (mealItem.type === "recipe") {
-                                              return (
-                                                <Typography
-                                                  key={mealIndex}
-                                                  variant="body2"
-                                                  sx={{ mb: 0.5 }}
+                                                                  ) + ' '
+                                                                : ''}
+                                                              {ingredient.name || 'Unknown'}
+                                                            </Typography>
+                                                          )
+                                                        )}
+                                                      </Box>
+                                                    </Box>
+                                                  ))}
+                                              </Box>
+                                            );
+                                          } else if (mealItem.type === 'recipe') {
+                                            return (
+                                              <Typography
+                                                key={mealIndex}
+                                                variant="body2"
+                                                sx={{ mb: 0.5 }}
+                                              >
+                                                &bull;{' '}
+                                                <Box
+                                                  component="a"
+                                                  href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${mealItem.id}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  sx={recipeLinkSx}
                                                 >
-                                                  &bull;{" "}
-                                                  <Box
-                                                    component="a"
-                                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${mealItem.id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    sx={recipeLinkSx}
+                                                  {mealItem.name}
+                                                </Box>
+                                                {mealItem.quantity && (
+                                                  <span
+                                                    style={{
+                                                      color: 'text.secondary',
+                                                    }}
                                                   >
-                                                    {mealItem.name}
-                                                  </Box>
-                                                  {mealItem.quantity && (
+                                                    {' '}
+                                                    ({mealItem.quantity}x)
+                                                  </span>
+                                                )}
+                                              </Typography>
+                                            );
+                                          } else {
+                                            return (
+                                              <Typography
+                                                key={mealIndex}
+                                                variant="body2"
+                                                sx={{ mb: 0.5 }}
+                                              >
+                                                &bull; {mealItem.name}
+                                                {mealItem.type === 'foodItem' &&
+                                                  mealItem.quantity &&
+                                                  mealItem.unit && (
                                                     <span
                                                       style={{
-                                                        color:
-                                                          "text.secondary",
+                                                        color: 'text.secondary',
                                                       }}
                                                     >
-                                                      {" "}
-                                                      ({mealItem.quantity}x)
+                                                      {' '}
+                                                      ({mealItem.quantity}{' '}
+                                                      {getUnitForm(
+                                                        mealItem.unit,
+                                                        mealItem.quantity
+                                                      )}
+                                                      )
                                                     </span>
                                                   )}
-                                                </Typography>
-                                              );
-                                            } else {
-                                              return (
-                                                <Typography
-                                                  key={mealIndex}
-                                                  variant="body2"
-                                                  sx={{ mb: 0.5 }}
-                                                >
-                                                  &bull; {mealItem.name}
-                                                  {mealItem.type ===
-                                                    "foodItem" &&
-                                                    mealItem.quantity &&
-                                                    mealItem.unit && (
-                                                      <span
-                                                        style={{
-                                                          color:
-                                                            "text.secondary",
-                                                        }}
-                                                      >
-                                                        {" "}
-                                                        ({mealItem.quantity}{" "}
-                                                        {getUnitForm(
-                                                          mealItem.unit,
-                                                          mealItem.quantity
-                                                        )}
-                                                        )
-                                                      </span>
-                                                    )}
-                                                </Typography>
-                                              );
-                                            }
+                                              </Typography>
+                                            );
                                           }
-                                        )}
+                                        })}
                                         {item.notes && (
                                           <Typography
                                             variant="body2"
                                             color="text.secondary"
                                             sx={{
-                                              fontStyle: "italic",
+                                              fontStyle: 'italic',
                                               ml: 2,
                                             }}
                                           >
@@ -929,7 +775,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                     variant="body2"
                                     color="text.secondary"
                                     sx={{
-                                      fontStyle: "italic",
+                                      fontStyle: 'italic',
                                       pl: 2,
                                     }}
                                   >
@@ -951,12 +797,12 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
         {editMode && (
           <Box
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column-reverse", sm: "row" },
+              display: 'flex',
+              flexDirection: { xs: 'column-reverse', sm: 'row' },
               gap: 1,
               p: 2,
-              justifyContent: { xs: "stretch", sm: "flex-start" },
-              alignItems: { xs: "stretch", sm: "center" },
+              justifyContent: { xs: 'stretch', sm: 'flex-start' },
+              alignItems: { xs: 'stretch', sm: 'center' },
             }}
           >
             <Button
@@ -965,33 +811,28 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
               variant="outlined"
               startIcon={<Delete />}
               sx={{
-                width: { xs: "100%", sm: "auto" },
-                mr: { xs: 0, sm: "auto" },
-                border: { sm: "none" },
-                "&:hover": {
-                  border: { sm: "none" },
-                  backgroundColor: { sm: "rgba(211, 47, 47, 0.04)" },
+                width: { xs: '100%', sm: 'auto' },
+                mr: { xs: 0, sm: 'auto' },
+                border: { sm: 'none' },
+                '&:hover': {
+                  border: { sm: 'none' },
+                  backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' },
                 },
               }}
             >
               Delete
             </Button>
-            <Button
-              onClick={onCancelEdit}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
+            <Button onClick={onCancelEdit} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Cancel
             </Button>
             <Button
               onClick={handleSaveClick}
-              variant={
-                mealPlanValidationErrors.length > 0 ? "outlined" : "contained"
-              }
+              variant={mealPlanValidationErrors.length > 0 ? 'outlined' : 'contained'}
               sx={{
-                width: { xs: "100%", sm: "auto" },
+                width: { xs: '100%', sm: 'auto' },
                 ...(mealPlanValidationErrors.length > 0 && {
-                  color: "text.secondary",
-                  borderColor: "text.secondary",
+                  color: 'text.secondary',
+                  borderColor: 'text.secondary',
                 }),
               }}
             >
@@ -1000,7 +841,6 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
           </Box>
         )}
       </DialogContent>
-
     </Dialog>
   );
 };

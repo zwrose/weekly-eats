@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import dynamic from "next/dynamic";
+import React from 'react';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   IconButton,
   Divider,
   Button,
-} from "@mui/material";
+} from '@mui/material';
 import {
   Edit,
   EmojiEmotions,
@@ -20,27 +20,29 @@ import {
   Delete,
   IosShare,
   RestaurantMenu,
-} from "@mui/icons-material";
-import { Chip } from "@mui/material";
-import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from "@/types/recipe";
-import { getUnitForm } from "@/lib/food-items-utils";
-import { responsiveDialogStyle } from "@/lib/theme";
-import { DialogTitle } from "@/components/ui";
-import { RecipeUserDataResponse } from "@/types/recipe-user-data";
+} from '@mui/icons-material';
+import { Chip } from '@mui/material';
+import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
+import { getUnitForm } from '@/lib/food-items-utils';
+import { responsiveDialogStyle } from '@/lib/theme';
+import { DialogTitle } from '@/components/ui';
+import { RecipeUserDataResponse } from '@/types/recipe-user-data';
 
-const RecipeIngredients = dynamic(() => import("@/components/RecipeIngredients"), { ssr: false });
-const RecipeInstructionsView = dynamic(() => import("@/components/RecipeInstructionsView"), { ssr: false });
-const RecipeTagsEditor = dynamic(() => import("@/components/RecipeTagsEditor"), { ssr: false });
-const RecipeStarRating = dynamic(() => import("@/components/RecipeStarRating"), { ssr: false });
+const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients'), { ssr: false });
+const RecipeInstructionsView = dynamic(() => import('@/components/RecipeInstructionsView'), {
+  ssr: false,
+});
+const RecipeTagsEditor = dynamic(() => import('@/components/RecipeTagsEditor'), { ssr: false });
+const RecipeStarRating = dynamic(() => import('@/components/RecipeStarRating'), { ssr: false });
 
 const recipeLinkSx = {
-  color: "primary.main",
-  cursor: "pointer",
-  textDecoration: "underline",
-  textDecorationColor: "transparent",
-  transition: "text-decoration-color 0.2s",
-  "&:hover": {
-    textDecorationColor: "currentcolor",
+  color: 'primary.main',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textDecorationColor: 'transparent',
+  transition: 'text-decoration-color 0.2s',
+  '&:hover': {
+    textDecorationColor: 'currentcolor',
   },
 } as const;
 
@@ -70,9 +72,20 @@ export interface RecipeViewDialogProps {
   onRatingChange: (rating: number | undefined) => void;
   onIngredientsChange: (ingredients: RecipeIngredientList[]) => void;
   foodItemsList: FoodItemOption[];
-  onFoodItemAdded: (item: { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }) => Promise<void>;
+  onFoodItemAdded: (item: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   hasValidIngredients: (ingredients: RecipeIngredientList[]) => boolean;
-  getIngredientName: (ingredient: { type: "foodItem" | "recipe"; id: string; quantity: number; name?: string }) => string;
+  getIngredientName: (ingredient: {
+    type: 'foodItem' | 'recipe';
+    id: string;
+    quantity: number;
+    name?: string;
+  }) => string;
   accessLevel?: 'private' | 'shared-by-you' | 'shared-by-others';
 }
 
@@ -99,10 +112,17 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
   getIngredientName,
   accessLevel,
 }) => {
-  const accessLevelChipMap: Record<string, { label: string; color: 'info' | 'primary' | 'default'; icon: React.ReactElement }> = {
-    'private': { label: 'Private', color: 'default', icon: <Person fontSize="small" /> },
+  const accessLevelChipMap: Record<
+    string,
+    { label: string; color: 'info' | 'primary' | 'default'; icon: React.ReactElement }
+  > = {
+    private: { label: 'Private', color: 'default', icon: <Person fontSize="small" /> },
     'shared-by-you': { label: 'Shared by You', color: 'info', icon: <IosShare fontSize="small" /> },
-    'shared-by-others': { label: 'Shared by Others', color: 'primary', icon: <Public fontSize="small" /> },
+    'shared-by-others': {
+      label: 'Shared by Others',
+      color: 'primary',
+      icon: <Public fontSize="small" />,
+    },
   };
   return (
     <Dialog
@@ -123,11 +143,11 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
           ) : undefined
         }
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {selectedRecipe?.emoji ? (
             <Typography variant="h4">{selectedRecipe.emoji}</Typography>
           ) : (
-            <RestaurantMenu sx={{ fontSize: "2rem", color: "text.secondary" }} />
+            <RestaurantMenu sx={{ fontSize: '2rem', color: 'text.secondary' }} />
           )}
           <Typography variant="h5">{selectedRecipe?.title}</Typography>
         </Box>
@@ -137,21 +157,21 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
           <Box sx={{ pt: 2 }}>
             <Box
               sx={{
-                display: "flex",
+                display: 'flex',
                 gap: 2,
                 mb: 3,
-                flexDirection: { xs: "column", sm: "row" },
-                alignItems: { xs: "stretch", sm: "flex-start" },
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'stretch', sm: 'flex-start' },
               }}
             >
               <IconButton
                 onClick={onEmojiPickerOpen}
                 sx={{
-                  border: "1px solid #ccc",
+                  border: '1px solid #ccc',
                   width: { xs: 56, sm: 56 },
                   height: { xs: 56, sm: 56 },
-                  fontSize: "1.5rem",
-                  alignSelf: { xs: "flex-start", sm: "flex-start" },
+                  fontSize: '1.5rem',
+                  alignSelf: { xs: 'flex-start', sm: 'flex-start' },
                 }}
               >
                 {editingRecipe.emoji || <EmojiEmotions />}
@@ -176,32 +196,24 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
               </Typography>
               <Box
                 sx={{
-                  display: "flex",
+                  display: 'flex',
                   gap: 2,
-                  flexDirection: { xs: "column", sm: "row" },
+                  flexDirection: { xs: 'column', sm: 'row' },
                 }}
               >
                 <Button
-                  variant={
-                    editingRecipe.isGlobal ? "contained" : "outlined"
-                  }
-                  onClick={() =>
-                    onEditingRecipeChange({ ...editingRecipe, isGlobal: true })
-                  }
+                  variant={editingRecipe.isGlobal ? 'contained' : 'outlined'}
+                  onClick={() => onEditingRecipeChange({ ...editingRecipe, isGlobal: true })}
                   startIcon={<Public />}
-                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Global (visible to all users)
                 </Button>
                 <Button
-                  variant={
-                    editingRecipe.isGlobal ? "outlined" : "contained"
-                  }
-                  onClick={() =>
-                    onEditingRecipeChange({ ...editingRecipe, isGlobal: false })
-                  }
+                  variant={editingRecipe.isGlobal ? 'outlined' : 'contained'}
+                  onClick={() => onEditingRecipeChange({ ...editingRecipe, isGlobal: false })}
                   startIcon={<Person />}
-                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Personal (only visible to you)
                 </Button>
@@ -261,12 +273,12 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
 
             <Box
               sx={{
-                display: "flex",
-                flexDirection: { xs: "column-reverse", sm: "row" },
+                display: 'flex',
+                flexDirection: { xs: 'column-reverse', sm: 'row' },
                 gap: 1,
                 p: 2,
-                justifyContent: { xs: "stretch", sm: "flex-start" },
-                alignItems: { xs: "stretch", sm: "center" },
+                justifyContent: { xs: 'stretch', sm: 'flex-start' },
+                alignItems: { xs: 'stretch', sm: 'center' },
               }}
             >
               <Button
@@ -275,21 +287,18 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                 variant="outlined"
                 startIcon={<Delete />}
                 sx={{
-                  width: { xs: "100%", sm: "auto" },
-                  mr: { xs: 0, sm: "auto" },
-                  border: { sm: "none" },
-                  "&:hover": {
-                    border: { sm: "none" },
-                    backgroundColor: { sm: "rgba(211, 47, 47, 0.04)" },
+                  width: { xs: '100%', sm: 'auto' },
+                  mr: { xs: 0, sm: 'auto' },
+                  border: { sm: 'none' },
+                  '&:hover': {
+                    border: { sm: 'none' },
+                    backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' },
                   },
                 }}
               >
                 Delete
               </Button>
-              <Button
-                onClick={onCancelEdit}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
-              >
+              <Button onClick={onCancelEdit} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Cancel
               </Button>
               <Button
@@ -300,7 +309,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                   !editingRecipe.instructions ||
                   !hasValidIngredients(editingRecipe.ingredients || [])
                 }
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Update Recipe
               </Button>
@@ -347,21 +356,21 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
             <Divider sx={{ mb: 3 }} />
             <Box
               sx={{
-                display: "flex",
+                display: 'flex',
                 gap: 3,
-                flexDirection: { xs: "column", md: "row" },
-                minHeight: { xs: "auto", md: "40vh" },
-                maxHeight: { xs: "none", md: "60vh" },
+                flexDirection: { xs: 'column', md: 'row' },
+                minHeight: { xs: 'auto', md: '40vh' },
+                maxHeight: { xs: 'none', md: '60vh' },
               }}
             >
               {/* Ingredients Section */}
               <Box
                 sx={{
-                  flex: { xs: "none", md: "0 0 25%" },
-                  maxHeight: { xs: "none", md: "100%" },
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
+                  flex: { xs: 'none', md: '0 0 25%' },
+                  maxHeight: { xs: 'none', md: '100%' },
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
                 <Typography variant="h5" gutterBottom>
@@ -370,35 +379,25 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                 <Box
                   sx={{
                     flex: 1,
-                    overflow: "auto",
+                    overflow: 'auto',
                     pr: 1,
                   }}
                 >
                   {selectedRecipe?.ingredients.map((list, index) => (
                     <Box key={index} sx={{ mb: 2 }}>
                       {list.title && (
-                        <Typography
-                          variant="h6"
-                          sx={{ fontWeight: "bold", mb: 1 }}
-                        >
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                           {list.title}
                         </Typography>
                       )}
                       <Box component="ul" sx={{ pl: 2 }}>
                         {list.ingredients.map((ingredient, ingIndex) => (
-                          <Typography
-                            key={ingIndex}
-                            component="li"
-                            variant="body1"
-                          >
-                            {ingredient.quantity}{" "}
-                            {ingredient.unit && ingredient.unit !== "each"
-                              ? getUnitForm(
-                                  ingredient.unit,
-                                  ingredient.quantity
-                                ) + " "
-                              : ""}
-                            {ingredient.type === "recipe" ? (
+                          <Typography key={ingIndex} component="li" variant="body1">
+                            {ingredient.quantity}{' '}
+                            {ingredient.unit && ingredient.unit !== 'each'
+                              ? getUnitForm(ingredient.unit, ingredient.quantity) + ' '
+                              : ''}
+                            {ingredient.type === 'recipe' ? (
                               <Box
                                 component="a"
                                 href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${ingredient.id}`}
@@ -423,11 +422,11 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
               {/* Instructions Section */}
               <Box
                 sx={{
-                  flex: { xs: "none", md: "1 1 auto" },
-                  maxHeight: { xs: "none", md: "100%" },
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
+                  flex: { xs: 'none', md: '1 1 auto' },
+                  maxHeight: { xs: 'none', md: '100%' },
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
                 <Typography variant="h5" gutterBottom>
@@ -436,13 +435,11 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                 <Box
                   sx={{
                     flex: 1,
-                    overflow: "auto",
+                    overflow: 'auto',
                     pr: 1,
                   }}
                 >
-                  <RecipeInstructionsView
-                    instructions={selectedRecipe?.instructions || ""}
-                  />
+                  <RecipeInstructionsView instructions={selectedRecipe?.instructions || ''} />
                 </Box>
               </Box>
             </Box>

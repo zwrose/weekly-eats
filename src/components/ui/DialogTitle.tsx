@@ -9,26 +9,20 @@ interface DialogTitleProps {
   actions?: React.ReactNode; // Additional action buttons to show before the close button
 }
 
-export const DialogTitle: React.FC<DialogTitleProps> = ({ 
-  children, 
-  onClose, 
+export const DialogTitle: React.FC<DialogTitleProps> = ({
+  children,
+  onClose,
   showCloseButton = true,
-  actions
+  actions,
 }) => {
   return (
     <MuiDialogTitle>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ flex: 1 }}>
-          {children}
-        </Box>
+        <Box sx={{ flex: 1 }}>{children}</Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {actions}
           {showCloseButton && onClose && (
-            <IconButton 
-              onClick={onClose} 
-              color="inherit" 
-              aria-label="Close"
-            >
+            <IconButton onClick={onClose} color="inherit" aria-label="Close">
               <Close />
             </IconButton>
           )}

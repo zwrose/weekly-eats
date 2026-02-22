@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -17,14 +17,14 @@ import {
   Dialog,
   DialogContent,
   DialogContentText,
-  Alert
+  Alert,
 } from '@mui/material';
 import {
   CheckCircle,
   Cancel,
   AdminPanelSettings,
   Person,
-  HourglassEmpty
+  HourglassEmpty,
 } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
@@ -60,12 +60,12 @@ export default function UserManagementPage() {
   const pendingPagination = useSearchPagination({
     data: pendingUsers,
     itemsPerPage: 5,
-    searchFields: ['name', 'email']
+    searchFields: ['name', 'email'],
   });
   const approvedPagination = useSearchPagination({
     data: approvedUsers,
     itemsPerPage: 25,
-    searchFields: ['name', 'email']
+    searchFields: ['name', 'email'],
   });
 
   const fetchPendingUsers = async () => {
@@ -157,7 +157,10 @@ export default function UserManagementPage() {
     }
   };
 
-  const openConfirmDialog = (user: User, action: 'grant' | 'revoke' | 'approve' | 'deny' | 'revoke-access') => {
+  const openConfirmDialog = (
+    user: User,
+    action: 'grant' | 'revoke' | 'approve' | 'deny' | 'revoke-access'
+  ) => {
     confirmDialog.openDialog({ user, action });
   };
 
@@ -179,29 +182,39 @@ export default function UserManagementPage() {
     } else {
       await handleToggleAdmin(user._id, user.isAdmin);
     }
-    
+
     closeConfirmDialog();
   };
 
   const isCurrentUser = (userId: string) => {
-    return session?.user?.email && [...pendingUsers, ...approvedUsers].find(u => u._id === userId)?.email === session.user.email;
+    return (
+      session?.user?.email &&
+      [...pendingUsers, ...approvedUsers].find((u) => u._id === userId)?.email ===
+        session.user.email
+    );
   };
 
   const getDialogTitle = () => {
     switch (confirmDialog.data?.action) {
-      case 'grant': return 'Grant Admin Access';
-      case 'revoke': return 'Revoke Admin Access';
-      case 'approve': return 'Approve User';
-      case 'deny': return 'Deny User';
-      case 'revoke-access': return 'Revoke Access';
-      default: return 'Confirm Action';
+      case 'grant':
+        return 'Grant Admin Access';
+      case 'revoke':
+        return 'Revoke Admin Access';
+      case 'approve':
+        return 'Approve User';
+      case 'deny':
+        return 'Deny User';
+      case 'revoke-access':
+        return 'Revoke Access';
+      default:
+        return 'Confirm Action';
     }
   };
 
   const getDialogContent = () => {
     const data = confirmDialog.data;
     if (!data) return '';
-    
+
     const user = data.user;
     if (!user) return '';
 
@@ -227,7 +240,7 @@ export default function UserManagementPage() {
         <Typography variant="h4" component="h1" gutterBottom>
           Manage Users
         </Typography>
-        
+
         <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
           {/* Search Bar */}
           <Box sx={{ mb: 4 }}>
@@ -240,21 +253,27 @@ export default function UserManagementPage() {
 
           {/* Pending Users Section */}
           <Box sx={{ mb: 4 }}>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between', 
-              alignItems: { xs: 'flex-start', sm: 'center' }, 
-              gap: { xs: 1, sm: 0 },
-              mb: 2 
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 1, sm: 0 },
+                mb: 2,
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 <HourglassEmpty sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Users Pending Approval ({pendingPagination.searchTerm ? `${pendingPagination.totalItems}/${pendingUsers?.length || 0}` : pendingUsers?.length || 0})
+                Users Pending Approval (
+                {pendingPagination.searchTerm
+                  ? `${pendingPagination.totalItems}/${pendingUsers?.length || 0}`
+                  : pendingUsers?.length || 0}
+                )
               </Typography>
               {pendingLoading && <CircularProgress size={20} />}
             </Box>
-            
+
             {pendingPagination.filteredData.length > 0 ? (
               <>
                 {/* Desktop Table View */}
@@ -266,7 +285,9 @@ export default function UserManagementPage() {
                           <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>Registration Date</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="center">
+                            Actions
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -320,10 +341,17 @@ export default function UserManagementPage() {
                         boxShadow: 2,
                         border: '1px solid',
                         borderColor: 'divider',
-                        borderRadius: 2
+                        borderRadius: 2,
                       }}
                     >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          mb: 2,
+                        }}
+                      >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <Person color="action" fontSize="small" />
                           <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
@@ -337,7 +365,9 @@ export default function UserManagementPage() {
                           Registration Date: Recent
                         </Typography>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Box
+                        sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}
+                      >
                         <Button
                           variant="outlined"
                           size="small"
@@ -364,7 +394,7 @@ export default function UserManagementPage() {
                     </Paper>
                   ))}
                 </Box>
-                
+
                 {pendingPagination.filteredData.length > 5 && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <Pagination
@@ -377,28 +407,36 @@ export default function UserManagementPage() {
               </>
             ) : (
               <Alert severity="info">
-                {pendingPagination.searchTerm ? 'No pending users match your search criteria' : 'No users pending approval'}
+                {pendingPagination.searchTerm
+                  ? 'No pending users match your search criteria'
+                  : 'No users pending approval'}
               </Alert>
             )}
           </Box>
 
           {/* Approved Users Section */}
           <Box>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between', 
-              alignItems: { xs: 'flex-start', sm: 'center' }, 
-              gap: { xs: 1, sm: 0 },
-              mb: 2 
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 1, sm: 0 },
+                mb: 2,
+              }}
+            >
               <Typography variant="h6" gutterBottom>
                 <AdminPanelSettings sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Active Users ({approvedPagination.searchTerm ? `${approvedPagination.totalItems}/${approvedUsers?.length || 0}` : approvedUsers?.length || 0})
+                Active Users (
+                {approvedPagination.searchTerm
+                  ? `${approvedPagination.totalItems}/${approvedUsers?.length || 0}`
+                  : approvedUsers?.length || 0}
+                )
               </Typography>
               {loading && <CircularProgress size={20} />}
             </Box>
-            
+
             {approvedPagination.filteredData.length > 0 ? (
               <>
                 {/* Desktop Table View */}
@@ -410,7 +448,9 @@ export default function UserManagementPage() {
                           <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>User Type</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="center">
+                            Actions
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -491,10 +531,17 @@ export default function UserManagementPage() {
                         boxShadow: 2,
                         border: '1px solid',
                         borderColor: 'divider',
-                        borderRadius: 2
+                        borderRadius: 2,
                       }}
                     >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          mb: 2,
+                        }}
+                      >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <Person color="action" fontSize="small" />
                           <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
@@ -520,7 +567,13 @@ export default function UserManagementPage() {
                         </Box>
                       </Box>
                       {!isCurrentUser(user._id) && (
-                        <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            flexDirection: { xs: 'column', sm: 'row' },
+                          }}
+                        >
                           {user.isAdmin ? (
                             <Button
                               variant="outlined"
@@ -562,7 +615,7 @@ export default function UserManagementPage() {
                     </Paper>
                   ))}
                 </Box>
-                
+
                 {approvedPagination.filteredData.length > 25 && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <Pagination
@@ -575,30 +628,22 @@ export default function UserManagementPage() {
               </>
             ) : (
               <Alert severity="info">
-                {approvedPagination.searchTerm ? 'No approved users match your search criteria' : 'No approved users found'}
+                {approvedPagination.searchTerm
+                  ? 'No approved users match your search criteria'
+                  : 'No approved users found'}
               </Alert>
             )}
           </Box>
         </Paper>
 
         {/* Confirmation Dialog */}
-        <Dialog 
-          open={confirmDialog.open} 
-          onClose={closeConfirmDialog}
-          sx={responsiveDialogStyle}
-        >
+        <Dialog open={confirmDialog.open} onClose={closeConfirmDialog} sx={responsiveDialogStyle}>
           <DialogTitle onClose={closeConfirmDialog}>{getDialogTitle()}</DialogTitle>
           <DialogContent>
             <DialogContentText>{getDialogContent()}</DialogContentText>
             <DialogActions primaryButtonIndex={1}>
-              <Button onClick={closeConfirmDialog}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={confirmAction} 
-                color="primary" 
-                variant="contained"
-              >
+              <Button onClick={closeConfirmDialog}>Cancel</Button>
+              <Button onClick={confirmAction} color="primary" variant="contained">
                 Confirm
               </Button>
             </DialogActions>
@@ -607,4 +652,4 @@ export default function UserManagementPage() {
       </Container>
     </AuthenticatedLayout>
   );
-} 
+}
