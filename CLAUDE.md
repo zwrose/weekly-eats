@@ -8,7 +8,8 @@ Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB,
 - **Tests**: `npm test` (single run) or `npm run test:watch` (watch mode)
 - **Full validation**: `npm run check` (lint + test + build — run before pushing)
 - **Lint**: `npm run lint`
-- **CI**: GitHub Actions runs lint + test with coverage on pushes/PRs to `main`
+- **CI**: GitHub Actions runs lint + test with coverage on PRs to `main`
+- **Branch protection**: `main` is protected — all changes must go through a PR with passing CI. Never push directly to main.
 
 ## Documentation
 
@@ -178,6 +179,13 @@ PreToolUse hooks block edits to protected files:
 | `test-reviewer`     | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
 | `security-reviewer` | Auth bypass, MongoDB injection, IDOR, input validation                           |
 | `a11y-reviewer`     | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+
+## Git Workflow
+
+- **Never push directly to `main`** — branch protection requires a PR with passing CI (`test` job).
+- **Always work on a feature branch** — create a branch, make changes, open a PR, merge after CI passes.
+- **Prefer squash merges** for clean history.
+- **Clean up branches after merge** — delete remote and local branches, remove worktrees if used.
 
 ## Validation Workflow
 
