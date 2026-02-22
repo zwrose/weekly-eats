@@ -1,7 +1,6 @@
 ---
 name: review-pr
 description: Comprehensively review a pull request using specialized review agents
-disable-model-invocation: true
 ---
 
 Review a pull request by orchestrating multiple specialized agents in parallel.
@@ -34,6 +33,7 @@ Launch these agents simultaneously using the Task tool with `subagent_type`:
 4. **test-reviewer** (`superpowers:code-reviewer`) — Test quality review for any test file changes
 
 Provide each agent with:
+
 - The PR diff (full or relevant portions)
 - The list of changed files
 - The PR description for context
@@ -49,18 +49,23 @@ Combine findings into a single report organized by severity:
 ## PR Review: #<number> — <title>
 
 ### Critical Issues
+
 - [list or "None found"]
 
 ### High Severity
+
 - [list or "None found"]
 
 ### Medium Severity
+
 - [list or "None found"]
 
 ### Low Severity
+
 - [list or "None found"]
 
 ### Summary
+
 [1-2 sentence overall assessment]
 ```
 
