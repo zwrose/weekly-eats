@@ -1,7 +1,6 @@
 ---
 name: gen-test
 description: Generate tests following project conventions (Vitest + Testing Library + MSW)
-disable-model-invocation: true
 ---
 
 Generate tests for the specified file or component. Follow these project conventions exactly:
@@ -42,7 +41,7 @@ const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
 // Helper for creating mock requests
-const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body } as any);
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();

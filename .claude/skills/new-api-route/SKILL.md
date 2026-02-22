@@ -1,7 +1,6 @@
 ---
 name: new-api-route
 description: Scaffold a new Next.js API route with auth, validation, and error handling
-disable-model-invocation: true
 ---
 
 Scaffold a new API route at the specified path under `src/app/api/`. Follow these project conventions exactly:
@@ -27,7 +26,8 @@ export async function GET(request: NextRequest) {
     const db = client.db();
 
     // Always filter by userId for user-scoped data
-    const results = await db.collection('collectionName')
+    const results = await db
+      .collection('collectionName')
       .find({ userId: session.user.id })
       .sort({ updatedAt: -1 })
       .toArray();
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
 ## Checklist
 
 After scaffolding, always:
+
 1. Add domain-specific error constants to `src/lib/errors.ts` if needed
 2. Add request/response types to `src/types/` if needed
 3. Generate tests using `/gen-test`

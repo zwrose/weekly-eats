@@ -1,7 +1,6 @@
 ---
 name: check
 description: Run the full lint + test + build validation pipeline
-disable-model-invocation: true
 ---
 
 Run the full project validation pipeline before pushing:
@@ -11,6 +10,7 @@ npm run check
 ```
 
 This runs in order:
+
 1. **ESLint** with zero warnings tolerance
 2. **Vitest** with coverage reporting
 3. **Next.js production build**

@@ -164,10 +164,10 @@ PreToolUse hooks block edits to protected files:
 
 | Skill            | Invocation   | Purpose                                          |
 | ---------------- | ------------ | ------------------------------------------------ |
-| `/check`         | User only    | Run full lint + test + build validation          |
-| `/gen-test`      | User only    | Generate tests following project conventions     |
-| `/new-api-route` | User only    | Scaffold API route with auth/validation template |
-| `/new-component` | User only    | Scaffold component + test file from templates    |
+| `/check`         | User or auto | Run full lint + test + build validation          |
+| `/gen-test`      | User or auto | Generate tests following project conventions     |
+| `/new-api-route` | User or auto | Scaffold API route with auth/validation template |
+| `/new-component` | User or auto | Scaffold component + test file from templates    |
 | `/review-pr`     | User or auto | Orchestrate multi-agent PR review                |
 
 ### Agents (`.claude/agents/`)

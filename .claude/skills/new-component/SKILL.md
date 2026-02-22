@@ -1,7 +1,6 @@
 ---
 name: new-component
 description: Scaffold a new React component with test file following project conventions
-disable-model-invocation: true
 ---
 
 Scaffold a new component at the specified path under `src/components/`. Follow these project conventions exactly:
@@ -35,6 +34,7 @@ export default function <ComponentName>({}: <ComponentName>Props) {
 ## Test Template
 
 Place the test in a `__tests__/` folder next to the component:
+
 - Component at `src/components/MyWidget.tsx` → test at `src/components/__tests__/MyWidget.test.tsx`
 - Component at `src/components/shopping-list/CartSummary.tsx` → test at `src/components/shopping-list/__tests__/CartSummary.test.tsx`
 
