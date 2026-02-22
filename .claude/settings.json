@@ -47,6 +47,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-on-edit.cjs\"",
+            "statusMessage": "Formatting edited file..."
+          },
+          {
+            "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-on-edit.cjs\"",
             "statusMessage": "Linting edited file..."
           },
