@@ -27,14 +27,11 @@ export async function GET() {
 
   try {
     const tokenRequest = await new Promise<Ably.Types.TokenRequest>((resolve, reject) => {
-      client.auth.createTokenRequest(
-        { clientId: 'weekly-eats' },
-        (err, result) => {
-          if (err) return reject(err);
-          if (!result) return reject(new Error('No token request returned'));
-          resolve(result);
-        }
-      );
+      client.auth.createTokenRequest({ clientId: 'weekly-eats' }, (err, result) => {
+        if (err) return reject(err);
+        if (!result) return reject(new Error('No token request returned'));
+        resolve(result);
+      });
     });
 
     return NextResponse.json(tokenRequest);
@@ -43,6 +40,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-
-

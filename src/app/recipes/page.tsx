@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useSession } from "next-auth/react";
-import { Session } from "next-auth";
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useSession } from 'next-auth/react';
+import { Session } from 'next-auth';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import {
   Container,
   Typography,
@@ -23,7 +23,7 @@ import {
   Chip,
   Snackbar,
   Badge,
-} from "@mui/material";
+} from '@mui/material';
 import {
   Restaurant,
   Add,
@@ -32,32 +32,26 @@ import {
   Star,
   ArrowUpward,
   ArrowDownward,
-} from "@mui/icons-material";
-import AuthenticatedLayout from "../../components/AuthenticatedLayout";
-import {
-  Recipe,
-  CreateRecipeRequest,
-  UpdateRecipeRequest,
-} from "../../types/recipe";
-import { fetchRecipe, createRecipe, updateRecipe, deleteRecipe } from "../../lib/recipe-utils";
-import dynamic from "next/dynamic";
-const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
-const RecipeViewDialog = dynamic(() => import("@/components/RecipeViewDialog"), { ssr: false });
-const RecipeEditorDialog = dynamic(() => import("@/components/RecipeEditorDialog"), { ssr: false });
-const RecipeSharingSection = dynamic(() => import("@/components/RecipeSharingSection"), { ssr: false });
-import { RecipeIngredientList } from "../../types/recipe";
-import { fetchFoodItems } from "../../lib/food-items-utils";
-import {
-  useDialog,
-  useConfirmDialog,
-  usePersistentDialog,
-} from "@/lib/hooks";
-import { useServerPagination } from "@/lib/hooks/use-server-pagination";
-import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
-import RecipeFilterBar from "@/components/RecipeFilterBar";
-import { responsiveDialogStyle } from "@/lib/theme";
-import Pagination from "@/components/optimized/Pagination";
-import { DialogActions, DialogTitle } from "@/components/ui";
+} from '@mui/icons-material';
+import AuthenticatedLayout from '../../components/AuthenticatedLayout';
+import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from '../../types/recipe';
+import { fetchRecipe, createRecipe, updateRecipe, deleteRecipe } from '../../lib/recipe-utils';
+import dynamic from 'next/dynamic';
+const EmojiPicker = dynamic(() => import('../../components/EmojiPicker'), { ssr: false });
+const RecipeViewDialog = dynamic(() => import('@/components/RecipeViewDialog'), { ssr: false });
+const RecipeEditorDialog = dynamic(() => import('@/components/RecipeEditorDialog'), { ssr: false });
+const RecipeSharingSection = dynamic(() => import('@/components/RecipeSharingSection'), {
+  ssr: false,
+});
+import { RecipeIngredientList } from '../../types/recipe';
+import { fetchFoodItems } from '../../lib/food-items-utils';
+import { useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
+import { useServerPagination } from '@/lib/hooks/use-server-pagination';
+import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
+import RecipeFilterBar from '@/components/RecipeFilterBar';
+import { responsiveDialogStyle } from '@/lib/theme';
+import Pagination from '@/components/optimized/Pagination';
+import { DialogActions, DialogTitle } from '@/components/ui';
 import {
   inviteUserToRecipeSharing,
   respondToRecipeSharingInvitation,
@@ -66,7 +60,7 @@ import {
   fetchSharedRecipeUsers,
   PendingRecipeInvitation,
   SharedUser,
-} from "@/lib/recipe-sharing-utils";
+} from '@/lib/recipe-sharing-utils';
 import {
   fetchRecipeUserData,
   fetchRecipeUserDataBatch,
@@ -74,9 +68,9 @@ import {
   updateRecipeRating,
   deleteRecipeRating,
   fetchUserTags,
-} from "@/lib/recipe-user-data-utils";
+} from '@/lib/recipe-user-data-utils';
 
-import { RecipeUserDataResponse } from "@/types/recipe-user-data";
+import { RecipeUserDataResponse } from '@/types/recipe-user-data';
 
 // ── Extended recipe type with server-computed accessLevel ──
 
@@ -87,87 +81,88 @@ interface RecipeWithAccessLevel extends Recipe {
 // ── Module-level sx constants (hoisted to avoid per-render allocations) ──
 
 const tableRowHoverSx = {
-  cursor: "pointer",
-  "&:hover": { backgroundColor: "action.hover" },
+  cursor: 'pointer',
+  '&:hover': { backgroundColor: 'action.hover' },
 } as const;
 
 const recipeTitleFlexSx = {
-  display: "flex",
-  alignItems: "center",
+  display: 'flex',
+  alignItems: 'center',
   gap: 1,
 } as const;
 
-const recipeIconSmallSx = { fontSize: 24, color: "text.secondary" } as const;
-const recipeIconLargeSx = { fontSize: 32, color: "text.secondary" } as const;
+const recipeIconSmallSx = { fontSize: 24, color: 'text.secondary' } as const;
+const recipeIconLargeSx = { fontSize: 32, color: 'text.secondary' } as const;
 
 const tagContainerDesktopSx = {
-  display: "flex",
-  flexWrap: "wrap",
+  display: 'flex',
+  flexWrap: 'wrap',
   gap: 0.5,
-  justifyContent: "center",
+  justifyContent: 'center',
 } as const;
 
 const tagContainerMobileSx = {
-  display: "flex",
-  flexWrap: "wrap",
+  display: 'flex',
+  flexWrap: 'wrap',
   gap: 0.5,
   mb: 1,
 } as const;
 
-const chipDesktopSx = { fontSize: "0.7rem", height: 20 } as const;
-const chipMobileSx = { fontSize: "0.75rem" } as const;
+const chipDesktopSx = { fontSize: '0.7rem', height: 20 } as const;
+const chipMobileSx = { fontSize: '0.75rem' } as const;
 
 const ratingDesktopSx = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   gap: 0.25,
 } as const;
 
 const ratingMobileSx = {
-  display: "flex",
-  alignItems: "center",
+  display: 'flex',
+  alignItems: 'center',
   gap: 0.5,
 } as const;
 
 const mobileCardSx = {
   p: 3,
   mb: 2,
-  cursor: "pointer",
-  "&:hover": {
-    backgroundColor: "action.hover",
-    transform: "translateY(-2px)",
+  cursor: 'pointer',
+  '&:hover': {
+    backgroundColor: 'action.hover',
+    transform: 'translateY(-2px)',
     boxShadow: 4,
   },
-  transition: "all 0.2s ease-in-out",
+  transition: 'all 0.2s ease-in-out',
   boxShadow: 2,
-  border: "1px solid",
-  borderColor: "divider",
+  border: '1px solid',
+  borderColor: 'divider',
   borderRadius: 2,
 } as const;
 
 const mobileCardTitleSx = {
-  display: "flex",
-  alignItems: "flex-start",
+  display: 'flex',
+  alignItems: 'flex-start',
 } as const;
 
 const paginationContainerSx = {
-  display: "flex",
-  justifyContent: "center",
+  display: 'flex',
+  justifyContent: 'center',
   mt: 2,
 } as const;
 
 const centeredLoadingSx = {
-  display: "flex",
-  justifyContent: "center",
+  display: 'flex',
+  justifyContent: 'center',
   py: 4,
 } as const;
 
-const tableHeaderCellSx = (width: string) => ({
-  width,
-  fontWeight: "bold",
-  wordWrap: "break-word",
-}) as const;
+const tableHeaderCellSx = (width: string) =>
+  ({
+    width,
+    fontWeight: 'bold',
+    wordWrap: 'break-word',
+  }) as const;
 
 function RecipesPageContent() {
   const { data: session, status } = useSession();
@@ -180,7 +175,8 @@ function RecipesPageContent() {
   // ── Debounced search ──
   const { searchTerm, debouncedSearchTerm, setSearchTerm, clearSearch } = useDebouncedSearch();
 
-  const hasActiveFilters = searchTerm !== '' || selectedTags.length > 0 || selectedRatings.length > 0;
+  const hasActiveFilters =
+    searchTerm !== '' || selectedTags.length > 0 || selectedRatings.length > 0;
 
   const handleClearFilters = useCallback(() => {
     clearSearch();
@@ -194,21 +190,24 @@ function RecipesPageContent() {
     [debouncedSearchTerm, selectedTags, selectedRatings]
   );
 
-  const fetchRecipes = useCallback(async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
-    const sp = new URLSearchParams({
-      page: String(params.page),
-      limit: String(params.limit),
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder,
-    });
-    if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
-    if (selectedTags.length > 0) sp.set('tags', selectedTags.join(','));
-    if (selectedRatings.length > 0) sp.set('ratings', selectedRatings.join(','));
+  const fetchRecipes = useCallback(
+    async (params: { page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' }) => {
+      const sp = new URLSearchParams({
+        page: String(params.page),
+        limit: String(params.limit),
+        sortBy: params.sortBy,
+        sortOrder: params.sortOrder,
+      });
+      if (debouncedSearchTerm) sp.set('query', debouncedSearchTerm);
+      if (selectedTags.length > 0) sp.set('tags', selectedTags.join(','));
+      if (selectedRatings.length > 0) sp.set('ratings', selectedRatings.join(','));
 
-    const response = await fetch(`/api/recipes?${sp.toString()}`);
-    if (!response.ok) throw new Error('Failed to fetch recipes');
-    return response.json();
-  }, [debouncedSearchTerm, selectedTags, selectedRatings]);
+      const response = await fetch(`/api/recipes?${sp.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch recipes');
+      return response.json();
+    },
+    [debouncedSearchTerm, selectedTags, selectedRatings]
+  );
 
   const {
     data: recipes,
@@ -225,26 +224,36 @@ function RecipesPageContent() {
 
   // ── Dialogs ──
   const createDialog = useDialog();
-  const viewDialog = usePersistentDialog("viewRecipe");
+  const viewDialog = usePersistentDialog('viewRecipe');
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const shareDialog = useDialog();
 
   // ── Selected recipe state ──
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [selectedAccessLevel, setSelectedAccessLevel] = useState<RecipeWithAccessLevel['accessLevel'] | undefined>(undefined);
+  const [selectedAccessLevel, setSelectedAccessLevel] = useState<
+    RecipeWithAccessLevel['accessLevel'] | undefined
+  >(undefined);
   const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
-  const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(new Map());
+  const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(
+    new Map()
+  );
 
   // ── Sharing state ──
-  const [pendingRecipeInvitations, setPendingRecipeInvitations] = useState<PendingRecipeInvitation[]>([]);
+  const [pendingRecipeInvitations, setPendingRecipeInvitations] = useState<
+    PendingRecipeInvitation[]
+  >([]);
   const [sharedRecipeUsers, setSharedRecipeUsers] = useState<SharedUser[]>([]);
-  const [shareEmail, setShareEmail] = useState("");
+  const [shareEmail, setShareEmail] = useState('');
   const [shareTags, setShareTags] = useState(true);
   const [shareRatings, setShareRatings] = useState(true);
 
   // ── Snackbar ──
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
     open: false,
     message: '',
     severity: 'success',
@@ -254,17 +263,17 @@ function RecipesPageContent() {
 
   // ── New/edit recipe state ──
   const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
-    title: "",
-    emoji: "",
-    ingredients: [{ title: "", ingredients: [], isStandalone: true }],
-    instructions: "",
+    title: '',
+    emoji: '',
+    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
+    instructions: '',
     isGlobal: true,
   });
   const [editingRecipe, setEditingRecipe] = useState<UpdateRecipeRequest>({
-    title: "",
-    emoji: "",
-    ingredients: [{ title: "", ingredients: [], isStandalone: true }],
-    instructions: "",
+    title: '',
+    emoji: '',
+    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
+    instructions: '',
     isGlobal: false,
   });
   const [editMode, setEditMode] = useState(false);
@@ -299,7 +308,7 @@ function RecipesPageContent() {
       setFoodItems(itemsMap);
       setFoodItemsList(items);
     } catch (error) {
-      console.error("Error loading food items:", error);
+      console.error('Error loading food items:', error);
     }
   };
 
@@ -329,9 +338,7 @@ function RecipesPageContent() {
   const loadRecipesUserData = useCallback(async () => {
     if (!userId || recipes.length === 0) return;
     try {
-      const recipeIds = recipes
-        .map((recipe) => recipe._id)
-        .filter((id): id is string => !!id);
+      const recipeIds = recipes.map((recipe) => recipe._id).filter((id): id is string => !!id);
       const userDataMap = await fetchRecipeUserDataBatch(recipeIds);
       setRecipesUserData(userDataMap);
     } catch (error) {
@@ -340,13 +347,13 @@ function RecipesPageContent() {
   }, [recipes, userId]);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === 'authenticated') {
       loadRecipesUserData();
     }
   }, [status, loadRecipesUserData]);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === 'authenticated') {
       loadFoodItems();
       loadSharingData();
       loadAvailableTags();
@@ -377,7 +384,7 @@ function RecipesPageContent() {
 
   // ── Ingredient name helper ──
   const getIngredientName = (ingredient: {
-    type: "foodItem" | "recipe";
+    type: 'foodItem' | 'recipe';
     id: string;
     quantity: number;
     name?: string;
@@ -386,15 +393,13 @@ function RecipesPageContent() {
     if (ingredient.name) return ingredient.name;
 
     // Fallback to client-side lookup for draft/unsaved recipes
-    if (ingredient.type === "foodItem") {
+    if (ingredient.type === 'foodItem') {
       const foodItem = foodItems[ingredient.id];
-      if (!foodItem) return "Unknown food item";
-      return ingredient.quantity === 1
-        ? foodItem.singularName
-        : foodItem.pluralName;
+      if (!foodItem) return 'Unknown food item';
+      return ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
     } else {
       const recipe = recipes.find((r) => r._id === ingredient.id);
-      return recipe ? recipe.title : "Unknown recipe";
+      return recipe ? recipe.title : 'Unknown recipe';
     }
   };
 
@@ -408,15 +413,15 @@ function RecipesPageContent() {
       await createRecipe(filteredRecipe);
       createDialog.closeDialog();
       setNewRecipe({
-        title: "",
-        emoji: "",
-        ingredients: [{ title: "", ingredients: [], isStandalone: true }],
-        instructions: "",
+        title: '',
+        emoji: '',
+        ingredients: [{ title: '', ingredients: [], isStandalone: true }],
+        instructions: '',
         isGlobal: true,
       });
       refetch();
     } catch (error) {
-      console.error("Error creating recipe:", error);
+      console.error('Error creating recipe:', error);
     }
   };
 
@@ -433,11 +438,11 @@ function RecipesPageContent() {
           const userData = await fetchRecipeUserData(recipe._id!);
           setRecipeUserData(userData);
         } catch (error) {
-          console.error("Error loading recipe user data:", error);
+          console.error('Error loading recipe user data:', error);
           setRecipeUserData({ tags: [], rating: undefined });
         }
       } catch (error) {
-        console.error("Error loading recipe details:", error);
+        console.error('Error loading recipe details:', error);
       }
     },
     [viewDialog]
@@ -446,44 +451,30 @@ function RecipesPageContent() {
   // Handle persistent dialog data
   useEffect(() => {
     if (viewDialog.open && viewDialog.data?.recipeId && !selectedRecipe) {
-      const recipe = recipes.find(
-        (r) => r._id === viewDialog.data?.recipeId
-      );
+      const recipe = recipes.find((r) => r._id === viewDialog.data?.recipeId);
       if (recipe) {
         handleViewRecipe(recipe);
       }
     }
 
-    if (
-      viewDialog.open &&
-      viewDialog.data?.editMode === "true" &&
-      selectedRecipe &&
-      !editMode
-    ) {
+    if (viewDialog.open && viewDialog.data?.editMode === 'true' && selectedRecipe && !editMode) {
       setEditMode(true);
       setEditingRecipe({
         title: selectedRecipe.title,
-        emoji: selectedRecipe.emoji || "",
+        emoji: selectedRecipe.emoji || '',
         ingredients: selectedRecipe.ingredients,
         instructions: selectedRecipe.instructions,
         isGlobal: selectedRecipe.isGlobal,
       });
     }
-  }, [
-    viewDialog.open,
-    viewDialog.data,
-    selectedRecipe,
-    recipes,
-    editMode,
-    handleViewRecipe,
-  ]);
+  }, [viewDialog.open, viewDialog.data, selectedRecipe, recipes, editMode, handleViewRecipe]);
 
   const handleEditRecipe = async () => {
     if (!selectedRecipe?._id) return;
 
     setEditingRecipe({
       title: selectedRecipe.title,
-      emoji: selectedRecipe.emoji || "",
+      emoji: selectedRecipe.emoji || '',
       ingredients: selectedRecipe.ingredients,
       instructions: selectedRecipe.instructions,
       isGlobal: selectedRecipe.isGlobal,
@@ -491,14 +482,14 @@ function RecipesPageContent() {
     setEditMode(true);
     viewDialog.openDialog({
       recipeId: selectedRecipe._id!,
-      editMode: "true",
+      editMode: 'true',
     });
 
     try {
       const userData = await fetchRecipeUserData(selectedRecipe._id);
       setRecipeUserData(userData);
     } catch (error) {
-      console.error("Error loading recipe user data:", error);
+      console.error('Error loading recipe user data:', error);
       setRecipeUserData({ tags: [], rating: undefined });
     }
   };
@@ -518,7 +509,7 @@ function RecipesPageContent() {
       setEditMode(false);
       viewDialog.openDialog({ recipeId: selectedRecipe._id });
     } catch (error) {
-      console.error("Error updating recipe:", error);
+      console.error('Error updating recipe:', error);
     }
   };
 
@@ -533,7 +524,7 @@ function RecipesPageContent() {
       setEditMode(false);
       refetch();
     } catch (error) {
-      console.error("Error deleting recipe:", error);
+      console.error('Error deleting recipe:', error);
     }
   };
 
@@ -549,7 +540,7 @@ function RecipesPageContent() {
     return ingredients.map((list) => ({
       ...list,
       ingredients: list.ingredients.filter(
-        (ingredient) => ingredient.id && ingredient.id.trim() !== ""
+        (ingredient) => ingredient.id && ingredient.id.trim() !== ''
       ),
     }));
   };
@@ -576,7 +567,7 @@ function RecipesPageContent() {
       if (shareRatings) sharingTypes.push('ratings');
 
       await inviteUserToRecipeSharing(shareEmail.trim(), sharingTypes);
-      setShareEmail("");
+      setShareEmail('');
       showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
       loadSharingData();
     } catch (error) {
@@ -631,8 +622,8 @@ function RecipesPageContent() {
     if (!selectedRecipe?._id) return;
     try {
       await updateRecipeTags(selectedRecipe._id, tags);
-      setRecipeUserData(prev => prev ? { ...prev, tags } : { tags, rating: undefined });
-      setRecipesUserData(prev => {
+      setRecipeUserData((prev) => (prev ? { ...prev, tags } : { tags, rating: undefined }));
+      setRecipesUserData((prev) => {
         const newMap = new Map(prev);
         const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
         newMap.set(selectedRecipe._id!, { ...currentData, tags });
@@ -649,8 +640,10 @@ function RecipesPageContent() {
     try {
       if (rating === undefined) {
         await deleteRecipeRating(selectedRecipe._id);
-        setRecipeUserData(prev => prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined });
-        setRecipesUserData(prev => {
+        setRecipeUserData((prev) =>
+          prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined }
+        );
+        setRecipesUserData((prev) => {
           const newMap = new Map(prev);
           const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
           newMap.set(selectedRecipe._id!, { ...currentData, rating: undefined });
@@ -658,8 +651,8 @@ function RecipesPageContent() {
         });
       } else {
         await updateRecipeRating(selectedRecipe._id, rating);
-        setRecipeUserData(prev => prev ? { ...prev, rating } : { tags: [], rating });
-        setRecipesUserData(prev => {
+        setRecipeUserData((prev) => (prev ? { ...prev, rating } : { tags: [], rating }));
+        setRecipesUserData((prev) => {
           const newMap = new Map(prev);
           const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
           newMap.set(selectedRecipe._id!, { ...currentData, rating });
@@ -686,13 +679,12 @@ function RecipesPageContent() {
     );
     if (totalIngredients === 0) return false;
     return ingredients.every(
-      (group) =>
-        group.isStandalone || (group.title && group.title.trim() !== "")
+      (group) => group.isStandalone || (group.title && group.title.trim() !== '')
     );
   };
 
   const canEditRecipe = (recipe: Recipe) => {
-    return recipe.createdBy === (session?.user as Session["user"])?.id;
+    return recipe.createdBy === (session?.user as Session['user'])?.id;
   };
 
   // ── Sort handlers ──
@@ -709,7 +701,7 @@ function RecipesPageContent() {
   };
 
   // ── Render ──
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="xl">
@@ -721,7 +713,7 @@ function RecipesPageContent() {
     );
   }
 
-  if (status === "unauthenticated") {
+  if (status === 'unauthenticated') {
     return null;
   }
 
@@ -731,34 +723,36 @@ function RecipesPageContent() {
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
           <Box
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              justifyContent: "space-between",
-              alignItems: { xs: "flex-start", sm: "center" },
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               gap: { xs: 2, sm: 0 },
               mb: { xs: 2, md: 4 },
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Restaurant sx={{ fontSize: 40, color: "#ed6c02" }} />
-              <Typography variant="h3" component="h1" sx={{ color: "#ed6c02" }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Restaurant sx={{ fontSize: 40, color: '#ed6c02' }} />
+              <Typography variant="h3" component="h1" sx={{ color: '#ed6c02' }}>
                 Recipes
               </Typography>
             </Box>
-            <Box sx={{
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-              width: { xs: '100%', sm: 'auto' }
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                alignItems: 'center',
+                width: { xs: '100%', sm: 'auto' },
+              }}
+            >
               <Button
                 variant="contained"
                 startIcon={<Add />}
                 onClick={() => createDialog.openDialog()}
                 sx={{
-                  bgcolor: "#ed6c02",
-                  "&:hover": { bgcolor: "#e65100" },
-                  flexGrow: 1
+                  bgcolor: '#ed6c02',
+                  '&:hover': { bgcolor: '#e65100' },
+                  flexGrow: 1,
                 }}
               >
                 Add New Recipe
@@ -767,11 +761,11 @@ function RecipesPageContent() {
                 variant="outlined"
                 onClick={() => shareDialog.openDialog()}
                 sx={{
-                  borderColor: "#ed6c02",
-                  color: "#ed6c02",
-                  "&:hover": { borderColor: "#e65100" },
+                  borderColor: '#ed6c02',
+                  color: '#ed6c02',
+                  '&:hover': { borderColor: '#e65100' },
                   minWidth: 'auto',
-                  p: 1
+                  p: 1,
                 }}
               >
                 <Badge badgeContent={pendingRecipeInvitations?.length || 0} color="error">
@@ -825,39 +819,82 @@ function RecipesPageContent() {
                 </Typography>
 
                 {/* Desktop Table View */}
-                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                   <TableContainer>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <TableCell
-                            sx={{ ...tableHeaderCellSx("45%"), cursor: 'pointer', userSelect: 'none' }}
+                            sx={{
+                              ...tableHeaderCellSx('45%'),
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                            }}
                             onClick={() => handleColumnSort('title')}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               Recipe
-                              {sortBy === 'title' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                              {sortBy === 'title' &&
+                                (sortOrder === 'asc' ? (
+                                  <ArrowUpward sx={{ fontSize: 16 }} />
+                                ) : (
+                                  <ArrowDownward sx={{ fontSize: 16 }} />
+                                ))}
                             </Box>
                           </TableCell>
-                          <TableCell align="center" sx={tableHeaderCellSx("15%")}>Tags</TableCell>
+                          <TableCell align="center" sx={tableHeaderCellSx('15%')}>
+                            Tags
+                          </TableCell>
                           <TableCell
                             align="center"
-                            sx={{ ...tableHeaderCellSx("15%"), cursor: 'pointer', userSelect: 'none' }}
+                            sx={{
+                              ...tableHeaderCellSx('15%'),
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                            }}
                             onClick={() => handleColumnSort('rating')}
                           >
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                              }}
+                            >
                               Rating
-                              {sortBy === 'rating' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                              {sortBy === 'rating' &&
+                                (sortOrder === 'asc' ? (
+                                  <ArrowUpward sx={{ fontSize: 16 }} />
+                                ) : (
+                                  <ArrowDownward sx={{ fontSize: 16 }} />
+                                ))}
                             </Box>
                           </TableCell>
                           <TableCell
                             align="center"
-                            sx={{ ...tableHeaderCellSx("25%"), cursor: 'pointer', userSelect: 'none' }}
+                            sx={{
+                              ...tableHeaderCellSx('25%'),
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                            }}
                             onClick={() => handleColumnSort('updatedAt')}
                           >
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                              }}
+                            >
                               Updated
-                              {sortBy === 'updatedAt' && (sortOrder === 'asc' ? <ArrowUpward sx={{ fontSize: 16 }} /> : <ArrowDownward sx={{ fontSize: 16 }} />)}
+                              {sortBy === 'updatedAt' &&
+                                (sortOrder === 'asc' ? (
+                                  <ArrowUpward sx={{ fontSize: 16 }} />
+                                ) : (
+                                  <ArrowDownward sx={{ fontSize: 16 }} />
+                                ))}
                             </Box>
                           </TableCell>
                         </TableRow>
@@ -865,10 +902,12 @@ function RecipesPageContent() {
                       <TableBody>
                         {recipes.map((recipe) => {
                           const userData = recipesUserData.get(recipe._id || '');
-                          const allTags = [...new Set([
-                            ...(userData?.tags || []),
-                            ...(userData?.sharedTags || [])
-                          ])];
+                          const allTags = [
+                            ...new Set([
+                              ...(userData?.tags || []),
+                              ...(userData?.sharedTags || []),
+                            ]),
+                          ];
                           const rating = userData?.rating;
 
                           return (
@@ -877,7 +916,7 @@ function RecipesPageContent() {
                               onClick={() => handleViewRecipe(recipe)}
                               sx={tableRowHoverSx}
                             >
-                              <TableCell sx={{ wordWrap: "break-word" }}>
+                              <TableCell sx={{ wordWrap: 'break-word' }}>
                                 <Box sx={recipeTitleFlexSx}>
                                   {recipe.emoji ? (
                                     <Typography variant="h6">{recipe.emoji}</Typography>
@@ -887,23 +926,31 @@ function RecipesPageContent() {
                                   <Typography variant="body1">{recipe.title}</Typography>
                                 </Box>
                               </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                 {allTags.length === 0 ? (
-                                  <Typography variant="body2" color="text.secondary">—</Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    —
+                                  </Typography>
                                 ) : (
                                   <Box sx={tagContainerDesktopSx}>
                                     {allTags.slice(0, 3).map((tag) => (
                                       <Chip key={tag} label={tag} size="small" sx={chipDesktopSx} />
                                     ))}
                                     {allTags.length > 3 && (
-                                      <Chip label={`+${allTags.length - 3}`} size="small" sx={chipDesktopSx} />
+                                      <Chip
+                                        label={`+${allTags.length - 3}`}
+                                        size="small"
+                                        sx={chipDesktopSx}
+                                      />
                                     )}
                                   </Box>
                                 )}
                               </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                 {!rating ? (
-                                  <Typography variant="body2" color="text.secondary">—</Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    —
+                                  </Typography>
                                 ) : (
                                   <Box sx={ratingDesktopSx}>
                                     <Star sx={{ fontSize: 16, color: 'warning.main' }} />
@@ -911,7 +958,7 @@ function RecipesPageContent() {
                                   </Box>
                                 )}
                               </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: "break-word" }}>
+                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                                 {new Date(recipe.updatedAt).toLocaleDateString()}
                               </TableCell>
                             </TableRow>
@@ -923,13 +970,12 @@ function RecipesPageContent() {
                 </Box>
 
                 {/* Mobile Card View */}
-                <Box sx={{ display: { xs: "block", md: "none" } }}>
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   {recipes.map((recipe) => {
                     const userData = recipesUserData.get(recipe._id || '');
-                    const allTags = [...new Set([
-                      ...(userData?.tags || []),
-                      ...(userData?.sharedTags || [])
-                    ])];
+                    const allTags = [
+                      ...new Set([...(userData?.tags || []), ...(userData?.sharedTags || [])]),
+                    ];
                     const rating = userData?.rating;
 
                     return (
@@ -947,7 +993,7 @@ function RecipesPageContent() {
                             )}
                           </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+                            <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
                               {recipe.title}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
@@ -963,7 +1009,11 @@ function RecipesPageContent() {
                                   <Chip key={tag} label={tag} size="small" sx={chipMobileSx} />
                                 ))}
                                 {allTags.length > 5 && (
-                                  <Chip label={`+${allTags.length - 5}`} size="small" sx={chipMobileSx} />
+                                  <Chip
+                                    label={`+${allTags.length - 5}`}
+                                    size="small"
+                                    sx={chipMobileSx}
+                                  />
                                 )}
                               </Box>
                             )}
@@ -982,19 +1032,15 @@ function RecipesPageContent() {
 
                 {totalPages > 1 && (
                   <Box sx={paginationContainerSx}>
-                    <Pagination
-                      count={totalPages}
-                      page={page}
-                      onChange={setPage}
-                    />
+                    <Pagination count={totalPages} page={page} onChange={setPage} />
                   </Box>
                 )}
               </>
             ) : (
               <Alert severity="info">
                 {debouncedSearchTerm || selectedTags.length > 0 || selectedRatings.length > 0
-                  ? "No recipes match your filters"
-                  : "No recipes found"}
+                  ? 'No recipes match your filters'
+                  : 'No recipes found'}
               </Alert>
             )}
           </Paper>
@@ -1008,9 +1054,7 @@ function RecipesPageContent() {
           onRecipeChange={setNewRecipe}
           onSubmit={handleCreateRecipe}
           onEmojiPickerOpen={() => emojiPickerDialog.openDialog()}
-          onIngredientsChange={(ingredients) =>
-            setNewRecipe({ ...newRecipe, ingredients })
-          }
+          onIngredientsChange={(ingredients) => setNewRecipe({ ...newRecipe, ingredients })}
           foodItemsList={foodItemsList}
           onFoodItemAdded={handleFoodItemAdded}
           hasValidIngredients={hasValidIngredients}
@@ -1030,7 +1074,7 @@ function RecipesPageContent() {
           onDeleteConfirm={() => deleteConfirmDialog.openDialog()}
           onCancelEdit={() => {
             setEditMode(false);
-            viewDialog.removeDialogData("editMode");
+            viewDialog.removeDialogData('editMode');
           }}
           onEmojiPickerOpen={() => emojiPickerDialog.openDialog()}
           recipeUserData={recipeUserData}
@@ -1050,9 +1094,7 @@ function RecipesPageContent() {
           onClose={() => deleteConfirmDialog.closeDialog()}
           sx={responsiveDialogStyle}
         >
-          <DialogTitle onClose={() => deleteConfirmDialog.closeDialog()}>
-            Delete Recipe
-          </DialogTitle>
+          <DialogTitle onClose={() => deleteConfirmDialog.closeDialog()}>Delete Recipe</DialogTitle>
           <DialogContent>
             <DialogContentText>
               Are you sure you want to delete &quot;{selectedRecipe?.title}
@@ -1060,14 +1102,8 @@ function RecipesPageContent() {
             </DialogContentText>
 
             <DialogActions primaryButtonIndex={1}>
-              <Button onClick={() => deleteConfirmDialog.closeDialog()}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDeleteRecipe}
-                color="error"
-                variant="contained"
-              >
+              <Button onClick={() => deleteConfirmDialog.closeDialog()}>Cancel</Button>
+              <Button onClick={handleDeleteRecipe} color="error" variant="contained">
                 Delete
               </Button>
             </DialogActions>

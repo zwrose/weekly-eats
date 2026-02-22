@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       userName: invitedUser.name,
       status: 'pending',
       invitedBy: session.user.id,
-      invitedAt: new Date()
+      invitedAt: new Date(),
     };
 
     filteredInvitations.push(newInvitation);
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       { email: session.user.email },
       {
         $set: {
-          'settings.mealPlanSharing.invitations': filteredInvitations
-        }
+          'settings.mealPlanSharing.invitations': filteredInvitations,
+        },
       }
     );
 
@@ -76,4 +76,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

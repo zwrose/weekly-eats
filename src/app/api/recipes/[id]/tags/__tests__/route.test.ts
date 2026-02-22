@@ -56,9 +56,10 @@ const { ObjectId } = await import('mongodb');
 // Import the route module after mocks are set up
 const routes = await import('../route');
 
-const makeRequest = (recipeId: string, body?: unknown) => ({
-  json: async () => body,
-}) as any;
+const makeRequest = (recipeId: string, body?: unknown) =>
+  ({
+    json: async () => body,
+  }) as any;
 
 const makeParams = (id: string) => ({
   params: Promise.resolve({ id }),
@@ -81,7 +82,10 @@ describe('api/recipes/[id]/tags route', () => {
 
   it('POST returns 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: [] }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: [] }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe('Unauthorized');
@@ -89,7 +93,10 @@ describe('api/recipes/[id]/tags route', () => {
 
   it('POST returns 400 for invalid recipe ID', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
-    const res = await routes.POST(makeRequest('invalid-id', { tags: [] }), makeParams('invalid-id'));
+    const res = await routes.POST(
+      makeRequest('invalid-id', { tags: [] }),
+      makeParams('invalid-id')
+    );
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('Invalid recipe ID');
@@ -98,7 +105,10 @@ describe('api/recipes/[id]/tags route', () => {
   it('POST returns 400 when tags is not an array', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
     findOneMock.mockResolvedValueOnce(mockRecipe);
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: 'not-an-array' }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: 'not-an-array' }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('Tags must be an array');
@@ -107,7 +117,10 @@ describe('api/recipes/[id]/tags route', () => {
   it('POST returns 400 when tags contains non-string values', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
     findOneMock.mockResolvedValueOnce(mockRecipe);
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: ['tag1', 123, 'tag2'] }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: ['tag1', 123, 'tag2'] }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('All tags must be strings');
@@ -116,7 +129,10 @@ describe('api/recipes/[id]/tags route', () => {
   it('POST returns 404 when recipe does not exist', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
     findOneMock.mockResolvedValueOnce(null);
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: ['tag1'] }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: ['tag1'] }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(data.error).toBe('Recipe not found');
@@ -181,15 +197,15 @@ describe('api/recipes/[id]/tags route', () => {
     findOneMock.mockResolvedValueOnce(mockRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: ['tag1'] }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: ['tag1'] }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(200);
 
     expect(findOneMock).toHaveBeenCalledWith({
       _id: ObjectId.createFromHexString(validRecipeId),
-      $or: [
-        { isGlobal: true },
-        { createdBy: 'user-2' },
-      ],
+      $or: [{ isGlobal: true }, { createdBy: 'user-2' }],
     });
   });
 
@@ -204,8 +220,10 @@ describe('api/recipes/[id]/tags route', () => {
     findOneMock.mockResolvedValueOnce(userRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
-    const res = await routes.POST(makeRequest(validRecipeId, { tags: ['tag1'] }), makeParams(validRecipeId));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: ['tag1'] }),
+      makeParams(validRecipeId)
+    );
     expect(res.status).toBe(200);
   });
 });
-

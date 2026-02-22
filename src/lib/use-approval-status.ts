@@ -1,6 +1,6 @@
-import { useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSession } from 'next-auth/react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export const useApprovalStatus = () => {
   const { data: session, update } = useSession();
@@ -21,10 +21,10 @@ export const useApprovalStatus = () => {
 
     const checkApprovalStatus = async () => {
       try {
-        const response = await fetch("/api/user/approval-status", {
-          method: "GET",
+        const response = await fetch('/api/user/approval-status', {
+          method: 'GET',
           headers: {
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
 
@@ -32,23 +32,19 @@ export const useApprovalStatus = () => {
           return;
         }
 
-        const data: { isApproved: boolean; isAdmin: boolean } =
-          await response.json();
+        const data: { isApproved: boolean; isAdmin: boolean } = await response.json();
         if (isCancelled) return;
 
         const currentSession = sessionRef.current;
-        const currentApproved = (
-          currentSession?.user as { isApproved?: boolean }
-        )?.isApproved;
-        const currentIsAdmin = (currentSession?.user as { isAdmin?: boolean })
-          ?.isAdmin;
+        const currentApproved = (currentSession?.user as { isApproved?: boolean })?.isApproved;
+        const currentIsAdmin = (currentSession?.user as { isAdmin?: boolean })?.isAdmin;
 
         // If user gets approved and is on pending-approval page, redirect to meal plans
         if (!currentApproved && data.isApproved && !currentIsAdmin) {
           setIsRedirecting(true);
           setTimeout(() => {
             update({ isApproved: true }).then(() => {
-              router.push("/meal-plans");
+              router.push('/meal-plans');
             });
           }, 100);
         }
@@ -58,12 +54,12 @@ export const useApprovalStatus = () => {
           setIsRedirecting(true);
           setTimeout(() => {
             update({ isApproved: false }).then(() => {
-              router.push("/pending-approval");
+              router.push('/pending-approval');
             });
           }, 100);
         }
       } catch (error) {
-        console.error("Error polling approval status:", error);
+        console.error('Error polling approval status:', error);
       }
     };
 

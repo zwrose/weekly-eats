@@ -4,16 +4,14 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 import { CreateRecipeRequest } from '../../../types/recipe';
 import { parsePaginationParams } from '@/lib/pagination-utils';
-import {
-  AUTH_ERRORS,
-  RECIPE_ERRORS,
-  API_ERRORS,
-  logError
-} from '@/lib/errors';
+import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 type AccessLevel = 'private' | 'shared-by-you' | 'shared-by-others';
 
-function computeAccessLevel(recipe: { createdBy: string; isGlobal: boolean }, userId: string): AccessLevel {
+function computeAccessLevel(
+  recipe: { createdBy: string; isGlobal: boolean },
+  userId: string
+): AccessLevel {
   if (recipe.createdBy === userId && !recipe.isGlobal) return 'private';
   if (recipe.createdBy === userId && recipe.isGlobal) return 'shared-by-you';
   return 'shared-by-others';
@@ -29,22 +27,19 @@ function buildBaseFilter(accessLevel: string | null, userId: string): Record<str
       return { isGlobal: true, createdBy: { $ne: userId } };
     default:
       return {
-        $or: [
-          { isGlobal: true },
-          { createdBy: userId },
-        ],
+        $or: [{ isGlobal: true }, { createdBy: userId }],
       };
   }
 }
 
-function addTextSearch(filter: Record<string, unknown>, query: string | null): Record<string, unknown> {
+function addTextSearch(
+  filter: Record<string, unknown>,
+  query: string | null
+): Record<string, unknown> {
   if (!query || !query.trim()) return filter;
 
   const searchFilter = {
-    $or: [
-      { title: { $regex: query, $options: 'i' } },
-      { emoji: { $regex: query, $options: 'i' } },
-    ],
+    $or: [{ title: { $regex: query, $options: 'i' } }, { emoji: { $regex: query, $options: 'i' } }],
   };
   return { $and: [filter, searchFilter] };
 }
@@ -71,8 +66,18 @@ export async function GET(request: NextRequest) {
     let filter = buildBaseFilter(accessLevel, session.user.id);
     filter = addTextSearch(filter, query);
 
-    const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : [];
-    const ratings = ratingsParam ? ratingsParam.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !Number.isNaN(r)) : [];
+    const tags = tagsParam
+      ? tagsParam
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [];
+    const ratings = ratingsParam
+      ? ratingsParam
+          .split(',')
+          .map((r) => parseInt(r.trim(), 10))
+          .filter((r) => !Number.isNaN(r))
+      : [];
     const useAggregation = tags.length > 0 || ratings.length > 0 || sortBy === 'rating';
 
     if (useAggregation) {
@@ -137,7 +142,7 @@ export async function GET(request: NextRequest) {
             data: 1,
             total: { $ifNull: [{ $arrayElemAt: ['$total.count', 0] }, 0] },
           },
-        },
+        }
       );
 
       const results = await recipesCollection.aggregate(pipeline).toArray();
@@ -213,19 +218,35 @@ export async function POST(request: NextRequest) {
     let totalIngredients = 0;
     for (const ingredientList of body.ingredients) {
       if (!ingredientList.ingredients) {
-        return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
+        return NextResponse.json(
+          { error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED },
+          { status: 400 }
+        );
       }
 
       totalIngredients += ingredientList.ingredients.length;
 
       // Check that non-standalone groups have titles
-      if (!ingredientList.isStandalone && (!ingredientList.title || ingredientList.title.trim() === '')) {
-        return NextResponse.json({ error: 'Group titles are required for non-standalone ingredient groups' }, { status: 400 });
+      if (
+        !ingredientList.isStandalone &&
+        (!ingredientList.title || ingredientList.title.trim() === '')
+      ) {
+        return NextResponse.json(
+          { error: 'Group titles are required for non-standalone ingredient groups' },
+          { status: 400 }
+        );
       }
 
       for (const ingredient of ingredientList.ingredients) {
-        if (!ingredient.id || ingredient.quantity <= 0 || (ingredient.type === 'foodItem' && !ingredient.unit)) {
-          return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
+        if (
+          !ingredient.id ||
+          ingredient.quantity <= 0 ||
+          (ingredient.type === 'foodItem' && !ingredient.unit)
+        ) {
+          return NextResponse.json(
+            { error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA },
+            { status: 400 }
+          );
         }
       }
     }
@@ -249,10 +270,13 @@ export async function POST(request: NextRequest) {
 
     const result = await recipesCollection.insertOne(recipe);
 
-    return NextResponse.json({
-      ...recipe,
-      _id: result.insertedId
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        ...recipe,
+        _id: result.insertedId,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     logError('Recipes POST', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });

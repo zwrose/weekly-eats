@@ -7,8 +7,8 @@ import ShoppingListsPage from '../page';
 vi.mock('next-auth/react', () => ({
   useSession: vi.fn(() => ({
     data: { user: { id: 'user-123', email: 'test@example.com' } },
-    status: 'authenticated'
-  }))
+    status: 'authenticated',
+  })),
 }));
 
 // Mock next/navigation with basic URL + search params tracking for usePersistentDialog
@@ -97,16 +97,20 @@ vi.mock('../../../lib/hooks/use-shopping-sync', () => {
 
 // Mock components
 vi.mock('../../../components/AuthenticatedLayout', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('../../../components/EmojiPicker', () => ({
-  default: () => <div>Emoji Picker</div>
+  default: () => <div>Emoji Picker</div>,
 }));
 
 vi.mock('../../../components/shopping-list/StoreHistoryDialog', () => ({
   default: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
-    open ? <div data-testid="store-history-dialog"><button onClick={onClose}>Close History</button></div> : null
+    open ? (
+      <div data-testid="store-history-dialog">
+        <button onClick={onClose}>Close History</button>
+      </div>
+    ) : null,
 }));
 
 describe('ShoppingListsPage', () => {
@@ -130,7 +134,7 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -200,9 +204,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -242,9 +246,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 2,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -272,9 +276,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -304,9 +308,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 1,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -410,9 +414,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 1,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     const freshList = {
@@ -420,10 +424,10 @@ describe('ShoppingListsPage', () => {
       storeId: 'store-1',
       userId: 'user-123',
       items: [
-        { foodItemId: 'f1', name: 'Fresh Milk', quantity: 1, unit: 'gallon', checked: false }
+        { foodItemId: 'f1', name: 'Fresh Milk', quantity: 1, unit: 'gallon', checked: false },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -433,13 +437,13 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       // Return empty payload for any other fetches this page might do during the test.
       return Promise.resolve({
         ok: true,
-        json: async () => []
+        json: async () => [],
       } as Response);
     });
 
@@ -475,9 +479,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -515,9 +519,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -554,9 +558,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 1,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -571,13 +575,13 @@ describe('ShoppingListsPage', () => {
     const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
     // Filter to find only the green/success colored ones (start shopping buttons)
     const startShoppingButtons = cartIcons
-      .map(icon => icon.closest('button'))
-      .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
-    
+      .map((icon) => icon.closest('button'))
+      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
+
     expect(startShoppingButtons.length).toBeGreaterThan(0);
 
     // Buttons should be enabled
-    startShoppingButtons.forEach(button => {
+    startShoppingButtons.forEach((button) => {
       expect(button).not.toBeDisabled();
     });
   });
@@ -598,9 +602,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -614,13 +618,13 @@ describe('ShoppingListsPage', () => {
     // Find start shopping buttons (filter by success color class)
     const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
     const startShoppingButtons = cartIcons
-      .map(icon => icon.closest('button'))
-      .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
+      .map((icon) => icon.closest('button'))
+      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
 
     expect(startShoppingButtons.length).toBeGreaterThan(0);
 
     // All buttons should be disabled
-    startShoppingButtons.forEach(button => {
+    startShoppingButtons.forEach((button) => {
       expect(button).toBeDisabled();
     });
   });
@@ -642,9 +646,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 2,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -654,10 +658,10 @@ describe('ShoppingListsPage', () => {
       userId: 'user-123',
       items: [
         { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
+        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     render(<ShoppingListsPage />);
@@ -669,16 +673,19 @@ describe('ShoppingListsPage', () => {
     // Find start shopping button by testId and click it
     const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
     const startShoppingButtons = cartIcons
-      .map(icon => icon.closest('button'))
-      .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
+      .map((icon) => icon.closest('button'))
+      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
 
     await user.click(startShoppingButtons[0]!);
 
     // Wait for dialog to open (unified list)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
-      expect(screen.getByText('Milk')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
+        expect(screen.getByText('Milk')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('applies remote item_checked events from shopping sync', async () => {
@@ -698,20 +705,18 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 1,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     const shoppingListWithItems = {
       _id: 'list-1',
       storeId: 'store-1',
       userId: 'user-123',
-      items: [
-        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-      ],
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -721,7 +726,7 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -736,15 +741,18 @@ describe('ShoppingListsPage', () => {
 
     const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
     const startShoppingButtons = cartIcons
-      .map(icon => icon.closest('button'))
-      .filter(button => button && button.classList.contains('MuiIconButton-colorSuccess'));
+      .map((icon) => icon.closest('button'))
+      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
 
     await user.click(startShoppingButtons[0]!);
 
-    await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Milk')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Initially unchecked
     const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
@@ -778,9 +786,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 2,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     const shoppingListWithItems = {
@@ -789,10 +797,10 @@ describe('ShoppingListsPage', () => {
       userId: 'user-123',
       items: [
         { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false }
+        { foodItemId: 'f2', name: 'Bread', quantity: 2, unit: 'loaf', checked: false },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -802,7 +810,7 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -854,9 +862,7 @@ describe('ShoppingListsPage', () => {
       _id: 'list-1',
       storeId: 'store-1',
       userId: 'user-123',
-      items: [
-        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-      ],
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -930,7 +936,7 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -970,9 +976,7 @@ describe('ShoppingListsPage', () => {
       _id: 'list-1',
       storeId: 'store-1',
       userId: 'user-123',
-      items: [
-        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-      ],
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1018,9 +1022,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -1067,9 +1071,7 @@ describe('ShoppingListsPage', () => {
       _id: 'list-1',
       storeId: 'store-1',
       userId: 'user-123',
-      items: [
-        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false },
-      ],
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1087,7 +1089,9 @@ describe('ShoppingListsPage', () => {
       return Promise.reject(new Error('Unknown URL'));
     });
 
-    setTestUrl('/shopping-lists?shoppingList=true&shoppingList_storeId=store-1&shoppingList_mode=shop');
+    setTestUrl(
+      '/shopping-lists?shoppingList=true&shoppingList_storeId=store-1&shoppingList_mode=shop'
+    );
 
     render(<ShoppingListsPage />);
 
@@ -1117,9 +1121,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -1152,9 +1156,9 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -1192,20 +1196,18 @@ describe('ShoppingListsPage', () => {
           userId: 'user-123',
           itemCount: 1,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     ];
 
     const shoppingListWithItems = {
       _id: 'list-1',
       storeId: 'store-1',
       userId: 'user-123',
-      items: [
-        { foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }
-      ],
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     mockFetchStores.mockResolvedValue(mockStores);
@@ -1215,12 +1217,12 @@ describe('ShoppingListsPage', () => {
       if (url === '/api/food-items?limit=1000') {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as Response);
       }
       return Promise.resolve({
         ok: true,
-        json: async () => []
+        json: async () => [],
       } as Response);
     });
 

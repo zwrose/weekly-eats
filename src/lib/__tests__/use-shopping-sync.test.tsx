@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react';
-import { useShoppingSync, type UseShoppingSyncOptions, type ActiveUser } from '../hooks/use-shopping-sync';
+import {
+  useShoppingSync,
+  type UseShoppingSyncOptions,
+  type ActiveUser,
+} from '../hooks/use-shopping-sync';
 
 // Mock the Ably client factory
 const mockSubscribe = vi.fn();
@@ -224,9 +228,7 @@ describe('useShoppingSync (Ably-based shopping sync hook)', () => {
 
     await waitFor(() => {
       expect(onPresenceUpdate).toHaveBeenCalled();
-      expect(latestHookState?.activeUsers).toEqual([
-        { email: 'a@example.com', name: 'User A' },
-      ]);
+      expect(latestHookState?.activeUsers).toEqual([{ email: 'a@example.com', name: 'User A' }]);
     });
   });
 
@@ -328,5 +330,3 @@ describe('useShoppingSync (Ably-based shopping sync hook)', () => {
     });
   });
 });
-
-

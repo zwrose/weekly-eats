@@ -1,6 +1,6 @@
 /**
  * Core hook for food item creation flow
- * 
+ *
  * Handles the creation of new food items via API and manages dialog state.
  */
 
@@ -55,66 +55,69 @@ export function useFoodItemCreator(
     setError(null);
   }, []);
 
-  const handleCreate = useCallback(async (foodItemData: {
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-    isGlobal: boolean;
-    addToPantry?: boolean;
-  }): Promise<FoodItem | null> => {
-    try {
-      setError(null);
+  const handleCreate = useCallback(
+    async (foodItemData: {
+      name: string;
+      singularName: string;
+      pluralName: string;
+      unit: string;
+      isGlobal: boolean;
+      addToPantry?: boolean;
+    }): Promise<FoodItem | null> => {
+      try {
+        setError(null);
 
-      // Extract addToPantry before sending to API (API doesn't need it)
-      const { addToPantry, ...foodItemPayload } = foodItemData;
+        // Extract addToPantry before sending to API (API doesn't need it)
+        const { addToPantry, ...foodItemPayload } = foodItemData;
 
-      const response = await fetch('/api/food-items', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(foodItemPayload),
-      });
+        const response = await fetch('/api/food-items', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(foodItemPayload),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add food item');
-      }
-
-      const newFoodItem: FoodItem = await response.json();
-
-      // Add to pantry if requested
-      if (addToPantry && newFoodItem._id) {
-        try {
-          await createPantryItem({ foodItemId: newFoodItem._id });
-        } catch (pantryError) {
-          // Log error but don't fail the food item creation
-          console.error('Error adding food item to pantry:', pantryError);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to add food item');
         }
+
+        const newFoodItem: FoodItem = await response.json();
+
+        // Add to pantry if requested
+        if (addToPantry && newFoodItem._id) {
+          try {
+            await createPantryItem({ foodItemId: newFoodItem._id });
+          } catch (pantryError) {
+            // Log error but don't fail the food item creation
+            console.error('Error adding food item to pantry:', pantryError);
+          }
+        }
+
+        // Notify parent component about the new food item
+        if (onFoodItemAdded) {
+          await onFoodItemAdded(newFoodItem);
+        }
+
+        // Call onItemCreated callback if provided
+        if (onItemCreated) {
+          onItemCreated(newFoodItem);
+        }
+
+        // Close the dialog
+        closeDialog();
+
+        return newFoodItem;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add food item';
+        setError(errorMessage);
+        console.error('Error adding food item:', err);
+        return null;
       }
-
-      // Notify parent component about the new food item
-      if (onFoodItemAdded) {
-        await onFoodItemAdded(newFoodItem);
-      }
-
-      // Call onItemCreated callback if provided
-      if (onItemCreated) {
-        onItemCreated(newFoodItem);
-      }
-
-      // Close the dialog
-      closeDialog();
-
-      return newFoodItem;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add food item';
-      setError(errorMessage);
-      console.error('Error adding food item:', err);
-      return null;
-    }
-  }, [onFoodItemAdded, onItemCreated, closeDialog]);
+    },
+    [onFoodItemAdded, onItemCreated, closeDialog]
+  );
 
   return {
     isDialogOpen,
@@ -126,4 +129,3 @@ export function useFoodItemCreator(
     clearError,
   };
 }
-

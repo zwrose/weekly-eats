@@ -7,7 +7,13 @@ const { fetchPurchaseHistory, finishShop } = await import('../shopping-list-util
 describe('fetchPurchaseHistory', () => {
   it('fetches history for the given storeId', async () => {
     const mockHistory = [
-      { foodItemId: 'f1', name: 'Milk', quantity: 2, unit: 'gallon', lastPurchasedAt: '2026-02-15' },
+      {
+        foodItemId: 'f1',
+        name: 'Milk',
+        quantity: 2,
+        unit: 'gallon',
+        lastPurchasedAt: '2026-02-15',
+      },
     ];
     server.use(
       http.get('/api/shopping-lists/:storeId/history', () => {
@@ -26,14 +32,14 @@ describe('fetchPurchaseHistory', () => {
       })
     );
 
-    await expect(fetchPurchaseHistory('store123')).rejects.toThrow('Failed to fetch purchase history');
+    await expect(fetchPurchaseHistory('store123')).rejects.toThrow(
+      'Failed to fetch purchase history'
+    );
   });
 });
 
 describe('finishShop', () => {
-  const checkedItems = [
-    { foodItemId: 'f1', name: 'Milk', quantity: 2, unit: 'gallon' },
-  ];
+  const checkedItems = [{ foodItemId: 'f1', name: 'Milk', quantity: 2, unit: 'gallon' }];
 
   it('posts checked items to the finish-shop endpoint', async () => {
     const mockResponse = { success: true, remainingItems: [] };

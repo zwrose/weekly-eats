@@ -52,9 +52,12 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await waitFor(() => {
-    cleanup();
-  }, { timeout: 100 });
+  await waitFor(
+    () => {
+      cleanup();
+    },
+    { timeout: 100 }
+  );
 });
 
 describe('StoreHistoryDialog', () => {
@@ -74,9 +77,7 @@ describe('StoreHistoryDialog', () => {
     });
 
     it('shows empty state when no history items', () => {
-      render(
-        <StoreHistoryDialog {...defaultProps} historyItems={[]} />
-      );
+      render(<StoreHistoryDialog {...defaultProps} historyItems={[]} />);
       expect(screen.getByText(/no purchase history/i)).toBeInTheDocument();
     });
 
@@ -88,7 +89,8 @@ describe('StoreHistoryDialog', () => {
     it('visually distinguishes items already on the shopping list', () => {
       render(<StoreHistoryDialog {...defaultProps} />);
       // Milk is on the current list - should have "on list" indicator
-      const milkRow = screen.getByText('Milk').closest('[data-testid]') || screen.getByText('Milk').parentElement;
+      const milkRow =
+        screen.getByText('Milk').closest('[data-testid]') || screen.getByText('Milk').parentElement;
       expect(milkRow).toHaveTextContent(/on list/i);
     });
 
@@ -149,8 +151,12 @@ describe('StoreHistoryDialog', () => {
       // Click add button on Bread (not on current list)
       const addButtons = screen.getAllByRole('button', { name: /add/i });
       // Find the add button near Bread
-      const breadItem = screen.getByText('Bread').closest('li') || screen.getByText('Bread').parentElement?.parentElement;
-      const addButton = breadItem ? within(breadItem as HTMLElement).getByRole('button', { name: /add/i }) : addButtons[0];
+      const breadItem =
+        screen.getByText('Bread').closest('li') ||
+        screen.getByText('Bread').parentElement?.parentElement;
+      const addButton = breadItem
+        ? within(breadItem as HTMLElement).getByRole('button', { name: /add/i })
+        : addButtons[0];
       await user.click(addButton);
 
       expect(onAddItems).toHaveBeenCalledWith(

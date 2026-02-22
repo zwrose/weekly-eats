@@ -1,4 +1,12 @@
-import { Store, ShoppingList, CreateStoreRequest, UpdateStoreRequest, UpdateShoppingListRequest, StoreWithShoppingList, PurchaseHistoryRecord } from '../types/shopping-list';
+import {
+  Store,
+  ShoppingList,
+  CreateStoreRequest,
+  UpdateStoreRequest,
+  UpdateShoppingListRequest,
+  StoreWithShoppingList,
+  PurchaseHistoryRecord,
+} from '../types/shopping-list';
 
 export async function fetchStores(): Promise<StoreWithShoppingList[]> {
   const response = await fetch('/api/stores');
@@ -46,7 +54,9 @@ export async function updateStore(id: string, data: UpdateStoreRequest): Promise
   return response.json();
 }
 
-export async function deleteStore(id: string): Promise<{ success: boolean; sharedUserCount?: number }> {
+export async function deleteStore(
+  id: string
+): Promise<{ success: boolean; sharedUserCount?: number }> {
   const response = await fetch(`/api/stores/${id}`, {
     method: 'DELETE',
   });
@@ -64,7 +74,10 @@ export async function fetchShoppingList(storeId: string): Promise<ShoppingList> 
   return response.json();
 }
 
-export async function updateShoppingList(storeId: string, data: UpdateShoppingListRequest): Promise<ShoppingList> {
+export async function updateShoppingList(
+  storeId: string,
+  data: UpdateShoppingListRequest
+): Promise<ShoppingList> {
   const response = await fetch(`/api/shopping-lists/${storeId}`, {
     method: 'PUT',
     headers: {
@@ -94,7 +107,11 @@ export async function inviteUserToStore(storeId: string, email: string): Promise
   }
 }
 
-export async function respondToInvitation(storeId: string, userId: string, action: 'accept' | 'reject'): Promise<void> {
+export async function respondToInvitation(
+  storeId: string,
+  userId: string,
+  action: 'accept' | 'reject'
+): Promise<void> {
   const response = await fetch(`/api/stores/${storeId}/invitations/${userId}`, {
     method: 'PUT',
     headers: {
@@ -117,18 +134,20 @@ export async function removeUserFromStore(storeId: string, userId: string): Prom
   }
 }
 
-export async function fetchPendingInvitations(): Promise<Array<{
-  storeId: string;
-  storeName: string;
-  storeEmoji?: string;
-  invitation: {
-    userId: string;
-    userEmail: string;
-    status: 'pending';
-    invitedBy: string;
-    invitedAt: Date;
-  };
-}>> {
+export async function fetchPendingInvitations(): Promise<
+  Array<{
+    storeId: string;
+    storeName: string;
+    storeEmoji?: string;
+    invitation: {
+      userId: string;
+      userEmail: string;
+      status: 'pending';
+      invitedBy: string;
+      invitedAt: Date;
+    };
+  }>
+> {
   const response = await fetch('/api/stores/invitations');
   if (!response.ok) {
     throw new Error('Failed to fetch pending invitations');
@@ -147,7 +166,16 @@ export async function fetchPurchaseHistory(storeId: string): Promise<PurchaseHis
 export async function finishShop(
   storeId: string,
   checkedItems: Array<{ foodItemId: string; name: string; quantity: number; unit: string }>
-): Promise<{ success: boolean; remainingItems: Array<{ foodItemId: string; name: string; quantity: number; unit: string; checked: boolean }> }> {
+): Promise<{
+  success: boolean;
+  remainingItems: Array<{
+    foodItemId: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    checked: boolean;
+  }>;
+}> {
   const response = await fetch(`/api/shopping-lists/${storeId}/finish-shop`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -159,4 +187,3 @@ export async function finishShop(
   }
   return response.json();
 }
-

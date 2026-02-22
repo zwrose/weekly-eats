@@ -181,11 +181,15 @@ export const createErrorResponse = (message: string, status: number = 500) => {
 };
 
 // Helper function to log errors consistently
-export const logError = (context: string, error: unknown, additionalInfo?: Record<string, unknown>) => {
+export const logError = (
+  context: string,
+  error: unknown,
+  additionalInfo?: Record<string, unknown>
+) => {
   console.error(`[${context}] Error:`, {
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
     ...additionalInfo,
     timestamp: new Date().toISOString(),
   });
-}; 
+};

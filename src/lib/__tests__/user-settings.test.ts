@@ -17,20 +17,19 @@ describe('user-settings', () => {
       expect(DEFAULT_USER_SETTINGS).toEqual({
         themeMode: expect.any(String),
         mealPlanSharing: {
-          invitations: expect.any(Array)
-        }
+          invitations: expect.any(Array),
+        },
       });
     });
 
     it('is immutable', () => {
       const originalTheme = DEFAULT_USER_SETTINGS.themeMode;
-      
+
       // Attempt to modify (should not affect original)
       const settings = { ...DEFAULT_USER_SETTINGS };
       settings.themeMode = 'dark';
-      
+
       expect(DEFAULT_USER_SETTINGS.themeMode).toBe(originalTheme);
     });
   });
 });
-

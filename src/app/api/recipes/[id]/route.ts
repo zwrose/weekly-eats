@@ -4,21 +4,13 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { UpdateRecipeRequest } from '../../../../types/recipe';
-import { 
-  AUTH_ERRORS, 
-  RECIPE_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -37,10 +29,7 @@ export async function GET(
     // Allow viewing global recipes or user's own recipes
     const recipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      $or: [
-        { isGlobal: true },
-        { createdBy: session.user.id }
-      ]
+      $or: [{ isGlobal: true }, { createdBy: session.user.id }],
     });
 
     if (!recipe) {
@@ -62,19 +51,24 @@ export async function GET(
 
     const [foodItemsDocs, recipesDocs] = await Promise.all([
       foodItemIds.length > 0
-        ? db.collection('foodItems').find({
-            _id: { $in: foodItemIds.map(fid => ObjectId.createFromHexString(fid)) },
-          }).toArray()
+        ? db
+            .collection('foodItems')
+            .find({
+              _id: { $in: foodItemIds.map((fid) => ObjectId.createFromHexString(fid)) },
+            })
+            .toArray()
         : Promise.resolve([]),
       recipeIngredientIds.length > 0
-        ? recipesCollection.find({
-            _id: { $in: recipeIngredientIds.map(rid => ObjectId.createFromHexString(rid)) },
-          }).toArray()
+        ? recipesCollection
+            .find({
+              _id: { $in: recipeIngredientIds.map((rid) => ObjectId.createFromHexString(rid)) },
+            })
+            .toArray()
         : Promise.resolve([]),
     ]);
 
-    const foodItemsMap = new Map(foodItemsDocs.map(fi => [fi._id.toString(), fi]));
-    const recipesMap = new Map(recipesDocs.map(r => [r._id.toString(), r]));
+    const foodItemsMap = new Map(foodItemsDocs.map((fi) => [fi._id.toString(), fi]));
+    const recipesMap = new Map(recipesDocs.map((r) => [r._id.toString(), r]));
 
     for (const group of recipe.ingredients || []) {
       for (const ingredient of group.ingredients || []) {
@@ -99,10 +93,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -123,7 +114,7 @@ export async function PUT(
     // Check if recipe exists and belongs to user (only creators can edit)
     const existingRecipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      createdBy: session.user.id
+      createdBy: session.user.id,
     });
 
     if (!existingRecipe) {
@@ -135,32 +126,51 @@ export async function PUT(
       let totalIngredients = 0;
       for (const ingredientList of body.ingredients) {
         if (!ingredientList.ingredients) {
-          return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
+          return NextResponse.json(
+            { error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED },
+            { status: 400 }
+          );
         }
-        
+
         totalIngredients += ingredientList.ingredients.length;
-        
+
         // Check that non-standalone groups have titles
-        if (!ingredientList.isStandalone && (!ingredientList.title || ingredientList.title.trim() === '')) {
-          return NextResponse.json({ error: 'Group titles are required for non-standalone ingredient groups' }, { status: 400 });
+        if (
+          !ingredientList.isStandalone &&
+          (!ingredientList.title || ingredientList.title.trim() === '')
+        ) {
+          return NextResponse.json(
+            { error: 'Group titles are required for non-standalone ingredient groups' },
+            { status: 400 }
+          );
         }
-        
+
         for (const ingredient of ingredientList.ingredients) {
-          if (!ingredient.id || ingredient.quantity <= 0 || (ingredient.type === 'foodItem' && !ingredient.unit)) {
-            return NextResponse.json({ error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA }, { status: 400 });
+          if (
+            !ingredient.id ||
+            ingredient.quantity <= 0 ||
+            (ingredient.type === 'foodItem' && !ingredient.unit)
+          ) {
+            return NextResponse.json(
+              { error: RECIPE_ERRORS.INVALID_INGREDIENT_DATA },
+              { status: 400 }
+            );
           }
         }
       }
-      
+
       // Ensure there's at least one ingredient across all groups
       if (totalIngredients === 0) {
-        return NextResponse.json({ error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED }, { status: 400 });
+        return NextResponse.json(
+          { error: RECIPE_ERRORS.INGREDIENT_LIST_REQUIRED },
+          { status: 400 }
+        );
       }
     }
 
     const updateData = {
       ...body,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     const objectId = ObjectId.createFromHexString(id);
@@ -181,10 +191,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -203,7 +210,7 @@ export async function DELETE(
     // Only creators can delete their recipes
     const result = await recipesCollection.deleteOne({
       _id: ObjectId.createFromHexString(id),
-      createdBy: session.user.id
+      createdBy: session.user.id,
     });
 
     if (result.deletedCount === 0) {
@@ -215,4 +222,4 @@ export async function DELETE(
     logError('Recipes DELETE [id]', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

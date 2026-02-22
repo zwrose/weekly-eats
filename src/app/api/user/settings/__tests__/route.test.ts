@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 
 const getUserObjectIdMock = vi.fn();
-vi.mock('@/lib/user-utils', () => ({ getUserObjectId: (...args: any[]) => getUserObjectIdMock(...args) }));
+vi.mock('@/lib/user-utils', () => ({
+  getUserObjectId: (...args: any[]) => getUserObjectIdMock(...args),
+}));
 vi.mock('@/lib/user-settings', () => ({ DEFAULT_USER_SETTINGS: { themeMode: 'system' } }));
 
 const updateOneMock = vi.fn();
@@ -51,14 +53,18 @@ describe('api/user/settings route', () => {
 
   it('POST 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
-    const res = await routes.POST(makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } }));
+    const res = await routes.POST(
+      makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } })
+    );
     expect(res.status).toBe(401);
   });
 
   it('POST 404 when no user id found', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
     getUserObjectIdMock.mockResolvedValueOnce(null);
-    const res = await routes.POST(makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } }));
+    const res = await routes.POST(
+      makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } })
+    );
     expect(res.status).toBe(404);
   });
 
@@ -70,14 +76,16 @@ describe('api/user/settings route', () => {
   });
 
   it('POST succeeds and returns success true', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com', name: 'X' } });
+    (getServerSession as any).mockResolvedValueOnce({
+      user: { email: 'x@example.com', name: 'X' },
+    });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
-    const res = await routes.POST(makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'dark' } }));
+    const res = await routes.POST(
+      makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'dark' } })
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
   });
 });
-
-

@@ -20,12 +20,18 @@ export async function POST(request: NextRequest) {
 
     // Validate sharingTypes
     if (!Array.isArray(sharingTypes) || sharingTypes.length === 0) {
-      return NextResponse.json({ error: RECIPE_SHARING_ERRORS.INVALID_SHARING_TYPES }, { status: 400 });
+      return NextResponse.json(
+        { error: RECIPE_SHARING_ERRORS.INVALID_SHARING_TYPES },
+        { status: 400 }
+      );
     }
 
     const validTypes = ['tags', 'ratings'];
     if (!sharingTypes.every((type: string) => validTypes.includes(type))) {
-      return NextResponse.json({ error: RECIPE_SHARING_ERRORS.INVALID_SHARING_TYPES }, { status: 400 });
+      return NextResponse.json(
+        { error: RECIPE_SHARING_ERRORS.INVALID_SHARING_TYPES },
+        { status: 400 }
+      );
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       invitedBy: session.user.id,
       invitedAt: new Date(),
-      sharingTypes: sharingTypes as ('tags' | 'ratings')[]
+      sharingTypes: sharingTypes as ('tags' | 'ratings')[],
     };
 
     filteredInvitations.push(newInvitation);
@@ -76,8 +82,8 @@ export async function POST(request: NextRequest) {
       { email: session.user.email },
       {
         $set: {
-          'settings.recipeSharing.invitations': filteredInvitations
-        }
+          'settings.recipeSharing.invitations': filteredInvitations,
+        },
       }
     );
 
@@ -87,5 +93,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-

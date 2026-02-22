@@ -10,7 +10,7 @@ vi.mock('next-auth/react', async () => {
     ...actual,
     useSession: vi.fn(() => ({
       data: { user: { id: 'user-123', email: 'test@example.com' } },
-      status: 'authenticated'
+      status: 'authenticated',
     })),
   };
 });
@@ -36,15 +36,15 @@ vi.mock('../../../lib/meal-plan-utils', () => ({
       breakfast: true,
       lunch: true,
       dinner: true,
-      staples: false
+      staples: false,
     },
-    weeklyStaples: []
+    weeklyStaples: [],
   },
   checkMealPlanOverlap: vi.fn(() => ({ isOverlapping: false, conflict: null })),
   findNextAvailableMealPlanStartDate: vi.fn(() => ({
     startDate: '2024-01-06',
-    skipped: false
-  }))
+    skipped: false,
+  })),
 }));
 
 // Mock meal plan sharing utilities
@@ -62,37 +62,39 @@ vi.mock('@/lib/hooks', () => ({
   useDialog: vi.fn(() => ({
     open: false,
     openDialog: vi.fn(),
-    closeDialog: vi.fn()
+    closeDialog: vi.fn(),
   })),
   useConfirmDialog: vi.fn(() => ({
     open: false,
     openDialog: vi.fn(),
-    closeDialog: vi.fn()
+    closeDialog: vi.fn(),
   })),
   usePersistentDialog: vi.fn(() => ({
     open: false,
     data: null,
     openDialog: vi.fn(),
     closeDialog: vi.fn(),
-    removeDialogData: vi.fn()
-  }))
+    removeDialogData: vi.fn(),
+  })),
 }));
 
 // Mock components that might have issues
 vi.mock('../../../components/AuthenticatedLayout', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('../../../components/MealEditor', () => ({
-  default: () => <div data-testid="meal-editor">Meal Editor</div>
+  default: () => <div data-testid="meal-editor">Meal Editor</div>,
 }));
 
 vi.mock('../../../components/AddFoodItemDialog', () => ({
-  default: () => <div>Add Food Item Dialog</div>
+  default: () => <div>Add Food Item Dialog</div>,
 }));
 
 vi.mock('../../../components/MealPlanBrowser', () => ({
-  default: ({ onPlanSelect }: { onPlanSelect: (plan: any) => void }) => <div data-testid="meal-plan-browser">Meal Plan Browser</div>
+  default: ({ onPlanSelect }: { onPlanSelect: (plan: any) => void }) => (
+    <div data-testid="meal-plan-browser">Meal Plan Browser</div>
+  ),
 }));
 
 // Import after mocks
@@ -112,8 +114,8 @@ describe('MealPlansPage - Delete Functionality', () => {
         mealPlanId: 'meal-plan-123',
         dayOfWeek: 'saturday' as const,
         mealType: 'breakfast' as const,
-        items: []
-      }
+        items: [],
+      },
     ],
     template: {
       startDay: 'saturday' as const,
@@ -121,12 +123,12 @@ describe('MealPlansPage - Delete Functionality', () => {
         breakfast: true,
         lunch: true,
         dinner: true,
-        staples: false
+        staples: false,
       },
-      weeklyStaples: []
+      weeklyStaples: [],
     },
     createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
+    updatedAt: new Date('2024-01-01'),
   };
 
   beforeEach(() => {
@@ -134,20 +136,21 @@ describe('MealPlansPage - Delete Functionality', () => {
     mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
     mockFetchMealPlan.mockResolvedValue(mockMealPlan);
     mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
-    
+
     // Mock global fetch for user settings
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockImplementation((url) => {
       if (url === '/api/user/settings') {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({
-            settings: {
-              themeMode: 'system',
-              mealPlanSharing: { invitations: [] },
-              defaultMealPlanOwner: undefined
-            }
-          })
+          json: () =>
+            Promise.resolve({
+              settings: {
+                themeMode: 'system',
+                mealPlanSharing: { invitations: [] },
+                defaultMealPlanOwner: undefined,
+              },
+            }),
         } as Response);
       }
       return Promise.reject(new Error('Not mocked'));
@@ -166,7 +169,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
@@ -186,19 +189,19 @@ describe('MealPlansPage - Delete Functionality', () => {
     const user = userEvent.setup();
     const mockCloseDialog = vi.fn();
     const mockOpenConfirmDialog = vi.fn();
-    
+
     const mockPersistentDialog = vi.fn(() => ({
       open: true,
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const mockConfirmDialog = vi.fn(() => ({
       open: false,
       openDialog: mockOpenConfirmDialog,
-      closeDialog: vi.fn()
+      closeDialog: vi.fn(),
     }));
 
     const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
@@ -224,20 +227,20 @@ describe('MealPlansPage - Delete Functionality', () => {
     const user = userEvent.setup();
     const mockOpenConfirmDialog = vi.fn();
     const mockCloseDialog = vi.fn();
-    
+
     const mockPersistentDialog = vi.fn(() => ({
       open: true,
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const mockConfirmDialog = vi.fn(() => ({
       open: false,
       openDialog: mockOpenConfirmDialog,
       closeDialog: vi.fn(),
-      data: null
+      data: null,
     }));
 
     const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
@@ -270,7 +273,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -298,8 +301,8 @@ describe('MealPlansPage - Delete Functionality', () => {
           dayOfWeek: 'saturday' as const,
           mealType: 'breakfast' as const,
           items: [
-            { type: 'foodItem' as const, id: 'food-1', name: 'apples', quantity: 2, unit: 'piece' }
-          ]
+            { type: 'foodItem' as const, id: 'food-1', name: 'apples', quantity: 2, unit: 'piece' },
+          ],
         },
         {
           _id: 'item-staples',
@@ -307,10 +310,16 @@ describe('MealPlansPage - Delete Functionality', () => {
           dayOfWeek: 'saturday' as const,
           mealType: 'staples' as const,
           items: [
-            { type: 'foodItem' as const, id: 'food-2', name: 'bananas', quantity: 5, unit: 'piece' }
-          ]
-        }
-      ]
+            {
+              type: 'foodItem' as const,
+              id: 'food-2',
+              name: 'bananas',
+              quantity: 5,
+              unit: 'piece',
+            },
+          ],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -318,7 +327,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -348,21 +357,35 @@ describe('MealPlansPage - Delete Functionality', () => {
           dayOfWeek: 'saturday' as const,
           mealType: 'lunch' as const,
           items: [
-            { 
-              type: 'ingredientGroup' as const, 
-              id: 'group-1', 
+            {
+              type: 'ingredientGroup' as const,
+              id: 'group-1',
               name: 'Salad Ingredients',
-              ingredients: [{
-                title: 'Fresh Salad',
-                ingredients: [
-                  { type: 'foodItem' as const, id: 'food-1', name: 'tomatoes', quantity: 3, unit: 'piece' },
-                  { type: 'foodItem' as const, id: 'food-2', name: 'cucumber', quantity: 1, unit: 'piece' }
-                ]
-              }]
-            }
-          ]
-        }
-      ]
+              ingredients: [
+                {
+                  title: 'Fresh Salad',
+                  ingredients: [
+                    {
+                      type: 'foodItem' as const,
+                      id: 'food-1',
+                      name: 'tomatoes',
+                      quantity: 3,
+                      unit: 'piece',
+                    },
+                    {
+                      type: 'foodItem' as const,
+                      id: 'food-2',
+                      name: 'cucumber',
+                      quantity: 1,
+                      unit: 'piece',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -370,7 +393,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -404,10 +427,10 @@ describe('MealPlansPage - Delete Functionality', () => {
             // Item with empty name - should have been populated by API but wasn't
             { type: 'foodItem' as const, id: 'food-deleted', name: '', quantity: 2, unit: 'piece' },
             // Item without name field at all
-            { type: 'foodItem' as const, id: 'food-old', quantity: 1, unit: 'cup' }
-          ]
-        }
-      ]
+            { type: 'foodItem' as const, id: 'food-old', quantity: 1, unit: 'cup' },
+          ],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -415,7 +438,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -432,7 +455,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       // This is expected behavior that indicates the API should have populated names
       // Name appears in both list and dialog, so use getAllByText
       expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
-      
+
       // If this test starts failing because items don't render or show "Unknown",
       // that means we've improved the frontend to handle missing names - which is good!
     });
@@ -449,11 +472,9 @@ describe('MealPlansPage - Delete Functionality', () => {
           mealPlanId: 'meal-plan-123',
           dayOfWeek: 'saturday' as const,
           mealType: 'dinner' as const,
-          items: [
-            { type: 'recipe' as const, id: 'r1', name: 'Pasta', quantity: 1 }
-          ]
-        }
-      ]
+          items: [{ type: 'recipe' as const, id: 'r1', name: 'Pasta', quantity: 1 }],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -461,7 +482,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -492,10 +513,10 @@ describe('MealPlansPage - Delete Functionality', () => {
           dayOfWeek: 'saturday' as const,
           mealType: 'staples' as const,
           items: [
-            { type: 'foodItem' as const, id: 'f1', name: 'Milk', quantity: 1, unit: 'gallon' }
-          ]
-        }
-      ]
+            { type: 'foodItem' as const, id: 'f1', name: 'Milk', quantity: 1, unit: 'gallon' },
+          ],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -503,7 +524,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' }, // In edit mode
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -524,7 +545,9 @@ describe('MealPlansPage - Delete Functionality', () => {
       expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
     });
     // Should show editable description
-    expect(screen.getByText(/add, edit, or remove staples for this specific meal plan/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/add, edit, or remove staples for this specific meal plan/i)
+    ).toBeInTheDocument();
     // Should show the MealEditor component for staples
     const mealEditors = screen.getAllByTestId('meal-editor');
     // Should have at least one MealEditor (for staples + for the meal days)
@@ -544,10 +567,10 @@ describe('MealPlansPage - Delete Functionality', () => {
           dayOfWeek: 'saturday' as const,
           mealType: 'breakfast' as const,
           items: [
-            { type: 'foodItem' as const, id: 'f1', name: 'apple', quantity: 1, unit: 'piece' }
-          ]
-        }
-      ]
+            { type: 'foodItem' as const, id: 'f1', name: 'apple', quantity: 1, unit: 'piece' },
+          ],
+        },
+      ],
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -555,7 +578,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -594,8 +617,8 @@ describe('MealPlansPage - Delete Functionality', () => {
           mealType: 'breakfast' as const,
           items: [],
           skipped: true,
-          skipReason: 'Out for brunch'
-        }
+          skipReason: 'Out for brunch',
+        },
       ],
       template: {
         startDay: 'saturday' as const,
@@ -603,10 +626,10 @@ describe('MealPlansPage - Delete Functionality', () => {
           breakfast: true,
           lunch: false,
           dinner: false,
-          staples: false
+          staples: false,
         },
-        weeklyStaples: []
-      }
+        weeklyStaples: [],
+      },
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -614,7 +637,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -644,8 +667,8 @@ describe('MealPlansPage - Delete Functionality', () => {
           mealType: 'breakfast' as const,
           items: [],
           skipped: true,
-          skipReason: 'Leftovers'
-        }
+          skipReason: 'Leftovers',
+        },
       ],
       template: {
         startDay: 'saturday' as const,
@@ -653,10 +676,10 @@ describe('MealPlansPage - Delete Functionality', () => {
           breakfast: true,
           lunch: false,
           dinner: false,
-          staples: false
+          staples: false,
         },
-        weeklyStaples: []
-      }
+        weeklyStaples: [],
+      },
     };
 
     const mockPersistentDialog = vi.fn(() => ({
@@ -664,7 +687,7 @@ describe('MealPlansPage - Delete Functionality', () => {
       data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { usePersistentDialog } = await import('@/lib/hooks');
@@ -723,10 +746,16 @@ describe('MealPlansPage - Auto-focus', () => {
     const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
     // Reset all hook implementations to ensure clean state
     (usePersistentDialog as any).mockImplementation(() => ({
-      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+      open: false,
+      data: null,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn(),
     }));
     (useConfirmDialog as any).mockImplementation(() => ({
-      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+      open: false,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
     }));
     // useDialog is called 3 times per render: createDialog, templateDialog, shareDialog
     // Use counter-based mock so it survives React re-renders
@@ -734,7 +763,7 @@ describe('MealPlansPage - Auto-focus', () => {
     (useDialog as any).mockImplementation(() => {
       const index = callCount % 3;
       callCount++;
-      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // shareDialog: open
       return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
     });
 
@@ -841,10 +870,7 @@ describe('MealPlansPage - View Mode Quantity Display', () => {
     const recipeLine =
       recipeMatches.find((node) => {
         const el = node as HTMLElement;
-        return (
-          el.tagName.toLowerCase() === 'p' &&
-          el.className.includes('MuiTypography-root')
-        );
+        return el.tagName.toLowerCase() === 'p' && el.className.includes('MuiTypography-root');
       }) ?? recipeMatches[0];
 
     expect(recipeLine).toBeInTheDocument();
@@ -911,13 +937,9 @@ describe('MealPlansPage - View Mode Quantity Display', () => {
     const foodItemLine =
       foodItemMatches.find((node) => {
         const el = node as HTMLElement;
-        return (
-          el.tagName.toLowerCase() === 'p' &&
-          el.className.includes('MuiTypography-root')
-        );
+        return el.tagName.toLowerCase() === 'p' && el.className.includes('MuiTypography-root');
       }) ?? foodItemMatches[0];
 
     expect(foodItemLine).toBeInTheDocument();
   });
 });
-

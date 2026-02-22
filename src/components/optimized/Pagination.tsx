@@ -8,12 +8,7 @@ interface PaginationProps {
   show?: boolean;
 }
 
-const Pagination = React.memo<PaginationProps>(({ 
-  count, 
-  page, 
-  onChange, 
-  show = true 
-}) => {
+const Pagination = React.memo<PaginationProps>(({ count, page, onChange, show = true }) => {
   if (!show || count <= 1) return null;
 
   return (
@@ -30,4 +25,4 @@ const Pagination = React.memo<PaginationProps>(({
 
 Pagination.displayName = 'Pagination';
 
-export default Pagination; 
+export default Pagination;

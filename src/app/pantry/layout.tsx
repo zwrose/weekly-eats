@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Pantry",
+  title: 'Pantry',
 };
 
 export default function PantryLayout({ children }: { children: React.ReactNode }) {

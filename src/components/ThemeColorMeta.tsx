@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect } from 'react';
 import { useTheme } from '../lib/theme-context';
@@ -13,19 +13,18 @@ export const ThemeColorMeta: React.FC = () => {
   useEffect(() => {
     // Update the theme-color meta tag for the OS status bar
     const themeColor = isDark ? '#121212' : '#f5f5f5';
-    
+
     // Find existing meta tag or create a new one
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    
+
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
       metaThemeColor.setAttribute('name', 'theme-color');
       document.head.appendChild(metaThemeColor);
     }
-    
+
     metaThemeColor.setAttribute('content', themeColor);
   }, [isDark]);
 
   return null;
 };
-

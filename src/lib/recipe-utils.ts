@@ -18,7 +18,9 @@ export const fetchUserRecipes = async (): Promise<Recipe[]> => {
   return Array.isArray(json) ? json : json.data || [];
 };
 
-export const fetchGlobalRecipes = async (excludeUserCreated: boolean = false): Promise<Recipe[]> => {
+export const fetchGlobalRecipes = async (
+  excludeUserCreated: boolean = false
+): Promise<Recipe[]> => {
   const url = excludeUserCreated
     ? '/api/recipes?globalOnly=true&excludeUserCreated=true'
     : '/api/recipes?globalOnly=true';
@@ -46,12 +48,12 @@ export const createRecipe = async (recipe: CreateRecipeRequest): Promise<Recipe>
     },
     body: JSON.stringify(recipe),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to create recipe');
   }
-  
+
   return response.json();
 };
 
@@ -76,9 +78,9 @@ export const deleteRecipe = async (id: string): Promise<void> => {
   const response = await fetch(`/api/recipes/${id}`, {
     method: 'DELETE',
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete recipe');
   }
-}; 
+};

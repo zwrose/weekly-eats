@@ -59,7 +59,7 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body } as any);
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -94,7 +94,13 @@ describe('api/pantry route', () => {
           userId: 'u1',
           foodItemId: 'f1',
           addedAt: new Date(),
-          foodItem: { _id: 'f1', name: 'Apple', singularName: 'apple', pluralName: 'apples', unit: 'each' },
+          foodItem: {
+            _id: 'f1',
+            name: 'Apple',
+            singularName: 'apple',
+            pluralName: 'apples',
+            unit: 'each',
+          },
         },
       ]);
 
@@ -143,7 +149,13 @@ describe('api/pantry route', () => {
           userId: 'u1',
           foodItemId: 'f1',
           addedAt: new Date(),
-          foodItem: { _id: 'f1', name: 'Apple', singularName: 'apple', pluralName: 'apples', unit: 'each' },
+          foodItem: {
+            _id: 'f1',
+            name: 'Apple',
+            singularName: 'apple',
+            pluralName: 'apples',
+            unit: 'each',
+          },
         },
       ]);
 
@@ -161,9 +173,7 @@ describe('api/pantry route', () => {
       const nameMatch = matchStages.find((s: any) => s.$match.$or);
       expect(nameMatch).toBeDefined();
       expect(nameMatch.$match.$or).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ 'foodItem.name': expect.any(Object) }),
-        ])
+        expect.arrayContaining([expect.objectContaining({ 'foodItem.name': expect.any(Object) })])
       );
     });
 
@@ -212,11 +222,24 @@ describe('api/pantry route', () => {
     it('validates and creates pantry item', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
       const validFoodItemId = '64b7f8c2a2b7c2f1a2b7c2f1';
-      findOneMock.mockResolvedValueOnce({ _id: validFoodItemId, name: 'Apple', singularName: 'apple', pluralName: 'apples', unit: 'each' });
+      findOneMock.mockResolvedValueOnce({
+        _id: validFoodItemId,
+        name: 'Apple',
+        singularName: 'apple',
+        pluralName: 'apples',
+        unit: 'each',
+      });
       findOneMock.mockResolvedValueOnce(null); // no existing pantry item
       insertOneMock.mockResolvedValueOnce({ insertedId: 'p1' });
-      findOneMock.mockResolvedValueOnce({ _id: 'p1', userId: 'u1', foodItemId: validFoodItemId, addedAt: new Date() });
-      const res = await routes.POST(makeReq('http://localhost/api/pantry', { foodItemId: validFoodItemId }));
+      findOneMock.mockResolvedValueOnce({
+        _id: 'p1',
+        userId: 'u1',
+        foodItemId: validFoodItemId,
+        addedAt: new Date(),
+      });
+      const res = await routes.POST(
+        makeReq('http://localhost/api/pantry', { foodItemId: validFoodItemId })
+      );
       expect(res.status).toBe(201);
       const json = await res.json();
       expect(json).toHaveProperty('foodItem');
@@ -236,7 +259,9 @@ describe('api/pantry route', () => {
 
     it('returns 400 for invalid ObjectId', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
-      const res = await routes.POST(makeReq('http://localhost/api/pantry', { foodItemId: 'invalid' }));
+      const res = await routes.POST(
+        makeReq('http://localhost/api/pantry', { foodItemId: 'invalid' })
+      );
       expect(res.status).toBe(400);
     });
 
@@ -245,7 +270,9 @@ describe('api/pantry route', () => {
       const validFoodItemId = '64b7f8c2a2b7c2f1a2b7c2f1';
       findOneMock.mockResolvedValueOnce({ _id: validFoodItemId, name: 'Apple' }); // food item exists
       findOneMock.mockResolvedValueOnce({ _id: 'p1' }); // already in pantry
-      const res = await routes.POST(makeReq('http://localhost/api/pantry', { foodItemId: validFoodItemId }));
+      const res = await routes.POST(
+        makeReq('http://localhost/api/pantry', { foodItemId: validFoodItemId })
+      );
       expect(res.status).toBe(409);
     });
   });

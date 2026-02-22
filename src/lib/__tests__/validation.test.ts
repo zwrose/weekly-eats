@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isValidDayOfWeek, isValidMealsConfig, isValidDateString, isValidObjectId, validateRequiredFields } from '../validation';
+import {
+  isValidDayOfWeek,
+  isValidMealsConfig,
+  isValidDateString,
+  isValidObjectId,
+  validateRequiredFields,
+} from '../validation';
 
 describe('validation', () => {
   it('validates day of week', () => {
@@ -28,5 +34,3 @@ describe('validation', () => {
     expect(missingFields).toContain('b');
   });
 });
-
-

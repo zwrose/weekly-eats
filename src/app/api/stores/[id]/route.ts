@@ -9,10 +9,7 @@ type RouteParams = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -31,7 +28,7 @@ export async function GET(
 
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (!store) {
@@ -40,7 +37,7 @@ export async function GET(
 
     // Get the shopping list for this store
     const shoppingList = await shoppingListsCollection.findOne({
-      storeId: id
+      storeId: id,
     });
 
     return NextResponse.json({
@@ -51,8 +48,8 @@ export async function GET(
         userId: session.user.id,
         items: [],
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
   } catch (error) {
     logError('Stores GET [id]', error);
@@ -60,10 +57,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -84,7 +78,7 @@ export async function PUT(
 
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (!store) {
@@ -92,7 +86,7 @@ export async function PUT(
     }
 
     const updates: Record<string, unknown> = {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     if (name !== undefined) {
@@ -104,7 +98,7 @@ export async function PUT(
       const existingStore = await storesCollection.findOne({
         userId: session.user.id,
         name: name.trim(),
-        _id: { $ne: ObjectId.createFromHexString(id) }
+        _id: { $ne: ObjectId.createFromHexString(id) },
       });
 
       if (existingStore) {
@@ -118,13 +112,10 @@ export async function PUT(
       updates.emoji = emoji;
     }
 
-    await storesCollection.updateOne(
-      { _id: ObjectId.createFromHexString(id) },
-      { $set: updates }
-    );
+    await storesCollection.updateOne({ _id: ObjectId.createFromHexString(id) }, { $set: updates });
 
     const updatedStore = await storesCollection.findOne({
-      _id: ObjectId.createFromHexString(id)
+      _id: ObjectId.createFromHexString(id),
     });
 
     return NextResponse.json(updatedStore);
@@ -134,10 +125,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -156,7 +144,7 @@ export async function DELETE(
 
     const store = await storesCollection.findOne({
       _id: ObjectId.createFromHexString(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (!store) {
@@ -164,10 +152,9 @@ export async function DELETE(
     }
 
     // Check if store has accepted users
-    const acceptedInvitations = store.invitations?.filter(
-      (inv: { status: string }) => inv.status === 'accepted'
-    ) || [];
-    
+    const acceptedInvitations =
+      store.invitations?.filter((inv: { status: string }) => inv.status === 'accepted') || [];
+
     // Return info about accepted users (frontend will show warning)
     const sharedUserCount = acceptedInvitations.length;
 
@@ -183,4 +170,3 @@ export async function DELETE(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatDateForAPI, calculateEndDate, calculateEndDateAsString, generateMealPlanNameFromString, getNextDayOfWeek } from '../date-utils';
+import {
+  formatDateForAPI,
+  calculateEndDate,
+  calculateEndDateAsString,
+  generateMealPlanNameFromString,
+  getNextDayOfWeek,
+} from '../date-utils';
 
 describe('date-utils', () => {
   it('formats date to API string yyyy-MM-dd', () => {
@@ -29,5 +35,3 @@ describe('date-utils', () => {
     expect(nextSun.getDay()).toBe(0);
   });
 });
-
-

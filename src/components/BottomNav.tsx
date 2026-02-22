@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { useSession, signOut } from "next-auth/react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState, useCallback } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Paper,
   BottomNavigation,
@@ -12,8 +12,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-} from "@mui/material";
-import { CachedAvatar } from "./CachedAvatar";
+} from '@mui/material';
+import { CachedAvatar } from './CachedAvatar';
 import {
   CalendarMonth,
   ShoppingCart,
@@ -23,8 +23,8 @@ import {
   Settings,
   Logout,
   Person,
-} from "@mui/icons-material";
-import SessionWrapper from "./SessionWrapper";
+} from '@mui/icons-material';
+import SessionWrapper from './SessionWrapper';
 
 export default function BottomNav() {
   const { data: session } = useSession();
@@ -41,7 +41,7 @@ export default function BottomNav() {
   }, []);
 
   const handleSignOut = useCallback(() => {
-    signOut({ callbackUrl: "/" });
+    signOut({ callbackUrl: '/' });
     setAnchorEl(null);
   }, []);
 
@@ -86,9 +86,7 @@ export default function BottomNav() {
   };
 
   // Check if we should hide the bottom nav for unapproved users
-  const shouldHideBottomNav = session?.user && 
-    !session.user.isApproved && 
-    !session.user.isAdmin;
+  const shouldHideBottomNav = session?.user && !session.user.isApproved && !session.user.isAdmin;
 
   if (!session?.user || shouldHideBottomNav) {
     return null;
@@ -152,10 +150,10 @@ export default function BottomNav() {
             aria-label="Profile"
             icon={
               <CachedAvatar
-                  src={session.user.image}
-                  alt={session.user.name || "Profile"}
-                  sx={{ width: 24, height: 24 }}
-                />
+                src={session.user.image}
+                alt={session.user.name || 'Profile'}
+                sx={{ width: 24, height: 24 }}
+              />
             }
             onClick={handleProfileMenu}
           />
@@ -165,13 +163,13 @@ export default function BottomNav() {
           id="profile-menu-bottom"
           anchorEl={anchorEl}
           anchorOrigin={{
-            vertical: "top",
-            horizontal: "right",
+            vertical: 'top',
+            horizontal: 'right',
           }}
           keepMounted
           transformOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
+            vertical: 'bottom',
+            horizontal: 'right',
           }}
           open={Boolean(anchorEl)}
           onClose={handleClose}
@@ -214,4 +212,3 @@ export default function BottomNav() {
     </SessionWrapper>
   );
 }
-

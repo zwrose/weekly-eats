@@ -55,12 +55,9 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] =
-    useState<ShoppingSyncConnectionState>('unknown');
+  const [connectionState, setConnectionState] = useState<ShoppingSyncConnectionState>('unknown');
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
-  const [lastConnectionError, setLastConnectionError] = useState<string | null>(
-    null
-  );
+  const [lastConnectionError, setLastConnectionError] = useState<string | null>(null);
   const clientRef = useRef<Ably.Realtime | null>(null);
   const channelRef = useRef<Ably.Types.RealtimeChannelCallbacks | null>(null);
   const presenceUserRef = useRef<ActiveUser | null>(presenceUser ?? null);
@@ -85,7 +82,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     onPresenceUpdate,
     onItemChecked,
     onListUpdated,
-    onItemDeleted
+    onItemDeleted,
   });
 
   // Update refs when callbacks change
@@ -94,7 +91,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
       onPresenceUpdate,
       onItemChecked,
       onListUpdated,
-      onItemDeleted
+      onItemDeleted,
     };
   }, [onPresenceUpdate, onItemChecked, onListUpdated, onItemDeleted]);
 
@@ -217,18 +214,14 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     [scheduleReconnect]
   );
 
-  const refreshPresenceUsers = async (
-    channel: Ably.Types.RealtimeChannelCallbacks
-  ) => {
+  const refreshPresenceUsers = async (channel: Ably.Types.RealtimeChannelCallbacks) => {
     try {
-      const members = await new Promise<Ably.Types.PresenceMessage[]>(
-        (resolve, reject) => {
-          channel.presence.get((err, result) => {
-            if (err) return reject(err);
-            resolve(result || []);
-          });
-        }
-      );
+      const members = await new Promise<Ably.Types.PresenceMessage[]>((resolve, reject) => {
+        channel.presence.get((err, result) => {
+          if (err) return reject(err);
+          resolve(result || []);
+        });
+      });
 
       const users: ActiveUser[] = members
         .map((m) => m.data as ActiveUser)
@@ -271,16 +264,8 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
 
       channel.subscribe('item_checked', (msg) => {
         const data = msg.data as ShoppingListSyncMessage;
-        if (
-          data.foodItemId !== undefined &&
-          data.checked !== undefined &&
-          data.updatedBy
-        ) {
-          callbacksRef.current.onItemChecked?.(
-            data.foodItemId,
-            data.checked,
-            data.updatedBy
-          );
+        if (data.foodItemId !== undefined && data.checked !== undefined && data.updatedBy) {
+          callbacksRef.current.onItemChecked?.(data.foodItemId, data.checked, data.updatedBy);
         }
       });
 
@@ -392,7 +377,3 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     disconnect,
   };
 }
-
-
-
-

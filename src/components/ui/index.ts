@@ -1,2 +1,2 @@
 export { DialogActions } from './DialogActions';
-export { DialogTitle } from './DialogTitle'; 
+export { DialogTitle } from './DialogTitle';

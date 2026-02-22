@@ -9,7 +9,9 @@ export const fetchPantryItems = async (): Promise<PantryItemWithFoodItem[]> => {
   return result.data;
 };
 
-export const createPantryItem = async (pantryItem: CreatePantryItemRequest): Promise<PantryItem> => {
+export const createPantryItem = async (
+  pantryItem: CreatePantryItemRequest
+): Promise<PantryItem> => {
   const response = await fetch('/api/pantry', {
     method: 'POST',
     headers: {
@@ -17,12 +19,12 @@ export const createPantryItem = async (pantryItem: CreatePantryItemRequest): Pro
     },
     body: JSON.stringify(pantryItem),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to create pantry item');
   }
-  
+
   return response.json();
 };
 
@@ -30,9 +32,9 @@ export const deletePantryItem = async (id: string): Promise<void> => {
   const response = await fetch(`/api/pantry/${id}`, {
     method: 'DELETE',
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete pantry item');
   }
-}; 
+};

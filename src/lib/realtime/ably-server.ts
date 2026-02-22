@@ -34,5 +34,3 @@ export async function publishShoppingEvent(
     console.error('[Ably] Failed to publish shopping event:', error);
   }
 }
-
-

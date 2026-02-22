@@ -9,7 +9,7 @@ vi.mock('next-auth/react', async () => {
     ...actual,
     useSession: vi.fn(() => ({
       data: { user: { id: 'user-123', email: 'test@example.com' } },
-      status: 'authenticated'
+      status: 'authenticated',
     })),
   };
 });
@@ -51,65 +51,67 @@ vi.mock('@/lib/hooks', () => ({
   useDialog: vi.fn(() => ({
     open: false,
     openDialog: vi.fn(),
-    closeDialog: vi.fn()
+    closeDialog: vi.fn(),
   })),
   useConfirmDialog: vi.fn(() => ({
     open: false,
     openDialog: vi.fn(),
-    closeDialog: vi.fn()
+    closeDialog: vi.fn(),
   })),
   usePersistentDialog: vi.fn(() => ({
     open: false,
     data: null,
     openDialog: vi.fn(),
     closeDialog: vi.fn(),
-    removeDialogData: vi.fn()
-  }))
+    removeDialogData: vi.fn(),
+  })),
 }));
 
 vi.mock('../../../lib/recipe-utils', () => ({
-  fetchRecipe: vi.fn(() => Promise.resolve({
-    _id: 'recipe-123',
-    title: 'Test Recipe',
-    emoji: '🍝',
-    ingredients: [
-      {
-        title: '',
-        ingredients: [
-          { type: 'foodItem' as const, id: 'food-1', quantity: 2, unit: 'cup' }
-        ],
-        isStandalone: true
-      }
-    ],
-    instructions: 'Test instructions',
-    isGlobal: false,
-    createdBy: 'user-123',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
-  })),
+  fetchRecipe: vi.fn(() =>
+    Promise.resolve({
+      _id: 'recipe-123',
+      title: 'Test Recipe',
+      emoji: '🍝',
+      ingredients: [
+        {
+          title: '',
+          ingredients: [{ type: 'foodItem' as const, id: 'food-1', quantity: 2, unit: 'cup' }],
+          isStandalone: true,
+        },
+      ],
+      instructions: 'Test instructions',
+      isGlobal: false,
+      createdBy: 'user-123',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    })
+  ),
   createRecipe: vi.fn(),
   updateRecipe: vi.fn(),
   deleteRecipe: vi.fn(),
 }));
 
 vi.mock('../../../lib/food-items-utils', () => ({
-  fetchFoodItems: vi.fn(() => Promise.resolve([
-    { _id: 'food-1', name: 'Pasta', singularName: 'pasta', pluralName: 'pasta', unit: 'cup' }
-  ])),
-  getUnitForm: vi.fn((unit: string, quantity: number) => quantity === 1 ? unit : `${unit}s`)
+  fetchFoodItems: vi.fn(() =>
+    Promise.resolve([
+      { _id: 'food-1', name: 'Pasta', singularName: 'pasta', pluralName: 'pasta', unit: 'cup' },
+    ])
+  ),
+  getUnitForm: vi.fn((unit: string, quantity: number) => (quantity === 1 ? unit : `${unit}s`)),
 }));
 
 // Mock components
 vi.mock('../../../components/AuthenticatedLayout', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('../../../components/RecipeIngredients', () => ({
-  default: () => <div data-testid="recipe-ingredients">Recipe Ingredients</div>
+  default: () => <div data-testid="recipe-ingredients">Recipe Ingredients</div>,
 }));
 
 vi.mock('../../../components/EmojiPicker', () => ({
-  default: () => <div data-testid="emoji-picker">Emoji Picker</div>
+  default: () => <div data-testid="emoji-picker">Emoji Picker</div>,
 }));
 
 vi.mock('@/components/RecipeFilterBar', () => ({
@@ -164,18 +166,20 @@ vi.mock('../../../components/RecipeTagsEditor', () => ({
       <div data-testid="recipe-tags-editor" data-editable={String(editable)}>
         <div>Tags Editor</div>
         {tagsArray.map((tag: string) => (
-          <span key={tag} data-testid={`tag-${tag}`}>{tag}</span>
+          <span key={tag} data-testid={`tag-${tag}`}>
+            {tag}
+          </span>
         ))}
         {sharedTagsArray.length > 0 && (
           <div data-testid="shared-tags">
             {sharedTagsArray.map((tag: string) => (
-              <span key={tag} data-testid={`shared-tag-${tag}`}>{tag}</span>
+              <span key={tag} data-testid={`shared-tag-${tag}`}>
+                {tag}
+              </span>
             ))}
           </div>
         )}
-        {editable && onChange && (
-          <button onClick={() => onChange(['new-tag'])}>Add Tag</button>
-        )}
+        {editable && onChange && <button onClick={() => onChange(['new-tag'])}>Add Tag</button>}
       </div>
     );
   },
@@ -218,11 +222,9 @@ const mockRecipe = {
   ingredients: [
     {
       title: '',
-      ingredients: [
-        { type: 'foodItem' as const, id: 'food-1', quantity: 2, unit: 'cup' }
-      ],
-      isStandalone: true
-    }
+      ingredients: [{ type: 'foodItem' as const, id: 'food-1', quantity: 2, unit: 'cup' }],
+      isStandalone: true,
+    },
   ],
   instructions: 'Test instructions',
   isGlobal: false,
@@ -435,7 +437,7 @@ describe('RecipesPage - Delete Functionality', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -476,13 +478,13 @@ describe('RecipesPage - Delete Functionality', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const mockConfirmDialog = vi.fn(() => ({
       open: false,
       openDialog: mockOpenConfirmDialog,
-      closeDialog: vi.fn()
+      closeDialog: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -529,13 +531,13 @@ describe('RecipesPage - Delete Functionality', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const mockConfirmDialog = vi.fn(() => ({
       open: true,
       openDialog: vi.fn(),
-      closeDialog: mockCloseConfirmDialog
+      closeDialog: mockCloseConfirmDialog,
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -611,7 +613,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -656,7 +658,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: { recipeId: 'recipe-123' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -701,7 +703,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: { recipeId: 'recipe-456' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -750,7 +752,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -782,9 +784,12 @@ describe('RecipesPage - Tags and Ratings', () => {
     const addTagButtons = screen.getAllByText('Add Tag');
     await user.click(addTagButtons[0]);
 
-    await waitFor(() => {
-      expect(mockUpdateRecipeTags).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(mockUpdateRecipeTags).toHaveBeenCalled();
+      },
+      { timeout: 2000 }
+    );
 
     unmount();
   });
@@ -796,7 +801,7 @@ describe('RecipesPage - Tags and Ratings', () => {
       data: { recipeId: 'recipe-123', editMode: 'true' },
       openDialog: vi.fn(),
       closeDialog: vi.fn(),
-      removeDialogData: vi.fn()
+      removeDialogData: vi.fn(),
     }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
@@ -828,9 +833,12 @@ describe('RecipesPage - Tags and Ratings', () => {
     const setRatingButtons = screen.getAllByText('Set 5 Stars');
     await user.click(setRatingButtons[0]);
 
-    await waitFor(() => {
-      expect(mockUpdateRecipeRating).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(mockUpdateRecipeRating).toHaveBeenCalled();
+      },
+      { timeout: 2000 }
+    );
 
     unmount();
   });
@@ -838,16 +846,22 @@ describe('RecipesPage - Tags and Ratings', () => {
   it('auto-focuses Recipe Title field when create dialog opens', async () => {
     const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
     (usePersistentDialog as any).mockImplementation(() => ({
-      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+      open: false,
+      data: null,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn(),
     }));
     (useConfirmDialog as any).mockImplementation(() => ({
-      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+      open: false,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
     }));
     let callCount = 0;
     (useDialog as any).mockImplementation(() => {
       const index = callCount % 3;
       callCount++;
-      if (index === 0) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // createDialog: open
+      if (index === 0) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // createDialog: open
       return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
     });
 
@@ -864,16 +878,22 @@ describe('RecipesPage - Tags and Ratings', () => {
   it('auto-focuses Email Address field when share recipes dialog opens', async () => {
     const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
     (usePersistentDialog as any).mockImplementation(() => ({
-      open: false, data: null, openDialog: vi.fn(), closeDialog: vi.fn(), removeDialogData: vi.fn()
+      open: false,
+      data: null,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      removeDialogData: vi.fn(),
     }));
     (useConfirmDialog as any).mockImplementation(() => ({
-      open: false, openDialog: vi.fn(), closeDialog: vi.fn()
+      open: false,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
     }));
     let callCount = 0;
     (useDialog as any).mockImplementation(() => {
       const index = callCount % 3;
       callCount++;
-      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };  // shareDialog: open
+      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // shareDialog: open
       return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
     });
 

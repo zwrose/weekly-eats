@@ -12,10 +12,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND }, { status: 401 });
     }
 
     const client = await getMongoClient();
@@ -23,45 +20,32 @@ export async function DELETE(
     const { id } = await params;
 
     if (!id || !ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND }, { status: 400 });
     }
 
     // Verify the pantry item exists and belongs to the user
     const pantryItem = await db.collection('pantry').findOne({
       _id: new ObjectId(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (!pantryItem) {
-      return NextResponse.json(
-        { error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     // Delete the pantry item
     const result = await db.collection('pantry').deleteOne({
       _id: new ObjectId(id),
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json(
-        { error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
-
   } catch (error) {
     logError('Pantry DELETE', error);
-    return NextResponse.json(
-      { error: PANTRY_ERRORS.PANTRY_ITEM_DELETION_FAILED },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_DELETION_FAILED }, { status: 500 });
   }
-} 
+}

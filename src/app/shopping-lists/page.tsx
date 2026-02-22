@@ -1,15 +1,8 @@
-"use client";
+'use client';
 
-import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-  Suspense,
-} from "react";
+import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import {
   Container,
   Typography,
@@ -39,7 +32,7 @@ import {
   TableRow,
   Snackbar,
   Chip,
-} from "@mui/material";
+} from '@mui/material';
 import {
   DndContext,
   closestCenter,
@@ -48,18 +41,15 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core';
 import {
   SortableContext,
   arrayMove,
   useSortable,
   verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  restrictToFirstScrollableAncestor,
-  restrictToVerticalAxis,
-} from "@dnd-kit/modifiers";
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   ShoppingCart,
   Add,
@@ -75,13 +65,13 @@ import {
   Refresh,
   DoneAll,
   History,
-} from "@mui/icons-material";
-import AuthenticatedLayout from "../../components/AuthenticatedLayout";
+} from '@mui/icons-material';
+import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
   StoreWithShoppingList,
   ShoppingListItem,
   PurchaseHistoryRecord,
-} from "../../types/shopping-list";
+} from '../../types/shopping-list';
 import {
   fetchStores,
   createStore,
@@ -95,7 +85,7 @@ import {
   fetchShoppingList,
   finishShop,
   fetchPurchaseHistory,
-} from "../../lib/shopping-list-utils";
+} from '../../lib/shopping-list-utils';
 import {
   useDialog,
   useConfirmDialog,
@@ -103,37 +93,40 @@ import {
   useShoppingSync,
   usePersistentDialog,
   type ActiveUser,
-} from "@/lib/hooks";
-import dynamic from "next/dynamic";
-const EmojiPicker = dynamic(() => import("../../components/EmojiPicker"), { ssr: false });
-const StoreHistoryDialog = dynamic(() => import("../../components/shopping-list/StoreHistoryDialog"), { ssr: false });
-import { DialogTitle } from "../../components/ui/DialogTitle";
-import { DialogActions } from "../../components/ui/DialogActions";
-import { responsiveDialogStyle } from "@/lib/theme";
-import SearchBar from "@/components/optimized/SearchBar";
-import Pagination from "@/components/optimized/Pagination";
-import { getUnitOptions, getUnitForm } from "../../lib/food-items-utils";
-import { MealPlanWithTemplate } from "../../types/meal-plan";
-import { fetchMealPlans } from "../../lib/meal-plan-utils";
+} from '@/lib/hooks';
+import dynamic from 'next/dynamic';
+const EmojiPicker = dynamic(() => import('../../components/EmojiPicker'), { ssr: false });
+const StoreHistoryDialog = dynamic(
+  () => import('../../components/shopping-list/StoreHistoryDialog'),
+  { ssr: false }
+);
+import { DialogTitle } from '../../components/ui/DialogTitle';
+import { DialogActions } from '../../components/ui/DialogActions';
+import { responsiveDialogStyle } from '@/lib/theme';
+import SearchBar from '@/components/optimized/SearchBar';
+import Pagination from '@/components/optimized/Pagination';
+import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
+import { MealPlanWithTemplate } from '../../types/meal-plan';
+import { fetchMealPlans } from '../../lib/meal-plan-utils';
 import {
   extractFoodItemsFromMealPlans,
   combineExtractedItems,
   UnitConflict,
   PreMergeConflict,
-} from "../../lib/meal-plan-to-shopping-list";
+} from '../../lib/meal-plan-to-shopping-list';
 import {
   saveItemPositions,
   getItemPosition,
   insertItemAtPosition,
   insertItemsWithPositions,
-} from "../../lib/shopping-list-position-utils";
-import { CalendarMonth } from "@mui/icons-material";
-import { fetchPantryItems } from "../../lib/pantry-utils";
-import QuantityInput from "../../components/food-item-inputs/QuantityInput";
+} from '../../lib/shopping-list-position-utils';
+import { CalendarMonth } from '@mui/icons-material';
+import { fetchPantryItems } from '../../lib/pantry-utils';
+import QuantityInput from '../../components/food-item-inputs/QuantityInput';
 import ItemEditorDialog, {
   type ItemEditorDraft,
   type ItemEditorMode,
-} from "@/components/shopping-list/ItemEditorDialog";
+} from '@/components/shopping-list/ItemEditorDialog';
 
 interface FoodItem {
   _id: string;
@@ -148,8 +141,7 @@ function ShoppingListsPageContent() {
   const { data: session } = useSession();
   const [stores, setStores] = useState<StoreWithShoppingList[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStore, setSelectedStore] =
-    useState<StoreWithShoppingList | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreWithShoppingList | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<
     Array<{
@@ -159,7 +151,7 @@ function ShoppingListsPageContent() {
       invitation: {
         userId: string;
         userEmail: string;
-        status: "pending";
+        status: 'pending';
         invitedBy: string;
         invitedAt: Date;
       };
@@ -170,14 +162,13 @@ function ShoppingListsPageContent() {
   const storePagination = useSearchPagination<StoreWithShoppingList>({
     data: stores,
     itemsPerPage: 25,
-    searchFunction: (store, term) =>
-      store.name.toLowerCase().includes(term.toLowerCase()),
+    searchFunction: (store, term) => store.name.toLowerCase().includes(term.toLowerCase()),
   });
 
   // Dialog states
   const createStoreDialog = useDialog();
   const editStoreDialog = useDialog();
-  const viewListDialog = usePersistentDialog("shoppingList");
+  const viewListDialog = usePersistentDialog('shoppingList');
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
@@ -194,16 +185,16 @@ function ShoppingListsPageContent() {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: "success" | "error" | "info" | "warning";
+    severity: 'success' | 'error' | 'info' | 'warning';
   }>({
     open: false,
-    message: "",
-    severity: "info",
+    message: '',
+    severity: 'info',
   });
 
   const showSnackbar = (
     message: string,
-    severity: "success" | "error" | "info" | "warning" = "info",
+    severity: 'success' | 'error' | 'info' | 'warning' = 'info'
   ) => {
     setSnackbar({ open: true, message, severity });
   };
@@ -217,7 +208,7 @@ function ShoppingListsPageContent() {
     }
     lastManualReconnectAtRef.current = now;
     void shoppingSync.reconnect();
-    showSnackbar("Reconnecting…", "info");
+    showSnackbar('Reconnecting…', 'info');
   };
 
   const handleCloseSnackbar = () => {
@@ -225,44 +216,34 @@ function ShoppingListsPageContent() {
   };
 
   // Form states
-  const [newStoreName, setNewStoreName] = useState("");
-  const [newStoreEmoji, setNewStoreEmoji] = useState("🏪");
-  const [editingStore, setEditingStore] =
-    useState<StoreWithShoppingList | null>(null);
-  const [shareEmail, setShareEmail] = useState("");
-  const [sharingStore, setSharingStore] =
-    useState<StoreWithShoppingList | null>(null);
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newStoreEmoji, setNewStoreEmoji] = useState('🏪');
+  const [editingStore, setEditingStore] = useState<StoreWithShoppingList | null>(null);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharingStore, setSharingStore] = useState<StoreWithShoppingList | null>(null);
 
   // Shopping list states
-  const [shoppingListItems, setShoppingListItems] = useState<
-    ShoppingListItem[]
-  >([]);
+  const [shoppingListItems, setShoppingListItems] = useState<ShoppingListItem[]>([]);
 
   // Scroll container for shopping list items
   const listContainerRef = useRef<HTMLDivElement | null>(null);
-  const [listActionsAnchorEl, setListActionsAnchorEl] =
-    useState<null | HTMLElement>(null);
-  const [itemEditorMode, setItemEditorMode] = useState<ItemEditorMode>("add");
+  const [listActionsAnchorEl, setListActionsAnchorEl] = useState<null | HTMLElement>(null);
+  const [itemEditorMode, setItemEditorMode] = useState<ItemEditorMode>('add');
   const [itemEditorOpen, setItemEditorOpen] = useState(false);
-  const [itemEditorInitialDraft, setItemEditorInitialDraft] =
-    useState<ItemEditorDraft | null>(null);
-  const [editingOriginalFoodItemId, setEditingOriginalFoodItemId] = useState<
-    string | null
-  >(null);
+  const [itemEditorInitialDraft, setItemEditorInitialDraft] = useState<ItemEditorDraft | null>(
+    null
+  );
+  const [editingOriginalFoodItemId, setEditingOriginalFoodItemId] = useState<string | null>(null);
 
   // Meal plan import states
-  const [availableMealPlans, setAvailableMealPlans] = useState<
-    MealPlanWithTemplate[]
-  >([]);
+  const [availableMealPlans, setAvailableMealPlans] = useState<MealPlanWithTemplate[]>([]);
   const [selectedMealPlanIds, setSelectedMealPlanIds] = useState<string[]>([]);
   const [unitConflicts, setUnitConflicts] = useState<UnitConflict[]>([]);
   const [currentConflictIndex, setCurrentConflictIndex] = useState(0);
   const [conflictResolutions, setConflictResolutions] = useState<
     Map<string, { quantity: number; unit: string }>
   >(new Map());
-  const [pendingMergedItems, setPendingMergedItems] = useState<
-    ShoppingListItem[]
-  >([]);
+  const [pendingMergedItems, setPendingMergedItems] = useState<ShoppingListItem[]>([]);
 
   // Pantry check states
   const [matchingPantryItems, setMatchingPantryItems] = useState<
@@ -278,8 +259,7 @@ function ShoppingListsPageContent() {
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
 
   // Purchase history states
-  const [historyDialogStore, setHistoryDialogStore] =
-    useState<StoreWithShoppingList | null>(null);
+  const [historyDialogStore, setHistoryDialogStore] = useState<StoreWithShoppingList | null>(null);
   const [historyItems, setHistoryItems] = useState<PurchaseHistoryRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
@@ -300,9 +280,7 @@ function ShoppingListsPageContent() {
     onItemChecked: (foodItemId, checked) => {
       // Remote toggle: update the local state for that item
       setShoppingListItems((prev) =>
-        prev.map((item) =>
-          item.foodItemId === foodItemId ? { ...item, checked } : item,
-        ),
+        prev.map((item) => (item.foodItemId === foodItemId ? { ...item, checked } : item))
       );
     },
     onListUpdated: (items) => {
@@ -311,9 +289,7 @@ function ShoppingListsPageContent() {
         const newItems = items as ShoppingListItem[];
 
         // Index current items by foodItemId for quick lookup
-        const currentById = new Map(
-          prev.map((item) => [item.foodItemId, item]),
-        );
+        const currentById = new Map(prev.map((item) => [item.foodItemId, item]));
 
         return newItems.map((newItem) => {
           const current = currentById.get(newItem.foodItemId);
@@ -328,10 +304,8 @@ function ShoppingListsPageContent() {
       });
     },
     onItemDeleted: (foodItemId, updatedBy) => {
-      setShoppingListItems((prev) =>
-        prev.filter((item) => item.foodItemId !== foodItemId),
-      );
-      showSnackbar(`${updatedBy} removed an item from the list`, "info");
+      setShoppingListItems((prev) => prev.filter((item) => item.foodItemId !== foodItemId));
+      showSnackbar(`${updatedBy} removed an item from the list`, 'info');
     },
   });
 
@@ -344,14 +318,14 @@ function ShoppingListsPageContent() {
   const loadFoodItems = useCallback(async () => {
     if (foodItemsLoadedRef.current && foodItems.length > 0) return foodItems;
     try {
-      const res = await fetch("/api/food-items?limit=1000");
+      const res = await fetch('/api/food-items?limit=1000');
       const json = await res.json();
       const items: FoodItem[] = Array.isArray(json) ? json : json.data || [];
       setFoodItems(items);
       foodItemsLoadedRef.current = true;
       return items;
     } catch (error) {
-      console.error("Error loading food items:", error);
+      console.error('Error loading food items:', error);
       return foodItems;
     }
   }, [foodItems]);
@@ -366,14 +340,14 @@ function ShoppingListsPageContent() {
       setStores(storesData);
       setPendingInvitations(invitationsData);
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === 'authenticated') {
       loadData();
     }
   }, [status, loadData]);
@@ -397,20 +371,20 @@ function ShoppingListsPageContent() {
 
     try {
       await createStore({ name: newStoreName.trim(), emoji: newStoreEmoji });
-      setNewStoreName("");
-      setNewStoreEmoji("🏪");
+      setNewStoreName('');
+      setNewStoreEmoji('🏪');
       createStoreDialog.closeDialog();
       loadData();
     } catch (error) {
-      console.error("Error creating store:", error);
-      showSnackbar("Failed to create store", "error");
+      console.error('Error creating store:', error);
+      showSnackbar('Failed to create store', 'error');
     }
   };
 
   const handleEditStore = (store: StoreWithShoppingList) => {
     setEditingStore(store);
     setNewStoreName(store.name);
-    setNewStoreEmoji(store.emoji || "🏪");
+    setNewStoreEmoji(store.emoji || '🏪');
     editStoreDialog.openDialog();
   };
 
@@ -422,14 +396,14 @@ function ShoppingListsPageContent() {
         name: newStoreName.trim(),
         emoji: newStoreEmoji,
       });
-      setNewStoreName("");
-      setNewStoreEmoji("🏪");
+      setNewStoreName('');
+      setNewStoreEmoji('🏪');
       setEditingStore(null);
       editStoreDialog.closeDialog();
       loadData();
     } catch (error) {
-      console.error("Error updating store:", error);
-      showSnackbar("Failed to update store", "error");
+      console.error('Error updating store:', error);
+      showSnackbar('Failed to update store', 'error');
     }
   };
 
@@ -447,8 +421,8 @@ function ShoppingListsPageContent() {
       setSelectedStore(null);
       loadData();
     } catch (error) {
-      console.error("Error deleting store:", error);
-      showSnackbar("Failed to delete store", "error");
+      console.error('Error deleting store:', error);
+      showSnackbar('Failed to delete store', 'error');
     }
   };
 
@@ -462,7 +436,7 @@ function ShoppingListsPageContent() {
     const updatedStore = updatedStores.find((s) => s._id === store._id);
 
     setSharingStore(updatedStore || store);
-    setShareEmail("");
+    setShareEmail('');
     shareDialog.openDialog();
   };
 
@@ -471,42 +445,39 @@ function ShoppingListsPageContent() {
 
     try {
       await inviteUserToStore(sharingStore._id, shareEmail.trim());
-      setShareEmail("");
-      showSnackbar(`Invitation sent to ${shareEmail}`, "success");
+      setShareEmail('');
+      showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
 
       // Refresh data and update the sharing store to show new invitation
       await loadData();
       const updatedStores = await fetchStores();
-      const updatedStore = updatedStores.find(
-        (s) => s._id === sharingStore._id,
-      );
+      const updatedStore = updatedStores.find((s) => s._id === sharingStore._id);
       if (updatedStore) {
         setSharingStore(updatedStore);
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to invite user";
-      showSnackbar(message, "error");
+      const message = error instanceof Error ? error.message : 'Failed to invite user';
+      showSnackbar(message, 'error');
     }
   };
 
   const handleAcceptInvitation = async (storeId: string, userId: string) => {
     try {
-      await respondToInvitation(storeId, userId, "accept");
+      await respondToInvitation(storeId, userId, 'accept');
       loadData();
     } catch (error) {
-      console.error("Error accepting invitation:", error);
-      showSnackbar("Failed to accept invitation", "error");
+      console.error('Error accepting invitation:', error);
+      showSnackbar('Failed to accept invitation', 'error');
     }
   };
 
   const handleRejectInvitation = async (storeId: string, userId: string) => {
     try {
-      await respondToInvitation(storeId, userId, "reject");
+      await respondToInvitation(storeId, userId, 'reject');
       loadData();
     } catch (error) {
-      console.error("Error rejecting invitation:", error);
-      showSnackbar("Failed to reject invitation", "error");
+      console.error('Error rejecting invitation:', error);
+      showSnackbar('Failed to reject invitation', 'error');
     }
   };
 
@@ -524,8 +495,8 @@ function ShoppingListsPageContent() {
         }
       }
     } catch (error) {
-      console.error("Error removing user:", error);
-      showSnackbar("Failed to remove user", "error");
+      console.error('Error removing user:', error);
+      showSnackbar('Failed to remove user', 'error');
     }
   };
 
@@ -543,10 +514,10 @@ function ShoppingListsPageContent() {
       leaveStoreConfirmDialog.closeDialog();
       setSelectedStore(null);
       loadData();
-      showSnackbar(`Left "${selectedStore.name}"`, "info");
+      showSnackbar(`Left "${selectedStore.name}"`, 'info');
     } catch (error) {
-      console.error("Error leaving store:", error);
-      showSnackbar("Failed to leave store", "error");
+      console.error('Error leaving store:', error);
+      showSnackbar('Failed to leave store', 'error');
     }
   };
 
@@ -563,8 +534,8 @@ function ShoppingListsPageContent() {
       const list = await fetchShoppingList(store._id);
       setShoppingListItems(list.items || []);
     } catch (error) {
-      console.error("Error loading shopping list:", error);
-      showSnackbar("Failed to load latest shopping list", "error");
+      console.error('Error loading shopping list:', error);
+      showSnackbar('Failed to load latest shopping list', 'error');
       setShoppingListItems([]);
     }
   };
@@ -593,8 +564,8 @@ function ShoppingListsPageContent() {
         const list = await fetchShoppingList(store._id);
         setShoppingListItems(list.items || []);
       } catch (error) {
-        console.error("Error loading shopping list:", error);
-        showSnackbar("Failed to load latest shopping list", "error");
+        console.error('Error loading shopping list:', error);
+        showSnackbar('Failed to load latest shopping list', 'error');
         setShoppingListItems([]);
       }
     };
@@ -607,7 +578,7 @@ function ShoppingListsPageContent() {
   };
 
   const handleOpenAddItemEditor = () => {
-    setItemEditorMode("add");
+    setItemEditorMode('add');
     setItemEditorInitialDraft(null);
     setEditingOriginalFoodItemId(null);
     setItemEditorOpen(true);
@@ -615,7 +586,7 @@ function ShoppingListsPageContent() {
   };
 
   const handleOpenEditItemEditor = (item: ShoppingListItem) => {
-    setItemEditorMode("edit");
+    setItemEditorMode('edit');
     setItemEditorInitialDraft({
       foodItemId: item.foodItemId,
       quantity: item.quantity,
@@ -626,13 +597,10 @@ function ShoppingListsPageContent() {
     void loadFoodItems();
   };
 
-  const resolveNameForFoodItemId = (
-    foodItemId: string,
-    qty: number,
-  ): string => {
+  const resolveNameForFoodItemId = (foodItemId: string, qty: number): string => {
     const foodItem = foodItems.find((f) => f._id === foodItemId);
     if (!foodItem) {
-      return "Unknown";
+      return 'Unknown';
     }
     return qty === 1 ? foodItem.singularName : foodItem.pluralName;
   };
@@ -642,10 +610,10 @@ function ShoppingListsPageContent() {
 
     const { foodItemId, quantity: qty, unit } = draft;
 
-    if (itemEditorMode === "add") {
+    if (itemEditorMode === 'add') {
       const exists = shoppingListItems.some((i) => i.foodItemId === foodItemId);
       if (exists) {
-        showSnackbar("This item is already in your shopping list", "warning");
+        showSnackbar('This item is already in your shopping list', 'warning');
         return;
       }
 
@@ -657,15 +625,8 @@ function ShoppingListsPageContent() {
         checked: false,
       };
 
-      const rememberedPosition = await getItemPosition(
-        selectedStore._id,
-        foodItemId,
-      );
-      const updatedItems = insertItemAtPosition(
-        shoppingListItems,
-        newItem,
-        rememberedPosition,
-      );
+      const rememberedPosition = await getItemPosition(selectedStore._id, foodItemId);
+      const updatedItems = insertItemAtPosition(shoppingListItems, newItem, rememberedPosition);
 
       setShoppingListItems(updatedItems);
       try {
@@ -674,8 +635,8 @@ function ShoppingListsPageContent() {
         setStores(updatedStores);
         setItemEditorOpen(false);
       } catch (error) {
-        console.error("Error saving shopping list:", error);
-        showSnackbar("Failed to save item to shopping list", "error");
+        console.error('Error saving shopping list:', error);
+        showSnackbar('Failed to save item to shopping list', 'error');
         setShoppingListItems(shoppingListItems);
       }
 
@@ -686,17 +647,13 @@ function ShoppingListsPageContent() {
     if (!editingOriginalFoodItemId) return;
 
     const previousItems = [...shoppingListItems];
-    const existingItem = previousItems.find(
-      (i) => i.foodItemId === editingOriginalFoodItemId,
-    );
+    const existingItem = previousItems.find((i) => i.foodItemId === editingOriginalFoodItemId);
     if (!existingItem) return;
 
     if (foodItemId !== editingOriginalFoodItemId) {
-      const wouldDuplicate = previousItems.some(
-        (i) => i.foodItemId === foodItemId,
-      );
+      const wouldDuplicate = previousItems.some((i) => i.foodItemId === foodItemId);
       if (wouldDuplicate) {
-        showSnackbar("That item is already in your shopping list", "warning");
+        showSnackbar('That item is already in your shopping list', 'warning');
         return;
       }
     }
@@ -719,8 +676,8 @@ function ShoppingListsPageContent() {
       setStores(updatedStores);
       setItemEditorOpen(false);
     } catch (error) {
-      console.error("Error saving shopping list:", error);
-      showSnackbar("Failed to save item to shopping list", "error");
+      console.error('Error saving shopping list:', error);
+      showSnackbar('Failed to save item to shopping list', 'error');
       setShoppingListItems(previousItems);
     }
   };
@@ -734,9 +691,7 @@ function ShoppingListsPageContent() {
   const handleRemoveItemFromList = async (foodItemId: string) => {
     if (!selectedStore) return;
 
-    const updatedItems = shoppingListItems.filter(
-      (item) => item.foodItemId !== foodItemId,
-    );
+    const updatedItems = shoppingListItems.filter((item) => item.foodItemId !== foodItemId);
     setShoppingListItems(updatedItems);
 
     // Auto-save to database
@@ -746,8 +701,8 @@ function ShoppingListsPageContent() {
       const updatedStores = await fetchStores();
       setStores(updatedStores);
     } catch (error) {
-      console.error("Error saving shopping list:", error);
-      showSnackbar("Failed to remove item from shopping list", "error");
+      console.error('Error saving shopping list:', error);
+      showSnackbar('Failed to remove item from shopping list', 'error');
       // Revert on error
       setShoppingListItems(shoppingListItems);
     }
@@ -760,21 +715,19 @@ function ShoppingListsPageContent() {
     const previousItems = [...shoppingListItems];
     setShoppingListItems(
       shoppingListItems.map((item) =>
-        item.foodItemId === foodItemId
-          ? { ...item, checked: !item.checked }
-          : item,
-      ),
+        item.foodItemId === foodItemId ? { ...item, checked: !item.checked } : item
+      )
     );
 
     try {
       const response = await fetch(
         `/api/shopping-lists/${selectedStore._id}/items/${foodItemId}/toggle`,
         {
-          method: "PATCH",
+          method: 'PATCH',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
-        },
+        }
       );
 
       if (!response.ok) {
@@ -784,10 +737,7 @@ function ShoppingListsPageContent() {
         const errorData = await response.json();
         if (response.status === 404) {
           // Item was deleted by another user
-          showSnackbar(
-            "This item was already removed from the list",
-            "warning",
-          );
+          showSnackbar('This item was already removed from the list', 'warning');
           // Refresh the list
           try {
             const list = await fetchShoppingList(selectedStore._id);
@@ -796,14 +746,14 @@ function ShoppingListsPageContent() {
             setShoppingListItems([]);
           }
         } else {
-          showSnackbar(errorData.error || "Failed to update item", "error");
+          showSnackbar(errorData.error || 'Failed to update item', 'error');
         }
       }
     } catch (error) {
       // Revert on error
       setShoppingListItems(previousItems);
-      console.error("Error toggling item checked:", error);
-      showSnackbar("Failed to update item", "error");
+      console.error('Error toggling item checked:', error);
+      showSnackbar('Failed to update item', 'error');
     }
   };
 
@@ -830,10 +780,10 @@ function ShoppingListsPageContent() {
       // Refresh counts/badges on the store list
       const updatedStores = await fetchStores();
       setStores(updatedStores);
-      showSnackbar("Shopping trip saved!", "success");
+      showSnackbar('Shopping trip saved!', 'success');
     } catch (error) {
-      console.error("Error finishing shop:", error);
-      showSnackbar("Failed to finish shop", "error");
+      console.error('Error finishing shop:', error);
+      showSnackbar('Failed to finish shop', 'error');
       setShoppingListItems(previousItems);
     }
   };
@@ -846,8 +796,8 @@ function ShoppingListsPageContent() {
       const items = await fetchPurchaseHistory(store._id);
       setHistoryItems(items);
     } catch (error) {
-      console.error("Error loading purchase history:", error);
-      showSnackbar("Failed to load purchase history", "error");
+      console.error('Error loading purchase history:', error);
+      showSnackbar('Failed to load purchase history', 'error');
       setHistoryItems([]);
     } finally {
       setLoadingHistory(false);
@@ -866,16 +816,13 @@ function ShoppingListsPageContent() {
     if (!store) return;
 
     // Use live shopping list items when available
-    const currentItems =
-      selectedStore?._id === store._id
-        ? shoppingListItems
-        : [];
+    const currentItems = selectedStore?._id === store._id ? shoppingListItems : [];
 
     const newItems = items.filter(
       (item) => !currentItems.some((i) => i.foodItemId === item.foodItemId)
     );
     if (newItems.length === 0) {
-      showSnackbar("All selected items are already in your list", "info");
+      showSnackbar('All selected items are already in your list', 'info');
       return;
     }
 
@@ -887,11 +834,7 @@ function ShoppingListsPageContent() {
       checked: false,
     }));
 
-    const mergedItems = await insertItemsWithPositions(
-      currentItems,
-      newListItems,
-      store._id
-    );
+    const mergedItems = await insertItemsWithPositions(currentItems, newListItems, store._id);
 
     try {
       await updateShoppingList(store._id, { items: mergedItems });
@@ -902,12 +845,12 @@ function ShoppingListsPageContent() {
         setShoppingListItems(mergedItems);
       }
       showSnackbar(
-        `Added ${newItems.length} item${newItems.length > 1 ? "s" : ""} from history`,
-        "success"
+        `Added ${newItems.length} item${newItems.length > 1 ? 's' : ''} from history`,
+        'success'
       );
     } catch (error) {
-      console.error("Error adding items from history:", error);
-      showSnackbar("Failed to add items from history", "error");
+      console.error('Error adding items from history:', error);
+      showSnackbar('Failed to add items from history', 'error');
     }
   };
 
@@ -933,8 +876,8 @@ function ShoppingListsPageContent() {
       setSelectedMealPlanIds([]);
       mealPlanSelectionDialog.openDialog();
     } catch (error) {
-      console.error("Error loading meal plans:", error);
-      showSnackbar("Failed to load meal plans", "error");
+      console.error('Error loading meal plans:', error);
+      showSnackbar('Failed to load meal plans', 'error');
     }
   };
 
@@ -945,9 +888,7 @@ function ShoppingListsPageContent() {
 
     try {
       // Get selected meal plans
-      const selectedPlans = availableMealPlans.filter((mp) =>
-        selectedMealPlanIds.includes(mp._id),
-      );
+      const selectedPlans = availableMealPlans.filter((mp) => selectedMealPlanIds.includes(mp._id));
 
       // Extract food items from meal plans
       const extractedItems = await extractFoodItemsFromMealPlans(selectedPlans);
@@ -964,8 +905,10 @@ function ShoppingListsPageContent() {
 
       // Unified pre-merge: combine existing + extracted items together.
       // This produces at most one conflict per food item.
-      const { combinedItems, conflicts: preMergeConflicts } =
-        combineExtractedItems([...existingAsExtracted, ...extractedItems]);
+      const { combinedItems, conflicts: preMergeConflicts } = combineExtractedItems([
+        ...existingAsExtracted,
+        ...extractedItems,
+      ]);
 
       // Create food items map for name lookup
       const foodItemsMap = new Map(
@@ -976,20 +919,16 @@ function ShoppingListsPageContent() {
             pluralName: f.pluralName,
             unit: f.unit,
           },
-        ]),
+        ])
       );
 
       // Track which food items had extracted counterparts
-      const extractedFoodItemIds = new Set(
-        extractedItems.map((i) => i.foodItemId),
-      );
+      const extractedFoodItemIds = new Set(extractedItems.map((i) => i.foodItemId));
 
       // Convert combinedItems to ShoppingListItem format
       const mergedItems: ShoppingListItem[] = combinedItems.map((item) => {
         const foodItem = foodItemsMap.get(item.foodItemId);
-        const existingItem = shoppingListItems.find(
-          (si) => si.foodItemId === item.foodItemId,
-        );
+        const existingItem = shoppingListItems.find((si) => si.foodItemId === item.foodItemId);
 
         // Preserve checked status for items that weren't modified by extraction
         const wasModified = extractedFoodItemIds.has(item.foodItemId);
@@ -1000,52 +939,40 @@ function ShoppingListsPageContent() {
             ? item.quantity === 1
               ? foodItem.singularName
               : foodItem.pluralName
-            : existingItem?.name || "Unknown",
+            : existingItem?.name || 'Unknown',
           quantity: item.quantity,
           unit: item.unit,
-          checked: wasModified ? false : existingItem?.checked ?? false,
+          checked: wasModified ? false : (existingItem?.checked ?? false),
         };
       });
 
       // Convert pre-merge conflicts to UnitConflict format for dialog
-      const conflicts: UnitConflict[] = preMergeConflicts.map(
-        (conflict: PreMergeConflict) => {
-          const foodItem = foodItemsMap.get(conflict.foodItemId);
-          return {
-            foodItemId: conflict.foodItemId,
-            foodItemName: foodItem?.pluralName || "Unknown",
-            existingQuantity: conflict.unitBreakdown[0].quantity,
-            existingUnit: conflict.unitBreakdown[0].unit,
-            newQuantity: conflict.unitBreakdown
-              .slice(1)
-              .reduce((sum, e) => sum + e.quantity, 0),
-            newUnit:
-              conflict.unitBreakdown[1]?.unit ||
-              conflict.unitBreakdown[0].unit,
-            isAutoConverted: conflict.isAutoConverted,
-            suggestedQuantity: conflict.suggestedQuantity,
-            suggestedUnit: conflict.suggestedUnit,
-            unitBreakdown: conflict.unitBreakdown,
-          };
-        },
-      );
+      const conflicts: UnitConflict[] = preMergeConflicts.map((conflict: PreMergeConflict) => {
+        const foodItem = foodItemsMap.get(conflict.foodItemId);
+        return {
+          foodItemId: conflict.foodItemId,
+          foodItemName: foodItem?.pluralName || 'Unknown',
+          existingQuantity: conflict.unitBreakdown[0].quantity,
+          existingUnit: conflict.unitBreakdown[0].unit,
+          newQuantity: conflict.unitBreakdown.slice(1).reduce((sum, e) => sum + e.quantity, 0),
+          newUnit: conflict.unitBreakdown[1]?.unit || conflict.unitBreakdown[0].unit,
+          isAutoConverted: conflict.isAutoConverted,
+          suggestedQuantity: conflict.suggestedQuantity,
+          suggestedUnit: conflict.suggestedUnit,
+          unitBreakdown: conflict.unitBreakdown,
+        };
+      });
 
       // Separate existing items from new items for position-aware insertion
-      const existingItemIds = new Set(
-        shoppingListItems.map((item) => item.foodItemId),
-      );
-      const existingItems = mergedItems.filter((item) =>
-        existingItemIds.has(item.foodItemId),
-      );
-      const newItems = mergedItems.filter(
-        (item) => !existingItemIds.has(item.foodItemId),
-      );
+      const existingItemIds = new Set(shoppingListItems.map((item) => item.foodItemId));
+      const existingItems = mergedItems.filter((item) => existingItemIds.has(item.foodItemId));
+      const newItems = mergedItems.filter((item) => !existingItemIds.has(item.foodItemId));
 
       // Insert new items at their remembered positions
       const itemsWithPositions = await insertItemsWithPositions(
         existingItems,
         newItems,
-        selectedStore._id,
+        selectedStore._id
       );
 
       if (conflicts.length > 0) {
@@ -1068,8 +995,8 @@ function ShoppingListsPageContent() {
         setSelectedMealPlanIds([]);
       }
     } catch (error) {
-      console.error("Error adding items from meal plans:", error);
-      showSnackbar("Failed to add items from meal plans", "error");
+      console.error('Error adding items from meal plans:', error);
+      showSnackbar('Failed to add items from meal plans', 'error');
     }
   };
 
@@ -1077,7 +1004,7 @@ function ShoppingListsPageContent() {
     quantity: number;
     unit: string;
   } => {
-    if (unitConflicts.length === 0) return { quantity: 1, unit: "piece" };
+    if (unitConflicts.length === 0) return { quantity: 1, unit: 'piece' };
 
     const conflict = unitConflicts[currentConflictIndex];
     const existing = conflictResolutions.get(conflict?.foodItemId);
@@ -1099,7 +1026,7 @@ function ShoppingListsPageContent() {
     // Non-convertible conflicts start blank — user must choose
     return {
       quantity: 0,
-      unit: "",
+      unit: '',
     };
   };
 
@@ -1113,7 +1040,7 @@ function ShoppingListsPageContent() {
 
     // Non-convertible: check that user has set both quantity and unit
     const resolution = getCurrentConflictResolution();
-    return resolution.quantity > 0 && resolution.unit !== "";
+    return resolution.quantity > 0 && resolution.unit !== '';
   };
 
   const handleConflictQuantityChange = (quantity: number) => {
@@ -1211,11 +1138,8 @@ function ShoppingListsPageContent() {
       setCurrentConflictIndex(0);
       setConflictResolutions(new Map());
     } catch (error) {
-      console.error(
-        "Error saving shopping list after conflict resolution:",
-        error,
-      );
-      showSnackbar("Failed to save shopping list", "error");
+      console.error('Error saving shopping list after conflict resolution:', error);
+      showSnackbar('Failed to save shopping list', 'error');
     }
   };
 
@@ -1227,16 +1151,11 @@ function ShoppingListsPageContent() {
       setLoadingPantryCheck(true);
 
       // Load food items and pantry items in parallel
-      const [pantryItems] = await Promise.all([
-        fetchPantryItems(),
-        loadFoodItems(),
-      ]);
+      const [pantryItems] = await Promise.all([fetchPantryItems(), loadFoodItems()]);
 
       // Find shopping list items that are in pantry
       const matches = shoppingListItems
-        .filter((item) =>
-          pantryItems.some((p) => p.foodItemId === item.foodItemId),
-        )
+        .filter((item) => pantryItems.some((p) => p.foodItemId === item.foodItemId))
         .map((item) => ({
           foodItemId: item.foodItemId,
           name: item.name,
@@ -1251,8 +1170,8 @@ function ShoppingListsPageContent() {
       // Only open dialog after successful fetch and match
       pantryCheckDialog.openDialog();
     } catch (error) {
-      console.error("Error loading pantry items:", error);
-      showSnackbar("Failed to load pantry items", "error");
+      console.error('Error loading pantry items:', error);
+      showSnackbar('Failed to load pantry items', 'error');
     } finally {
       setLoadingPantryCheck(false);
     }
@@ -1260,20 +1179,13 @@ function ShoppingListsPageContent() {
 
   const handlePantryItemCheck = (foodItemId: string, checked: boolean) => {
     setMatchingPantryItems((prev) =>
-      prev.map((item) =>
-        item.foodItemId === foodItemId ? { ...item, checked } : item,
-      ),
+      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, checked } : item))
     );
   };
 
-  const handlePantryItemQuantityChange = (
-    foodItemId: string,
-    newQuantity: number,
-  ) => {
+  const handlePantryItemQuantityChange = (foodItemId: string, newQuantity: number) => {
     setMatchingPantryItems((prev) =>
-      prev.map((item) =>
-        item.foodItemId === foodItemId ? { ...item, newQuantity } : item,
-      ),
+      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, newQuantity } : item))
     );
   };
 
@@ -1284,9 +1196,7 @@ function ShoppingListsPageContent() {
       // Apply changes from pantry check
       const updatedItems = shoppingListItems
         .map((item) => {
-          const match = matchingPantryItems.find(
-            (m) => m.foodItemId === item.foodItemId,
-          );
+          const match = matchingPantryItems.find((m) => m.foodItemId === item.foodItemId);
           if (match) {
             // If checked off or quantity is 0, remove it (will be filtered out below)
             if (match.checked || match.newQuantity <= 0) {
@@ -1321,22 +1231,22 @@ function ShoppingListsPageContent() {
 
       const removedCount = shoppingListItems.length - updatedItems.length;
       const changedCount = matchingPantryItems.filter(
-        (m) => !m.checked && m.newQuantity !== m.currentQuantity,
+        (m) => !m.checked && m.newQuantity !== m.currentQuantity
       ).length;
 
       if (removedCount > 0 || changedCount > 0) {
         showSnackbar(
           `Pantry check complete! ${
-            removedCount > 0 ? `Removed ${removedCount} item(s). ` : ""
-          }${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ""}`,
-          "success",
+            removedCount > 0 ? `Removed ${removedCount} item(s). ` : ''
+          }${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ''}`,
+          'success'
         );
       } else {
-        showSnackbar("No changes made", "info");
+        showSnackbar('No changes made', 'info');
       }
     } catch (error) {
-      console.error("Error applying pantry check:", error);
-      showSnackbar("Failed to apply pantry check", "error");
+      console.error('Error applying pantry check:', error);
+      showSnackbar('Failed to apply pantry check', 'error');
     }
   };
 
@@ -1362,12 +1272,12 @@ function ShoppingListsPageContent() {
         // Preserve “list position memory”
         await saveItemPositions(selectedStore._id, updatedItems);
       } catch (error) {
-        console.error("Error reordering items:", error);
-        showSnackbar("Failed to save new order", "error");
+        console.error('Error reordering items:', error);
+        showSnackbar('Failed to save new order', 'error');
         setShoppingListItems(previousItems);
       }
     },
-    [selectedStore, shoppingListItems],
+    [selectedStore, shoppingListItems]
   );
 
   const dndSensors = useSensors(
@@ -1377,7 +1287,7 @@ function ShoppingListsPageContent() {
     useSensor(TouchSensor, {
       // Long-press-ish feel, but still responsive
       activationConstraint: { delay: 150, tolerance: 8 },
-    }),
+    })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -1399,14 +1309,7 @@ function ShoppingListsPageContent() {
     item: ShoppingListItem;
     isLast: boolean;
   }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: item.foodItemId,
     });
 
@@ -1422,7 +1325,7 @@ function ShoppingListsPageContent() {
               size="small"
               {...attributes}
               {...listeners}
-              sx={{ touchAction: "none" }}
+              sx={{ touchAction: 'none' }}
             >
               <DragIndicator fontSize="small" />
             </IconButton>
@@ -1433,9 +1336,9 @@ function ShoppingListsPageContent() {
             transform: CSS.Transform.toString(transform),
             transition,
             opacity: isDragging ? 0.6 : 1,
-            width: "100%",
-            maxWidth: "100%",
-            overflowX: "hidden",
+            width: '100%',
+            maxWidth: '100%',
+            overflowX: 'hidden',
           }}
         >
           <ListItemIcon sx={{ minWidth: 40 }}>
@@ -1450,16 +1353,16 @@ function ShoppingListsPageContent() {
           <ListItemText
             primary={item.name}
             secondary={`${item.quantity} ${
-              item.unit && item.unit !== "each"
+              item.unit && item.unit !== 'each'
                 ? getUnitForm(item.unit, item.quantity)
-                : item.unit === "each"
-                  ? "each"
-                  : ""
+                : item.unit === 'each'
+                  ? 'each'
+                  : ''
             }`}
             onClick={() => handleOpenEditItemEditor(item)}
             sx={{
-              cursor: "pointer",
-              textDecoration: item.checked ? "line-through" : "none",
+              cursor: 'pointer',
+              textDecoration: item.checked ? 'line-through' : 'none',
               opacity: item.checked ? 0.6 : 1,
               pr: 4,
             }}
@@ -1471,11 +1374,11 @@ function ShoppingListsPageContent() {
   };
 
   // Show loading state while session is being fetched
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="md">
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
         </Container>
@@ -1484,8 +1387,8 @@ function ShoppingListsPageContent() {
   }
 
   // Only redirect if session is definitely not available
-  if (status === "unauthenticated") {
-    redirect("/");
+  if (status === 'unauthenticated') {
+    redirect('/');
   }
 
   return (
@@ -1494,17 +1397,17 @@ function ShoppingListsPageContent() {
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
           <Box
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              justifyContent: "space-between",
-              alignItems: { xs: "flex-start", sm: "center" },
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               gap: { xs: 2, sm: 0 },
               mb: { xs: 2, md: 4 },
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <ShoppingCart sx={{ fontSize: 40, color: "#2e7d32" }} />
-              <Typography variant="h3" component="h1" sx={{ color: "#2e7d32" }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ShoppingCart sx={{ fontSize: 40, color: '#2e7d32' }} />
+              <Typography variant="h3" component="h1" sx={{ color: '#2e7d32' }}>
                 Shopping Lists
               </Typography>
             </Box>
@@ -1513,9 +1416,9 @@ function ShoppingListsPageContent() {
               startIcon={<Add />}
               onClick={createStoreDialog.openDialog}
               sx={{
-                bgcolor: "#2e7d32",
-                "&:hover": { bgcolor: "#1b5e20" },
-                width: { xs: "100%", sm: "auto" },
+                bgcolor: '#2e7d32',
+                '&:hover': { bgcolor: '#1b5e20' },
+                width: { xs: '100%', sm: 'auto' },
               }}
             >
               Add Store
@@ -1524,11 +1427,11 @@ function ShoppingListsPageContent() {
 
           {/* Pending Invitations Section */}
           {pendingInvitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
+            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
               <Typography
                 variant="h6"
                 gutterBottom
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
               >
                 <PersonAdd />
                 Pending Invitations ({pendingInvitations.length})
@@ -1539,8 +1442,8 @@ function ShoppingListsPageContent() {
                     <ListItem>
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: 1,
                           flex: 1,
                         }}
@@ -1549,21 +1452,16 @@ function ShoppingListsPageContent() {
                         <ListItemText
                           primary={inv.storeName}
                           secondary={`Invited ${new Date(
-                            inv.invitation.invitedAt,
+                            inv.invitation.invitedAt
                           ).toLocaleDateString()}`}
                         />
                       </Box>
-                      <Box sx={{ display: "flex", gap: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <IconButton
                           color="success"
                           size="small"
                           title="Accept"
-                          onClick={() =>
-                            handleAcceptInvitation(
-                              inv.storeId,
-                              inv.invitation.userId,
-                            )
-                          }
+                          onClick={() => handleAcceptInvitation(inv.storeId, inv.invitation.userId)}
                         >
                           <Check fontSize="small" />
                         </IconButton>
@@ -1571,12 +1469,7 @@ function ShoppingListsPageContent() {
                           color="error"
                           size="small"
                           title="Reject"
-                          onClick={() =>
-                            handleRejectInvitation(
-                              inv.storeId,
-                              inv.invitation.userId,
-                            )
-                          }
+                          onClick={() => handleRejectInvitation(inv.storeId, inv.invitation.userId)}
                         >
                           <CloseIcon fontSize="small" />
                         </IconButton>
@@ -1589,7 +1482,7 @@ function ShoppingListsPageContent() {
             </Paper>
           )}
 
-          <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
+          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
             <SearchBar
               value={storePagination.searchTerm}
               onChange={storePagination.setSearchTerm}
@@ -1597,28 +1490,28 @@ function ShoppingListsPageContent() {
             />
 
             {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                 <CircularProgress />
               </Box>
             ) : storePagination.paginatedData.length === 0 ? (
               <Alert severity="info">
                 {storePagination.searchTerm
-                  ? "No stores match your search criteria"
-                  : "No stores yet. Add your first store to create shopping lists."}
+                  ? 'No stores match your search criteria'
+                  : 'No stores yet. Add your first store to create shopping lists.'}
               </Alert>
             ) : (
               <>
                 {/* Desktop Table View */}
-                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                   <TableContainer>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <TableCell
                             sx={{
-                              width: "50%",
-                              fontWeight: "bold",
-                              wordWrap: "break-word",
+                              width: '50%',
+                              fontWeight: 'bold',
+                              wordWrap: 'break-word',
                             }}
                           >
                             Store (click to view list)
@@ -1626,9 +1519,9 @@ function ShoppingListsPageContent() {
                           <TableCell
                             align="center"
                             sx={{
-                              width: "20%",
-                              fontWeight: "bold",
-                              wordWrap: "break-word",
+                              width: '20%',
+                              fontWeight: 'bold',
+                              wordWrap: 'break-word',
                             }}
                           >
                             Items on Lists
@@ -1636,9 +1529,9 @@ function ShoppingListsPageContent() {
                           <TableCell
                             align="center"
                             sx={{
-                              width: "30%",
-                              fontWeight: "bold",
-                              wordWrap: "break-word",
+                              width: '30%',
+                              fontWeight: 'bold',
+                              wordWrap: 'break-word',
                             }}
                           >
                             Manage Store
@@ -1651,47 +1544,34 @@ function ShoppingListsPageContent() {
                             key={store._id}
                             onClick={() => handleViewList(store)}
                             sx={{
-                              "&:hover": { backgroundColor: "action.hover" },
-                              cursor: "pointer",
+                              '&:hover': { backgroundColor: 'action.hover' },
+                              cursor: 'pointer',
                             }}
                           >
-                            <TableCell sx={{ wordWrap: "break-word" }}>
+                            <TableCell sx={{ wordWrap: 'break-word' }}>
                               <Box
                                 sx={{
-                                  display: "flex",
-                                  alignItems: "center",
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   gap: 1,
                                 }}
                               >
-                                <Typography variant="h6">
-                                  {store.emoji}
-                                </Typography>
-                                <Typography variant="body1">
-                                  {store.name}
-                                </Typography>
+                                <Typography variant="h6">{store.emoji}</Typography>
+                                <Typography variant="body1">{store.name}</Typography>
                               </Box>
                             </TableCell>
-                            <TableCell
-                              align="center"
-                              sx={{ wordWrap: "break-word" }}
-                            >
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
+                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
+                              <Typography variant="body2" color="text.secondary">
                                 {store.shoppingList?.itemCount || 0}
                               </Typography>
                             </TableCell>
-                            <TableCell
-                              align="center"
-                              sx={{ wordWrap: "break-word" }}
-                            >
+                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
                               <Box
                                 sx={{
-                                  display: "flex",
+                                  display: 'flex',
                                   gap: 1,
-                                  alignItems: "center",
-                                  justifyContent: "center",
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
                               >
                                 <IconButton
@@ -1775,7 +1655,7 @@ function ShoppingListsPageContent() {
                 </Box>
 
                 {/* Mobile Card View */}
-                <Box sx={{ display: { xs: "block", md: "none" } }}>
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   {storePagination.paginatedData.map((store) => (
                     <Paper
                       key={store._id}
@@ -1784,32 +1664,29 @@ function ShoppingListsPageContent() {
                         p: 3,
                         mb: 2,
                         boxShadow: 2,
-                        border: "1px solid",
-                        borderColor: "divider",
+                        border: '1px solid',
+                        borderColor: 'divider',
                         borderRadius: 2,
-                        cursor: "pointer",
-                        "&:hover": {
-                          backgroundColor: "action.hover",
-                          transform: "translateY(-2px)",
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                          transform: 'translateY(-2px)',
                           boxShadow: 4,
                         },
-                        transition: "all 0.2s ease-in-out",
+                        transition: 'all 0.2s ease-in-out',
                       }}
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: 2,
                           mb: 2,
                         }}
                       >
                         <Typography variant="h4">{store.emoji}</Typography>
                         <Box sx={{ flex: 1 }}>
-                          <Typography
-                            variant="h6"
-                            sx={{ fontWeight: "medium" }}
-                          >
+                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
                             {store.name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -1819,9 +1696,9 @@ function ShoppingListsPageContent() {
                       </Box>
                       <Box
                         sx={{
-                          display: "flex",
+                          display: 'flex',
                           gap: 1,
-                          justifyContent: "flex-end",
+                          justifyContent: 'flex-end',
                         }}
                       >
                         <IconButton
@@ -1919,11 +1796,9 @@ function ShoppingListsPageContent() {
         sx={responsiveDialogStyle}
         TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
       >
-        <DialogTitle onClose={createStoreDialog.closeDialog}>
-          Add Store
-        </DialogTitle>
+        <DialogTitle onClose={createStoreDialog.closeDialog}>Add Store</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <Box>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Store Icon
@@ -1932,7 +1807,7 @@ function ShoppingListsPageContent() {
                 variant="outlined"
                 onClick={emojiPickerDialog.openDialog}
                 sx={{
-                  fontSize: "2rem",
+                  fontSize: '2rem',
                   minWidth: 80,
                   minHeight: 80,
                 }}
@@ -1947,7 +1822,7 @@ function ShoppingListsPageContent() {
               fullWidth
               inputRef={storeNameRef}
               onKeyPress={(e) => {
-                if (e.key === "Enter" && newStoreName.trim()) {
+                if (e.key === 'Enter' && newStoreName.trim()) {
                   handleCreateStore();
                 }
               }}
@@ -1956,7 +1831,7 @@ function ShoppingListsPageContent() {
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={createStoreDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -1964,7 +1839,7 @@ function ShoppingListsPageContent() {
               onClick={handleCreateStore}
               variant="contained"
               disabled={!newStoreName.trim()}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Create Store
             </Button>
@@ -1979,11 +1854,9 @@ function ShoppingListsPageContent() {
         sx={responsiveDialogStyle}
         TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
       >
-        <DialogTitle onClose={editStoreDialog.closeDialog}>
-          Edit Store
-        </DialogTitle>
+        <DialogTitle onClose={editStoreDialog.closeDialog}>Edit Store</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <Box>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Store Icon
@@ -1992,7 +1865,7 @@ function ShoppingListsPageContent() {
                 variant="outlined"
                 onClick={emojiPickerDialog.openDialog}
                 sx={{
-                  fontSize: "2rem",
+                  fontSize: '2rem',
                   minWidth: 80,
                   minHeight: 80,
                 }}
@@ -2011,7 +1884,7 @@ function ShoppingListsPageContent() {
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={editStoreDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -2019,7 +1892,7 @@ function ShoppingListsPageContent() {
               onClick={handleUpdateStore}
               variant="contained"
               disabled={!newStoreName.trim()}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Update Store
             </Button>
@@ -2035,100 +1908,86 @@ function ShoppingListsPageContent() {
         fullWidth
         sx={{
           ...responsiveDialogStyle,
-          "& .MuiDialog-paper": {
+          '& .MuiDialog-paper': {
             ...(() => {
               const paper = (responsiveDialogStyle as Record<string, unknown>)[
-                "& .MuiDialog-paper"
+                '& .MuiDialog-paper'
               ];
-              return paper && typeof paper === "object"
-                ? (paper as Record<string, unknown>)
-                : {};
+              return paper && typeof paper === 'object' ? (paper as Record<string, unknown>) : {};
             })(),
             // Only full-height/flex on mobile. Desktop should size to content.
-            display: { xs: "flex", sm: "block" },
-            flexDirection: { xs: "column" },
+            display: { xs: 'flex', sm: 'block' },
+            flexDirection: { xs: 'column' },
           },
         }}
       >
         <DialogTitle
           onClose={viewListDialog.closeDialog}
           actions={
-            <IconButton
-              aria-label="More actions"
-              onClick={handleOpenListActionsMenu}
-              size="small"
-            >
+            <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
               <MoreVert />
             </IconButton>
           }
         >
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {/* Single-line header: emoji + name (ellipsis) + live pill */}
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 1,
-                flexWrap: "nowrap",
+                flexWrap: 'nowrap',
                 minWidth: 0,
               }}
             >
-              <Typography variant="h4" sx={{ flex: "0 0 auto" }}>
+              <Typography variant="h4" sx={{ flex: '0 0 auto' }}>
                 {selectedStore?.emoji}
               </Typography>
               <Typography
                 variant="h6"
                 noWrap
                 sx={{
-                  flex: "1 1 auto",
+                  flex: '1 1 auto',
                   minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
               >
                 {selectedStore?.name}
               </Typography>
               <Box
-                role={shoppingSync.isConnected ? undefined : "button"}
-                onClick={
-                  shoppingSync.isConnected ? undefined : handleManualReconnect
-                }
+                role={shoppingSync.isConnected ? undefined : 'button'}
+                onClick={shoppingSync.isConnected ? undefined : handleManualReconnect}
                 sx={{
-                  flex: "0 0 auto",
-                  display: "inline-flex",
-                  alignItems: "center",
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
                   gap: 0.5,
                   px: 1,
                   py: 0.5,
                   mr: 1,
                   borderRadius: 1,
                   bgcolor: shoppingSync.isConnected
-                    ? "success.main"
-                    : shoppingSync.connectionState === "connecting"
-                      ? "warning.main"
-                      : (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "grey.700"
-                            : "grey.300",
+                    ? 'success.main'
+                    : shoppingSync.connectionState === 'connecting'
+                      ? 'warning.main'
+                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.700' : 'grey.300'),
                   color: shoppingSync.isConnected
-                    ? "success.contrastText"
-                    : shoppingSync.connectionState === "connecting"
-                      ? "warning.contrastText"
-                      : (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "grey.100"
-                            : "grey.800",
-                  fontSize: "0.7rem",
-                  whiteSpace: "nowrap",
-                  cursor: shoppingSync.isConnected ? "default" : "pointer",
-                  userSelect: "none",
+                    ? 'success.contrastText'
+                    : shoppingSync.connectionState === 'connecting'
+                      ? 'warning.contrastText'
+                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800'),
+                  fontSize: '0.7rem',
+                  whiteSpace: 'nowrap',
+                  cursor: shoppingSync.isConnected ? 'default' : 'pointer',
+                  userSelect: 'none',
                 }}
                 title={
                   shoppingSync.isConnected
-                    ? "Live"
-                    : shoppingSync.connectionState === "connecting"
-                      ? "Reconnecting…"
-                      : "Offline (tap to reconnect)"
+                    ? 'Live'
+                    : shoppingSync.connectionState === 'connecting'
+                      ? 'Reconnecting…'
+                      : 'Offline (tap to reconnect)'
                 }
               >
                 {shoppingSync.isConnected ? (
@@ -2136,18 +1995,18 @@ function ShoppingListsPageContent() {
                     sx={{
                       width: 6,
                       height: 6,
-                      borderRadius: "50%",
-                      bgcolor: "success.contrastText",
+                      borderRadius: '50%',
+                      bgcolor: 'success.contrastText',
                     }}
                   />
                 ) : (
                   <Refresh sx={{ fontSize: 14 }} />
                 )}
                 {shoppingSync.isConnected
-                  ? "Live"
-                  : shoppingSync.connectionState === "connecting"
-                    ? "Reconnecting"
-                    : "Offline"}
+                  ? 'Live'
+                  : shoppingSync.connectionState === 'connecting'
+                    ? 'Reconnecting'
+                    : 'Offline'}
               </Box>
             </Box>
 
@@ -2155,10 +2014,10 @@ function ShoppingListsPageContent() {
             {activeUsers.length > 0 && (
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 1,
-                  flexWrap: "wrap",
+                  flexWrap: 'wrap',
                 }}
               >
                 <Typography variant="caption" color="text.secondary">
@@ -2168,14 +2027,14 @@ function ShoppingListsPageContent() {
                   <Box
                     key={index}
                     sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
+                      display: 'inline-flex',
+                      alignItems: 'center',
                       px: 1,
                       py: 0.5,
                       borderRadius: 1,
-                      bgcolor: "primary.main",
-                      color: "primary.contrastText",
-                      fontSize: "0.75rem",
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText',
+                      fontSize: '0.75rem',
                     }}
                   >
                     {user.name}
@@ -2189,8 +2048,8 @@ function ShoppingListsPageContent() {
           anchorEl={listActionsAnchorEl}
           open={Boolean(listActionsAnchorEl)}
           onClose={handleCloseListActionsMenu}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
           <MenuItem
             onClick={() => {
@@ -2211,11 +2070,7 @@ function ShoppingListsPageContent() {
             }}
           >
             <ListItemIcon>
-              {loadingPantryCheck ? (
-                <CircularProgress size={16} />
-              ) : (
-                <Kitchen fontSize="small" />
-              )}
+              {loadingPantryCheck ? <CircularProgress size={16} /> : <Kitchen fontSize="small" />}
             </ListItemIcon>
             <ListItemText>Pantry check</ListItemText>
           </MenuItem>
@@ -2235,21 +2090,21 @@ function ShoppingListsPageContent() {
         </Menu>
         <DialogContent
           sx={{
-            overflowX: "hidden",
+            overflowX: 'hidden',
             // Only stretch on mobile. Desktop should size naturally.
-            flex: { xs: 1, sm: "initial" },
+            flex: { xs: 1, sm: 'initial' },
             minHeight: { xs: 0 },
-            display: { xs: "flex", sm: "block" },
-            flexDirection: { xs: "column" },
+            display: { xs: 'flex', sm: 'block' },
+            flexDirection: { xs: 'column' },
           }}
         >
           <Box
             sx={{
               mt: 0,
-              display: { xs: "flex", sm: "block" },
-              flexDirection: { xs: "column" },
+              display: { xs: 'flex', sm: 'block' },
+              flexDirection: { xs: 'column' },
               minHeight: { xs: 0 },
-              flex: { xs: 1, sm: "initial" },
+              flex: { xs: 1, sm: 'initial' },
             }}
           >
             {shoppingListItems.length === 0 ? (
@@ -2257,12 +2112,12 @@ function ShoppingListsPageContent() {
                 <Alert severity="info" sx={{ mb: 2 }}>
                   No items in this shopping list yet. Add an item to get started.
                 </Alert>
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <Button
                     variant="contained"
                     startIcon={<Add />}
                     onClick={handleOpenAddItemEditor}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Add item
                   </Button>
@@ -2272,8 +2127,8 @@ function ShoppingListsPageContent() {
               <>
                 <Box
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 1,
                     mb: 2,
                   }}
@@ -2281,7 +2136,7 @@ function ShoppingListsPageContent() {
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{ flex: "1 1 auto", minWidth: 0 }}
+                    sx={{ flex: '1 1 auto', minWidth: 0 }}
                   >
                     Tap an item to edit it.
                   </Typography>
@@ -2292,16 +2147,12 @@ function ShoppingListsPageContent() {
                       color="success"
                       startIcon={<DoneAll />}
                       onClick={() => void handleClearCheckedItems()}
-                      sx={{ flex: "0 0 auto" }}
+                      sx={{ flex: '0 0 auto' }}
                     >
                       Finish Shop
                     </Button>
                   )}
-                  <IconButton
-                    aria-label="Add item"
-                    onClick={handleOpenAddItemEditor}
-                    size="small"
-                  >
+                  <IconButton aria-label="Add item" onClick={handleOpenAddItemEditor} size="small">
                     <Add />
                   </IconButton>
                 </Box>
@@ -2310,63 +2161,58 @@ function ShoppingListsPageContent() {
                   sx={{
                     // Mobile: fill the dialog so no dead space.
                     // Desktop: keep the prior bounded list height.
-                    flex: { xs: 1, sm: "initial" },
+                    flex: { xs: 1, sm: 'initial' },
                     minHeight: { xs: 0 },
                     // On desktop, use a fixed list region so the dialog doesn't
                     // keep growing as items are added; the list itself scrolls.
-                    height: { sm: "60vh" },
-                    maxHeight: { xs: "none", sm: "60vh" },
-                    overflowY: "auto",
-                    overflowX: "hidden",
-                    touchAction: "pan-y",
-                    overscrollBehaviorX: "none",
+                    height: { sm: '60vh' },
+                    maxHeight: { xs: 'none', sm: '60vh' },
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    touchAction: 'pan-y',
+                    overscrollBehaviorX: 'none',
                     // Desktop-only: sleeker scrollbars. Mobile keeps native look.
                     // Note: include (pointer:fine) to avoid clobbering MUI's own
                     // sm breakpoint media query merge (which is also min-width:600px).
-                    "@media (pointer: fine) and (min-width:600px)": {
-                      scrollbarWidth: "thin", // Firefox
+                    '@media (pointer: fine) and (min-width:600px)': {
+                      scrollbarWidth: 'thin', // Firefox
                       scrollbarColor: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? "rgba(255,255,255,0.5) transparent"
-                          : "rgba(0,0,0,0.35) transparent",
-                      "&::-webkit-scrollbar": {
+                        theme.palette.mode === 'dark'
+                          ? 'rgba(255,255,255,0.5) transparent'
+                          : 'rgba(0,0,0,0.35) transparent',
+                      '&::-webkit-scrollbar': {
                         width: 6,
                       },
-                      "&::-webkit-scrollbar-track": {
-                        background: "transparent",
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
                       },
-                      "&::-webkit-scrollbar-thumb": {
+                      '&::-webkit-scrollbar-thumb': {
                         backgroundColor: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "rgba(255,255,255,0.35)"
-                            : "rgba(0,0,0,0.25)",
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(255,255,255,0.35)'
+                            : 'rgba(0,0,0,0.25)',
                         borderRadius: 999,
-                        border: "2px solid transparent",
-                        backgroundClip: "content-box",
+                        border: '2px solid transparent',
+                        backgroundClip: 'content-box',
                       },
-                      "&:hover::-webkit-scrollbar-thumb": {
+                      '&:hover::-webkit-scrollbar-thumb': {
                         backgroundColor: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "rgba(255,255,255,0.5)"
-                            : "rgba(0,0,0,0.4)",
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(255,255,255,0.5)'
+                            : 'rgba(0,0,0,0.4)',
                       },
                     },
                   }}
                 >
-                  <List sx={{ overflowX: "hidden" }}>
+                  <List sx={{ overflowX: 'hidden' }}>
                     <DndContext
                       sensors={dndSensors}
                       collisionDetection={closestCenter}
-                      modifiers={[
-                        restrictToVerticalAxis,
-                        restrictToFirstScrollableAncestor,
-                      ]}
+                      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
                       onDragEnd={handleDragEnd}
                     >
                       <SortableContext
-                        items={orderedShoppingItems.unchecked.map(
-                          (i) => i.foodItemId,
-                        )}
+                        items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
                         strategy={verticalListSortingStrategy}
                       >
                         {orderedShoppingItems.unchecked.map((item, index) => (
@@ -2374,8 +2220,7 @@ function ShoppingListsPageContent() {
                             key={item.foodItemId}
                             item={item}
                             isLast={
-                              index ===
-                                orderedShoppingItems.unchecked.length - 1 &&
+                              index === orderedShoppingItems.unchecked.length - 1 &&
                               orderedShoppingItems.checked.length === 0
                             }
                           />
@@ -2384,9 +2229,7 @@ function ShoppingListsPageContent() {
 
                       {orderedShoppingItems.checked.length > 0 && (
                         <>
-                          {orderedShoppingItems.unchecked.length > 0 && (
-                            <Divider />
-                          )}
+                          {orderedShoppingItems.unchecked.length > 0 && <Divider />}
                           {orderedShoppingItems.checked.map((item, index) => (
                             <Box key={item.foodItemId}>
                               <ListItem
@@ -2408,36 +2251,29 @@ function ShoppingListsPageContent() {
                                     checked={item.checked}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      void handleToggleItemChecked(
-                                        item.foodItemId,
-                                      );
+                                      void handleToggleItemChecked(item.foodItemId);
                                     }}
                                   />
                                 </ListItemIcon>
                                 <ListItemText
                                   primary={item.name}
                                   secondary={`${item.quantity} ${
-                                    item.unit && item.unit !== "each"
+                                    item.unit && item.unit !== 'each'
                                       ? getUnitForm(item.unit, item.quantity)
-                                      : item.unit === "each"
-                                        ? "each"
-                                        : ""
+                                      : item.unit === 'each'
+                                        ? 'each'
+                                        : ''
                                   }`}
                                   onClick={() => handleOpenEditItemEditor(item)}
                                   sx={{
-                                    cursor: "pointer",
-                                    textDecoration: item.checked
-                                      ? "line-through"
-                                      : "none",
+                                    cursor: 'pointer',
+                                    textDecoration: item.checked ? 'line-through' : 'none',
                                     opacity: item.checked ? 0.6 : 1,
                                     pr: 4,
                                   }}
                                 />
                               </ListItem>
-                              {index <
-                                orderedShoppingItems.checked.length - 1 && (
-                                <Divider />
-                              )}
+                              {index < orderedShoppingItems.checked.length - 1 && <Divider />}
                             </Box>
                           ))}
                         </>
@@ -2459,9 +2295,7 @@ function ShoppingListsPageContent() {
         initialDraft={itemEditorInitialDraft}
         onClose={() => setItemEditorOpen(false)}
         onSave={handleSaveItemFromEditor}
-        onDelete={
-          itemEditorMode === "edit" ? handleDeleteItemFromEditor : undefined
-        }
+        onDelete={itemEditorMode === 'edit' ? handleDeleteItemFromEditor : undefined}
         onFoodItemCreated={(newFoodItem) => {
           setFoodItems((prev) => [...prev, newFoodItem]);
         }}
@@ -2473,34 +2307,25 @@ function ShoppingListsPageContent() {
         onClose={deleteConfirmDialog.closeDialog}
         sx={responsiveDialogStyle}
       >
-        <DialogTitle onClose={deleteConfirmDialog.closeDialog}>
-          Delete Store
-        </DialogTitle>
+        <DialogTitle onClose={deleteConfirmDialog.closeDialog}>Delete Store</DialogTitle>
         <DialogContent>
           <Typography gutterBottom>
-            Are you sure you want to delete &quot;{selectedStore?.name}&quot;?
-            This will also delete its shopping list. This action cannot be
-            undone.
+            Are you sure you want to delete &quot;{selectedStore?.name}&quot;? This will also delete
+            its shopping list. This action cannot be undone.
           </Typography>
 
-          {selectedStore?.invitations?.some(
-            (inv) => inv.status === "accepted",
-          ) && (
+          {selectedStore?.invitations?.some((inv) => inv.status === 'accepted') && (
             <Alert severity="warning" sx={{ mt: 2 }}>
-              This store is shared with{" "}
-              {
-                selectedStore.invitations.filter(
-                  (inv) => inv.status === "accepted",
-                ).length
-              }{" "}
-              user(s). They will lose access when you delete it.
+              This store is shared with{' '}
+              {selectedStore.invitations.filter((inv) => inv.status === 'accepted').length} user(s).
+              They will lose access when you delete it.
             </Alert>
           )}
 
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={deleteConfirmDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -2508,7 +2333,7 @@ function ShoppingListsPageContent() {
               onClick={handleDeleteStore}
               color="error"
               variant="contained"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Delete
             </Button>
@@ -2524,19 +2349,15 @@ function ShoppingListsPageContent() {
         fullWidth
         sx={responsiveDialogStyle}
       >
-        <DialogTitle onClose={mealPlanSelectionDialog.closeDialog}>
-          Select Meal Plans
-        </DialogTitle>
+        <DialogTitle onClose={mealPlanSelectionDialog.closeDialog}>Select Meal Plans</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Select one or more meal plans to add their items to your shopping
-            list.
+            Select one or more meal plans to add their items to your shopping list.
           </Typography>
 
           {availableMealPlans.length === 0 ? (
             <Alert severity="info">
-              No meal plans available (must be within last 3 days or in the
-              future).
+              No meal plans available (must be within last 3 days or in the future).
             </Alert>
           ) : (
             <List>
@@ -2547,12 +2368,12 @@ function ShoppingListsPageContent() {
                     setSelectedMealPlanIds((prev) =>
                       prev.includes(mealPlan._id)
                         ? prev.filter((id) => id !== mealPlan._id)
-                        : [...prev, mealPlan._id],
+                        : [...prev, mealPlan._id]
                     );
                   }}
                   sx={{
-                    cursor: "pointer",
-                    "&:hover": { backgroundColor: "action.hover" },
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: 'action.hover' },
                   }}
                 >
                   <Checkbox
@@ -2566,15 +2387,13 @@ function ShoppingListsPageContent() {
                       setSelectedMealPlanIds((prev) =>
                         prev.includes(mealPlan._id)
                           ? prev.filter((id) => id !== mealPlan._id)
-                          : [...prev, mealPlan._id],
+                          : [...prev, mealPlan._id]
                       );
                     }}
                   />
                   <ListItemText
                     primary={mealPlan.name}
-                    secondary={new Date(
-                      mealPlan.startDate,
-                    ).toLocaleDateString()}
+                    secondary={new Date(mealPlan.startDate).toLocaleDateString()}
                   />
                 </ListItem>
               ))}
@@ -2582,14 +2401,14 @@ function ShoppingListsPageContent() {
           )}
 
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This will extract all food items from the selected meal plans
-            (including from recipes) and add them to your shopping list.
+            This will extract all food items from the selected meal plans (including from recipes)
+            and add them to your shopping list.
           </Typography>
 
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={mealPlanSelectionDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -2597,7 +2416,7 @@ function ShoppingListsPageContent() {
               onClick={handleAddItemsFromMealPlans}
               variant="contained"
               disabled={selectedMealPlanIds.length === 0}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Add Items
             </Button>
@@ -2614,91 +2433,76 @@ function ShoppingListsPageContent() {
         sx={responsiveDialogStyle}
       >
         <DialogTitle showCloseButton={false}>
-          Resolve Unit Conflict ({currentConflictIndex + 1} of{" "}
-          {unitConflicts.length})
+          Resolve Unit Conflict ({currentConflictIndex + 1} of {unitConflicts.length})
         </DialogTitle>
         <DialogContent>
           {unitConflicts.length > 0 && (
             <>
-              <Typography
-                variant="body1"
-                gutterBottom
-                sx={{ fontWeight: "bold", mb: 2 }}
-              >
+              <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
                 {unitConflicts[currentConflictIndex]?.foodItemName}
               </Typography>
 
               {unitConflicts[currentConflictIndex]?.isAutoConverted ? (
                 <Alert severity="success" sx={{ mb: 2 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     <Chip label="Auto-converted" size="small" color="success" variant="outlined" />
                     <Typography variant="body2">
-                      {unitConflicts[currentConflictIndex]?.unitBreakdown?.map(
-                        (entry, idx) => (
-                          <span key={idx}>
-                            {idx > 0 && " + "}
-                            {entry.quantity}{" "}
-                            {getUnitForm(entry.unit, entry.quantity)}
-                          </span>
-                        ),
-                      )}
-                      {" = "}
+                      {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
+                        <span key={idx}>
+                          {idx > 0 && ' + '}
+                          {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
+                        </span>
+                      ))}
+                      {' = '}
                       {Math.round(
                         (unitConflicts[currentConflictIndex]?.suggestedQuantity ?? 0) * 100
-                      ) / 100}{" "}
+                      ) / 100}{' '}
                       {unitConflicts[currentConflictIndex]?.suggestedUnit
                         ? getUnitForm(
                             unitConflicts[currentConflictIndex]!.suggestedUnit!,
-                            unitConflicts[currentConflictIndex]!.suggestedQuantity!,
+                            unitConflicts[currentConflictIndex]!.suggestedQuantity!
                           )
-                        : ""}
+                        : ''}
                     </Typography>
                   </Box>
                 </Alert>
               ) : (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  This item has different units that can&apos;t be
-                  auto-converted. Choose the quantity and unit for your list.
+                  This item has different units that can&apos;t be auto-converted. Choose the
+                  quantity and unit for your list.
                 </Alert>
               )}
 
               <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  gutterBottom
-                >
+                <Typography variant="caption" color="text.secondary" gutterBottom>
                   Unit entries to combine:
                 </Typography>
                 <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                  {unitConflicts[currentConflictIndex]?.unitBreakdown?.map(
-                    (entry, idx) => (
-                      <Typography
-                        key={idx}
-                        component="li"
-                        variant="body1"
-                        sx={{ fontWeight: "medium" }}
-                      >
-                        {entry.quantity}{" "}
-                        {getUnitForm(entry.unit, entry.quantity)}
-                      </Typography>
-                    ),
-                  )}
+                  {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
+                    <Typography
+                      key={idx}
+                      component="li"
+                      variant="body1"
+                      sx={{ fontWeight: 'medium' }}
+                    >
+                      {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
+                    </Typography>
+                  ))}
                 </Box>
               </Paper>
 
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {unitConflicts[currentConflictIndex]?.isAutoConverted
-                  ? "Review the suggested combined value:"
-                  : "Set the quantity and unit for your shopping list:"}
+                  ? 'Review the suggested combined value:'
+                  : 'Set the quantity and unit for your shopping list:'}
               </Typography>
 
               <Box
                 sx={{
-                  display: "flex",
+                  display: 'flex',
                   gap: 2,
                   mb: 3,
-                  alignItems: "flex-start",
+                  alignItems: 'flex-start',
                 }}
               >
                 <QuantityInput
@@ -2712,8 +2516,7 @@ function ShoppingListsPageContent() {
                   options={getUnitOptions()}
                   value={
                     getUnitOptions().find(
-                      (option) =>
-                        option.value === getCurrentConflictResolution().unit,
+                      (option) => option.value === getCurrentConflictResolution().unit
                     ) ?? null
                   }
                   onChange={(_, value) => {
@@ -2722,32 +2525,22 @@ function ShoppingListsPageContent() {
                     }
                   }}
                   getOptionLabel={(option) =>
-                    getUnitForm(
-                      option.value,
-                      getCurrentConflictResolution().quantity,
-                    )
+                    getUnitForm(option.value, getCurrentConflictResolution().quantity)
                   }
-                  isOptionEqualToValue={(option, value) =>
-                    option.value === value.value
-                  }
-                  renderInput={(params) => (
-                    <TextField {...params} label="Unit" size="small" />
-                  )}
+                  isOptionEqualToValue={(option, value) => option.value === value.value}
+                  renderInput={(params) => <TextField {...params} label="Unit" size="small" />}
                   sx={{ flex: 1 }}
                 />
               </Box>
 
               <Box
                 sx={{
-                  display: "flex",
+                  display: 'flex',
                   gap: 2,
-                  justifyContent: "space-between",
+                  justifyContent: 'space-between',
                 }}
               >
-                <Button
-                  onClick={handlePreviousConflict}
-                  disabled={currentConflictIndex === 0}
-                >
+                <Button onClick={handlePreviousConflict} disabled={currentConflictIndex === 0}>
                   ← Previous
                 </Button>
                 <Button
@@ -2755,9 +2548,7 @@ function ShoppingListsPageContent() {
                   variant="contained"
                   disabled={!isCurrentConflictResolved()}
                 >
-                  {currentConflictIndex < unitConflicts.length - 1
-                    ? "Next →"
-                    : "Complete"}
+                  {currentConflictIndex < unitConflicts.length - 1 ? 'Next →' : 'Complete'}
                 </Button>
               </Box>
             </>
@@ -2779,12 +2570,11 @@ function ShoppingListsPageContent() {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Invite users by email. They&apos;ll be able to view and edit the
-            shopping list.
+            Invite users by email. They&apos;ll be able to view and edit the shopping list.
           </Typography>
 
           {/* Invite Section */}
-          <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <TextField
               inputRef={shareEmailRef}
               label="Email Address"
@@ -2792,7 +2582,7 @@ function ShoppingListsPageContent() {
               value={shareEmail}
               onChange={(e) => setShareEmail(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === "Enter" && shareEmail.trim()) {
+                if (e.key === 'Enter' && shareEmail.trim()) {
                   handleInviteUser();
                 }
               }}
@@ -2818,26 +2608,19 @@ function ShoppingListsPageContent() {
               </Typography>
               <List>
                 {sharingStore.invitations
-                  .filter(
-                    (inv) =>
-                      inv.status === "accepted" || inv.status === "pending",
-                  )
+                  .filter((inv) => inv.status === 'accepted' || inv.status === 'pending')
                   .map((inv) => (
                     <ListItem key={inv.userId}>
                       <ListItemText
                         primary={inv.userEmail}
-                        secondary={
-                          inv.status === "pending" ? "Pending" : "Accepted"
-                        }
+                        secondary={inv.status === 'pending' ? 'Pending' : 'Accepted'}
                       />
-                      {inv.status === "accepted" && (
+                      {inv.status === 'accepted' && (
                         <IconButton
                           size="small"
                           color="error"
                           title="Remove user"
-                          onClick={() =>
-                            handleRemoveUser(sharingStore._id, inv.userId)
-                          }
+                          onClick={() => handleRemoveUser(sharingStore._id, inv.userId)}
                         >
                           <Delete fontSize="small" />
                         </IconButton>
@@ -2849,10 +2632,7 @@ function ShoppingListsPageContent() {
           )}
 
           <DialogActions primaryButtonIndex={0}>
-            <Button
-              onClick={shareDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
+            <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Done
             </Button>
           </DialogActions>
@@ -2867,20 +2647,17 @@ function ShoppingListsPageContent() {
         fullWidth
         sx={responsiveDialogStyle}
       >
-        <DialogTitle onClose={pantryCheckDialog.closeDialog}>
-          Pantry Check
-        </DialogTitle>
+        <DialogTitle onClose={pantryCheckDialog.closeDialog}>Pantry Check</DialogTitle>
         <DialogContent>
           {matchingPantryItems.length === 0 ? (
             <>
               <Alert severity="info">
-                No items found in pantry. Add items to your pantry to use this
-                feature.
+                No items found in pantry. Add items to your pantry to use this feature.
               </Alert>
               <DialogActions primaryButtonIndex={0}>
                 <Button
                   onClick={pantryCheckDialog.closeDialog}
-                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Close
                 </Button>
@@ -2889,49 +2666,42 @@ function ShoppingListsPageContent() {
           ) : (
             <>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                These shopping list items are in your pantry. Check them off to
-                remove from the list, or adjust quantities as needed.
+                These shopping list items are in your pantry. Check them off to remove from the
+                list, or adjust quantities as needed.
               </Typography>
               <List>
                 {matchingPantryItems.map((item, index) => (
                   <Box key={item.foodItemId}>
                     <ListItem
                       sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
                         py: 2,
                       }}
                     >
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          width: "100%",
+                          display: 'flex',
+                          alignItems: 'center',
+                          width: '100%',
                           mb: 1,
                         }}
                       >
                         <Checkbox
                           checked={item.checked}
-                          onChange={(e) =>
-                            handlePantryItemCheck(
-                              item.foodItemId,
-                              e.target.checked,
-                            )
-                          }
+                          onChange={(e) => handlePantryItemCheck(item.foodItemId, e.target.checked)}
                           sx={{ mr: 1 }}
                         />
                         <ListItemText
                           primary={item.name}
                           secondary={`Current: ${item.currentQuantity} ${
-                            item.unit && item.unit !== "each"
+                            item.unit && item.unit !== 'each'
                               ? getUnitForm(item.unit, item.currentQuantity)
-                              : ""
+                              : ''
                           }`}
                           sx={{
-                            textDecoration: item.checked
-                              ? "line-through"
-                              : "none",
+                            textDecoration: item.checked ? 'line-through' : 'none',
                             opacity: item.checked ? 0.6 : 1,
                           }}
                         />
@@ -2939,20 +2709,17 @@ function ShoppingListsPageContent() {
                       {!item.checked && (
                         <Box
                           sx={{
-                            display: "flex",
+                            display: 'flex',
                             gap: 1,
                             ml: 6,
-                            alignItems: "flex-start",
+                            alignItems: 'flex-start',
                           }}
                         >
                           <QuantityInput
                             label="New Quantity"
                             value={item.newQuantity}
                             onChange={(newQuantity) =>
-                              handlePantryItemQuantityChange(
-                                item.foodItemId,
-                                newQuantity,
-                              )
+                              handlePantryItemQuantityChange(item.foodItemId, newQuantity)
                             }
                             size="small"
                             sx={{ width: 150 }}
@@ -2961,9 +2728,9 @@ function ShoppingListsPageContent() {
                             label="Unit"
                             size="small"
                             value={
-                              item.unit && item.unit !== "each"
+                              item.unit && item.unit !== 'each'
                                 ? getUnitForm(item.unit, item.newQuantity)
-                                : ""
+                                : ''
                             }
                             disabled
                             sx={{ width: 120 }}
@@ -2981,14 +2748,14 @@ function ShoppingListsPageContent() {
             <DialogActions primaryButtonIndex={1}>
               <Button
                 onClick={pantryCheckDialog.closeDialog}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Cancel
               </Button>
               <Button
                 variant="contained"
                 onClick={handleApplyPantryCheck}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Apply Changes
               </Button>
@@ -3011,18 +2778,16 @@ function ShoppingListsPageContent() {
         onClose={leaveStoreConfirmDialog.closeDialog}
         sx={responsiveDialogStyle}
       >
-        <DialogTitle onClose={leaveStoreConfirmDialog.closeDialog}>
-          Leave Store
-        </DialogTitle>
+        <DialogTitle onClose={leaveStoreConfirmDialog.closeDialog}>Leave Store</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to leave &quot;{selectedStore?.name}&quot;?
-            You&apos;ll lose access to this shared store.
+            Are you sure you want to leave &quot;{selectedStore?.name}&quot;? You&apos;ll lose
+            access to this shared store.
           </Typography>
           <DialogActions primaryButtonIndex={1}>
             <Button
               onClick={leaveStoreConfirmDialog.closeDialog}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -3030,7 +2795,7 @@ function ShoppingListsPageContent() {
               onClick={confirmLeaveStore}
               color="warning"
               variant="contained"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Leave Store
             </Button>
@@ -3043,11 +2808,7 @@ function ShoppingListsPageContent() {
         open={!!historyDialogStore}
         onClose={handleCloseHistory}
         historyItems={historyItems}
-        currentItems={
-          selectedStore?._id === historyDialogStore?._id
-            ? shoppingListItems
-            : []
-        }
+        currentItems={selectedStore?._id === historyDialogStore?._id ? shoppingListItems : []}
         onAddItems={handleAddHistoryItems}
         loading={loadingHistory}
       />
@@ -3057,13 +2818,9 @@ function ShoppingListsPageContent() {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
@@ -3077,7 +2834,7 @@ export default function ShoppingListsPage() {
       fallback={
         <AuthenticatedLayout>
           <Container maxWidth="md">
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
           </Container>

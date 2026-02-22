@@ -23,11 +23,7 @@ describe('RecipeTagsEditor', () => {
   describe('Basic functionality', () => {
     it('renders existing tags as chips', () => {
       const { container } = render(
-        <RecipeTagsEditor
-          tags={['tag1', 'tag2']}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeTagsEditor tags={['tag1', 'tag2']} onChange={mockOnChange} editable={true} />
       );
 
       // React strict mode may render multiple instances, so check for at least one
@@ -38,11 +34,7 @@ describe('RecipeTagsEditor', () => {
     it('calls onChange when a tag is removed', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeTagsEditor
-          tags={['tag1', 'tag2']}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeTagsEditor tags={['tag1', 'tag2']} onChange={mockOnChange} editable={true} />
       );
 
       // Wait for tags to be rendered
@@ -55,7 +47,7 @@ describe('RecipeTagsEditor', () => {
       // React strict mode may render multiple instances, so we'll just verify the component works
       const allButtons = screen.getAllByRole('button');
       expect(allButtons.length).toBeGreaterThan(0);
-      
+
       // Verify tags are rendered (the actual deletion interaction is complex with MUI Autocomplete)
       const tag1Elements = screen.queryAllByText('tag1');
       expect(tag1Elements.length).toBeGreaterThan(0);
@@ -65,12 +57,7 @@ describe('RecipeTagsEditor', () => {
 
     it('does not call onChange if onChange is not provided', async () => {
       const user = userEvent.setup();
-      render(
-        <RecipeTagsEditor
-          tags={['tag1', 'tag2']}
-          editable={false}
-        />
-      );
+      render(<RecipeTagsEditor tags={['tag1', 'tag2']} editable={false} />);
 
       const deleteButtons = screen.queryAllByRole('button', { name: '' });
       if (deleteButtons.length > 0) {
@@ -83,13 +70,7 @@ describe('RecipeTagsEditor', () => {
 
   describe('Autocomplete functionality', () => {
     it('fetches and displays existing tags in autocomplete', async () => {
-      render(
-        <RecipeTagsEditor
-          tags={[]}
-          onChange={mockOnChange}
-          editable={true}
-        />
-      );
+      render(<RecipeTagsEditor tags={[]} onChange={mockOnChange} editable={true} />);
 
       // Wait for tags to be fetched
       await waitFor(() => {
@@ -104,11 +85,7 @@ describe('RecipeTagsEditor', () => {
     it('allows adding existing tags from autocomplete', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeTagsEditor
-          tags={[]}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeTagsEditor tags={[]} onChange={mockOnChange} editable={true} />
       );
 
       await waitFor(() => {
@@ -118,20 +95,14 @@ describe('RecipeTagsEditor', () => {
       // React strict mode may render multiple instances
       const inputs = screen.queryAllByPlaceholderText('Type to search existing tags');
       expect(inputs.length).toBeGreaterThan(0);
-      
+
       // This test verifies the component renders and fetches tags
       // Full autocomplete interaction testing would require more complex setup
     });
 
     it('shows "Create new tag" option when input does not match existing tags', async () => {
       const user = userEvent.setup();
-      render(
-        <RecipeTagsEditor
-          tags={[]}
-          onChange={mockOnChange}
-          editable={true}
-        />
-      );
+      render(<RecipeTagsEditor tags={[]} onChange={mockOnChange} editable={true} />);
 
       await waitFor(() => {
         expect(recipeUserDataUtils.fetchUserTags).toHaveBeenCalled();
@@ -140,7 +111,7 @@ describe('RecipeTagsEditor', () => {
       // React strict mode may render multiple instances
       const inputs = screen.queryAllByPlaceholderText('Type to search existing tags');
       expect(inputs.length).toBeGreaterThan(0);
-      
+
       // This test verifies the component renders correctly
       // Full autocomplete interaction testing would require more complex setup
     });
@@ -165,11 +136,7 @@ describe('RecipeTagsEditor', () => {
 
     it('does not display shared tags section when no shared tags', () => {
       const { container } = render(
-        <RecipeTagsEditor
-          tags={['my-tag']}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeTagsEditor tags={['my-tag']} onChange={mockOnChange} editable={true} />
       );
 
       // Check within the component container to avoid React strict mode duplicates
@@ -181,11 +148,7 @@ describe('RecipeTagsEditor', () => {
 
     it('displays shared tags even in non-editable mode', () => {
       const { container } = render(
-        <RecipeTagsEditor
-          tags={['my-tag']}
-          sharedTags={['shared-tag']}
-          editable={false}
-        />
+        <RecipeTagsEditor tags={['my-tag']} sharedTags={['shared-tag']} editable={false} />
       );
 
       // React strict mode may render multiple instances
@@ -200,12 +163,7 @@ describe('RecipeTagsEditor', () => {
 
   describe('Read-only mode', () => {
     it('displays tags as non-removable chips when not editable', () => {
-      const { container } = render(
-        <RecipeTagsEditor
-          tags={['tag1', 'tag2']}
-          editable={false}
-        />
-      );
+      const { container } = render(<RecipeTagsEditor tags={['tag1', 'tag2']} editable={false} />);
 
       // React strict mode may render multiple instances
       expect(screen.queryAllByText('tag1').length).toBeGreaterThan(0);
@@ -214,20 +172,19 @@ describe('RecipeTagsEditor', () => {
       // Check within the component container to avoid React strict mode duplicates
       const component = container.firstChild as HTMLElement;
       if (component) {
-        expect(within(component).queryByPlaceholderText('Type to search existing tags')).not.toBeInTheDocument();
+        expect(
+          within(component).queryByPlaceholderText('Type to search existing tags')
+        ).not.toBeInTheDocument();
       } else {
         // Fallback: just verify no input in the document
-        expect(screen.queryByPlaceholderText('Type to search existing tags')).not.toBeInTheDocument();
+        expect(
+          screen.queryByPlaceholderText('Type to search existing tags')
+        ).not.toBeInTheDocument();
       }
     });
 
     it('does not fetch tags when not editable', () => {
-      render(
-        <RecipeTagsEditor
-          tags={['tag1']}
-          editable={false}
-        />
-      );
+      render(<RecipeTagsEditor tags={['tag1']} editable={false} />);
 
       expect(recipeUserDataUtils.fetchUserTags).not.toHaveBeenCalled();
     });
@@ -235,13 +192,7 @@ describe('RecipeTagsEditor', () => {
 
   describe('Label handling', () => {
     it('uses default label when none provided', () => {
-      render(
-        <RecipeTagsEditor
-          tags={[]}
-          onChange={mockOnChange}
-          editable={true}
-        />
-      );
+      render(<RecipeTagsEditor tags={[]} onChange={mockOnChange} editable={true} />);
 
       // Label should not appear in editable mode (only in read-only mode)
       // This is handled by the parent component typically
@@ -249,12 +200,7 @@ describe('RecipeTagsEditor', () => {
 
     it('hides label when empty string provided', () => {
       const { container } = render(
-        <RecipeTagsEditor
-          tags={[]}
-          onChange={mockOnChange}
-          editable={true}
-          label=""
-        />
+        <RecipeTagsEditor tags={[]} onChange={mockOnChange} editable={true} label="" />
       );
 
       // React strict mode may render multiple instances
@@ -271,4 +217,3 @@ describe('RecipeTagsEditor', () => {
     });
   });
 });
-

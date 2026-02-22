@@ -17,15 +17,18 @@ export async function GET() {
     const usersCollection = db.collection('users');
 
     // Get the current user's document to find who THEY have invited
-    const currentUser = await usersCollection.findOne({ _id: ObjectId.createFromHexString(session.user.id) });
-    
-    const acceptedInvitations = currentUser?.settings?.mealPlanSharing?.invitations?.filter(
-      (inv: { status: string }) => inv.status === 'accepted'
-    ) || [];
+    const currentUser = await usersCollection.findOne({
+      _id: ObjectId.createFromHexString(session.user.id),
+    });
+
+    const acceptedInvitations =
+      currentUser?.settings?.mealPlanSharing?.invitations?.filter(
+        (inv: { status: string }) => inv.status === 'accepted'
+      ) || [];
 
     // Get user info for each accepted invitation
     const sharedUserIds = acceptedInvitations.map((inv: { userId: string }) => inv.userId);
-    
+
     if (sharedUserIds.length === 0) {
       return NextResponse.json([]);
     }
@@ -35,10 +38,10 @@ export async function GET() {
       .toArray();
 
     // Return user info for each shared user
-    const sharedUsers = sharedUsersData.map(user => ({
+    const sharedUsers = sharedUsersData.map((user) => ({
       userId: user._id.toString(),
       email: user.email,
-      name: user.name
+      name: user.name,
     }));
 
     return NextResponse.json(sharedUsers);
@@ -47,4 +50,3 @@ export async function GET() {
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

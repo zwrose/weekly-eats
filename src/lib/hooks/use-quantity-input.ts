@@ -1,6 +1,6 @@
 /**
  * Core hook for quantity input validation and display
- * 
+ *
  * Handles quantity input logic including validation, error states,
  * and name updates based on quantity for food items.
  */
@@ -21,13 +21,8 @@ export interface UseQuantityInputReturn {
   quantityRef: React.RefObject<HTMLInputElement | null>;
 }
 
-export function useQuantityInput(
-  options: UseQuantityInputOptions
-): UseQuantityInputReturn {
-  const {
-    initialQuantity = 1,
-    onQuantityChange,
-  } = options;
+export function useQuantityInput(options: UseQuantityInputOptions): UseQuantityInputReturn {
+  const { initialQuantity = 1, onQuantityChange } = options;
 
   const [quantity, setQuantity] = useState(initialQuantity);
   const [error, setError] = useState(initialQuantity <= 0);
@@ -39,22 +34,25 @@ export function useQuantityInput(
     setError(initialQuantity <= 0);
   }, [initialQuantity]);
 
-  const handleChange = useCallback((value: string) => {
-    const parsed = parseFloat(value);
+  const handleChange = useCallback(
+    (value: string) => {
+      const parsed = parseFloat(value);
 
-    // Allow any non-negative value during editing (including 0 and NaN for empty field)
-    if (!isNaN(parsed) && parsed >= 0) {
-      setQuantity(parsed);
-      onQuantityChange(parsed);
-      setError(parsed <= 0);
-    } else if (value === '') {
-      // Allow empty field for editing
-      setQuantity(0);
-      onQuantityChange(0);
-      setError(true);
-    }
-    // If value is negative or invalid, do nothing (don't update state)
-  }, [onQuantityChange]);
+      // Allow any non-negative value during editing (including 0 and NaN for empty field)
+      if (!isNaN(parsed) && parsed >= 0) {
+        setQuantity(parsed);
+        onQuantityChange(parsed);
+        setError(parsed <= 0);
+      } else if (value === '') {
+        // Allow empty field for editing
+        setQuantity(0);
+        onQuantityChange(0);
+        setError(true);
+      }
+      // If value is negative or invalid, do nothing (don't update state)
+    },
+    [onQuantityChange]
+  );
 
   // Display value: empty string when quantity is 0, otherwise show the quantity
   const displayValue = quantity > 0 ? String(quantity) : '';
@@ -71,4 +69,3 @@ export function useQuantityInput(
     quantityRef,
   };
 }
-

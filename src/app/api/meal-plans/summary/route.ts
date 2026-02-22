@@ -22,21 +22,21 @@ export async function GET() {
         'settings.mealPlanSharing.invitations': {
           $elemMatch: {
             userId: session.user.id,
-            status: 'accepted'
-          }
-        }
+            status: 'accepted',
+          },
+        },
       })
       .toArray();
 
-    const sharedOwnerIds = sharedOwners.map(owner => owner._id.toString());
+    const sharedOwnerIds = sharedOwners.map((owner) => owner._id.toString());
 
     // Aggregate meal plans by year/month
     const summary = await mealPlansCollection
       .aggregate([
         {
           $match: {
-            userId: { $in: [session.user.id, ...sharedOwnerIds] }
-          }
+            userId: { $in: [session.user.id, ...sharedOwnerIds] },
+          },
         },
         {
           $group: {
@@ -47,16 +47,16 @@ export async function GET() {
             count: { $sum: 1 },
             earliest: { $min: '$startDate' },
             latest: { $max: '$startDate' },
-          }
+          },
         },
         {
-          $sort: { '_id.year': -1, '_id.month': -1 }
-        }
+          $sort: { '_id.year': -1, '_id.month': -1 },
+        },
       ])
       .toArray();
 
     // Transform to cleaner response format
-    const result = summary.map(item => ({
+    const result = summary.map((item) => ({
       year: parseInt(item._id.year, 10),
       month: parseInt(item._id.month, 10),
       count: item.count,

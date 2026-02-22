@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Container, Box, Typography, Button, Alert } from "@mui/material";
+import { Container, Box, Typography, Button, Alert } from '@mui/material';
 
 export default function RecipesError({
   error,
@@ -11,10 +11,10 @@ export default function RecipesError({
 }) {
   return (
     <Container maxWidth="md">
-      <Box sx={{ py: 4, textAlign: "center" }}>
-        <Alert severity="error" sx={{ mb: 3, textAlign: "left" }}>
+      <Box sx={{ py: 4, textAlign: 'center' }}>
+        <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
           <Typography variant="body1">
-            {error.message || "An unexpected error occurred while loading recipes."}
+            {error.message || 'An unexpected error occurred while loading recipes.'}
           </Typography>
         </Alert>
         <Button variant="contained" onClick={reset}>

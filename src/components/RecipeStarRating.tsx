@@ -1,15 +1,8 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  IconButton,
-  Typography,
-} from '@mui/material';
-import {
-  Star,
-  StarBorder,
-} from '@mui/icons-material';
+import { Box, IconButton, Typography } from '@mui/material';
+import { Star, StarBorder } from '@mui/icons-material';
 
 interface RecipeStarRatingProps {
   rating?: number;
@@ -79,11 +72,18 @@ export default function RecipeStarRating({
           </Box>
           {sharedRatings.length > 0 && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: 'block' }}
+              >
                 Shared ratings:
               </Typography>
               {sharedRatings.map((shared) => (
-                <Box key={shared.userId} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <Box
+                  key={shared.userId}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}
+                >
                   {[1, 2, 3, 4, 5].map((value) => (
                     <Star
                       key={value}
@@ -125,11 +125,18 @@ export default function RecipeStarRating({
           )}
           {sharedRatings.length > 0 && (
             <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: 'block' }}
+              >
                 Shared ratings:
               </Typography>
               {sharedRatings.map((shared) => (
-                <Box key={shared.userId} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <Box
+                  key={shared.userId}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}
+                >
                   {[1, 2, 3, 4, 5].map((value) => (
                     <Star
                       key={value}
@@ -151,4 +158,3 @@ export default function RecipeStarRating({
     </Box>
   );
 }
-

@@ -45,10 +45,11 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeRequest = (url: string, init: { method?: string; body?: unknown } = {}) => ({
-  url,
-  json: async () => init.body,
-}) as any;
+const makeRequest = (url: string, init: { method?: string; body?: unknown } = {}) =>
+  ({
+    url,
+    json: async () => init.body,
+  }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -67,7 +68,9 @@ beforeEach(() => {
 describe('api/recipes/[id] route', () => {
   it('GET 400 for invalid ObjectId', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
-    const res = await routes.GET(makeRequest('http://localhost/api/recipes/bad'), { params: Promise.resolve({ id: 'bad' }) } as any);
+    const res = await routes.GET(makeRequest('http://localhost/api/recipes/bad'), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
     expect(res.status).toBe(400);
   });
 
@@ -75,7 +78,9 @@ describe('api/recipes/[id] route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(404);
   });
 
@@ -87,7 +92,12 @@ describe('api/recipes/[id] route', () => {
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
     // Second findOne returns the updated recipe
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', title: 'Update' });
-    const body = { title: 'Update', ingredients: [{ title: 'G', ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }] }] };
+    const body = {
+      title: 'Update',
+      ingredients: [
+        { title: 'G', ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }] },
+      ],
+    };
     const req = { url: `http://localhost/api/recipes/${id}`, json: async () => body } as any;
     const res = await routes.PUT(req, { params: Promise.resolve({ id }) } as any);
     expect(res.status).toBe(200);
@@ -106,32 +116,39 @@ describe('api/recipes/[id] route', () => {
       title: 'Test Recipe',
       createdBy: 'u1',
       isGlobal: false,
-      ingredients: [{
-        title: '',
-        isStandalone: true,
-        ingredients: [
-          { type: 'foodItem', id: foodItemId, quantity: 2, unit: 'cup' },
-          { type: 'recipe', id: subRecipeId, quantity: 1 },
-        ],
-      }],
+      ingredients: [
+        {
+          title: '',
+          isStandalone: true,
+          ingredients: [
+            { type: 'foodItem', id: foodItemId, quantity: 2, unit: 'cup' },
+            { type: 'recipe', id: subRecipeId, quantity: 1 },
+          ],
+        },
+      ],
     });
 
     const { ObjectId } = await import('mongodb');
     foodItemsFindMock.mockReturnValueOnce({
-      toArray: () => Promise.resolve([
-        { _id: ObjectId.createFromHexString(foodItemId), singularName: 'Tomato', pluralName: 'Tomatoes' },
-      ]),
+      toArray: () =>
+        Promise.resolve([
+          {
+            _id: ObjectId.createFromHexString(foodItemId),
+            singularName: 'Tomato',
+            pluralName: 'Tomatoes',
+          },
+        ]),
     });
     recipesFindMock.mockReturnValueOnce({
-      toArray: () => Promise.resolve([
-        { _id: ObjectId.createFromHexString(subRecipeId), title: 'Tomato Sauce' },
-      ]),
+      toArray: () =>
+        Promise.resolve([
+          { _id: ObjectId.createFromHexString(subRecipeId), title: 'Tomato Sauce' },
+        ]),
     });
 
-    const res = await routes.GET(
-      makeRequest(`http://localhost/api/recipes/${id}`),
-      { params: Promise.resolve({ id }) } as any
-    );
+    const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(200);
     const json = await res.json();
 
@@ -149,26 +166,30 @@ describe('api/recipes/[id] route', () => {
       title: 'Test Recipe',
       createdBy: 'u1',
       isGlobal: false,
-      ingredients: [{
-        title: '',
-        isStandalone: true,
-        ingredients: [
-          { type: 'foodItem', id: foodItemId, quantity: 1, unit: 'each' },
-        ],
-      }],
+      ingredients: [
+        {
+          title: '',
+          isStandalone: true,
+          ingredients: [{ type: 'foodItem', id: foodItemId, quantity: 1, unit: 'each' }],
+        },
+      ],
     });
 
     const { ObjectId } = await import('mongodb');
     foodItemsFindMock.mockReturnValueOnce({
-      toArray: () => Promise.resolve([
-        { _id: ObjectId.createFromHexString(foodItemId), singularName: 'Tomato', pluralName: 'Tomatoes' },
-      ]),
+      toArray: () =>
+        Promise.resolve([
+          {
+            _id: ObjectId.createFromHexString(foodItemId),
+            singularName: 'Tomato',
+            pluralName: 'Tomatoes',
+          },
+        ]),
     });
 
-    const res = await routes.GET(
-      makeRequest(`http://localhost/api/recipes/${id}`),
-      { params: Promise.resolve({ id }) } as any
-    );
+    const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     const json = await res.json();
 
     expect(json.ingredients[0].ingredients[0].name).toBe('Tomato');
@@ -177,9 +198,9 @@ describe('api/recipes/[id] route', () => {
   it('DELETE 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
-    const res = await routes.DELETE(makeRequest(`http://localhost/api/recipes/${id}`), { params: Promise.resolve({ id }) } as any);
+    const res = await routes.DELETE(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
     expect(res.status).toBe(401);
   });
 });
-
-

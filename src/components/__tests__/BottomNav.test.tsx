@@ -36,7 +36,7 @@ describe('BottomNav', () => {
     it('renders nothing when no user is logged in', () => {
       mockUseSession.mockReturnValue({ data: null });
       const { container } = render(<BottomNav />);
-      
+
       expect(container).toBeEmptyDOMElement();
     });
 
@@ -51,9 +51,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       render(<BottomNav />);
-      
+
       expect(screen.getByLabelText('Meal Plans')).toBeInTheDocument();
       expect(screen.getByLabelText('Shopping Lists')).toBeInTheDocument();
       expect(screen.getByLabelText('Recipes')).toBeInTheDocument();
@@ -71,9 +71,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       const { container } = render(<BottomNav />);
-      
+
       expect(container).toBeEmptyDOMElement();
     });
 
@@ -88,9 +88,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       render(<BottomNav />);
-      
+
       expect(screen.getByLabelText('Meal Plans')).toBeInTheDocument();
     });
   });
@@ -111,30 +111,30 @@ describe('BottomNav', () => {
     it('navigates to meal plans when meal plans button is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const mealPlansButton = screen.getByLabelText('Meal Plans');
       await user.click(mealPlansButton);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/meal-plans');
     });
 
     it('navigates to shopping lists when shopping lists button is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const shoppingListsButton = screen.getByLabelText('Shopping Lists');
       await user.click(shoppingListsButton);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/shopping-lists');
     });
 
     it('navigates to recipes when recipes button is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const recipesButton = screen.getByLabelText('Recipes');
       await user.click(recipesButton);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/recipes');
     });
   });
@@ -155,7 +155,7 @@ describe('BottomNav', () => {
     it('highlights meal plans when on meal plans page', () => {
       mockPathname.mockReturnValue('/meal-plans');
       render(<BottomNav />);
-      
+
       const mealPlansButton = screen.getByLabelText('Meal Plans');
       expect(mealPlansButton).toHaveClass('Mui-selected');
     });
@@ -163,7 +163,7 @@ describe('BottomNav', () => {
     it('highlights shopping lists when on shopping lists page', () => {
       mockPathname.mockReturnValue('/shopping-lists');
       render(<BottomNav />);
-      
+
       const shoppingListsButton = screen.getByLabelText('Shopping Lists');
       expect(shoppingListsButton).toHaveClass('Mui-selected');
     });
@@ -171,7 +171,7 @@ describe('BottomNav', () => {
     it('highlights recipes when on recipes page', () => {
       mockPathname.mockReturnValue('/recipes');
       render(<BottomNav />);
-      
+
       const recipesButton = screen.getByLabelText('Recipes');
       expect(recipesButton).toHaveClass('Mui-selected');
     });
@@ -195,10 +195,10 @@ describe('BottomNav', () => {
     it('opens profile menu when profile button is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
@@ -207,10 +207,10 @@ describe('BottomNav', () => {
     it('displays all menu items for regular user', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         const menu = screen.getByRole('menu');
         expect(within(menu).getByText('Pantry')).toBeInTheDocument();
@@ -231,13 +231,13 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         const menu = screen.getByRole('menu');
         expect(within(menu).getByText('Manage Users')).toBeInTheDocument();
@@ -247,10 +247,10 @@ describe('BottomNav', () => {
     it('does not display Manage Users option for non-admin users', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         const menu = screen.getByRole('menu');
         expect(within(menu).queryByText('Manage Users')).not.toBeInTheDocument();
@@ -260,51 +260,51 @@ describe('BottomNav', () => {
     it('navigates to pantry when pantry menu item is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const pantryMenuItem = screen.getByText('Pantry');
       await user.click(pantryMenuItem);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/pantry');
     });
 
     it('navigates to food items when manage food items is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const foodItemsMenuItem = screen.getByText('Manage Food Items');
       await user.click(foodItemsMenuItem);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/food-items');
     });
 
     it('navigates to settings when settings is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const settingsMenuItem = screen.getByText('Settings');
       await user.click(settingsMenuItem);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/settings');
     });
 
@@ -319,54 +319,54 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const manageUsersMenuItem = screen.getByText('Manage Users');
       await user.click(manageUsersMenuItem);
-      
+
       expect(mockPush).toHaveBeenCalledWith('/user-management');
     });
 
     it('calls signOut when sign out is clicked', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const signOutMenuItem = screen.getByText('Sign Out');
       await user.click(signOutMenuItem);
-      
+
       expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: '/' });
     });
 
     it('closes menu when pressing escape', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       // Press escape to close the menu
       await user.keyboard('{Escape}');
-      
+
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
       });
@@ -385,9 +385,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       render(<BottomNav />);
-      
+
       const avatar = screen.getByAltText('Test User');
       expect(avatar).toBeInTheDocument();
       expect(avatar).toHaveAttribute('src');
@@ -403,9 +403,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       expect(profileButton).toBeInTheDocument();
       // AccountCircle icon should be rendered instead of avatar
@@ -425,9 +425,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       const { container } = render(<BottomNav />);
-      
+
       const paper = container.querySelector('[class*="MuiPaper"]');
       expect(paper).toBeInTheDocument();
     });
@@ -442,9 +442,9 @@ describe('BottomNav', () => {
           },
         },
       });
-      
+
       const { container } = render(<BottomNav />);
-      
+
       const paper = container.querySelector('[class*="MuiPaper"]');
       expect(paper).toBeInTheDocument();
     });
@@ -466,17 +466,17 @@ describe('BottomNav', () => {
     it('closes menu after navigating to pantry', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const pantryMenuItem = screen.getByText('Pantry');
       await user.click(pantryMenuItem);
-      
+
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
       });
@@ -485,17 +485,17 @@ describe('BottomNav', () => {
     it('closes menu after navigating to settings', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const settingsMenuItem = screen.getByText('Settings');
       await user.click(settingsMenuItem);
-      
+
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
       });
@@ -504,17 +504,17 @@ describe('BottomNav', () => {
     it('closes menu after signing out', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('menu')).toBeInTheDocument();
       });
-      
+
       const signOutMenuItem = screen.getByText('Sign Out');
       await user.click(signOutMenuItem);
-      
+
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
       });
@@ -536,7 +536,7 @@ describe('BottomNav', () => {
 
     it('has proper aria-labels for all navigation buttons', () => {
       render(<BottomNav />);
-      
+
       expect(screen.getByLabelText('Meal Plans')).toBeInTheDocument();
       expect(screen.getByLabelText('Shopping Lists')).toBeInTheDocument();
       expect(screen.getByLabelText('Recipes')).toBeInTheDocument();
@@ -546,10 +546,10 @@ describe('BottomNav', () => {
     it('menu items have proper icons', async () => {
       const user = userEvent.setup();
       render(<BottomNav />);
-      
+
       const profileButton = screen.getByLabelText('Profile');
       await user.click(profileButton);
-      
+
       await waitFor(() => {
         const menu = screen.getByRole('menu');
         expect(menu).toBeInTheDocument();
@@ -557,4 +557,3 @@ describe('BottomNav', () => {
     });
   });
 });
-

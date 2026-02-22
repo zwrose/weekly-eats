@@ -34,9 +34,10 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeRequest = (body: unknown) => ({
-  json: async () => body,
-} as any);
+const makeRequest = (body: unknown) =>
+  ({
+    json: async () => body,
+  }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -101,10 +102,12 @@ describe('api/admin/users/approve route', () => {
 
     it('POST accepts valid request with correct parameter names', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isApproved: true 
-      }));
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isApproved: true,
+        })
+      );
       expect(res.status).toBe(200);
     });
   });
@@ -117,7 +120,7 @@ describe('api/admin/users/approve route', () => {
 
     it('POST approves user when isApproved is true', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isApproved: true }));
 
@@ -129,7 +132,7 @@ describe('api/admin/users/approve route', () => {
 
     it('POST revokes approval when isApproved is false', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isApproved: false }));
 
@@ -141,36 +144,40 @@ describe('api/admin/users/approve route', () => {
 
     it('POST returns 404 when user not found', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 0, modifiedCount: 0 });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isApproved: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isApproved: true,
+        })
+      );
+
       expect(res.status).toBe(404);
     });
 
     it('POST converts userId string to ObjectId correctly', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
+
       const userId = '507f1f77bcf86cd799439011';
       await routes.POST(makeRequest({ userId, isApproved: true }));
 
       const callArgs = updateOneMock.mock.calls[0];
       const queryFilter = callArgs[0];
-      
+
       expect(queryFilter._id).toBeInstanceOf(ObjectId);
       expect(queryFilter._id.toString()).toBe(userId);
     });
 
     it('POST returns success response with correct format', async () => {
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isApproved: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isApproved: true,
+        })
+      );
+
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data).toEqual({ success: true });
@@ -182,12 +189,14 @@ describe('api/admin/users/approve route', () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
       updateOneMock.mockRejectedValueOnce(new Error('Database connection failed'));
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: '507f1f77bcf86cd799439011', 
-        isApproved: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: '507f1f77bcf86cd799439011',
+          isApproved: true,
+        })
+      );
+
       expect(res.status).toBe(500);
       const data = await res.json();
       expect(data.error).toBeDefined();
@@ -196,14 +205,15 @@ describe('api/admin/users/approve route', () => {
     it('POST handles invalid ObjectId format', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-      
-      const res = await routes.POST(makeRequest({ 
-        userId: 'invalid-id', 
-        isApproved: true 
-      }));
-      
+
+      const res = await routes.POST(
+        makeRequest({
+          userId: 'invalid-id',
+          isApproved: true,
+        })
+      );
+
       expect(res.status).toBe(500);
     });
   });
 });
-

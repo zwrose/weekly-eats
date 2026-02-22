@@ -15,7 +15,7 @@ export async function GET() {
     const client = await getMongoClient();
     const db = client.db();
     const usersCollection = db.collection('users');
-    
+
     // Get current user to check admin status
     const currentUser = await usersCollection.findOne({ email: session.user.email });
     if (!currentUser?.isAdmin) {
@@ -23,22 +23,29 @@ export async function GET() {
     }
 
     // Get users pending approval (not approved and not admin)
-    const users = await usersCollection.find({
-      isApproved: { $ne: true },
-      isAdmin: { $ne: true }
-    }, {
-      projection: {
-        _id: 1,
-        name: 1,
-        email: 1,
-        isAdmin: 1,
-        isApproved: 1
-      }
-    }).sort({ _id: -1 }).limit(100).toArray();
+    const users = await usersCollection
+      .find(
+        {
+          isApproved: { $ne: true },
+          isAdmin: { $ne: true },
+        },
+        {
+          projection: {
+            _id: 1,
+            name: 1,
+            email: 1,
+            isAdmin: 1,
+            isApproved: 1,
+          },
+        }
+      )
+      .sort({ _id: -1 })
+      .limit(100)
+      .toArray();
 
     return NextResponse.json({ users });
   } catch (error) {
     logError('PendingUsers GET', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

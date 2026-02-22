@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeUnit, getUnitForm, getUnitAbbreviation, getUnitAbbreviationForm, getUnitOptions } from '../food-items-utils';
+import {
+  normalizeUnit,
+  getUnitForm,
+  getUnitAbbreviation,
+  getUnitAbbreviationForm,
+  getUnitOptions,
+} from '../food-items-utils';
 
 describe('food-items-utils', () => {
   it('normalizes unit variants to singular', () => {
@@ -44,5 +50,3 @@ describe('food-items-utils', () => {
     expect(options[0]).toHaveProperty('label');
   });
 });
-
-

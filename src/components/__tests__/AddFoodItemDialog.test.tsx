@@ -15,31 +15,30 @@ describe('AddFoodItemDialog', () => {
 
   afterEach(async () => {
     // Ensure all dialogs are closed and cleaned up
-    await waitFor(() => {
-      cleanup();
-    }, { timeout: 100 });
+    await waitFor(
+      () => {
+        cleanup();
+      },
+      { timeout: 100 }
+    );
   });
 
   it('renders single-page form (no stepper)', () => {
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Should not have stepper or "Next" button
     expect(screen.queryByText(/basic information/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/confirm names/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
-    
+
     // Should have direct "Add Food Item" button
     expect(screen.getByRole('button', { name: /add food item/i })).toBeInTheDocument();
   });
 
   it('shows singular/plural fields when "each" unit is selected', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Initially, singular/plural fields should not be visible
     expect(screen.queryByLabelText(/singular name/i)).not.toBeInTheDocument();
@@ -62,10 +61,8 @@ describe('AddFoodItemDialog', () => {
 
   it('auto-calculates singular/plural when "each" is selected and name is entered', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Type plural name
     await user.type(screen.getByLabelText(/default name/i), 'apples');
@@ -86,10 +83,8 @@ describe('AddFoodItemDialog', () => {
 
   it('hides singular/plural fields when switching from "each" to another unit', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Type name and select "each"
     await user.type(screen.getByLabelText(/default name/i), 'apples');
@@ -116,14 +111,12 @@ describe('AddFoodItemDialog', () => {
 
   it('creates food item with "each" unit using singular/plural names', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Fill form with "each" unit
     await user.type(screen.getByLabelText(/default name/i), 'apples');
-    
+
     // Select "each" unit
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
@@ -157,14 +150,12 @@ describe('AddFoodItemDialog', () => {
 
   it('creates food item with non-"each" unit using default name for both singular and plural', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Fill form with non-"each" unit
     await user.type(screen.getByLabelText(/default name/i), 'Flour');
-    
+
     // Select "cup" unit (not "each")
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
@@ -187,12 +178,10 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('disables submit button when required fields are missing', async () => {
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     const submitButton = screen.getByRole('button', { name: /add food item/i });
-    
+
     // Initially should be disabled (no name, no unit)
     expect(submitButton).toBeDisabled();
 
@@ -203,14 +192,12 @@ describe('AddFoodItemDialog', () => {
 
   it('disables submit button when "each" is selected but singular/plural are missing', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Type name and select "each"
     await user.type(screen.getByLabelText(/default name/i), 'a');
-    
+
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
     await user.click(within(listbox).getByRole('option', { name: /each/i }));
@@ -225,7 +212,7 @@ describe('AddFoodItemDialog', () => {
 
     // Clear auto-filled values
     await user.clear(screen.getByLabelText(/singular name/i));
-    
+
     // Button should be disabled now
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
@@ -234,14 +221,12 @@ describe('AddFoodItemDialog', () => {
 
   it('includes addToPantry option in onAdd callback', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Fill form
     await user.type(screen.getByLabelText(/default name/i), 'Flour');
-    
+
     // Select unit
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
@@ -255,17 +240,15 @@ describe('AddFoodItemDialog', () => {
     // Submit
     await user.click(screen.getByRole('button', { name: /add food item/i }));
 
-    expect(handleAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ addToPantry: true })
-    );
+    expect(handleAdd).toHaveBeenCalledWith(expect.objectContaining({ addToPantry: true }));
   });
 
   it('prefills name when prefillName prop is provided', () => {
     render(
-      <AddFoodItemDialog 
-        open 
-        onClose={handleClose} 
-        onAdd={handleAdd} 
+      <AddFoodItemDialog
+        open
+        onClose={handleClose}
+        onAdd={handleAdd}
         prefillName="Prefilled Name"
       />
     );
@@ -276,10 +259,8 @@ describe('AddFoodItemDialog', () => {
 
   it('disables submit button when validation fails', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Button should be disabled when form is invalid
     const submitButton = screen.getByRole('button', { name: /add food item/i });
@@ -289,14 +270,14 @@ describe('AddFoodItemDialog', () => {
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
     await user.click(within(listbox).getByRole('option', { name: /cup/i }));
-    
+
     // Button should still be disabled (no name)
     expect(submitButton).toBeDisabled();
 
     // Type a character then remove it - should stay disabled
     await user.type(screen.getByLabelText(/default name/i), 'a');
     await user.clear(screen.getByLabelText(/default name/i));
-    
+
     // Button should remain disabled
     expect(submitButton).toBeDisabled();
   });
@@ -322,9 +303,7 @@ describe('AddFoodItemDialog', () => {
     expect(handleClose).toHaveBeenCalled();
 
     // Close the dialog (set open to false)
-    rerender(
-      <AddFoodItemDialog open={false} onClose={handleClose} onAdd={handleAdd} />
-    );
+    rerender(<AddFoodItemDialog open={false} onClose={handleClose} onAdd={handleAdd} />);
 
     // Wait a bit for cleanup
     await waitFor(() => {
@@ -332,33 +311,29 @@ describe('AddFoodItemDialog', () => {
     });
 
     // Reopen dialog - form should be reset
-    rerender(
-      <AddFoodItemDialog open={true} onClose={handleClose} onAdd={handleAdd} />
-    );
+    rerender(<AddFoodItemDialog open={true} onClose={handleClose} onAdd={handleAdd} />);
 
     // Verify form is reset - name field should be empty
     const newNameField = await screen.findByLabelText(/default name/i);
     expect(newNameField).toHaveValue('');
-    
+
     // Verify we can fill the form fresh (which means it was reset)
     await user.type(newNameField, 'New Item');
     expect(newNameField).toHaveValue('New Item');
-    
+
     // Verify unit field works - we should be able to select a different unit
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const newListbox = await screen.findByRole('listbox');
     await user.click(within(newListbox).getByRole('option', { name: /each/i }));
-    
+
     // If we got here without errors, the form was properly reset
     expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
   });
 
   it('allows editing auto-calculated singular/plural names', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Type name that will be auto-calculated
     await user.type(screen.getByLabelText(/default name/i), 'apples');
@@ -398,14 +373,12 @@ describe('AddFoodItemDialog', () => {
 
   it('handles personal access level option', async () => {
     const user = userEvent.setup();
-    
-    render(
-      <AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />
-    );
+
+    render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     // Fill form
     await user.type(screen.getByLabelText(/default name/i), 'Flour');
-    
+
     // Select unit
     await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
     const listbox = await screen.findByRole('listbox');
@@ -418,8 +391,6 @@ describe('AddFoodItemDialog', () => {
     // Submit
     await user.click(screen.getByRole('button', { name: /add food item/i }));
 
-    expect(handleAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ isGlobal: false })
-    );
+    expect(handleAdd).toHaveBeenCalledWith(expect.objectContaining({ isGlobal: false }));
   });
 });

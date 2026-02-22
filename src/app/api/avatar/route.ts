@@ -58,13 +58,13 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'public, max-age=2592000, stale-while-revalidate=5184000, immutable',
         // Pass through ETag if available
         ...(response.headers.get('ETag') && {
-          'ETag': response.headers.get('ETag')!,
+          ETag: response.headers.get('ETag')!,
         }),
       },
     });
   } catch (error) {
     logError('Avatar GET', error);
-    
+
     // Return 503 on timeout or network errors
     if (error instanceof Error && error.name === 'AbortError') {
       return new NextResponse(null, {
@@ -79,4 +79,3 @@ export async function GET(request: NextRequest) {
     return new NextResponse(null, { status: 500 });
   }
 }
-

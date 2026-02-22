@@ -9,10 +9,7 @@ type RouteParams = {
   params: Promise<{ storeId: string }>;
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -32,15 +29,16 @@ export async function GET(
       _id: ObjectId.createFromHexString(storeId),
       $or: [
         { userId: session.user.id },
-        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-      ]
+        { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' },
+      ],
     });
 
     if (!store) {
       return NextResponse.json({ error: SHOPPING_LIST_ERRORS.STORE_NOT_FOUND }, { status: 404 });
     }
 
-    const history = await db.collection('purchaseHistory')
+    const history = await db
+      .collection('purchaseHistory')
       .find({ storeId })
       .sort({ lastPurchasedAt: -1 })
       .toArray();

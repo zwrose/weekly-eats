@@ -3,21 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { 
-  AUTH_ERRORS, 
-  FOOD_ITEM_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -53,19 +45,28 @@ export async function PUT(
 
     // Non-admins can only edit their own personal items
     if (!isAdmin && existingItem.isGlobal) {
-      return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_EDIT_GLOBAL }, { status: 403 });
+      return NextResponse.json(
+        { error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_EDIT_GLOBAL },
+        { status: 403 }
+      );
     }
 
     // Validate isGlobal changes
     if (isGlobal !== undefined && typeof isGlobal === 'boolean') {
       // Prevent making global items personal
       if (existingItem.isGlobal && !isGlobal) {
-        return NextResponse.json({ error: FOOD_ITEM_ERRORS.CANNOT_MAKE_GLOBAL_PERSONAL }, { status: 400 });
+        return NextResponse.json(
+          { error: FOOD_ITEM_ERRORS.CANNOT_MAKE_GLOBAL_PERSONAL },
+          { status: 400 }
+        );
       }
-      
+
       // Only admins can make items global
       if (!existingItem.isGlobal && isGlobal && !isAdmin) {
-        return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_MAKE_GLOBAL }, { status: 403 });
+        return NextResponse.json(
+          { error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_MAKE_GLOBAL },
+          { status: 403 }
+        );
       }
     }
 
@@ -81,11 +82,15 @@ export async function PUT(
       singularName: singularName?.trim() || name.trim(),
       pluralName: pluralName?.trim() || name.trim(),
       unit: unit?.trim() || null,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     // Only include isGlobal in update if it's being changed and the change is valid
-    if (isGlobal !== undefined && typeof isGlobal === 'boolean' && isGlobal !== existingItem.isGlobal) {
+    if (
+      isGlobal !== undefined &&
+      typeof isGlobal === 'boolean' &&
+      isGlobal !== existingItem.isGlobal
+    ) {
       updateData.isGlobal = isGlobal;
     }
 
@@ -106,10 +111,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -138,7 +140,10 @@ export async function DELETE(
 
     // Non-admins can only delete their own personal items
     if (!isAdmin && existingItem.isGlobal) {
-      return NextResponse.json({ error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_DELETE_GLOBAL }, { status: 403 });
+      return NextResponse.json(
+        { error: FOOD_ITEM_ERRORS.ONLY_ADMINS_CAN_DELETE_GLOBAL },
+        { status: 403 }
+      );
     }
 
     const result = await foodItemsCollection.deleteOne({ _id: new ObjectId(id) });
@@ -152,4 +157,4 @@ export async function DELETE(
     logError('FoodItems DELETE', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

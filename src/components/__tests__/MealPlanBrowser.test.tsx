@@ -141,8 +141,10 @@ describe('MealPlanBrowser', () => {
 
     // Should fetch plans for that month
     await waitFor(() => {
-      const calls = mockFetch.mock.calls.map(c => getUrlString(c[0]));
-      expect(calls.some(u => u.includes('startDate=2026-02-01') && u.includes('endDate=2026-02-28'))).toBe(true);
+      const calls = mockFetch.mock.calls.map((c) => getUrlString(c[0]));
+      expect(
+        calls.some((u) => u.includes('startDate=2026-02-01') && u.includes('endDate=2026-02-28'))
+      ).toBe(true);
     });
 
     // Should display the plans

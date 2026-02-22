@@ -3,21 +3,13 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { 
-  AUTH_ERRORS, 
-  RECIPE_ERRORS, 
-  API_ERRORS,
-  logError 
-} from '@/lib/errors';
+import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -34,7 +26,10 @@ export async function POST(
 
     // Validate rating
     if (typeof rating !== 'number' || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
-      return NextResponse.json({ error: 'Rating must be an integer between 1 and 5' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Rating must be an integer between 1 and 5' },
+        { status: 400 }
+      );
     }
 
     const client = await getMongoClient();
@@ -45,10 +40,7 @@ export async function POST(
     // Verify recipe exists and is accessible
     const recipe = await recipesCollection.findOne({
       _id: ObjectId.createFromHexString(recipeId),
-      $or: [
-        { isGlobal: true },
-        { createdBy: session.user.id }
-      ]
+      $or: [{ isGlobal: true }, { createdBy: session.user.id }],
     });
 
     if (!recipe) {
@@ -61,19 +53,19 @@ export async function POST(
     await recipeUserDataCollection.updateOne(
       {
         userId: session.user.id,
-        recipeId: recipeId
+        recipeId: recipeId,
       },
       {
         $set: {
           rating: rating,
-          updatedAt: now
+          updatedAt: now,
         },
         $setOnInsert: {
           userId: session.user.id,
           recipeId: recipeId,
           tags: [],
-          createdAt: now
-        }
+          createdAt: now,
+        },
       },
       { upsert: true }
     );
@@ -85,10 +77,7 @@ export async function POST(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -108,11 +97,11 @@ export async function DELETE(
     const result = await recipeUserDataCollection.updateOne(
       {
         userId: session.user.id,
-        recipeId: recipeId
+        recipeId: recipeId,
       },
       {
         $unset: { rating: '' },
-        $set: { updatedAt: new Date() }
+        $set: { updatedAt: new Date() },
       }
     );
 
@@ -126,4 +115,3 @@ export async function DELETE(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

@@ -1,5 +1,5 @@
-import { Container, Box, Skeleton, Paper } from "@mui/material";
-import AuthenticatedLayout from "@/components/AuthenticatedLayout";
+import { Container, Box, Skeleton, Paper } from '@mui/material';
+import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 
 export default function ShoppingListsLoading() {
   return (
@@ -9,15 +9,15 @@ export default function ShoppingListsLoading() {
           {/* Page header */}
           <Box
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              justifyContent: "space-between",
-              alignItems: { xs: "flex-start", sm: "center" },
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               gap: { xs: 2, sm: 0 },
               mb: { xs: 2, md: 4 },
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Skeleton variant="circular" width={40} height={40} />
               <Skeleton variant="text" width={200} height={48} />
             </Box>
@@ -25,10 +25,10 @@ export default function ShoppingListsLoading() {
           </Box>
 
           {/* Search + content */}
-          <Paper sx={{ p: 3, mb: 4, maxWidth: "md", mx: "auto" }}>
+          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
             <Skeleton variant="rounded" height={56} sx={{ mb: 3 }} />
             {[...Array(4)].map((_, i) => (
-              <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <Skeleton variant="circular" width={32} height={32} />
                 <Box sx={{ flex: 1 }}>
                   <Skeleton variant="text" width="55%" height={24} />

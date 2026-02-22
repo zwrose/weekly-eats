@@ -9,10 +9,7 @@ type RouteParams = {
 };
 
 // Accept or reject invitation
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -41,25 +38,29 @@ export async function PUT(
       'settings.recipeSharing.invitations': {
         $elemMatch: {
           userId: userId,
-          status: 'pending'
-        }
-      }
+          status: 'pending',
+        },
+      },
     });
 
     if (!owner) {
-      return NextResponse.json({ error: RECIPE_SHARING_ERRORS.INVITATION_NOT_FOUND }, { status: 404 });
+      return NextResponse.json(
+        { error: RECIPE_SHARING_ERRORS.INVITATION_NOT_FOUND },
+        { status: 404 }
+      );
     }
 
     // Update invitation status
     await usersCollection.updateOne(
       {
         _id: owner._id,
-        'settings.recipeSharing.invitations.userId': userId
+        'settings.recipeSharing.invitations.userId': userId,
       },
       {
         $set: {
-          'settings.recipeSharing.invitations.$.status': action === 'accept' ? 'accepted' : 'rejected'
-        }
+          'settings.recipeSharing.invitations.$.status':
+            action === 'accept' ? 'accepted' : 'rejected',
+        },
       }
     );
 
@@ -71,10 +72,7 @@ export async function PUT(
 }
 
 // Remove user from sharing (owner removes user OR user leaves)
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -90,7 +88,7 @@ export async function DELETE(
     // Check if current user is the owner (removing someone) or the invited user (leaving)
     const isOwner = await usersCollection.findOne({
       email: session.user.email,
-      'settings.recipeSharing.invitations.userId': userId
+      'settings.recipeSharing.invitations.userId': userId,
     });
 
     const isSelf = userId === session.user.id;
@@ -106,7 +104,7 @@ export async function DELETE(
         { email: session.user.email },
         {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          $pull: { 'settings.recipeSharing.invitations': { userId } } as any
+          $pull: { 'settings.recipeSharing.invitations': { userId } } as any,
         }
       );
     } else {
@@ -115,7 +113,7 @@ export async function DELETE(
         { 'settings.recipeSharing.invitations.userId': userId },
         {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          $pull: { 'settings.recipeSharing.invitations': { userId } } as any
+          $pull: { 'settings.recipeSharing.invitations': { userId } } as any,
         }
       );
     }
@@ -126,5 +124,3 @@ export async function DELETE(
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-
-

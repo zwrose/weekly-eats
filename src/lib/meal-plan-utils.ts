@@ -1,14 +1,19 @@
-import { 
-  MealPlanTemplate, 
-  CreateMealPlanRequest, 
+import {
+  MealPlanTemplate,
+  CreateMealPlanRequest,
   CreateMealPlanTemplateRequest,
   UpdateMealPlanRequest,
   UpdateMealPlanTemplateRequest,
   MealPlanWithTemplate,
   DayOfWeek,
-  MealPlan
+  MealPlan,
 } from '../types/meal-plan';
-import { parseLocalDate, calculateEndDateAsString, formatDateForAPI, dayOfWeekToIndex } from './date-utils';
+import {
+  parseLocalDate,
+  calculateEndDateAsString,
+  formatDateForAPI,
+  dayOfWeekToIndex,
+} from './date-utils';
 import { isBefore, isEqual, addDays } from 'date-fns';
 
 // Default template values - centralized for DRY principle
@@ -18,9 +23,9 @@ export const DEFAULT_TEMPLATE: CreateMealPlanTemplateRequest = {
     breakfast: true,
     lunch: true,
     dinner: true,
-    staples: false // Staples are managed separately, not as a regular meal
+    staples: false, // Staples are managed separately, not as a regular meal
   },
-  weeklyStaples: []
+  weeklyStaples: [],
 };
 
 /**
@@ -34,7 +39,10 @@ export const checkMealPlanOverlap = (
   startDate: string,
   existingPlans: MealPlan[],
   excludePlanId?: string
-): { isOverlapping: boolean; conflict?: { planName: string; startDate: string; endDate: string } } => {
+): {
+  isOverlapping: boolean;
+  conflict?: { planName: string; startDate: string; endDate: string };
+} => {
   if (!startDate) {
     return { isOverlapping: false };
   }
@@ -65,8 +73,8 @@ export const checkMealPlanOverlap = (
         conflict: {
           planName: plan.name,
           startDate: plan.startDate,
-          endDate: plan.endDate
-        }
+          endDate: plan.endDate,
+        },
       };
     }
   }
@@ -83,7 +91,9 @@ export const fetchMealPlanTemplate = async (): Promise<MealPlanTemplate | null> 
   return response.json();
 };
 
-export const createMealPlanTemplate = async (template: CreateMealPlanTemplateRequest): Promise<MealPlanTemplate> => {
+export const createMealPlanTemplate = async (
+  template: CreateMealPlanTemplateRequest
+): Promise<MealPlanTemplate> => {
   const response = await fetch('/api/meal-plans/template', {
     method: 'POST',
     headers: {
@@ -91,16 +101,18 @@ export const createMealPlanTemplate = async (template: CreateMealPlanTemplateReq
     },
     body: JSON.stringify(template),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to create meal plan template');
   }
-  
+
   return response.json();
 };
 
-export const updateMealPlanTemplate = async (template: UpdateMealPlanTemplateRequest): Promise<MealPlanTemplate> => {
+export const updateMealPlanTemplate = async (
+  template: UpdateMealPlanTemplateRequest
+): Promise<MealPlanTemplate> => {
   const response = await fetch('/api/meal-plans/template', {
     method: 'PUT',
     headers: {
@@ -108,17 +120,21 @@ export const updateMealPlanTemplate = async (template: UpdateMealPlanTemplateReq
     },
     body: JSON.stringify(template),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update meal plan template');
   }
-  
+
   return response.json();
 };
 
 // Meal Plans
-export const fetchMealPlans = async (opts?: { startDate?: string; endDate?: string; minEndDate?: string }): Promise<MealPlanWithTemplate[]> => {
+export const fetchMealPlans = async (opts?: {
+  startDate?: string;
+  endDate?: string;
+  minEndDate?: string;
+}): Promise<MealPlanWithTemplate[]> => {
   const params = new URLSearchParams();
   if (opts?.startDate) params.set('startDate', opts.startDate);
   if (opts?.endDate) params.set('endDate', opts.endDate);
@@ -139,7 +155,9 @@ export const fetchMealPlan = async (id: string): Promise<MealPlanWithTemplate> =
   return response.json();
 };
 
-export const createMealPlan = async (mealPlan: CreateMealPlanRequest): Promise<MealPlanWithTemplate> => {
+export const createMealPlan = async (
+  mealPlan: CreateMealPlanRequest
+): Promise<MealPlanWithTemplate> => {
   const response = await fetch('/api/meal-plans', {
     method: 'POST',
     headers: {
@@ -147,16 +165,19 @@ export const createMealPlan = async (mealPlan: CreateMealPlanRequest): Promise<M
     },
     body: JSON.stringify(mealPlan),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to create meal plan');
   }
-  
+
   return response.json();
 };
 
-export const updateMealPlan = async (id: string, mealPlan: UpdateMealPlanRequest): Promise<MealPlanWithTemplate> => {
+export const updateMealPlan = async (
+  id: string,
+  mealPlan: UpdateMealPlanRequest
+): Promise<MealPlanWithTemplate> => {
   const response = await fetch(`/api/meal-plans/${id}`, {
     method: 'PUT',
     headers: {
@@ -164,12 +185,12 @@ export const updateMealPlan = async (id: string, mealPlan: UpdateMealPlanRequest
     },
     body: JSON.stringify(mealPlan),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update meal plan');
   }
-  
+
   return response.json();
 };
 
@@ -177,7 +198,7 @@ export const deleteMealPlan = async (id: string): Promise<void> => {
   const response = await fetch(`/api/meal-plans/${id}`, {
     method: 'DELETE',
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete meal plan');
@@ -186,37 +207,45 @@ export const deleteMealPlan = async (id: string): Promise<void> => {
 
 // Helper functions
 export const getDayOfWeek = (date: Date): DayOfWeek => {
-  const days: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days: DayOfWeek[] = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
   return days[date.getDay()];
 };
 
 export const getWeekDates = (startDate: Date): Date[] => {
   const dates: Date[] = [];
   const start = new Date(startDate);
-  
+
   for (let i = 0; i < 7; i++) {
     const date = new Date(start);
     date.setDate(start.getDate() + i);
     dates.push(date);
   }
-  
+
   return dates;
 };
 
 export const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'short', 
-    month: 'short', 
-    day: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
   });
 };
 
 export const formatDateFull = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'long', 
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   });
 };
 
@@ -230,7 +259,7 @@ export const getOrCreateDefaultTemplate = async (): Promise<MealPlanTemplate> =>
   } catch {
     // Template doesn't exist, create default
   }
-  
+
   // Create default template using centralized constant
   return await createMealPlanTemplate(DEFAULT_TEMPLATE);
 };
@@ -254,14 +283,14 @@ export function findNextAvailableMealPlanStartDate(
   let candidateStr = formatDateForAPI(candidate);
   let skipped = false;
   let skippedFrom: string | undefined = undefined;
-  
+
   // If the first candidate overlaps, keep advancing until we find a free slot
   while (checkMealPlanOverlap(candidateStr, existingPlans).isOverlapping) {
     if (!skipped) {
       skipped = true;
       skippedFrom = candidateStr;
     }
-    
+
     // Find the conflicting plan and advance to the day after it ends
     const overlapResult = checkMealPlanOverlap(candidateStr, existingPlans);
     if (overlapResult.conflict) {
@@ -278,6 +307,6 @@ export function findNextAvailableMealPlanStartDate(
       candidateStr = formatDateForAPI(candidate);
     }
   }
-  
+
   return { startDate: candidateStr, skipped, skippedFrom };
-} 
+}

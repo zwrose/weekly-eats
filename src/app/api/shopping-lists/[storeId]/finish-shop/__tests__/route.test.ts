@@ -82,10 +82,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
   describe('Authentication & Authorization', () => {
     it('returns 401 when unauthenticated', async () => {
       (getServerSession as any).mockResolvedValueOnce(null);
-      const res = await routes.POST(
-        makeRequest({ checkedItems: [] }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      const res = await routes.POST(makeRequest({ checkedItems: [] }), {
+        params: Promise.resolve({ storeId }),
+      });
       expect(res.status).toBe(401);
     });
 
@@ -93,10 +92,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       (getServerSession as any).mockResolvedValueOnce({
         user: { id: 'user1', email: 'user@test.com' },
       });
-      const res = await routes.POST(
-        makeRequest({ checkedItems: [] }),
-        { params: Promise.resolve({ storeId: 'invalid' }) }
-      );
+      const res = await routes.POST(makeRequest({ checkedItems: [] }), {
+        params: Promise.resolve({ storeId: 'invalid' }),
+      });
       expect(res.status).toBe(400);
     });
 
@@ -107,7 +105,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       findOneMock.mockResolvedValueOnce(null); // store not found
 
       const res = await routes.POST(
-        makeRequest({ checkedItems: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gal' }] }),
+        makeRequest({
+          checkedItems: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gal' }],
+        }),
         { params: Promise.resolve({ storeId }) }
       );
       expect(res.status).toBe(404);
@@ -124,10 +124,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
         userId: 'user1',
       });
 
-      const res = await routes.POST(
-        makeRequest({ checkedItems: [] }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      const res = await routes.POST(makeRequest({ checkedItems: [] }), {
+        params: Promise.resolve({ storeId }),
+      });
       expect(res.status).toBe(400);
     });
   });
@@ -162,10 +161,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       bulkWriteMock.mockResolvedValueOnce({ modifiedCount: 2 });
       updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
-      const res = await routes.POST(
-        makeRequest({ checkedItems }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      const res = await routes.POST(makeRequest({ checkedItems }), {
+        params: Promise.resolve({ storeId }),
+      });
 
       expect(res.status).toBe(200);
       expect(bulkWriteMock).toHaveBeenCalledTimes(1);
@@ -189,17 +187,16 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       bulkWriteMock.mockResolvedValueOnce({ modifiedCount: 2 });
       updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
-      await routes.POST(
-        makeRequest({ checkedItems }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      await routes.POST(makeRequest({ checkedItems }), { params: Promise.resolve({ storeId }) });
 
       // Verify the shopping list was updated to only contain unchecked items
       expect(updateOneMock).toHaveBeenCalledWith(
         { storeId },
         expect.objectContaining({
           $set: expect.objectContaining({
-            items: [{ foodItemId: 'food3', name: 'Eggs', quantity: 12, unit: 'piece', checked: false }],
+            items: [
+              { foodItemId: 'food3', name: 'Eggs', quantity: 12, unit: 'piece', checked: false },
+            ],
           }),
         })
       );
@@ -208,17 +205,14 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
     it('broadcasts list_updated event via Ably', async () => {
       findOneMock.mockResolvedValueOnce({
         storeId,
-        items: [
-          { foodItemId: 'food1', name: 'Milk', quantity: 2, unit: 'gallon', checked: true },
-        ],
+        items: [{ foodItemId: 'food1', name: 'Milk', quantity: 2, unit: 'gallon', checked: true }],
       });
       bulkWriteMock.mockResolvedValueOnce({ modifiedCount: 1 });
       updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
-      await routes.POST(
-        makeRequest({ checkedItems: [checkedItems[0]] }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      await routes.POST(makeRequest({ checkedItems: [checkedItems[0]] }), {
+        params: Promise.resolve({ storeId }),
+      });
 
       expect(publishShoppingEvent).toHaveBeenCalledWith(
         storeId,
@@ -240,10 +234,9 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       bulkWriteMock.mockResolvedValueOnce({ modifiedCount: 1 });
       updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
-      const res = await routes.POST(
-        makeRequest({ checkedItems: [checkedItems[0]] }),
-        { params: Promise.resolve({ storeId }) }
-      );
+      const res = await routes.POST(makeRequest({ checkedItems: [checkedItems[0]] }), {
+        params: Promise.resolve({ storeId }),
+      });
 
       expect(res.status).toBe(200);
       const data = await res.json();

@@ -25,9 +25,7 @@ describe('useServerPagination', () => {
       totalPages: 1,
     });
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     expect(result.current.loading).toBe(true);
 
@@ -55,9 +53,7 @@ describe('useServerPagination', () => {
       totalPages: 2,
     });
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -78,9 +74,7 @@ describe('useServerPagination', () => {
       totalPages: 2,
     });
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -120,9 +114,7 @@ describe('useServerPagination', () => {
       totalPages: 2,
     });
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -184,9 +176,7 @@ describe('useServerPagination', () => {
   it('handles fetch errors', async () => {
     mockFetchFn.mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -205,9 +195,7 @@ describe('useServerPagination', () => {
       totalPages: 1,
     });
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -241,8 +229,7 @@ describe('useServerPagination', () => {
     });
 
     const { result, rerender } = renderHook(
-      ({ filterKey }) =>
-        useServerPagination({ fetchFn: mockFetchFn, filterKey }),
+      ({ filterKey }) => useServerPagination({ fetchFn: mockFetchFn, filterKey }),
       { initialProps: { filterKey: 'a' } }
     );
 
@@ -279,8 +266,7 @@ describe('useServerPagination', () => {
     });
 
     const { result, rerender } = renderHook(
-      ({ filterKey }) =>
-        useServerPagination({ fetchFn: mockFetchFn, filterKey }),
+      ({ filterKey }) => useServerPagination({ fetchFn: mockFetchFn, filterKey }),
       { initialProps: { filterKey: 'a' } }
     );
 
@@ -325,9 +311,7 @@ describe('useServerPagination', () => {
   it('clears error on successful refetch', async () => {
     mockFetchFn.mockRejectedValueOnce(new Error('Fail'));
 
-    const { result } = renderHook(() =>
-      useServerPagination({ fetchFn: mockFetchFn })
-    );
+    const { result } = renderHook(() => useServerPagination({ fetchFn: mockFetchFn }));
 
     await waitFor(() => {
       expect(result.current.error).toBe('Fail');

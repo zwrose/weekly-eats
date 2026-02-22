@@ -8,4 +8,4 @@ if (!uri) {
 
 const clientPromise = new MongoClient(uri).connect();
 
-export default clientPromise; 
+export default clientPromise;

@@ -27,8 +27,18 @@ interface MealPlanBrowserProps {
 }
 
 const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 function getLastDayOfMonth(year: number, month: number): string {
@@ -61,43 +71,49 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
     loadSummary();
   }, []);
 
-  const handleYearClick = useCallback((year: number) => {
-    if (expandedYear === year) {
-      setExpandedYear(null);
-      setExpandedMonth(null);
-    } else {
-      setExpandedYear(year);
-    }
-  }, [expandedYear]);
-
-  const handleMonthClick = useCallback(async (year: number, month: number) => {
-    const key = `${year}-${month}`;
-
-    if (expandedMonth === key) {
-      setExpandedMonth(null);
-      return;
-    }
-
-    setExpandedMonth(key);
-
-    // Lazy-load plans if not cached
-    if (!monthPlans[key]) {
-      setLoadingMonth(key);
-      try {
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = getLastDayOfMonth(year, month);
-        const res = await fetch(`/api/meal-plans?startDate=${startDate}&endDate=${endDate}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMonthPlans(prev => ({ ...prev, [key]: data }));
-        }
-      } catch (error) {
-        console.error('Error loading month plans:', error);
-      } finally {
-        setLoadingMonth(null);
+  const handleYearClick = useCallback(
+    (year: number) => {
+      if (expandedYear === year) {
+        setExpandedYear(null);
+        setExpandedMonth(null);
+      } else {
+        setExpandedYear(year);
       }
-    }
-  }, [expandedMonth, monthPlans]);
+    },
+    [expandedYear]
+  );
+
+  const handleMonthClick = useCallback(
+    async (year: number, month: number) => {
+      const key = `${year}-${month}`;
+
+      if (expandedMonth === key) {
+        setExpandedMonth(null);
+        return;
+      }
+
+      setExpandedMonth(key);
+
+      // Lazy-load plans if not cached
+      if (!monthPlans[key]) {
+        setLoadingMonth(key);
+        try {
+          const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+          const endDate = getLastDayOfMonth(year, month);
+          const res = await fetch(`/api/meal-plans?startDate=${startDate}&endDate=${endDate}`);
+          if (res.ok) {
+            const data = await res.json();
+            setMonthPlans((prev) => ({ ...prev, [key]: data }));
+          }
+        } catch (error) {
+          console.error('Error loading month plans:', error);
+        } finally {
+          setLoadingMonth(null);
+        }
+      }
+    },
+    [expandedMonth, monthPlans]
+  );
 
   if (loading) {
     return (
@@ -122,7 +138,9 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
     byYear[item.year].push(item);
   }
 
-  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+  const years = Object.keys(byYear)
+    .map(Number)
+    .sort((a, b) => b - a);
 
   // Shared card sx for mobile — matches the Recent Meal Plans card style
   const mobileCardSx = {
@@ -136,14 +154,14 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
     '&:hover': {
       backgroundColor: 'action.hover',
       transform: 'translateY(-2px)',
-      boxShadow: 4
+      boxShadow: 4,
     },
-    transition: 'all 0.2s ease-in-out'
+    transition: 'all 0.2s ease-in-out',
   };
 
   return (
     <Box>
-      {years.map(year => {
+      {years.map((year) => {
         const isYearExpanded = expandedYear === year;
         const yearPlanCount = byYear[year].reduce((sum, m) => sum + m.count, 0);
 
@@ -181,7 +199,7 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
 
             <Collapse in={isYearExpanded} timeout="auto" unmountOnExit>
               <Box sx={{ pl: { xs: 0, md: 0 } }}>
-                {byYear[year].map(item => {
+                {byYear[year].map((item) => {
                   const key = `${item.year}-${item.month}`;
                   const isExpanded = expandedMonth === key;
                   const plans = monthPlans[key] || [];
@@ -250,7 +268,12 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
 
                                 <ListItemButton
                                   onClick={() => onPlanSelect(plan)}
-                                  sx={{ display: { xs: 'none', md: 'flex' }, pl: 6, minHeight: 40, py: 0.5 }}
+                                  sx={{
+                                    display: { xs: 'none', md: 'flex' },
+                                    pl: 6,
+                                    minHeight: 40,
+                                    py: 0.5,
+                                  }}
                                 >
                                   <ListItemText primary={plan.name} />
                                 </ListItemButton>

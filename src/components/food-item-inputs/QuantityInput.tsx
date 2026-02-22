@@ -1,10 +1,10 @@
 /**
  * Reusable Quantity Input component
- * 
+ *
  * Uses the useQuantityInput hook for consistent validation and behavior.
  */
 
-"use client";
+'use client';
 
 import { TextField, SxProps, Theme } from '@mui/material';
 import { useQuantityInput } from '@/lib/hooks/use-quantity-input';
@@ -57,4 +57,3 @@ export default function QuantityInput({
     />
   );
 }
-

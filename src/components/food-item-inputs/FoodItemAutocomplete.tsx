@@ -4,24 +4,13 @@
  * Uses the useFoodItemSelector hook for consistent behavior.
  */
 
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import {
-  Autocomplete,
-  TextField,
-  Box,
-  Typography,
-  Button,
-  CircularProgress,
-} from "@mui/material";
-import {
-  useFoodItemSelector,
-  SearchOption,
-  FoodItem,
-} from "@/lib/hooks/use-food-item-selector";
-import { useFoodItemCreator } from "@/lib/hooks/use-food-item-creator";
-import AddFoodItemDialog from "../AddFoodItemDialog";
+import { useMemo, useState } from 'react';
+import { Autocomplete, TextField, Box, Typography, Button, CircularProgress } from '@mui/material';
+import { useFoodItemSelector, SearchOption, FoodItem } from '@/lib/hooks/use-food-item-selector';
+import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
+import AddFoodItemDialog from '../AddFoodItemDialog';
 
 // Extended SearchOption type for the special "Add New Food Item" option
 type SearchOptionWithAddNew = SearchOption & {
@@ -58,7 +47,7 @@ export interface FoodItemAutocompleteProps {
   // UI customization
   label?: string;
   placeholder?: string;
-  size?: "small" | "medium";
+  size?: 'small' | 'medium';
   fullWidth?: boolean;
   autoFocus?: boolean;
   disabled?: boolean;
@@ -77,9 +66,9 @@ export default function FoodItemAutocomplete({
   autoLoad = true,
   value,
   onChange, // Client component callback - not a server action
-  label = "Food Item or Recipe",
+  label = 'Food Item or Recipe',
   placeholder,
-  size = "small",
+  size = 'small',
   fullWidth = false,
   autoFocus = false,
   disabled = false,
@@ -133,7 +122,7 @@ export default function FoodItemAutocomplete({
       // Auto-select the newly created item
       const searchOption: SearchOption = {
         ...newItem,
-        type: "foodItem" as const,
+        type: 'foodItem' as const,
       };
       handleSelect(searchOption);
     }
@@ -169,26 +158,18 @@ export default function FoodItemAutocomplete({
 
   // Create a special "Add New Food Item" option that appears at the bottom
   const ADD_NEW_FOOD_ITEM_OPTION: SearchOptionWithAddNew = {
-    _id: "__add_new_food_item__",
-    name: selector.inputValue
-      ? `Add "${selector.inputValue}" as a Food Item`
-      : "Add New Food Item",
-    singularName: "",
-    pluralName: "",
-    unit: "cup",
-    type: "foodItem" as const,
+    _id: '__add_new_food_item__',
+    name: selector.inputValue ? `Add "${selector.inputValue}" as a Food Item` : 'Add New Food Item',
+    singularName: '',
+    pluralName: '',
+    unit: 'cup',
+    type: 'foodItem' as const,
     isAddNewOption: true, // Special marker
   };
 
   // Helper to check if an option is the "Add New Food Item" option
-  const isAddNewOption = (
-    option: SearchOption | null
-  ): option is SearchOptionWithAddNew => {
-    return (
-      option !== null &&
-      "isAddNewOption" in option &&
-      option.isAddNewOption === true
-    );
+  const isAddNewOption = (option: SearchOption | null): option is SearchOptionWithAddNew => {
+    return option !== null && 'isAddNewOption' in option && option.isAddNewOption === true;
   };
 
   // Include the "Add New Food Item" option at the bottom only if:
@@ -232,10 +213,10 @@ export default function FoodItemAutocomplete({
           handleSelect(value);
         }}
         getOptionLabel={(option) => {
-          if (isAddNewOption(option) && option.type === "foodItem") {
+          if (isAddNewOption(option) && option.type === 'foodItem') {
             return option.name;
           }
-          return option.type === "foodItem" ? option.name : option.title;
+          return option.type === 'foodItem' ? option.name : option.title;
         }}
         isOptionEqualToValue={(option, value) => {
           if (isAddNewOption(option) || isAddNewOption(value)) {
@@ -247,15 +228,10 @@ export default function FoodItemAutocomplete({
           const { key, ...otherProps } = props;
 
           // Special rendering for "Add New Food Item" option
-          if (isAddNewOption(option) && option.type === "foodItem") {
+          if (isAddNewOption(option) && option.type === 'foodItem') {
             const addNewName = option.name;
             return (
-              <Box
-                component="li"
-                key={key}
-                {...otherProps}
-                sx={{ p: "8px !important" }}
-              >
+              <Box component="li" key={key} {...otherProps} sx={{ p: '8px !important' }}>
                 <Button
                   size="small"
                   variant="outlined"
@@ -265,7 +241,7 @@ export default function FoodItemAutocomplete({
                     e.stopPropagation();
                     creator.openDialog(selector.inputValue);
                   }}
-                  sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                  sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                 >
                   {addNewName}
                 </Button>
@@ -278,10 +254,10 @@ export default function FoodItemAutocomplete({
             <Box component="li" key={key} {...otherProps}>
               <Box>
                 <Typography variant="body1">
-                  {option.type === "foodItem" ? option.name : option.title}
+                  {option.type === 'foodItem' ? option.name : option.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  ({option.type === "foodItem" ? "Food Item" : "Recipe"})
+                  ({option.type === 'foodItem' ? 'Food Item' : 'Recipe'})
                 </Typography>
               </Box>
             </Box>
@@ -297,7 +273,7 @@ export default function FoodItemAutocomplete({
             inputRef={selector.autocompleteRef}
             onKeyDown={(e) => {
               // Override Enter key handling to ensure proper selection
-              if (e.key === "Enter") {
+              if (e.key === 'Enter') {
                 // If an item is already selected, don't do anything
                 if (selectedItem) {
                   e.preventDefault();
@@ -309,8 +285,7 @@ export default function FoodItemAutocomplete({
                   e.preventDefault();
                   // Use the hook's selectedIndex to get the currently highlighted option
                   const highlightedIndex = selector.selectedIndex || 0;
-                  const optionToSelect =
-                    selector.options[highlightedIndex] || selector.options[0];
+                  const optionToSelect = selector.options[highlightedIndex] || selector.options[0];
                   // Trigger the Autocomplete's onChange to properly select the item
                   handleSelect(optionToSelect);
                   return;
@@ -331,7 +306,7 @@ export default function FoodItemAutocomplete({
           />
         )}
         loadingText={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" color="text.secondary">
               Searching...
@@ -342,16 +317,10 @@ export default function FoodItemAutocomplete({
           selector.inputValue.trim() ? (
             <Box>
               <Typography variant="body2" color="text.secondary" mb={1}>
-                {allowRecipes
-                  ? "No food items or recipes found"
-                  : "No food items found"}
+                {allowRecipes ? 'No food items or recipes found' : 'No food items found'}
               </Typography>
               {!inputMatchesExcludedItem && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleOpenCreate}
-                >
+                <Button size="small" variant="outlined" onClick={handleOpenCreate}>
                   {`Add "${selector.inputValue}" as a Food Item`}
                 </Button>
               )}
@@ -359,8 +328,8 @@ export default function FoodItemAutocomplete({
           ) : (
             <Typography variant="body2" color="text.secondary">
               {allowRecipes
-                ? "Start typing to search for food items or recipes"
-                : "Start typing to search for food items"}
+                ? 'Start typing to search for food items or recipes'
+                : 'Start typing to search for food items'}
             </Typography>
           )
         }

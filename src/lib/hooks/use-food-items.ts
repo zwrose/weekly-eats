@@ -46,16 +46,16 @@ export const useFoodItems = (): UseFoodItemsReturn => {
   }, [loadFoodItems]);
 
   const addFoodItem = useCallback((newItem: FoodItem) => {
-    setFoodItems(prev => [...prev, newItem]);
+    setFoodItems((prev) => [...prev, newItem]);
   }, []);
 
   // Create a memoized map for efficient lookups
   const foodItemsMap = useMemo(() => {
     const map: { [key: string]: { singularName: string; pluralName: string } } = {};
-    foodItems.forEach(item => {
+    foodItems.forEach((item) => {
       map[item._id] = {
         singularName: item.singularName,
-        pluralName: item.pluralName
+        pluralName: item.pluralName,
       };
     });
     return map;
@@ -67,6 +67,6 @@ export const useFoodItems = (): UseFoodItemsReturn => {
     loading,
     error,
     refetch: loadFoodItems,
-    addFoodItem
+    addFoodItem,
   };
-}; 
+};

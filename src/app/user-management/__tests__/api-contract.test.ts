@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 
 /**
  * API Contract Tests
- * 
+ *
  * These tests validate that the frontend and backend agree on the API contracts.
  * They catch parameter name mismatches and ensure consistent communication.
- * 
- * WHY: Previously, the frontend sent { userId, approved } while the backend 
+ *
+ * WHY: Previously, the frontend sent { userId, approved } while the backend
  * expected { userId, isApproved }, causing silent failures.
  */
 describe('User Management API Contracts', () => {
@@ -27,16 +27,14 @@ describe('User Management API Contracts', () => {
       };
 
       // Verify parameter names match
-      expect(Object.keys(frontendPayload).sort()).toEqual(
-        Object.keys(backendExpected).sort()
-      );
-      
+      expect(Object.keys(frontendPayload).sort()).toEqual(Object.keys(backendExpected).sort());
+
       // This documents the correct usage
       const exampleRequest = {
         userId: '507f1f77bcf86cd799439011',
         isApproved: true, // NOT 'approved'
       };
-      
+
       expect(exampleRequest).toHaveProperty('userId');
       expect(exampleRequest).toHaveProperty('isApproved');
       expect(exampleRequest).not.toHaveProperty('approved'); // Common mistake
@@ -45,10 +43,10 @@ describe('User Management API Contracts', () => {
     it('validates common parameter name mistakes are avoided', () => {
       // These are WRONG and should NOT be used
       const incorrectPayloads = [
-        { userId: '123', approved: true },      // WRONG: should be isApproved
-        { id: '123', isApproved: true },        // WRONG: should be userId
-        { userId: '123', approve: true },       // WRONG: should be isApproved
-        { user: '123', isApproved: true },      // WRONG: should be userId
+        { userId: '123', approved: true }, // WRONG: should be isApproved
+        { id: '123', isApproved: true }, // WRONG: should be userId
+        { userId: '123', approve: true }, // WRONG: should be isApproved
+        { user: '123', isApproved: true }, // WRONG: should be userId
       ];
 
       const correctPayload = {
@@ -79,9 +77,7 @@ describe('User Management API Contracts', () => {
         isAdmin: 'boolean',
       };
 
-      expect(Object.keys(frontendPayload).sort()).toEqual(
-        Object.keys(backendExpected).sort()
-      );
+      expect(Object.keys(frontendPayload).sort()).toEqual(Object.keys(backendExpected).sort());
 
       const exampleRequest = {
         userId: '507f1f77bcf86cd799439011',
@@ -95,9 +91,9 @@ describe('User Management API Contracts', () => {
 
     it('validates common parameter name mistakes are avoided', () => {
       const incorrectPayloads = [
-        { userId: '123', admin: true },         // WRONG: should be isAdmin
-        { id: '123', isAdmin: true },           // WRONG: should be userId
-        { userId: '123', adminStatus: true },   // WRONG: should be isAdmin
+        { userId: '123', admin: true }, // WRONG: should be isAdmin
+        { id: '123', isAdmin: true }, // WRONG: should be userId
+        { userId: '123', adminStatus: true }, // WRONG: should be isAdmin
       ];
 
       const correctPayload = {
@@ -148,7 +144,7 @@ describe('User Management API Contracts', () => {
       // both return { users: [...] }
       expect(expectedUserListResponse).toHaveProperty('users');
       expect(Array.isArray(expectedUserListResponse.users)).toBe(true);
-      
+
       const user = expectedUserListResponse.users[0];
       expect(user).toHaveProperty('_id');
       expect(user).toHaveProperty('name');
@@ -175,13 +171,15 @@ describe('User Management API Contracts', () => {
 
       // Examples of INCORRECT usage (these should fail validation)
       const invalidExamples = [
-        { userId: '123', isApproved: 'true' },      // isApproved is string, not boolean
-        { userId: '123', isApproved: 1 },           // isApproved is number, not boolean
-        { userId: 123, isApproved: true },          // userId is number, not string
+        { userId: '123', isApproved: 'true' }, // isApproved is string, not boolean
+        { userId: '123', isApproved: 1 }, // isApproved is number, not boolean
+        { userId: 123, isApproved: true }, // userId is number, not string
       ];
 
       invalidExamples.forEach((invalid) => {
-        expect(typeof invalid.userId === 'string' && typeof invalid.isApproved === 'boolean').toBe(false);
+        expect(typeof invalid.userId === 'string' && typeof invalid.isApproved === 'boolean').toBe(
+          false
+        );
       });
     });
 
@@ -194,14 +192,15 @@ describe('User Management API Contracts', () => {
       expect(typeof valid.isAdmin).toBe('boolean');
 
       const invalidExamples = [
-        { userId: '123', isAdmin: 'false' },        // isAdmin is string, not boolean
-        { userId: '123', isAdmin: 0 },              // isAdmin is number, not boolean
+        { userId: '123', isAdmin: 'false' }, // isAdmin is string, not boolean
+        { userId: '123', isAdmin: 0 }, // isAdmin is number, not boolean
       ];
 
       invalidExamples.forEach((invalid) => {
-        expect(typeof invalid.userId === 'string' && typeof invalid.isAdmin === 'boolean').toBe(false);
+        expect(typeof invalid.userId === 'string' && typeof invalid.isAdmin === 'boolean').toBe(
+          false
+        );
       });
     });
   });
 });
-

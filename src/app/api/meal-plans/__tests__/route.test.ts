@@ -12,13 +12,29 @@ const updateOneMock = vi.fn();
 
 // Mock food items and recipes for name population (using valid ObjectId format)
 const mockFoodItems = {
-  '507f1f77bcf86cd799439011': { _id: { toString: () => '507f1f77bcf86cd799439011' }, singularName: 'apple', pluralName: 'apples', unit: 'piece' },
-  '507f1f77bcf86cd799439012': { _id: { toString: () => '507f1f77bcf86cd799439012' }, singularName: 'cup of rice', pluralName: 'cups of rice', unit: 'cup' },
+  '507f1f77bcf86cd799439011': {
+    _id: { toString: () => '507f1f77bcf86cd799439011' },
+    singularName: 'apple',
+    pluralName: 'apples',
+    unit: 'piece',
+  },
+  '507f1f77bcf86cd799439012': {
+    _id: { toString: () => '507f1f77bcf86cd799439012' },
+    singularName: 'cup of rice',
+    pluralName: 'cups of rice',
+    unit: 'cup',
+  },
 };
 
 const mockRecipes = {
-  '507f1f77bcf86cd799439021': { _id: { toString: () => '507f1f77bcf86cd799439021' }, title: 'Pasta Carbonara' },
-  '507f1f77bcf86cd799439022': { _id: { toString: () => '507f1f77bcf86cd799439022' }, title: 'Caesar Salad' },
+  '507f1f77bcf86cd799439021': {
+    _id: { toString: () => '507f1f77bcf86cd799439021' },
+    title: 'Pasta Carbonara',
+  },
+  '507f1f77bcf86cd799439022': {
+    _id: { toString: () => '507f1f77bcf86cd799439022' },
+    title: 'Caesar Salad',
+  },
 };
 
 vi.mock('@/lib/mongodb', () => ({
@@ -47,7 +63,11 @@ vi.mock('@/lib/mongodb', () => ({
             find: vi.fn((query: any) => ({
               toArray: vi.fn(() => {
                 const ids = query._id?.$in?.map((id: any) => id.toString()) || [];
-                return Promise.resolve(ids.map((id: string) => mockFoodItems[id as keyof typeof mockFoodItems]).filter(Boolean));
+                return Promise.resolve(
+                  ids
+                    .map((id: string) => mockFoodItems[id as keyof typeof mockFoodItems])
+                    .filter(Boolean)
+                );
               }),
             })),
             findOne: vi.fn((query: any) => {
@@ -61,7 +81,11 @@ vi.mock('@/lib/mongodb', () => ({
             find: vi.fn((query: any) => ({
               toArray: vi.fn(() => {
                 const ids = query._id?.$in?.map((id: any) => id.toString()) || [];
-                return Promise.resolve(ids.map((id: string) => mockRecipes[id as keyof typeof mockRecipes]).filter(Boolean));
+                return Promise.resolve(
+                  ids
+                    .map((id: string) => mockRecipes[id as keyof typeof mockRecipes])
+                    .filter(Boolean)
+                );
               }),
             })),
             findOne: vi.fn((query: any) => {
@@ -86,7 +110,7 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body } as any);
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -112,9 +136,13 @@ describe('api/meal-plans route', () => {
         _id: 'p1',
         name: 'Week A',
         templateId: 't1',
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
         items: [],
-        createdAt: new Date()
+        createdAt: new Date(),
       },
     ]);
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
@@ -132,14 +160,31 @@ describe('api/meal-plans route', () => {
     // No existing template -> create default
     findOneMock.mockResolvedValueOnce(null); // templatesCollection.findOne
     insertOneMock.mockResolvedValueOnce({ insertedId: 't-new' }); // templates insert
-    findOneMock.mockResolvedValueOnce({ _id: 't-new', startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] });
+    findOneMock.mockResolvedValueOnce({
+      _id: 't-new',
+      startDay: 'saturday',
+      meals: { breakfast: true, lunch: true, dinner: true },
+      weeklyStaples: [],
+    });
     // Insert meal plan
     insertOneMock.mockResolvedValueOnce({ insertedId: 'p-new' });
-    findOneMock.mockResolvedValueOnce({ _id: 'p-new', name: 'Week of ...', templateId: 't-new', templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] }, createdAt: new Date() });
+    findOneMock.mockResolvedValueOnce({
+      _id: 'p-new',
+      name: 'Week of ...',
+      templateId: 't-new',
+      templateSnapshot: {
+        startDay: 'saturday',
+        meals: { breakfast: true, lunch: true, dinner: true },
+        weeklyStaples: [],
+      },
+      createdAt: new Date(),
+    });
     // Update meal plan with items
     updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
-    const res = await routes.POST(makeReq('http://localhost/api/meal-plans', { startDate: '2024-03-01' }));
+    const res = await routes.POST(
+      makeReq('http://localhost/api/meal-plans', { startDate: '2024-03-01' })
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body).toHaveProperty('_id');
@@ -149,24 +194,30 @@ describe('api/meal-plans route', () => {
   it('GET populates names for food items in meal plans', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { 
-        _id: 'p1', 
-        name: 'Week A', 
-        templateId: 't1', 
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
-        items: [{
-          _id: 'item-1',
-          mealPlanId: 'p1',
-          dayOfWeek: 'saturday',
-          mealType: 'breakfast',
-          items: [
-            { type: 'foodItem', id: '507f1f77bcf86cd799439011', quantity: 2, unit: 'piece' }
-          ]
-        }],
-        createdAt: new Date() 
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
+        items: [
+          {
+            _id: 'item-1',
+            mealPlanId: 'p1',
+            dayOfWeek: 'saturday',
+            mealType: 'breakfast',
+            items: [
+              { type: 'foodItem', id: '507f1f77bcf86cd799439011', quantity: 2, unit: 'piece' },
+            ],
+          },
+        ],
+        createdAt: new Date(),
       },
     ]);
-    
+
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -176,24 +227,28 @@ describe('api/meal-plans route', () => {
   it('GET populates names for recipes in meal plans', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { 
-        _id: 'p1', 
-        name: 'Week A', 
-        templateId: 't1', 
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
-        items: [{
-          _id: 'item-1',
-          mealPlanId: 'p1',
-          dayOfWeek: 'saturday',
-          mealType: 'dinner',
-          items: [
-            { type: 'recipe', id: '507f1f77bcf86cd799439021', quantity: 1 }
-          ]
-        }],
-        createdAt: new Date() 
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
+        items: [
+          {
+            _id: 'item-1',
+            mealPlanId: 'p1',
+            dayOfWeek: 'saturday',
+            mealType: 'dinner',
+            items: [{ type: 'recipe', id: '507f1f77bcf86cd799439021', quantity: 1 }],
+          },
+        ],
+        createdAt: new Date(),
       },
     ]);
-    
+
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -203,35 +258,53 @@ describe('api/meal-plans route', () => {
   it('GET populates names for ingredient groups in meal plans', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { 
-        _id: 'p1', 
-        name: 'Week A', 
-        templateId: 't1', 
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
-        items: [{
-          _id: 'item-1',
-          mealPlanId: 'p1',
-          dayOfWeek: 'saturday',
-          mealType: 'breakfast',
-          items: [
-            { 
-              type: 'ingredientGroup', 
-              id: 'group-1', 
-              name: 'Smoothie',
-              ingredients: [{
-                title: 'Smoothie',
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
+        items: [
+          {
+            _id: 'item-1',
+            mealPlanId: 'p1',
+            dayOfWeek: 'saturday',
+            mealType: 'breakfast',
+            items: [
+              {
+                type: 'ingredientGroup',
+                id: 'group-1',
+                name: 'Smoothie',
                 ingredients: [
-                  { type: 'foodItem', id: '507f1f77bcf86cd799439011', quantity: 1, unit: 'piece' },
-                  { type: 'foodItem', id: '507f1f77bcf86cd799439012', quantity: 2, unit: 'cup' }
-                ]
-              }]
-            }
-          ]
-        }],
-        createdAt: new Date() 
+                  {
+                    title: 'Smoothie',
+                    ingredients: [
+                      {
+                        type: 'foodItem',
+                        id: '507f1f77bcf86cd799439011',
+                        quantity: 1,
+                        unit: 'piece',
+                      },
+                      {
+                        type: 'foodItem',
+                        id: '507f1f77bcf86cd799439012',
+                        quantity: 2,
+                        unit: 'cup',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        createdAt: new Date(),
       },
     ]);
-    
+
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -244,27 +317,39 @@ describe('api/meal-plans route', () => {
   it('GET handles missing food items gracefully', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     toArrayMock.mockResolvedValueOnce([
-      { 
-        _id: 'p1', 
-        name: 'Week A', 
-        templateId: 't1', 
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
-        items: [{
-          _id: 'item-1',
-          mealPlanId: 'p1',
-          dayOfWeek: 'saturday',
-          mealType: 'breakfast',
-          items: [
-            // Valid ObjectId but not in our mocks (simulates deleted food item with stored name)
-            { type: 'foodItem', id: '507f1f77bcf86cd799439999', quantity: 1, unit: 'cup', name: 'Old Name' },
-            // No stored name - should show Unknown
-            { type: 'foodItem', id: '507f1f77bcf86cd799439998', quantity: 1, unit: 'cup' }
-          ]
-        }],
-        createdAt: new Date() 
+      {
+        _id: 'p1',
+        name: 'Week A',
+        templateId: 't1',
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
+        items: [
+          {
+            _id: 'item-1',
+            mealPlanId: 'p1',
+            dayOfWeek: 'saturday',
+            mealType: 'breakfast',
+            items: [
+              // Valid ObjectId but not in our mocks (simulates deleted food item with stored name)
+              {
+                type: 'foodItem',
+                id: '507f1f77bcf86cd799439999',
+                quantity: 1,
+                unit: 'cup',
+                name: 'Old Name',
+              },
+              // No stored name - should show Unknown
+              { type: 'foodItem', id: '507f1f77bcf86cd799439998', quantity: 1, unit: 'cup' },
+            ],
+          },
+        ],
+        createdAt: new Date(),
       },
     ]);
-    
+
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -283,13 +368,19 @@ describe('api/meal-plans route', () => {
         startDate: '2026-02-07',
         endDate: '2026-02-13',
         templateId: 't1',
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
         items: [],
-        createdAt: new Date()
+        createdAt: new Date(),
       },
     ]);
 
-    const res = await routes.GET(makeReq('http://localhost/api/meal-plans?startDate=2026-02-01&endDate=2026-02-28'));
+    const res = await routes.GET(
+      makeReq('http://localhost/api/meal-plans?startDate=2026-02-01&endDate=2026-02-28')
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toHaveLength(1);
@@ -309,9 +400,13 @@ describe('api/meal-plans route', () => {
         startDate: '2026-02-16',
         endDate: '2026-02-22',
         templateId: 't1',
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
         items: [],
-        createdAt: new Date()
+        createdAt: new Date(),
       },
     ]);
 
@@ -333,9 +428,13 @@ describe('api/meal-plans route', () => {
         _id: 'p1',
         name: 'Week A',
         templateId: 't1',
-        templateSnapshot: { startDay: 'saturday', meals: { breakfast: true, lunch: true, dinner: true }, weeklyStaples: [] },
+        templateSnapshot: {
+          startDay: 'saturday',
+          meals: { breakfast: true, lunch: true, dinner: true },
+          weeklyStaples: [],
+        },
         items: [],
-        createdAt: new Date()
+        createdAt: new Date(),
       },
     ]);
 

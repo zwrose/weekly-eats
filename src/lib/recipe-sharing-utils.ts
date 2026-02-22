@@ -108,5 +108,3 @@ export async function fetchRecipeSharingOwners(): Promise<SharedUser[]> {
   }
   return response.json();
 }
-
-

@@ -1,14 +1,7 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Box,
-  Chip,
-  TextField,
-  Autocomplete,
-  Typography,
-  Button,
-} from '@mui/material';
+import { Box, Chip, TextField, Autocomplete, Typography, Button } from '@mui/material';
 import { fetchUserTags } from '@/lib/recipe-user-data-utils';
 
 interface RecipeTagsEditorProps {
@@ -64,16 +57,13 @@ export default function RecipeTagsEditor({
   const filteredTags = useMemo(() => {
     if (!inputValue.trim()) return [];
     const inputLower = inputValue.trim().toLowerCase();
-    return availableTags.filter((tag) =>
-      tag.toLowerCase().includes(inputLower)
-    );
+    return availableTags.filter((tag) => tag.toLowerCase().includes(inputLower));
   }, [inputValue, availableTags]);
 
   // Show "Create new tag" option only if:
   // 1. There is input text
   // 2. The input doesn't match an existing tag
-  const shouldShowCreateNewOption =
-    inputValue.trim() && !inputMatchesExistingTag;
+  const shouldShowCreateNewOption = inputValue.trim() && !inputMatchesExistingTag;
 
   // Create options list with "Create new tag" option at the end if needed
   const optionsWithCreateNew = shouldShowCreateNewOption
@@ -141,12 +131,7 @@ export default function RecipeTagsEditor({
               // Special rendering for "Create new tag" option
               if (isCreateNewOption(option)) {
                 return (
-                  <Box
-                    component="li"
-                    key={key}
-                    {...otherProps}
-                    sx={{ p: '8px !important' }}
-                  >
+                  <Box component="li" key={key} {...otherProps} sx={{ p: '8px !important' }}>
                     <Button
                       size="small"
                       variant="outlined"
@@ -220,9 +205,13 @@ export default function RecipeTagsEditor({
                   key={option}
                   label={option}
                   size="small"
-                  onDelete={editable ? () => {
-                    handleTagsChange(tags.filter((tag) => tag !== option));
-                  } : undefined}
+                  onDelete={
+                    editable
+                      ? () => {
+                          handleTagsChange(tags.filter((tag) => tag !== option));
+                        }
+                      : undefined
+                  }
                 />
               ))
             }
@@ -261,18 +250,16 @@ export default function RecipeTagsEditor({
           />
           {sharedTags.length > 0 && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: 'block' }}
+              >
                 Shared tags:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {sharedTags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                  />
+                  <Chip key={tag} label={tag} size="small" color="secondary" variant="outlined" />
                 ))}
               </Box>
             </Box>
@@ -286,30 +273,22 @@ export default function RecipeTagsEditor({
           {tags.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
               {tags.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  size="small"
-                  color="primary"
-                  variant="filled"
-                />
+                <Chip key={tag} label={tag} size="small" color="primary" variant="filled" />
               ))}
             </Box>
           )}
           {sharedTags.length > 0 && (
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: 'block' }}
+              >
                 Shared tags:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {sharedTags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                  />
+                  <Chip key={tag} label={tag} size="small" color="secondary" variant="outlined" />
                 ))}
               </Box>
             </Box>
@@ -324,4 +303,3 @@ export default function RecipeTagsEditor({
     </Box>
   );
 }
-

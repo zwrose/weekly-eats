@@ -21,24 +21,22 @@ export async function GET() {
       .find({
         $or: [
           { userId: session.user.id },
-          { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-        ]
+          { 'invitations.userId': session.user.id, 'invitations.status': 'accepted' },
+        ],
       })
       .toArray();
 
     // Get shopping lists for all stores
-    const storeIds = stores.map(store => store._id);
+    const storeIds = stores.map((store) => store._id);
     const shoppingLists = await shoppingListsCollection
-      .find({ storeId: { $in: storeIds.map(id => id.toString()) } })
+      .find({ storeId: { $in: storeIds.map((id) => id.toString()) } })
       .toArray();
 
     // Create a map of storeId -> shoppingList
-    const shoppingListMap = new Map(
-      shoppingLists.map(list => [list.storeId, list])
-    );
+    const shoppingListMap = new Map(shoppingLists.map((list) => [list.storeId, list]));
 
     // Combine stores with their shopping list metadata (item counts, not full items)
-    const storesWithLists = stores.map(store => {
+    const storesWithLists = stores.map((store) => {
       const list = shoppingListMap.get(store._id.toString());
       if (list) {
         const { items, ...listMeta } = list;
@@ -47,7 +45,7 @@ export async function GET() {
           shoppingList: {
             ...listMeta,
             itemCount: Array.isArray(items) ? items.length : 0,
-          }
+          },
         };
       }
       return {
@@ -58,8 +56,8 @@ export async function GET() {
           userId: session.user.id,
           itemCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       };
     });
 
@@ -98,7 +96,7 @@ export async function POST(request: NextRequest) {
     // Check for duplicate store name for this user
     const existingStore = await storesCollection.findOne({
       userId: session.user.id,
-      name: name.trim()
+      name: name.trim(),
     });
 
     if (existingStore) {
@@ -111,7 +109,7 @@ export async function POST(request: NextRequest) {
       emoji: emoji || '🏪',
       invitations: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     const result = await storesCollection.insertOne(newStore);
@@ -123,19 +121,21 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       items: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     await shoppingListsCollection.insertOne(newShoppingList);
 
-    return NextResponse.json({ 
-      ...newStore, 
-      _id: result.insertedId,
-      shoppingList: newShoppingList
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        ...newStore,
+        _id: result.insertedId,
+        shoppingList: newShoppingList,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     logError('Stores POST', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

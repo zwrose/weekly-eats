@@ -17,11 +17,7 @@ describe('RecipeStarRating', () => {
   describe('Basic functionality', () => {
     it('renders 5 stars', () => {
       const { container } = render(
-        <RecipeStarRating
-          rating={undefined}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={undefined} onChange={mockOnChange} editable={true} />
       );
 
       // Find stars within the component container (React strict mode renders twice)
@@ -32,11 +28,7 @@ describe('RecipeStarRating', () => {
 
     it('displays filled stars up to the rating value', () => {
       const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={3} onChange={mockOnChange} editable={true} />
       );
 
       // Check that stars are rendered (MUI icons might render as SVGs)
@@ -48,11 +40,7 @@ describe('RecipeStarRating', () => {
     it('calls onChange when a star is clicked', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeStarRating
-          rating={undefined}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={undefined} onChange={mockOnChange} editable={true} />
       );
 
       const component = container.firstChild as HTMLElement;
@@ -68,11 +56,7 @@ describe('RecipeStarRating', () => {
     it('clears rating when clicking the same star again', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={3} onChange={mockOnChange} editable={true} />
       );
 
       const component = container.firstChild as HTMLElement;
@@ -88,11 +72,7 @@ describe('RecipeStarRating', () => {
     it('updates rating when clicking a different star', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeStarRating
-          rating={2}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={2} onChange={mockOnChange} editable={true} />
       );
 
       const component = container.firstChild as HTMLElement;
@@ -107,13 +87,7 @@ describe('RecipeStarRating', () => {
 
     it('shows hover effect when hovering over stars', async () => {
       const user = userEvent.setup();
-      render(
-        <RecipeStarRating
-          rating={undefined}
-          onChange={mockOnChange}
-          editable={true}
-        />
-      );
+      render(<RecipeStarRating rating={undefined} onChange={mockOnChange} editable={true} />);
 
       const stars = screen.getAllByRole('button');
       await user.hover(stars[2]); // Hover over 3rd star
@@ -163,11 +137,7 @@ describe('RecipeStarRating', () => {
 
     it('does not display shared ratings section when no shared ratings', () => {
       const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          onChange={mockOnChange}
-          editable={true}
-        />
+        <RecipeStarRating rating={3} onChange={mockOnChange} editable={true} />
       );
 
       const component = container.firstChild as HTMLElement;
@@ -175,16 +145,10 @@ describe('RecipeStarRating', () => {
     });
 
     it('displays shared ratings even in non-editable mode', () => {
-      const sharedRatings = [
-        { userId: 'user1', userEmail: 'user1@example.com', rating: 4 },
-      ];
+      const sharedRatings = [{ userId: 'user1', userEmail: 'user1@example.com', rating: 4 }];
 
       const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          sharedRatings={sharedRatings}
-          editable={false}
-        />
+        <RecipeStarRating rating={3} sharedRatings={sharedRatings} editable={false} />
       );
 
       const component = container.firstChild as HTMLElement;
@@ -199,11 +163,7 @@ describe('RecipeStarRating', () => {
     it('does not call onChange when not editable', async () => {
       const user = userEvent.setup();
       const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          onChange={mockOnChange}
-          editable={false}
-        />
+        <RecipeStarRating rating={3} onChange={mockOnChange} editable={false} />
       );
 
       // When not editable, stars are not rendered as buttons, they're just icons
@@ -214,20 +174,14 @@ describe('RecipeStarRating', () => {
         // In non-editable mode, there should be no clickable buttons
         expect(buttons.length).toBe(0);
       }
-      
+
       // Verify onChange was not called
       expect(mockOnChange).not.toHaveBeenCalled();
     });
 
     it('does not show hover effect when not editable', async () => {
       const user = userEvent.setup();
-      render(
-        <RecipeStarRating
-          rating={3}
-          onChange={mockOnChange}
-          editable={false}
-        />
-      );
+      render(<RecipeStarRating rating={3} onChange={mockOnChange} editable={false} />);
 
       const stars = screen.getAllByRole('button');
       if (stars.length > 0) {
@@ -239,12 +193,7 @@ describe('RecipeStarRating', () => {
 
     it('does not call onChange if onChange is not provided', async () => {
       const user = userEvent.setup();
-      const { container } = render(
-        <RecipeStarRating
-          rating={3}
-          editable={true}
-        />
-      );
+      const { container } = render(<RecipeStarRating rating={3} editable={true} />);
 
       // When onChange is not provided, buttons may still exist but clicks should not trigger onChange
       // Find buttons within the component
@@ -262,4 +211,3 @@ describe('RecipeStarRating', () => {
     });
   });
 });
-

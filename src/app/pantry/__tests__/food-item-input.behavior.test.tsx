@@ -1,10 +1,10 @@
 /**
  * Core behavior tests for Pantry food item input
- * 
+ *
  * These tests verify the essential behaviors that must be consistent:
  * - Food item creation dialog prefill
  * - Enter key handling for creation
- * 
+ *
  * These tests should pass on BOTH the current implementation AND the new
  * implementation after refactoring to use centralized components.
  */
@@ -30,7 +30,7 @@ describe('Pantry - Food Item Input Behaviors', () => {
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
   });
 
@@ -47,4 +47,3 @@ describe('Pantry - Food Item Input Behaviors', () => {
     });
   });
 });
-

@@ -58,7 +58,9 @@ export async function removeUserFromMealPlanSharing(userId: string): Promise<voi
   }
 }
 
-export async function fetchPendingMealPlanSharingInvitations(): Promise<PendingMealPlanInvitation[]> {
+export async function fetchPendingMealPlanSharingInvitations(): Promise<
+  PendingMealPlanInvitation[]
+> {
   const response = await fetch('/api/user/meal-plan-sharing/invitations');
   if (!response.ok) {
     throw new Error('Failed to fetch pending meal plan sharing invitations');
@@ -81,4 +83,3 @@ export async function fetchMealPlanOwners(): Promise<SharedUser[]> {
   }
   return response.json();
 }
-

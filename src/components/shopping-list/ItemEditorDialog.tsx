@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -11,14 +11,14 @@ import {
   DialogContent,
   TextField,
   Typography,
-} from "@mui/material";
-import { DialogTitle } from "@/components/ui";
-import { responsiveDialogStyle } from "@/lib/theme";
-import QuantityInput from "@/components/food-item-inputs/QuantityInput";
-import UnitSelector from "@/components/food-item-inputs/UnitSelector";
-import AddFoodItemDialog from "@/components/AddFoodItemDialog";
+} from '@mui/material';
+import { DialogTitle } from '@/components/ui';
+import { responsiveDialogStyle } from '@/lib/theme';
+import QuantityInput from '@/components/food-item-inputs/QuantityInput';
+import UnitSelector from '@/components/food-item-inputs/UnitSelector';
+import AddFoodItemDialog from '@/components/AddFoodItemDialog';
 
-export type ItemEditorMode = "add" | "edit";
+export type ItemEditorMode = 'add' | 'edit';
 
 export type FoodItemOption = {
   _id: string;
@@ -28,7 +28,7 @@ export type FoodItemOption = {
   unit: string;
 };
 
-const ADD_NEW_ID = "__add_new_food_item__";
+const ADD_NEW_ID = '__add_new_food_item__';
 
 const defaultFilter = createFilterOptions<FoodItemOption>();
 
@@ -72,16 +72,14 @@ export default function ItemEditorDialog({
     return foodItems.find((f) => f._id === initialDraft.foodItemId) ?? null;
   }, [foodItems, initialDraft?.foodItemId]);
 
-  const [selectedFoodItem, setSelectedFoodItem] = useState<FoodItemOption | null>(
-    null
-  );
-  const [foodItemInputValue, setFoodItemInputValue] = useState("");
+  const [selectedFoodItem, setSelectedFoodItem] = useState<FoodItemOption | null>(null);
+  const [foodItemInputValue, setFoodItemInputValue] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("each");
+  const [unit, setUnit] = useState('each');
   const hasTouchedUnitRef = useRef(false);
 
   const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
-  const [prefillFoodItemName, setPrefillFoodItemName] = useState("");
+  const [prefillFoodItemName, setPrefillFoodItemName] = useState('');
   const pendingSaveRef = useRef<null | { quantity: number; unit: string }>(null);
   const [keyboardInsetPx, setKeyboardInsetPx] = useState(0);
 
@@ -98,13 +96,13 @@ export default function ItemEditorDialog({
     if (!open) return;
 
     setSelectedFoodItem(initialFoodItem);
-    setFoodItemInputValue(initialFoodItem?.name ?? "");
+    setFoodItemInputValue(initialFoodItem?.name ?? '');
 
     const nextQty = initialDraft?.quantity ?? 1;
     setQuantity(nextQty);
 
     hasTouchedUnitRef.current = false;
-    const nextUnit = initialDraft?.unit ?? initialFoodItem?.unit ?? "each";
+    const nextUnit = initialDraft?.unit ?? initialFoodItem?.unit ?? 'each';
     setUnit(nextUnit);
   }, [open, initialDraft, initialFoodItem]);
 
@@ -113,7 +111,7 @@ export default function ItemEditorDialog({
       setKeyboardInsetPx(0);
       return;
     }
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     const visualViewport = window.visualViewport;
     if (!visualViewport) return;
 
@@ -128,20 +126,20 @@ export default function ItemEditorDialog({
     };
 
     update();
-    visualViewport.addEventListener("resize", update);
-    visualViewport.addEventListener("scroll", update);
-    window.addEventListener("orientationchange", update);
+    visualViewport.addEventListener('resize', update);
+    visualViewport.addEventListener('scroll', update);
+    window.addEventListener('orientationchange', update);
     return () => {
-      visualViewport.removeEventListener("resize", update);
-      visualViewport.removeEventListener("scroll", update);
-      window.removeEventListener("orientationchange", update);
+      visualViewport.removeEventListener('resize', update);
+      visualViewport.removeEventListener('scroll', update);
+      window.removeEventListener('orientationchange', update);
     };
   }, [open]);
 
   const handleClose = () => {
     pendingSaveRef.current = null;
     setAddFoodItemDialogOpen(false);
-    setPrefillFoodItemName("");
+    setPrefillFoodItemName('');
     onClose();
   };
 
@@ -166,15 +164,15 @@ export default function ItemEditorDialog({
       unit: foodItemData.unit,
       isGlobal: foodItemData.isGlobal,
     };
-    const response = await fetch("/api/food-items", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('/api/food-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to add food item");
+      throw new Error(errorData.error || 'Failed to add food item');
     }
 
     const newFoodItem = (await response.json()) as FoodItemOption;
@@ -184,7 +182,7 @@ export default function ItemEditorDialog({
     setAddFoodItemDialogOpen(false);
     setSelectedFoodItem(newFoodItem);
     setFoodItemInputValue(newFoodItem.name);
-    setPrefillFoodItemName("");
+    setPrefillFoodItemName('');
 
     if (!hasTouchedUnitRef.current) {
       setUnit(newFoodItem.unit);
@@ -217,8 +215,7 @@ export default function ItemEditorDialog({
   };
 
   const isSaveDisabled = !foodItemInputValue.trim() || quantity <= 0;
-  const dialogTitle =
-    title ?? (mode === "add" ? "Add Item" : "Edit Item");
+  const dialogTitle = title ?? (mode === 'add' ? 'Add Item' : 'Edit Item');
 
   return (
     <>
@@ -229,12 +226,12 @@ export default function ItemEditorDialog({
         fullWidth
         sx={{
           ...responsiveDialogStyle,
-          "& .MuiDialog-paper": {
+          '& .MuiDialog-paper': {
             ...(((responsiveDialogStyle as unknown as Record<string, unknown>)[
-              "& .MuiDialog-paper"
+              '& .MuiDialog-paper'
             ] as Record<string, unknown>) ?? {}),
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
@@ -242,7 +239,7 @@ export default function ItemEditorDialog({
           <Typography variant="h6">{dialogTitle}</Typography>
         </DialogTitle>
         <DialogContent sx={{ flex: 1, minHeight: 0 }}>
-          <Box sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Autocomplete
               freeSolo
               autoHighlight
@@ -256,9 +253,9 @@ export default function ItemEditorDialog({
                   filtered.push({
                     _id: ADD_NEW_ID,
                     name: `Add "${params.inputValue.trim()}" as a Food Item`,
-                    singularName: "",
-                    pluralName: "",
-                    unit: "",
+                    singularName: '',
+                    pluralName: '',
+                    unit: '',
                   });
                 }
                 return filtered;
@@ -266,12 +263,12 @@ export default function ItemEditorDialog({
               onInputChange={(_, value, reason) => {
                 setFoodItemInputValue(value);
                 // If user types, treat as freeSolo unless they select an option.
-                if (reason === "input") {
+                if (reason === 'input') {
                   setSelectedFoodItem(null);
                 }
               }}
               onChange={(_, value) => {
-                if (typeof value === "string") {
+                if (typeof value === 'string') {
                   setSelectedFoodItem(null);
                   setFoodItemInputValue(value);
                   return;
@@ -282,24 +279,24 @@ export default function ItemEditorDialog({
                   return;
                 }
                 setSelectedFoodItem(value);
-                setFoodItemInputValue(value?.name ?? "");
+                setFoodItemInputValue(value?.name ?? '');
                 if (value && !hasTouchedUnitRef.current) {
                   setUnit(value.unit);
                 }
               }}
               getOptionLabel={(option) => {
-                if (typeof option === "string") return option;
+                if (typeof option === 'string') return option;
                 return option.name;
               }}
               isOptionEqualToValue={(option, value) => {
-                if (typeof value === "string") return false;
+                if (typeof value === 'string') return false;
                 return option._id === value?._id;
               }}
               renderOption={(props, option) => {
                 const { key, ...otherProps } = props;
                 if (option._id === ADD_NEW_ID) {
                   return (
-                    <Box component="li" key={key} {...otherProps} sx={{ p: "8px !important" }}>
+                    <Box component="li" key={key} {...otherProps} sx={{ p: '8px !important' }}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -309,7 +306,7 @@ export default function ItemEditorDialog({
                           e.stopPropagation();
                           handleRequestCreateFoodItem(foodItemInputValue.trim());
                         }}
-                        sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                        sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                       >
                         {option.name}
                       </Button>
@@ -323,22 +320,17 @@ export default function ItemEditorDialog({
                 );
               }}
               renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Item Name"
-                  placeholder="Start typing…"
-                  autoFocus
-                />
+                <TextField {...params} label="Item Name" placeholder="Start typing…" autoFocus />
               )}
             />
 
-            <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <QuantityInput
                 value={quantity}
                 onChange={setQuantity}
                 label="Quantity"
                 size="small"
-                sx={{ width: { xs: "100%", sm: 140 } }}
+                sx={{ width: { xs: '100%', sm: 140 } }}
               />
               <UnitSelector
                 value={unit}
@@ -354,13 +346,13 @@ export default function ItemEditorDialog({
             </Box>
 
             {/* Mobile: keep delete near the fields; Save lives in bottom actions. */}
-            {mode === "edit" && (
-              <Box sx={{ display: { xs: "block", sm: "none" } }}>
+            {mode === 'edit' && (
+              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                 <Button
                   onClick={() => void onDelete?.()}
                   color="error"
                   variant="outlined"
-                  sx={{ width: "100%" }}
+                  sx={{ width: '100%' }}
                 >
                   Delete
                 </Button>
@@ -375,41 +367,37 @@ export default function ItemEditorDialog({
             px: { xs: 2, sm: 3 },
             pb: { xs: 2, sm: 3 },
             // Mobile: keep Save visible above the on-screen keyboard.
-            position: { xs: "sticky", sm: "static" },
-            bottom: { xs: keyboardInsetPx, sm: "auto" },
-            bgcolor: "background.paper",
+            position: { xs: 'sticky', sm: 'static' },
+            bottom: { xs: keyboardInsetPx, sm: 'auto' },
+            bgcolor: 'background.paper',
             zIndex: 1,
           }}
         >
           <Box
             sx={{
-              width: "100%",
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              alignItems: { xs: "stretch", sm: "center" },
-              justifyContent: { xs: "stretch", sm: "space-between" },
+              width: '100%',
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              justifyContent: { xs: 'stretch', sm: 'space-between' },
               gap: { xs: 1, sm: 0 },
             }}
           >
             {/* Desktop: Delete bottom-left; Save bottom-right. */}
-            <Box sx={{ display: { xs: "none", sm: "block" } }}>
-              {mode === "edit" && (
-                <Button
-                  onClick={() => void onDelete?.()}
-                  color="error"
-                  variant="outlined"
-                >
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              {mode === 'edit' && (
+                <Button onClick={() => void onDelete?.()} color="error" variant="outlined">
                   Delete
                 </Button>
               )}
             </Box>
 
-            <Box sx={{ width: { xs: "100%", sm: "auto" } }}>
+            <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
               <Button
                 onClick={() => void handleSave()}
                 variant="contained"
                 disabled={isSaveDisabled}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Save
               </Button>
@@ -423,7 +411,7 @@ export default function ItemEditorDialog({
         onClose={() => {
           pendingSaveRef.current = null;
           setAddFoodItemDialogOpen(false);
-          setPrefillFoodItemName("");
+          setPrefillFoodItemName('');
         }}
         onAdd={handleCreateFoodItem}
         prefillName={prefillFoodItemName}
@@ -431,4 +419,3 @@ export default function ItemEditorDialog({
     </>
   );
 }
-

@@ -77,4 +77,3 @@ export interface PurchaseHistoryRecord {
   unit: string;
   lastPurchasedAt: Date;
 }
-

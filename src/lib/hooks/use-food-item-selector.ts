@@ -1,6 +1,6 @@
 /**
  * Core hook for food item and recipe selection
- * 
+ *
  * Extracted from IngredientInput to provide consistent behavior across all
  * food item selection use cases.
  */
@@ -41,13 +41,13 @@ export interface UseFoodItemSelectorReturn {
   selectedItem: SearchOption | null;
   isLoading: boolean;
   selectedIndex: number;
-  
+
   // Actions
   setInputValue: (value: string) => void;
   handleSelect: (item: SearchOption | null) => void;
   handleInputChange: (value: string, reason: string) => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
-  
+
   // Refs for focus management
   autocompleteRef: React.RefObject<HTMLInputElement | null>;
   quantityRef: React.RefObject<HTMLInputElement | null>;
@@ -87,7 +87,7 @@ export function useFoodItemSelector(
   // Use prop data if provided, otherwise use local data
   const foodItems = propFoodItems || localFoodItems;
   const recipes = useMemo(() => {
-    return allowRecipes ? (propRecipes || localRecipes) : [];
+    return allowRecipes ? propRecipes || localRecipes : [];
   }, [allowRecipes, propRecipes, localRecipes]);
 
   // Load data if autoLoad is enabled and no props provided
@@ -100,7 +100,9 @@ export function useFoodItemSelector(
       try {
         const [foodRes, recipeRes] = await Promise.all([
           fetch('/api/food-items?limit=1000'),
-          allowRecipes ? fetch('/api/recipes?limit=1000') : Promise.resolve({ ok: false, json: async () => [] }),
+          allowRecipes
+            ? fetch('/api/recipes?limit=1000')
+            : Promise.resolve({ ok: false, json: async () => [] }),
         ]);
         const foodItemsJson = foodRes.ok ? await foodRes.json() : { data: [] };
         const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
@@ -117,75 +119,87 @@ export function useFoodItemSelector(
   }, [autoLoad, propFoodItems, allowRecipes]);
 
   // Perform search with debouncing
-  const performSearch = useCallback(async (input: string) => {
-    setIsLoading(true);
-    setInputValue(input);
-    setSelectedIndex(0);
+  const performSearch = useCallback(
+    async (input: string) => {
+      setIsLoading(true);
+      setInputValue(input);
+      setSelectedIndex(0);
 
-    // Clear existing timeout
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
+      // Clear existing timeout
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
 
-    searchTimeout.current = setTimeout(async () => {
-      if (!input.trim()) {
-        // If no input, show all available items (excluding selected ones)
-        const allOptions: SearchOption[] = [
-          ...foodItems.map(item => ({ ...item, type: 'foodItem' as const })),
-          ...recipes.map(item => ({ ...item, type: 'recipe' as const })),
-        ];
-        const filtered = allOptions.filter(option =>
-          !excludeIds.includes(option._id || '') &&
-          !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-        );
+      searchTimeout.current = setTimeout(async () => {
+        if (!input.trim()) {
+          // If no input, show all available items (excluding selected ones)
+          const allOptions: SearchOption[] = [
+            ...foodItems.map((item) => ({ ...item, type: 'foodItem' as const })),
+            ...recipes.map((item) => ({ ...item, type: 'recipe' as const })),
+          ];
+          const filtered = allOptions.filter(
+            (option) =>
+              !excludeIds.includes(option._id || '') &&
+              !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+          );
           setSearchOptions(filtered);
-        setIsLoading(false);
-        return;
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          // Always use server-side search for typed queries.
+          // This scales to any number of food items — the API handles
+          // filtering and returns only matching results.
+          const [foodRes, recipeRes] = await Promise.all([
+            fetch(`/api/food-items?query=${encodeURIComponent(input)}&limit=50`),
+            allowRecipes
+              ? fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=50`)
+              : Promise.resolve({ ok: false, json: async () => [] }),
+          ]);
+          const foodItemsRaw = foodRes.ok ? await foodRes.json() : [];
+          const recipesRaw = recipeRes.ok ? await recipeRes.json() : [];
+
+          // Handle both paginated ({ data: [...] }) and plain array responses
+          const foodItemsData: FoodItem[] = Array.isArray(foodItemsRaw)
+            ? foodItemsRaw
+            : foodItemsRaw.data || [];
+          const recipesData: Recipe[] = Array.isArray(recipesRaw)
+            ? recipesRaw
+            : recipesRaw.data || [];
+
+          const allOptions: SearchOption[] = [
+            ...foodItemsData.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
+            ...recipesData.map((item: Recipe) => ({ ...item, type: 'recipe' as const })),
+          ];
+          const filtered = allOptions.filter(
+            (option) =>
+              !excludeIds.includes(option._id || '') &&
+              !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
+          );
+          setSearchOptions(filtered);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error performing search:', error);
+          setSearchOptions([]);
+          setIsLoading(false);
+        }
+      }, DEBOUNCE_DELAY);
+    },
+    [foodItems, recipes, excludeIds, currentRecipeId, allowRecipes]
+  );
+
+  const handleInputChange = useCallback(
+    (value: string, reason: string) => {
+      setInputValue(value);
+
+      // Only trigger search on user input, not on reset/clear events
+      if (reason === 'input') {
+        performSearch(value);
       }
-
-      try {
-        // Always use server-side search for typed queries.
-        // This scales to any number of food items — the API handles
-        // filtering and returns only matching results.
-        const [foodRes, recipeRes] = await Promise.all([
-          fetch(`/api/food-items?query=${encodeURIComponent(input)}&limit=50`),
-          allowRecipes
-            ? fetch(`/api/recipes?query=${encodeURIComponent(input)}&limit=50`)
-            : Promise.resolve({ ok: false, json: async () => [] }),
-        ]);
-        const foodItemsRaw = foodRes.ok ? await foodRes.json() : [];
-        const recipesRaw = recipeRes.ok ? await recipeRes.json() : [];
-
-        // Handle both paginated ({ data: [...] }) and plain array responses
-        const foodItemsData: FoodItem[] = Array.isArray(foodItemsRaw) ? foodItemsRaw : foodItemsRaw.data || [];
-        const recipesData: Recipe[] = Array.isArray(recipesRaw) ? recipesRaw : recipesRaw.data || [];
-
-        const allOptions: SearchOption[] = [
-          ...foodItemsData.map((item: FoodItem) => ({ ...item, type: 'foodItem' as const })),
-          ...recipesData.map((item: Recipe) => ({ ...item, type: 'recipe' as const })),
-        ];
-        const filtered = allOptions.filter(option =>
-          !excludeIds.includes(option._id || '') &&
-          !(currentRecipeId && option.type === 'recipe' && option._id === currentRecipeId)
-        );
-        setSearchOptions(filtered);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error performing search:', error);
-        setSearchOptions([]);
-        setIsLoading(false);
-      }
-    }, DEBOUNCE_DELAY);
-  }, [foodItems, recipes, excludeIds, currentRecipeId, allowRecipes]);
-
-  const handleInputChange = useCallback((value: string, reason: string) => {
-    setInputValue(value);
-
-    // Only trigger search on user input, not on reset/clear events
-    if (reason === 'input') {
-      performSearch(value);
-    }
-  }, [performSearch]);
+    },
+    [performSearch]
+  );
 
   const handleSelect = useCallback((item: SearchOption | null) => {
     setSelectedItem(item);
@@ -197,40 +211,42 @@ export function useFoodItemSelector(
     }
   }, []);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+        // If there are search results, select the first one (or currently highlighted one)
+        if (searchOptions.length > 0) {
+          const selectedOption = searchOptions[selectedIndex || 0];
+          if (selectedOption) {
+            handleSelect(selectedOption);
+            return;
+          }
+        }
 
-      // If there are search results, select the first one (or currently highlighted one)
-      if (searchOptions.length > 0) {
-        const selectedOption = searchOptions[selectedIndex || 0];
-        if (selectedOption) {
-          handleSelect(selectedOption);
-          return;
+        // If no search results and there's input, request creation
+        if (inputValue && inputValue.trim() !== '') {
+          if (onCreateRequested) {
+            onCreateRequested(inputValue.trim());
+          }
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (searchOptions.length > 0) {
+          const newIndex = Math.min((selectedIndex || 0) + 1, searchOptions.length - 1);
+          setSelectedIndex(newIndex);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (searchOptions.length > 0) {
+          const newIndex = Math.max((selectedIndex || 0) - 1, 0);
+          setSelectedIndex(newIndex);
         }
       }
-
-      // If no search results and there's input, request creation
-      if (inputValue && inputValue.trim() !== '') {
-        if (onCreateRequested) {
-          onCreateRequested(inputValue.trim());
-        }
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (searchOptions.length > 0) {
-        const newIndex = Math.min((selectedIndex || 0) + 1, searchOptions.length - 1);
-        setSelectedIndex(newIndex);
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (searchOptions.length > 0) {
-        const newIndex = Math.max((selectedIndex || 0) - 1, 0);
-        setSelectedIndex(newIndex);
-      }
-    }
-  }, [inputValue, searchOptions, selectedIndex, onCreateRequested, handleSelect]);
+    },
+    [inputValue, searchOptions, selectedIndex, onCreateRequested, handleSelect]
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -255,10 +271,8 @@ export function useFoodItemSelector(
     handleInputChange,
     handleKeyDown,
 
-
     // Refs
     autocompleteRef,
     quantityRef,
   };
 }
-

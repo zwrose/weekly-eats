@@ -16,9 +16,9 @@ describe('errors', () => {
     it('logs error with context', () => {
       const error = new Error('Test error');
       const context = 'Test Context';
-      
+
       logError(context, error);
-      
+
       expect(console.error).toHaveBeenCalledWith(
         '[Test Context] Error:',
         expect.objectContaining({
@@ -32,9 +32,9 @@ describe('errors', () => {
     it('handles string errors', () => {
       const error = 'String error message';
       const context = 'Test Context';
-      
+
       logError(context, error);
-      
+
       expect(console.error).toHaveBeenCalledWith(
         '[Test Context] Error:',
         expect.objectContaining({
@@ -48,9 +48,9 @@ describe('errors', () => {
     it('handles unknown error types', () => {
       const error = { custom: 'error object' };
       const context = 'Test Context';
-      
+
       logError(context, error);
-      
+
       expect(console.error).toHaveBeenCalledWith(
         '[Test Context] Error:',
         expect.objectContaining({

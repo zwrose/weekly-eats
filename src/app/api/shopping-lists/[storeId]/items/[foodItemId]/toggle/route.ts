@@ -13,10 +13,7 @@ type RouteParams = {
 /**
  * Toggle the checked status of a shopping list item
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -24,7 +21,7 @@ export async function PATCH(
     }
 
     const { storeId, foodItemId } = await params;
-    
+
     if (!ObjectId.isValid(storeId)) {
       return NextResponse.json({ error: SHOPPING_LIST_ERRORS.INVALID_STORE_ID }, { status: 400 });
     }
@@ -38,8 +35,12 @@ export async function PATCH(
     const store = await storesCollection.findOne({
       $or: [
         { _id: ObjectId.createFromHexString(storeId), userId: session.user.id },
-        { _id: ObjectId.createFromHexString(storeId), 'invitations.userId': session.user.id, 'invitations.status': 'accepted' }
-      ]
+        {
+          _id: ObjectId.createFromHexString(storeId),
+          'invitations.userId': session.user.id,
+          'invitations.status': 'accepted',
+        },
+      ],
     });
 
     if (!store) {
@@ -71,8 +72,8 @@ export async function PATCH(
       {
         $set: {
           [`items.${itemIndex}.checked`]: newChecked,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       }
     );
 
@@ -84,18 +85,17 @@ export async function PATCH(
       foodItemId,
       checked: newChecked,
       updatedBy: session.user.email,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return NextResponse.json({
       success: true,
       foodItemId,
       checked: newChecked,
-      items: updatedList?.items || []
+      items: updatedList?.items || [],
     });
   } catch (error) {
     logError('Shopping List Item Toggle PATCH', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
 }
-

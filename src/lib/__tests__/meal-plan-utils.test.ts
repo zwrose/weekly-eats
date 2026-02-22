@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { checkMealPlanOverlap, findNextAvailableMealPlanStartDate, DEFAULT_TEMPLATE } from '../meal-plan-utils';
+import {
+  checkMealPlanOverlap,
+  findNextAvailableMealPlanStartDate,
+  DEFAULT_TEMPLATE,
+} from '../meal-plan-utils';
 
 describe('meal-plan-utils', () => {
   it('detects overlap between meal plans', () => {
@@ -18,5 +22,3 @@ describe('meal-plan-utils', () => {
     expect(next.startDate).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 });
-
-

@@ -95,11 +95,7 @@ export function areSameFamily(unitA: string, unitB: string): boolean {
  * Converts a quantity from one app unit to another.
  * Returns `null` if the units are not in the same family or not convertible.
  */
-export function tryConvert(
-  quantity: number,
-  fromUnit: string,
-  toUnit: string
-): number | null {
+export function tryConvert(quantity: number, fromUnit: string, toUnit: string): number | null {
   const convertFrom = toConvertUnit(fromUnit);
   const convertTo = toConvertUnit(toUnit);
 
@@ -117,10 +113,7 @@ export function tryConvert(
  * Uses the convert library's "best" with imperial preference for volume/weight.
  * Falls back to the original unit for non-convertible or unknown units.
  */
-export function pickBestUnit(
-  quantity: number,
-  unit: string
-): { quantity: number; unit: string } {
+export function pickBestUnit(quantity: number, unit: string): { quantity: number; unit: string } {
   const convertUnit = toConvertUnit(unit);
 
   if (!convertUnit) {
@@ -136,10 +129,7 @@ export function pickBestUnit(
     const bestUnitStr = String(best.unit);
 
     // Map the convert library's best unit back to an app unit name
-    const appUnit =
-      REVERSE_UNIT_MAP[bestUnitStr] ??
-      BEST_UNIT_ALIASES[bestUnitStr] ??
-      null;
+    const appUnit = REVERSE_UNIT_MAP[bestUnitStr] ?? BEST_UNIT_ALIASES[bestUnitStr] ?? null;
 
     if (appUnit) {
       return { quantity: best.quantity, unit: appUnit };

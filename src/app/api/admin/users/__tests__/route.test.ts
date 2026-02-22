@@ -43,10 +43,11 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
-const makeRequest = (url: string) => ({ 
-  url,
-  nextUrl: new URL(url)
-} as any);
+const makeRequest = (url: string) =>
+  ({
+    url,
+    nextUrl: new URL(url),
+  }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -74,16 +75,16 @@ describe('api/admin/users route', () => {
   it('GET returns approved users with correct response format', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-    
+
     const mockUsers = [
       { _id: 'u1', name: 'User 1', email: 'user1@test.com', isAdmin: false, isApproved: true },
       { _id: 'u2', name: 'User 2', email: 'user2@test.com', isAdmin: true, isApproved: true },
     ];
     toArrayMock.mockResolvedValueOnce(mockUsers);
-    
+
     const res = await routes.GET(makeRequest('http://localhost/api/admin/users'));
     expect(res.status).toBe(200);
-    
+
     const data = await res.json();
     // Critical: Response must be an object with a 'users' property, not a plain array
     expect(data).toHaveProperty('users');
@@ -96,32 +97,29 @@ describe('api/admin/users route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET(makeRequest('http://localhost/api/admin/users'));
-    
+
     // Verify the query filters for approved users
-    expect(findMock).toHaveBeenCalledWith(
-      { isApproved: true },
-      expect.any(Object)
-    );
+    expect(findMock).toHaveBeenCalledWith({ isApproved: true }, expect.any(Object));
   });
 
   it('GET supports search filter', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET(makeRequest('http://localhost/api/admin/users?search=john'));
-    
+
     // Verify the query includes search filter
     expect(findMock).toHaveBeenCalledWith(
       expect.objectContaining({
         $and: expect.arrayContaining([
           expect.objectContaining({
-            $or: expect.any(Array)
+            $or: expect.any(Array),
           }),
-          { isApproved: true }
-        ])
+          { isApproved: true },
+        ]),
       }),
       expect.any(Object)
     );
@@ -131,9 +129,9 @@ describe('api/admin/users route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET(makeRequest('http://localhost/api/admin/users'));
-    
+
     expect(limitMock).toHaveBeenCalledWith(50);
   });
 
@@ -141,21 +139,17 @@ describe('api/admin/users route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET(makeRequest('http://localhost/api/admin/users'));
-    
-    expect(findMock).toHaveBeenCalledWith(
-      expect.any(Object),
-      {
-        projection: {
-          _id: 1,
-          name: 1,
-          email: 1,
-          isAdmin: 1,
-          isApproved: 1
-        }
-      }
-    );
+
+    expect(findMock).toHaveBeenCalledWith(expect.any(Object), {
+      projection: {
+        _id: 1,
+        name: 1,
+        email: 1,
+        isAdmin: 1,
+        isApproved: 1,
+      },
+    });
   });
 });
-

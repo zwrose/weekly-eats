@@ -1,6 +1,13 @@
 import { RecipeIngredientList } from './recipe';
 
-export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type DayOfWeek =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'staples';
 
 export interface MealPlanTemplate {
@@ -97,4 +104,4 @@ export interface MealPlanItemWithDetails extends MealPlanItem {
       };
     };
   })[];
-} 
+}

@@ -68,15 +68,32 @@ export async function POST(request: NextRequest) {
       .toArray();
 
     // Build shared data lookup if there are sharing owners
-    const sharedDataByRecipe = new Map<string, { sharedTags: Set<string>; sharedRatings: Array<{ userId: string; userName?: string; userEmail: string; rating: number }> }>();
+    const sharedDataByRecipe = new Map<
+      string,
+      {
+        sharedTags: Set<string>;
+        sharedRatings: Array<{
+          userId: string;
+          userName?: string;
+          userEmail: string;
+          rating: number;
+        }>;
+      }
+    >();
 
     if (sharingOwners.length > 0) {
       // Determine which owners share what
-      const ownerSharingMap = new Map<string, { sharesTag: boolean; sharesRating: boolean; name?: string; email: string }>();
+      const ownerSharingMap = new Map<
+        string,
+        { sharesTag: boolean; sharesRating: boolean; name?: string; email: string }
+      >();
       for (const owner of sharingOwners) {
-        const invitations = (owner.settings as { recipeSharing?: { invitations?: RecipeSharingInvitation[] } })?.recipeSharing?.invitations || [];
+        const invitations =
+          (owner.settings as { recipeSharing?: { invitations?: RecipeSharingInvitation[] } })
+            ?.recipeSharing?.invitations || [];
         const invitation = invitations.find(
-          (inv: RecipeSharingInvitation) => inv.userId === session.user.id && inv.status === 'accepted'
+          (inv: RecipeSharingInvitation) =>
+            inv.userId === session.user.id && inv.status === 'accepted'
         );
         if (invitation) {
           ownerSharingMap.set(owner._id.toString(), {
@@ -122,7 +139,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Assemble response
-    const result: Record<string, { tags: string[]; rating?: number; sharedTags?: string[]; sharedRatings?: Array<{ userId: string; userName?: string; userEmail: string; rating: number }> }> = {};
+    const result: Record<
+      string,
+      {
+        tags: string[];
+        rating?: number;
+        sharedTags?: string[];
+        sharedRatings?: Array<{
+          userId: string;
+          userName?: string;
+          userEmail: string;
+          rating: number;
+        }>;
+      }
+    > = {};
 
     for (const recipeId of accessibleIdSet) {
       const userData = userDataByRecipe.get(recipeId) || { tags: [], rating: undefined };

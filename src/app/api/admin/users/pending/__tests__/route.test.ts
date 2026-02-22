@@ -76,16 +76,28 @@ describe('api/admin/users/pending route', () => {
   it('GET returns pending users with correct response format', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-    
+
     const mockUsers = [
-      { _id: 'u3', name: 'Pending User 1', email: 'pending1@test.com', isAdmin: false, isApproved: false },
-      { _id: 'u4', name: 'Pending User 2', email: 'pending2@test.com', isAdmin: false, isApproved: false },
+      {
+        _id: 'u3',
+        name: 'Pending User 1',
+        email: 'pending1@test.com',
+        isAdmin: false,
+        isApproved: false,
+      },
+      {
+        _id: 'u4',
+        name: 'Pending User 2',
+        email: 'pending2@test.com',
+        isAdmin: false,
+        isApproved: false,
+      },
     ];
     toArrayMock.mockResolvedValueOnce(mockUsers);
-    
+
     const res = await routes.GET();
     expect(res.status).toBe(200);
-    
+
     const data = await res.json();
     // Critical: Response must be an object with a 'users' property, not a plain array
     expect(data).toHaveProperty('users');
@@ -98,14 +110,14 @@ describe('api/admin/users/pending route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET();
-    
+
     // Verify the query filters for pending users (not approved, not admin)
     expect(findMock).toHaveBeenCalledWith(
       {
         isApproved: { $ne: true },
-        isAdmin: { $ne: true }
+        isAdmin: { $ne: true },
       },
       expect.any(Object)
     );
@@ -115,9 +127,9 @@ describe('api/admin/users/pending route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET();
-    
+
     expect(sortMock).toHaveBeenCalledWith({ _id: -1 });
   });
 
@@ -125,9 +137,9 @@ describe('api/admin/users/pending route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET();
-    
+
     expect(limitMock).toHaveBeenCalledWith(100);
   });
 
@@ -135,37 +147,35 @@ describe('api/admin/users/pending route', () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
-    
+
     await routes.GET();
-    
-    expect(findMock).toHaveBeenCalledWith(
-      expect.any(Object),
-      {
-        projection: {
-          _id: 1,
-          name: 1,
-          email: 1,
-          isAdmin: 1,
-          isApproved: 1
-        }
-      }
-    );
+
+    expect(findMock).toHaveBeenCalledWith(expect.any(Object), {
+      projection: {
+        _id: 1,
+        name: 1,
+        email: 1,
+        isAdmin: 1,
+        isApproved: 1,
+      },
+    });
   });
 
   it('Response format matches approved users endpoint format', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
-    
-    const mockUsers = [{ _id: 'u5', name: 'Test', email: 'test@test.com', isAdmin: false, isApproved: false }];
+
+    const mockUsers = [
+      { _id: 'u5', name: 'Test', email: 'test@test.com', isAdmin: false, isApproved: false },
+    ];
     toArrayMock.mockResolvedValueOnce(mockUsers);
-    
+
     const res = await routes.GET();
     const data = await res.json();
-    
+
     // Both endpoints should return the same structure: { users: [...] }
     expect(data).toEqual({
-      users: mockUsers
+      users: mockUsers,
     });
   });
 });
-

@@ -1,11 +1,11 @@
 /**
  * Core behavior tests for Shopping Lists food item input
- * 
+ *
  * These tests verify the essential behaviors that must be consistent:
  * - Quantity validation (empty, 0, positive, error states)
  * - Unit singular/plural updates
  * - Food item creation dialog prefill
- * 
+ *
  * These tests should pass on BOTH the current implementation AND the new
  * implementation after refactoring to use centralized components.
  */
@@ -36,24 +36,24 @@ describe('Shopping Lists - Food Item Input Behaviors', () => {
       if (url.includes('/api/stores')) {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         });
       }
       if (url.includes('/api/food-items')) {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         });
       }
       if (url.includes('/api/shopping-lists/invitations')) {
         return Promise.resolve({
           ok: true,
-          json: async () => []
+          json: async () => [],
         });
       }
       return Promise.resolve({
         ok: true,
-        json: async () => []
+        json: async () => [],
       });
     });
   });
@@ -85,4 +85,3 @@ describe('Shopping Lists - Food Item Input Behaviors', () => {
     });
   });
 });
-

@@ -24,7 +24,7 @@ export const useSearchPagination = <T>({
   data,
   itemsPerPage = 25,
   searchFields,
-  searchFunction
+  searchFunction,
 }: UseSearchPaginationOptions<T>): UseSearchPaginationReturn<T> => {
   const [searchTerm, setSearchTermImmediate] = useState('');
   const [deferredSearchTerm, setDeferredSearchTerm] = useState('');
@@ -49,14 +49,14 @@ export const useSearchPagination = <T>({
     if (!deferredSearchTerm.trim()) return baseData;
 
     const term = deferredSearchTerm.toLowerCase();
-    
+
     if (searchFunction) {
-      return baseData.filter(item => searchFunction(item, term));
+      return baseData.filter((item) => searchFunction(item, term));
     }
 
     if (searchFields) {
-      return baseData.filter(item =>
-        searchFields.some(field => {
+      return baseData.filter((item) =>
+        searchFields.some((field) => {
           const value = item[field];
           if (typeof value === 'string') {
             return value.toLowerCase().includes(term);
@@ -67,9 +67,9 @@ export const useSearchPagination = <T>({
     }
 
     // Default search behavior - search all string fields
-    return baseData.filter(item =>
-      Object.values(item as Record<string, unknown>).some(value => 
-        typeof value === 'string' && value.toLowerCase().includes(term)
+    return baseData.filter((item) =>
+      Object.values(item as Record<string, unknown>).some(
+        (value) => typeof value === 'string' && value.toLowerCase().includes(term)
       )
     );
   }, [data, deferredSearchTerm, searchFields, searchFunction]);
@@ -100,6 +100,6 @@ export const useSearchPagination = <T>({
     paginatedData,
     totalPages,
     totalItems,
-    resetPagination
+    resetPagination,
   };
-}; 
+};

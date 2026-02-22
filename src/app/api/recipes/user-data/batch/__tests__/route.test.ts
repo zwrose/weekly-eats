@@ -122,20 +122,24 @@ describe('POST /api/recipes/user-data/batch', () => {
         return [{ recipeId, userId: 'u1', tags: ['my-tag'], rating: 3 }];
       }
       if (key === 'users') {
-        return [{
-          _id: { toString: () => 'owner1' },
-          name: 'Owner',
-          email: 'owner@test.com',
-          settings: {
-            recipeSharing: {
-              invitations: [{
-                userId: 'u1',
-                status: 'accepted',
-                sharingTypes: ['tags', 'ratings'],
-              }],
+        return [
+          {
+            _id: { toString: () => 'owner1' },
+            name: 'Owner',
+            email: 'owner@test.com',
+            settings: {
+              recipeSharing: {
+                invitations: [
+                  {
+                    userId: 'u1',
+                    status: 'accepted',
+                    sharingTypes: ['tags', 'ratings'],
+                  },
+                ],
+              },
             },
           },
-        }];
+        ];
       }
       return [];
     });

@@ -33,4 +33,4 @@ export const getMongoClient = async (): Promise<MongoClient> => {
     console.error('Failed to connect to MongoDB:', error);
     throw error;
   }
-}; 
+};

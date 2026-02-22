@@ -4,12 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { VALID_UNITS } from '@/lib/food-items-utils';
 import { parsePaginationParams, paginatedResponse } from '@/lib/pagination-utils';
-import {
-  AUTH_ERRORS,
-  FOOD_ITEM_ERRORS,
-  API_ERRORS,
-  logError
-} from '@/lib/errors';
+import { AUTH_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 function computeAccessLevel(item: Record<string, unknown>, userId: string): string {
   if (item.isGlobal && item.createdBy === userId) return 'shared-by-you';
@@ -58,33 +53,29 @@ export async function GET(request: NextRequest) {
       filter.isGlobal = true;
     } else {
       // Default: both global and user's personal items
-      filter.$or = [
-        { isGlobal: true },
-        { createdBy: session.user.id },
-      ];
+      filter.$or = [{ isGlobal: true }, { createdBy: session.user.id }];
     }
 
     // Add search filter if query is provided (matches name, singularName, pluralName)
     if (query.trim()) {
       filter = {
-        $and: [filter, {
-          $or: [
-            { name: { $regex: query, $options: 'i' } },
-            { singularName: { $regex: query, $options: 'i' } },
-            { pluralName: { $regex: query, $options: 'i' } },
-          ],
-        }],
+        $and: [
+          filter,
+          {
+            $or: [
+              { name: { $regex: query, $options: 'i' } },
+              { singularName: { $regex: query, $options: 'i' } },
+              { pluralName: { $regex: query, $options: 'i' } },
+            ],
+          },
+        ],
       };
     }
 
-    const result = await paginatedResponse(
-      foodItemsCollection,
-      filter,
-      paginationParams
-    );
+    const result = await paginatedResponse(foodItemsCollection, filter, paginationParams);
 
     // Annotate each item with accessLevel
-    const annotatedData = result.data.map(item => ({
+    const annotatedData = result.data.map((item) => ({
       ...item,
       accessLevel: computeAccessLevel(item as Record<string, unknown>, session.user.id),
     }));
@@ -140,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     // Escape regex special characters to prevent injection issues
     const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
+
     // Check if food item already exists (case-insensitive, check both singular and plural forms)
     const existingItem = await foodItemsCollection.findOne({
       $and: [
@@ -149,23 +140,23 @@ export async function POST(request: NextRequest) {
             { singularName: { $regex: `^${escapeRegex(trimmedSingularName)}$`, $options: 'i' } },
             { pluralName: { $regex: `^${escapeRegex(trimmedPluralName)}$`, $options: 'i' } },
             { singularName: { $regex: `^${escapeRegex(trimmedPluralName)}$`, $options: 'i' } },
-            { pluralName: { $regex: `^${escapeRegex(trimmedSingularName)}$`, $options: 'i' } }
-          ]
+            { pluralName: { $regex: `^${escapeRegex(trimmedSingularName)}$`, $options: 'i' } },
+          ],
         },
         {
-          $or: [
-            { isGlobal: true },
-            { isGlobal: false, createdBy: session.user.id }
-          ]
-        }
-      ]
+          $or: [{ isGlobal: true }, { isGlobal: false, createdBy: session.user.id }],
+        },
+      ],
     });
 
-        if (existingItem) {
-      return NextResponse.json({ 
-        error: FOOD_ITEM_ERRORS.FOOD_ITEM_ALREADY_EXISTS,
-        details: `A food item with name "${existingItem.singularName}" or "${existingItem.pluralName}" already exists`
-      }, { status: 409 });
+    if (existingItem) {
+      return NextResponse.json(
+        {
+          error: FOOD_ITEM_ERRORS.FOOD_ITEM_ALREADY_EXISTS,
+          details: `A food item with name "${existingItem.singularName}" or "${existingItem.pluralName}" already exists`,
+        },
+        { status: 409 }
+      );
     }
 
     const newFoodItem = {
@@ -177,7 +168,7 @@ export async function POST(request: NextRequest) {
       isApproved: true, // All items are auto-approved since there's no admin approval
       createdBy: session.user.id,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     const result = await foodItemsCollection.insertOne(newFoodItem);
@@ -188,4 +179,4 @@ export async function POST(request: NextRequest) {
     logError('FoodItems POST', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}

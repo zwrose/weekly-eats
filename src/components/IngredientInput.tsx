@@ -1,14 +1,7 @@
-"use client";
+'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import {
-  Box,
-  IconButton,
-  Paper,
-  Button,
-  Alert,
-  TextField,
-} from '@mui/material';
+import { Box, IconButton, Paper, Button, Alert, TextField } from '@mui/material';
 import { Delete, ExpandMore, ExpandLess, Add } from '@mui/icons-material';
 import { RecipeIngredient } from '../types/recipe';
 import { SearchOption, Recipe } from '../lib/hooks/use-food-item-selector';
@@ -22,8 +15,21 @@ interface IngredientInputProps {
   ingredient: RecipeIngredient;
   onIngredientChange: (ingredient: RecipeIngredient) => void;
   onRemove: () => void;
-  foodItems?: Array<{_id: string, name: string, singularName: string, pluralName: string, unit: string}>;
-  onFoodItemAdded?: (newFoodItem: { _id: string; name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean; }) => Promise<void>;
+  foodItems?: Array<{
+    _id: string;
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+  }>;
+  onFoodItemAdded?: (newFoodItem: {
+    _id: string;
+    name: string;
+    singularName: string;
+    pluralName: string;
+    unit: string;
+    isGlobal: boolean;
+  }) => Promise<void>;
   currentRecipeId?: string;
   selectedIds?: string[];
   slotId: string;
@@ -34,17 +40,17 @@ interface IngredientInputProps {
 
 // Recipe type matches the one from use-food-item-selector
 
-export default function IngredientInput({ 
-  ingredient, 
-  onIngredientChange, 
+export default function IngredientInput({
+  ingredient,
+  onIngredientChange,
   onRemove,
   foodItems: propFoodItems,
-  onFoodItemAdded, 
+  onFoodItemAdded,
   currentRecipeId,
   selectedIds = [],
   autoFocus = false,
-  removeButtonText = "Remove Ingredient",
-  allowPrepInstructions = true
+  removeButtonText = 'Remove Ingredient',
+  allowPrepInstructions = true,
 }: IngredientInputProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
@@ -59,24 +65,26 @@ export default function IngredientInput({
         console.error('Error loading recipes:', error);
       }
     };
-    
+
     loadRecipes();
   }, []);
 
   // Use food item creator hook
   const creator = useFoodItemCreator({
-    onFoodItemAdded: onFoodItemAdded ? async (item) => {
-      // Convert FoodItem to the expected shape
-      const convertedItem = {
-        _id: item._id,
-        name: item.name,
-        singularName: item.singularName,
-        pluralName: item.pluralName,
-        unit: item.unit,
-        isGlobal: item.isGlobal ?? false,
-      };
-      await onFoodItemAdded(convertedItem);
-    } : undefined,
+    onFoodItemAdded: onFoodItemAdded
+      ? async (item) => {
+          // Convert FoodItem to the expected shape
+          const convertedItem = {
+            _id: item._id,
+            name: item.name,
+            singularName: item.singularName,
+            pluralName: item.pluralName,
+            unit: item.unit,
+            isGlobal: item.isGlobal ?? false,
+          };
+          await onFoodItemAdded(convertedItem);
+        }
+      : undefined,
     onItemCreated: (newItem) => {
       // Auto-select the newly created item
       const searchOption: SearchOption = {
@@ -90,9 +98,9 @@ export default function IngredientInput({
   // Get the currently selected option from ingredient
   const getSelectedOption = (): SearchOption | null => {
     if (!ingredient || !ingredient.id) return null;
-    
+
     if (ingredient.type === 'foodItem') {
-      const foodItem = propFoodItems?.find(item => item._id === ingredient.id);
+      const foodItem = propFoodItems?.find((item) => item._id === ingredient.id);
       // If we have a populated name from the API but can't find the food item, create a placeholder option
       if (!foodItem && ingredient.name) {
         return {
@@ -101,18 +109,18 @@ export default function IngredientInput({
           singularName: ingredient.name,
           pluralName: ingredient.name,
           unit: ingredient.unit || 'cup',
-          type: 'foodItem' as const
+          type: 'foodItem' as const,
         };
       }
       return foodItem ? { ...foodItem, type: 'foodItem' as const } : null;
     } else {
-      const recipe = recipes.find(item => item._id === ingredient.id);
+      const recipe = recipes.find((item) => item._id === ingredient.id);
       // If we have a populated name from the API but can't find the recipe, create a placeholder option
       if (!recipe && ingredient.name) {
         return {
           _id: ingredient.id,
           title: ingredient.name,
-          type: 'recipe' as const
+          type: 'recipe' as const,
         };
       }
       return recipe ? { ...recipe, type: 'recipe' as const } : null;
@@ -129,10 +137,10 @@ export default function IngredientInput({
         id: item._id || '',
         quantity: ingredient.quantity || 1,
         unit: item.type === 'foodItem' ? item.unit : undefined,
-        name: item.type === 'foodItem' ? item.singularName : item.title
+        name: item.type === 'foodItem' ? item.singularName : item.title,
       };
       onIngredientChange(newIngredient);
-      
+
       // Auto-advance to quantity field
       setTimeout(() => {
         if (quantity.quantityRef?.current) {
@@ -146,7 +154,7 @@ export default function IngredientInput({
         type: 'foodItem',
         id: '',
         quantity: 1,
-        unit: 'cup'
+        unit: 'cup',
       });
     }
   };
@@ -154,15 +162,15 @@ export default function IngredientInput({
   // Handle quantity change
   const handleQuantityChange = (newQuantity: number) => {
     let updatedName = ingredient.name;
-    
+
     // Update name based on quantity for food items
     if (ingredient.type === 'foodItem' && ingredient.id && propFoodItems) {
-      const foodItem = propFoodItems.find(item => item._id === ingredient.id);
+      const foodItem = propFoodItems.find((item) => item._id === ingredient.id);
       if (foodItem) {
         updatedName = newQuantity === 1 ? foodItem.singularName : foodItem.pluralName;
       }
     }
-    
+
     onIngredientChange({ ...ingredient, quantity: newQuantity, name: updatedName });
   };
 
@@ -173,7 +181,9 @@ export default function IngredientInput({
   });
 
   // Prep instructions state - auto-expand if ingredient has prepInstructions
-  const [prepInstructionsExpanded, setPrepInstructionsExpanded] = useState(!!ingredient.prepInstructions);
+  const [prepInstructionsExpanded, setPrepInstructionsExpanded] = useState(
+    !!ingredient.prepInstructions
+  );
   const userExpandedPrep = useRef(false);
 
   return (
@@ -184,9 +194,9 @@ export default function IngredientInput({
         </Alert>
       )}
 
-      <Box 
-        display="flex" 
-        gap={2} 
+      <Box
+        display="flex"
+        gap={2}
         alignItems="flex-start"
         flexDirection={{ xs: 'column', sm: 'row' }}
       >
@@ -197,17 +207,21 @@ export default function IngredientInput({
             foodItems={propFoodItems}
             recipes={recipes}
             currentRecipeId={currentRecipeId}
-            onFoodItemAdded={onFoodItemAdded ? async (item) => {
-              // Pass through the full FoodItem including _id
-              await onFoodItemAdded({
-                _id: item._id,
-                name: item.name,
-                singularName: item.singularName,
-                pluralName: item.pluralName,
-                unit: item.unit,
-                isGlobal: item.isGlobal ?? false,
-              });
-            } : undefined}
+            onFoodItemAdded={
+              onFoodItemAdded
+                ? async (item) => {
+                    // Pass through the full FoodItem including _id
+                    await onFoodItemAdded({
+                      _id: item._id,
+                      name: item.name,
+                      singularName: item.singularName,
+                      pluralName: item.pluralName,
+                      unit: item.unit,
+                      isGlobal: item.isGlobal ?? false,
+                    });
+                  }
+                : undefined
+            }
             autoLoad={!propFoodItems}
             value={selectedOption}
             onChange={handleSelect}
@@ -225,10 +239,10 @@ export default function IngredientInput({
             }}
           />
         </Box>
-        
-        <Box 
-          display="flex" 
-          gap={2} 
+
+        <Box
+          display="flex"
+          gap={2}
           alignItems="flex-start"
           width={{ xs: '100%', sm: 'auto' }}
           flexDirection={{ xs: 'column', sm: 'row' }}
@@ -238,33 +252,33 @@ export default function IngredientInput({
             onChange={handleQuantityChange}
             size="small"
             inputRef={quantity.quantityRef}
-            sx={{ 
+            sx={{
               width: { xs: '100%', sm: 100 },
-              minWidth: { xs: 'auto', sm: 100 }
+              minWidth: { xs: 'auto', sm: 100 },
             }}
           />
-          
+
           {ingredient.type === 'foodItem' && (
             <UnitSelector
               value={ingredient.unit || 'cup'}
               quantity={ingredient.quantity ?? 1}
               onChange={(unit) => onIngredientChange({ ...ingredient, unit })}
               size="small"
-              sx={{ 
+              sx={{
                 width: { xs: '100%', sm: 220 },
-                minWidth: { xs: 'auto', sm: 220 }
+                minWidth: { xs: 'auto', sm: 220 },
               }}
             />
           )}
-          
+
           <IconButton
             onClick={onRemove}
             color="error"
             size="small"
-            sx={{ 
+            sx={{
               alignSelf: { xs: 'flex-start', sm: 'flex-start' },
               mt: { xs: 0, sm: 0 },
-              display: { xs: 'none', sm: 'flex' }
+              display: { xs: 'none', sm: 'flex' },
             }}
           >
             <Delete />
@@ -287,7 +301,7 @@ export default function IngredientInput({
                   onChange={(e) => {
                     onIngredientChange({
                       ...ingredient,
-                      prepInstructions: e.target.value || undefined
+                      prepInstructions: e.target.value || undefined,
                     });
                   }}
                   size="small"
@@ -301,7 +315,7 @@ export default function IngredientInput({
                     if (!ingredient.prepInstructions) {
                       onIngredientChange({
                         ...ingredient,
-                        prepInstructions: undefined
+                        prepInstructions: undefined,
                       });
                     }
                   }}
@@ -316,12 +330,15 @@ export default function IngredientInput({
           ) : ingredient.prepInstructions ? (
             <Button
               startIcon={<ExpandMore />}
-              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
+              onClick={() => {
+                userExpandedPrep.current = true;
+                setPrepInstructionsExpanded(true);
+              }}
               size="small"
               variant="outlined"
               sx={{
                 width: { xs: '100%', sm: 'auto' },
-                fontSize: '0.75rem'
+                fontSize: '0.75rem',
               }}
             >
               Show prep instructions ({ingredient.prepInstructions})
@@ -329,12 +346,15 @@ export default function IngredientInput({
           ) : (
             <Button
               startIcon={<Add />}
-              onClick={() => { userExpandedPrep.current = true; setPrepInstructionsExpanded(true); }}
+              onClick={() => {
+                userExpandedPrep.current = true;
+                setPrepInstructionsExpanded(true);
+              }}
               size="small"
               variant="outlined"
-              sx={{ 
+              sx={{
                 width: { xs: '100%', sm: 'auto' },
-                fontSize: '0.75rem'
+                fontSize: '0.75rem',
               }}
             >
               Add prep instructions
@@ -350,10 +370,10 @@ export default function IngredientInput({
         variant="outlined"
         size="small"
         startIcon={<Delete />}
-        sx={{ 
+        sx={{
           display: { xs: 'flex', sm: 'none' },
           width: '100%',
-          mt: { xs: 0, sm: 1 }
+          mt: { xs: 0, sm: 1 },
         }}
       >
         {removeButtonText}

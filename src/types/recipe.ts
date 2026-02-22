@@ -39,4 +39,4 @@ export interface UpdateRecipeRequest {
   ingredients?: RecipeIngredientList[];
   instructions?: string;
   isGlobal?: boolean;
-} 
+}

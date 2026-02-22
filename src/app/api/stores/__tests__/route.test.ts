@@ -22,8 +22,8 @@ describe('Stores API', () => {
       name: 'Whole Foods',
       emoji: '🥬',
       createdAt: new Date(),
-      updatedAt: new Date()
-    }
+      updatedAt: new Date(),
+    },
   ];
 
   const mockShoppingLists = [
@@ -37,8 +37,8 @@ describe('Stores API', () => {
         { foodItemId: 'f3', name: 'bread', quantity: 2, unit: 'loaf', checked: false },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
-    }
+      updatedAt: new Date(),
+    },
   ];
 
   beforeEach(() => {
@@ -50,11 +50,11 @@ describe('Stores API', () => {
     it('returns stores with shopping lists for authenticated user', async () => {
       const mockFind = vi.fn().mockReturnValue({
         sort: vi.fn().mockReturnThis(),
-        toArray: vi.fn().mockResolvedValue(mockStores)
+        toArray: vi.fn().mockResolvedValue(mockStores),
       });
 
       const mockShoppingListsFind = vi.fn().mockReturnValue({
-        toArray: vi.fn().mockResolvedValue(mockShoppingLists)
+        toArray: vi.fn().mockResolvedValue(mockShoppingLists),
       });
 
       (getMongoClient as any).mockResolvedValue({
@@ -66,8 +66,8 @@ describe('Stores API', () => {
             if (name === 'shoppingLists') {
               return { find: mockShoppingListsFind };
             }
-          }
-        })
+          },
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
@@ -84,11 +84,11 @@ describe('Stores API', () => {
     it('returns itemCount instead of full items array', async () => {
       const mockFind = vi.fn().mockReturnValue({
         sort: vi.fn().mockReturnThis(),
-        toArray: vi.fn().mockResolvedValue(mockStores)
+        toArray: vi.fn().mockResolvedValue(mockStores),
       });
 
       const mockShoppingListsFind = vi.fn().mockReturnValue({
-        toArray: vi.fn().mockResolvedValue(mockShoppingLists)
+        toArray: vi.fn().mockResolvedValue(mockShoppingLists),
       });
 
       (getMongoClient as any).mockResolvedValue({
@@ -100,8 +100,8 @@ describe('Stores API', () => {
             if (name === 'shoppingLists') {
               return { find: mockShoppingListsFind };
             }
-          }
-        })
+          },
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
@@ -114,22 +114,24 @@ describe('Stores API', () => {
     });
 
     it('returns itemCount of 0 when store has no shopping list', async () => {
-      const storeWithNoList = [{
-        _id: { toString: () => 'store-no-list' },
-        userId: 'user-123',
-        name: 'New Store',
-        emoji: '🏪',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }];
+      const storeWithNoList = [
+        {
+          _id: { toString: () => 'store-no-list' },
+          userId: 'user-123',
+          name: 'New Store',
+          emoji: '🏪',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
 
       const mockFind = vi.fn().mockReturnValue({
         sort: vi.fn().mockReturnThis(),
-        toArray: vi.fn().mockResolvedValue(storeWithNoList)
+        toArray: vi.fn().mockResolvedValue(storeWithNoList),
       });
 
       const mockShoppingListsFind = vi.fn().mockReturnValue({
-        toArray: vi.fn().mockResolvedValue([]) // no lists
+        toArray: vi.fn().mockResolvedValue([]), // no lists
       });
 
       (getMongoClient as any).mockResolvedValue({
@@ -141,8 +143,8 @@ describe('Stores API', () => {
             if (name === 'shoppingLists') {
               return { find: mockShoppingListsFind };
             }
-          }
-        })
+          },
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
@@ -156,11 +158,11 @@ describe('Stores API', () => {
     it('preserves shopping list metadata (storeId, dates) without items', async () => {
       const mockFind = vi.fn().mockReturnValue({
         sort: vi.fn().mockReturnThis(),
-        toArray: vi.fn().mockResolvedValue(mockStores)
+        toArray: vi.fn().mockResolvedValue(mockStores),
       });
 
       const mockShoppingListsFind = vi.fn().mockReturnValue({
-        toArray: vi.fn().mockResolvedValue(mockShoppingLists)
+        toArray: vi.fn().mockResolvedValue(mockShoppingLists),
       });
 
       (getMongoClient as any).mockResolvedValue({
@@ -172,8 +174,8 @@ describe('Stores API', () => {
             if (name === 'shoppingLists') {
               return { find: mockShoppingListsFind };
             }
-          }
-        })
+          },
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
@@ -198,7 +200,7 @@ describe('Stores API', () => {
   describe('POST', () => {
     it('creates a new store with shopping list', async () => {
       const mockInsertOne = vi.fn().mockResolvedValue({
-        insertedId: { toString: () => 'new-store-id' }
+        insertedId: { toString: () => 'new-store-id' },
       });
 
       const mockFindOne = vi.fn().mockResolvedValue(null);
@@ -209,19 +211,19 @@ describe('Stores API', () => {
             if (name === 'stores') {
               return {
                 insertOne: mockInsertOne,
-                findOne: mockFindOne
+                findOne: mockFindOne,
               };
             }
             if (name === 'shoppingLists') {
               return { insertOne: mockInsertOne };
             }
-          }
-        })
+          },
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',
-        body: JSON.stringify({ name: 'Target', emoji: '🎯' })
+        body: JSON.stringify({ name: 'Target', emoji: '🎯' }),
       });
 
       const response = await POST(request);
@@ -236,7 +238,7 @@ describe('Stores API', () => {
     it('returns 400 if name is missing', async () => {
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',
-        body: JSON.stringify({ emoji: '🎯' })
+        body: JSON.stringify({ emoji: '🎯' }),
       });
 
       const response = await POST(request);
@@ -247,20 +249,20 @@ describe('Stores API', () => {
     it('returns 400 if store name already exists', async () => {
       const mockFindOne = vi.fn().mockResolvedValue({
         _id: 'existing-store',
-        name: 'Target'
+        name: 'Target',
       });
 
       (getMongoClient as any).mockResolvedValue({
         db: () => ({
           collection: () => ({
-            findOne: mockFindOne
-          })
-        })
+            findOne: mockFindOne,
+          }),
+        }),
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',
-        body: JSON.stringify({ name: 'Target', emoji: '🎯' })
+        body: JSON.stringify({ name: 'Target', emoji: '🎯' }),
       });
 
       const response = await POST(request);
@@ -273,7 +275,7 @@ describe('Stores API', () => {
 
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',
-        body: JSON.stringify({ name: 'Target' })
+        body: JSON.stringify({ name: 'Target' }),
       });
 
       const response = await POST(request);

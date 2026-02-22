@@ -18,5 +18,3 @@ describe('SearchBar', () => {
     unmount();
   });
 });
-
-

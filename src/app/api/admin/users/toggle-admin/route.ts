@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const client = await getMongoClient();
     const db = client.db();
     const usersCollection = db.collection('users');
-    
+
     // Get current user to check admin status
     const currentUser = await usersCollection.findOne({ email: session.user.email });
     if (!currentUser?.isAdmin) {
@@ -51,4 +51,4 @@ export async function POST(request: NextRequest) {
     logError('ToggleAdmin POST', error);
     return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
   }
-} 
+}
