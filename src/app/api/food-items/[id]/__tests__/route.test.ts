@@ -38,6 +38,71 @@ beforeEach(() => {
 });
 
 describe('api/food-items/[id] route', () => {
+  describe('GET', () => {
+    it('returns 401 when unauthenticated', async () => {
+      (getServerSession as any).mockResolvedValueOnce(null);
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 for invalid ObjectId', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      const id = 'not-a-valid-id';
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 404 when food item not found', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      findOneMock.mockResolvedValueOnce(null);
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(404);
+    });
+
+    it('returns global food item for any authenticated user', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const item = { _id: id, name: 'Sugar', singularName: 'sugar', pluralName: 'sugars', unit: 'cup', isGlobal: true, createdBy: 'u1' };
+      findOneMock.mockResolvedValueOnce(item);
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.name).toBe('Sugar');
+    });
+
+    it('returns own personal food item', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const item = { _id: id, name: 'My Flour', singularName: 'flour', pluralName: 'flours', unit: 'cup', isGlobal: false, createdBy: 'u1' };
+      findOneMock.mockResolvedValueOnce(item);
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.name).toBe('My Flour');
+    });
+
+    it('returns 403 for other user personal food item', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      findOneMock.mockResolvedValueOnce({ _id: id, name: 'Private', isGlobal: false, createdBy: 'u1' });
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(403);
+    });
+
+    it('allows admin to see any personal food item', async () => {
+      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const item = { _id: id, name: 'Private', isGlobal: false, createdBy: 'u1' };
+      findOneMock.mockResolvedValueOnce(item);
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), { params: Promise.resolve({ id }) } as any);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.name).toBe('Private');
+    });
+  });
+
   it('PUT 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';

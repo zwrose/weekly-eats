@@ -194,6 +194,7 @@ export default function IngredientInput({
           <FoodItemAutocomplete
             allowRecipes={true}
             excludeIds={selectedIds}
+            excludedItemLabel="Already in recipe"
             foodItems={propFoodItems}
             recipes={recipes}
             currentRecipeId={currentRecipeId}

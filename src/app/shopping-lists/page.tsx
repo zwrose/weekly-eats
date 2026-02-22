@@ -352,7 +352,7 @@ function ShoppingListsPageContent() {
       return items;
     } catch (error) {
       console.error("Error loading food items:", error);
-      return foodItems;
+      return [];
     }
   }, [foodItems]);
 
@@ -611,7 +611,6 @@ function ShoppingListsPageContent() {
     setItemEditorInitialDraft(null);
     setEditingOriginalFoodItemId(null);
     setItemEditorOpen(true);
-    void loadFoodItems();
   };
 
   const handleOpenEditItemEditor = (item: ShoppingListItem) => {
@@ -623,18 +622,27 @@ function ShoppingListsPageContent() {
     });
     setEditingOriginalFoodItemId(item.foodItemId);
     setItemEditorOpen(true);
-    void loadFoodItems();
   };
 
-  const resolveNameForFoodItemId = (
+  const resolveNameForFoodItemId = async (
     foodItemId: string,
     qty: number,
-  ): string => {
+  ): Promise<string> => {
     const foodItem = foodItems.find((f) => f._id === foodItemId);
-    if (!foodItem) {
-      return "Unknown";
+    if (foodItem) {
+      return qty === 1 ? foodItem.singularName : foodItem.pluralName;
     }
-    return qty === 1 ? foodItem.singularName : foodItem.pluralName;
+    // Fallback: fetch the individual food item
+    try {
+      const res = await fetch(`/api/food-items/${foodItemId}`);
+      if (res.ok) {
+        const item = await res.json();
+        return qty === 1 ? item.singularName : item.pluralName;
+      }
+    } catch {
+      /* ignore */
+    }
+    return "Unknown";
   };
 
   const handleSaveItemFromEditor = async (draft: ItemEditorDraft) => {
@@ -651,7 +659,7 @@ function ShoppingListsPageContent() {
 
       const newItem: ShoppingListItem = {
         foodItemId,
-        name: resolveNameForFoodItemId(foodItemId, qty),
+        name: await resolveNameForFoodItemId(foodItemId, qty),
         quantity: qty,
         unit,
         checked: false,
@@ -701,6 +709,7 @@ function ShoppingListsPageContent() {
       }
     }
 
+    const resolvedName = await resolveNameForFoodItemId(foodItemId, qty);
     const updatedItems = previousItems.map((i) => {
       if (i.foodItemId !== editingOriginalFoodItemId) return i;
       return {
@@ -708,7 +717,7 @@ function ShoppingListsPageContent() {
         foodItemId,
         quantity: qty,
         unit,
-        name: resolveNameForFoodItemId(foodItemId, qty),
+        name: resolvedName,
       };
     });
 
@@ -979,6 +988,34 @@ function ShoppingListsPageContent() {
         ]),
       );
 
+      // Fetch names for conflict food items missing from the map
+      const missingConflictIds = preMergeConflicts
+        .filter((c: PreMergeConflict) => !foodItemsMap.has(c.foodItemId))
+        .map((c: PreMergeConflict) => c.foodItemId);
+
+      if (missingConflictIds.length > 0) {
+        const missingItems = await Promise.all(
+          missingConflictIds.map(async (id) => {
+            try {
+              const res = await fetch(`/api/food-items/${id}`);
+              if (res.ok) return await res.json();
+            } catch {
+              /* ignore */
+            }
+            return null;
+          }),
+        );
+        for (const item of missingItems) {
+          if (item) {
+            foodItemsMap.set(item._id, {
+              singularName: item.singularName,
+              pluralName: item.pluralName,
+              unit: item.unit,
+            });
+          }
+        }
+      }
+
       // Track which food items had extracted counterparts
       const extractedFoodItemIds = new Set(
         extractedItems.map((i) => i.foodItemId),
@@ -1198,6 +1235,7 @@ function ShoppingListsPageContent() {
       return item;
     });
 
+    const previousItems = shoppingListItems;
     setShoppingListItems(updatedItems);
 
     try {
@@ -1216,6 +1254,7 @@ function ShoppingListsPageContent() {
         error,
       );
       showSnackbar("Failed to save shopping list", "error");
+      setShoppingListItems(previousItems);
     }
   };
 
@@ -2454,7 +2493,6 @@ function ShoppingListsPageContent() {
       <ItemEditorDialog
         open={itemEditorOpen}
         mode={itemEditorMode}
-        foodItems={foodItems}
         excludeFoodItemIds={shoppingListItems.map((item) => item.foodItemId)}
         initialDraft={itemEditorInitialDraft}
         onClose={() => setItemEditorOpen(false)}
@@ -2462,7 +2500,7 @@ function ShoppingListsPageContent() {
         onDelete={
           itemEditorMode === "edit" ? handleDeleteItemFromEditor : undefined
         }
-        onFoodItemCreated={(newFoodItem) => {
+        onFoodItemAdded={async (newFoodItem) => {
           setFoodItems((prev) => [...prev, newFoodItem]);
         }}
       />

@@ -45,6 +45,29 @@ export async function GET(
       .sort({ lastPurchasedAt: -1 })
       .toArray();
 
+    // Re-resolve food item names from the foodItems collection
+    if (history.length > 0) {
+      const foodItemIds = history
+        .map((h) => h.foodItemId)
+        .filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id));
+      if (foodItemIds.length > 0) {
+        const foodItems = await db.collection('foodItems')
+          .find({ _id: { $in: foodItemIds.map((id) => new ObjectId(id)) } })
+          .toArray();
+        const foodItemMap = new Map(
+          foodItems.map((fi) => [fi._id.toString(), fi])
+        );
+        for (const record of history) {
+          const foodItem = foodItemMap.get(String(record.foodItemId));
+          if (foodItem) {
+            record.name = record.quantity === 1
+              ? foodItem.singularName
+              : foodItem.pluralName;
+          }
+        }
+      }
+    }
+
     return NextResponse.json(history);
   } catch (error) {
     logError('Purchase History GET', error);

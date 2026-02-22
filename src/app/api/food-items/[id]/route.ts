@@ -14,6 +14,43 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
+
+    const client = await getMongoClient();
+    const db = client.db();
+    const foodItemsCollection = db.collection('foodItems');
+
+    const foodItem = await foodItemsCollection.findOne({ _id: new ObjectId(id) });
+    if (!foodItem) {
+      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
+    }
+
+    // Users can see global items and their own personal items
+    if (!foodItem.isGlobal && foodItem.createdBy !== session.user.id && !session.user.isAdmin) {
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
+    }
+
+    return NextResponse.json(foodItem);
+  } catch (error) {
+    logError('FoodItems GET [id]', error);
+    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: RouteParams

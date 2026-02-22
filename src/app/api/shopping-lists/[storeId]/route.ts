@@ -76,11 +76,13 @@ export async function GET(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
-        const foodItem = foodItemMap.get(item.foodItemId);
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string; name?: string }) => {
+        const foodItem = foodItemMap.get(String(item.foodItemId));
         return {
           ...item,
-          name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
+          name: foodItem
+            ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
+            : (item.name && item.name !== 'Unknown' ? item.name : 'Unknown'),
           // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
           unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
@@ -179,11 +181,13 @@ export async function PUT(
         foodItems.map(item => [item._id.toString(), item])
       );
 
-      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string }) => {
-        const foodItem = foodItemMap.get(item.foodItemId);
+      shoppingList.items = shoppingList.items.map((item: { foodItemId: string; quantity: number; unit?: string; name?: string }) => {
+        const foodItem = foodItemMap.get(String(item.foodItemId));
         return {
           ...item,
-          name: foodItem ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName) : 'Unknown',
+          name: foodItem
+            ? (item.quantity === 1 ? foodItem.singularName : foodItem.pluralName)
+            : (item.name && item.name !== 'Unknown' ? item.name : 'Unknown'),
           // Preserve per-list unit if present; fall back to foodItem unit, then 'piece'
           unit: item.unit ?? foodItem?.unit ?? 'piece'
         };
