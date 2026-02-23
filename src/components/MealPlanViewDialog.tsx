@@ -541,9 +541,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                   &bull;{' '}
                                   <Box
                                     component="a"
-                                    href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${staple.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href={`/recipes/${staple.id}`}
                                     sx={recipeLinkSx}
                                   >
                                     {staple.name}
@@ -707,9 +705,7 @@ const MealPlanViewDialog: React.FC<MealPlanViewDialogProps> = ({
                                                 &bull;{' '}
                                                 <Box
                                                   component="a"
-                                                  href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${mealItem.id}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
+                                                  href={`/recipes/${mealItem.id}`}
                                                   sx={recipeLinkSx}
                                                 >
                                                   {mealItem.name}

@@ -400,9 +400,7 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
                             {ingredient.type === 'recipe' ? (
                               <Box
                                 component="a"
-                                href={`/recipes?viewRecipe=true&viewRecipe_recipeId=${ingredient.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href={`/recipes/${ingredient.id}`}
                                 sx={recipeLinkSx}
                               >
                                 {getIngredientName(ingredient)}

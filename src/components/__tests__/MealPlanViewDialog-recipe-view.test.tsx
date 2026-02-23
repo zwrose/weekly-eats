@@ -91,9 +91,8 @@ describe('MealPlanViewDialog - Recipe View Feature', () => {
       expect(recipeLink).toBeInTheDocument();
       expect(recipeLink).toHaveAttribute(
         'href',
-        '/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-123'
+        '/recipes/recipe-123'
       );
-      expect(recipeLink).toHaveAttribute('target', '_blank');
     });
 
     it('renders food items as plain text (not clickable)', () => {
@@ -121,7 +120,7 @@ describe('MealPlanViewDialog - Recipe View Feature', () => {
       });
       expect(recipeLink).toHaveAttribute(
         'href',
-        '/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-123'
+        '/recipes/recipe-123'
       );
     });
 
@@ -164,7 +163,7 @@ describe('MealPlanViewDialog - Recipe View Feature', () => {
       });
       expect(recipeLink).toHaveAttribute(
         'href',
-        '/recipes?viewRecipe=true&viewRecipe_recipeId=recipe-456'
+        '/recipes/recipe-456'
       );
     });
   });
