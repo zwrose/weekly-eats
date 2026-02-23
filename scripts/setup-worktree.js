@@ -11,8 +11,9 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
@@ -112,8 +113,9 @@ function generateEnvLocal(mainWorktreePath, branchName) {
  * Clone the main database to the worktree database using mongodump/mongorestore.
  */
 function cloneDatabase(mainWorktreePath, dbName) {
-  const hasMongodump = spawnSync('which', ['mongodump'], { encoding: 'utf8' }).status === 0;
-  const hasMongorestore = spawnSync('which', ['mongorestore'], { encoding: 'utf8' }).status === 0;
+  const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+  const hasMongodump = spawnSync(whichCmd, ['mongodump'], { encoding: 'utf8', shell: true }).status === 0;
+  const hasMongorestore = spawnSync(whichCmd, ['mongorestore'], { encoding: 'utf8', shell: true }).status === 0;
 
   if (!hasMongodump || !hasMongorestore) {
     console.warn('Warning: mongodump/mongorestore not found. Skipping database clone.');
@@ -128,12 +130,13 @@ function cloneDatabase(mainWorktreePath, dbName) {
 
   console.log("Cloning database '" + mainDbName + "' -> '" + dbName + "'...");
 
-  const tmpDir = execSync('mktemp -d', { encoding: 'utf8' }).trim();
+  const tmpDir = mkdtempSync(join(tmpdir(), 'weekly-eats-'));
 
   try {
     const dumpResult = spawnSync('mongodump', ['--db', mainDbName, '--out', tmpDir, '--quiet'], {
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
+      shell: true
     });
 
     if (dumpResult.status !== 0) {
@@ -141,9 +144,10 @@ function cloneDatabase(mainWorktreePath, dbName) {
       return;
     }
 
-    const restoreResult = spawnSync('mongorestore', ['--db', dbName, tmpDir + '/' + mainDbName, '--quiet', '--drop'], {
+    const restoreResult = spawnSync('mongorestore', ['--db', dbName, join(tmpDir, mainDbName), '--quiet', '--drop'], {
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
+      shell: true
     });
 
     if (restoreResult.status !== 0) {
@@ -153,7 +157,7 @@ function cloneDatabase(mainWorktreePath, dbName) {
     }
   } finally {
     try {
-      execSync('rm -rf ' + JSON.stringify(tmpDir));
+      rmSync(tmpDir, { recursive: true, force: true });
     } catch { /* ignore cleanup errors */ }
   }
 }

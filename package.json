@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rm -rf .next",
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "dev": "node scripts/dev-server.js",
     "dev:fast": "node scripts/dev-server.js --skip-setup",
     "dev:clean": "npm run clean && npm run dev",
@@ -16,7 +16,7 @@
     "test": "vitest run --run --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "test:watch": "vitest",
     "test:coverage": "vitest run --run --coverage --pool=forks --poolOptions.forks.singleFork=true --isolate",
-    "check": "npm run lint -- --max-warnings=0 && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run test:coverage && MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npm run build",
+    "check": "npm run lint -- --max-warnings=0 && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run test:coverage && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run build",
     "worktree:remove": "node scripts/worktree-remove.js"
   },
   "dependencies": {
@@ -57,6 +57,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/coverage-v8": "^3.2.4",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.9",
     "jsdom": "^26.1.0",

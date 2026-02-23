@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, configure } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SessionProvider } from 'next-auth/react';
+
+// MealPlansPage tests go through multiple async state transitions
+// (fetchMealPlan resolve → setSelectedMealPlan → setEditMode → re-render)
+// which can exceed the default 1000ms waitFor timeout under CPU contention.
+configure({ asyncUtilTimeout: 3000 });
 
 // Mock next-auth
 vi.mock('next-auth/react', async () => {
