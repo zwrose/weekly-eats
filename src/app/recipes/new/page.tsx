@@ -18,20 +18,12 @@ import { ArrowBack, EmojiEmotions, Public, Person } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { CompactInput } from '@/components/ui';
-import { CreateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
-import { createRecipe } from '@/lib/recipe-utils';
+import { CreateRecipeRequest, FoodItemOption } from '@/types/recipe';
+import { createRecipe, filterBlankIngredients, hasValidIngredients } from '@/lib/recipe-utils';
 import { fetchFoodItems } from '@/lib/food-items-utils';
 
 const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients'), { ssr: false });
 const EmojiPicker = dynamic(() => import('@/components/EmojiPicker'), { ssr: false });
-
-interface FoodItemOption {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
 
 function NewRecipeContent() {
   const { data: session, status } = useSession();
@@ -91,26 +83,6 @@ function NewRecipeContent() {
       ...newFoodItem,
     };
     setFoodItemsList((prev) => [...prev, foodItemWithId]);
-  };
-
-  const filterBlankIngredients = (ingredients: RecipeIngredientList[]) => {
-    return ingredients.map((list) => ({
-      ...list,
-      ingredients: list.ingredients.filter(
-        (ingredient) => ingredient.id && ingredient.id.trim() !== '',
-      ),
-    }));
-  };
-
-  const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
-    const totalIngredients = ingredients.reduce(
-      (total, group) => total + (group.ingredients?.length || 0),
-      0,
-    );
-    if (totalIngredients === 0) return false;
-    return ingredients.every(
-      (group) => group.isStandalone || (group.title && group.title.trim() !== ''),
-    );
   };
 
   const handleCreateRecipe = async () => {
@@ -191,6 +163,7 @@ function NewRecipeContent() {
             >
               <IconButton
                 onClick={() => setEmojiPickerOpen(true)}
+                aria-label="Choose emoji"
                 sx={{
                   border: '1px solid',
                   borderColor: 'divider',

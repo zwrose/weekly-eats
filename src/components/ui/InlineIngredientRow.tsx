@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { Box, IconButton, TextField } from '@mui/material';
 import { Delete, Add, ExpandMore, ExpandLess } from '@mui/icons-material';
-import { RecipeIngredient } from '@/types/recipe';
+import { RecipeIngredient, FoodItemOption } from '@/types/recipe';
 import { SearchOption } from '@/lib/hooks/use-food-item-selector';
 import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
 import { useQuantityInput } from '@/lib/hooks/use-quantity-input';
@@ -12,19 +12,12 @@ import QuantityInput from '@/components/food-item-inputs/QuantityInput';
 import UnitSelector from '@/components/food-item-inputs/UnitSelector';
 import type { Recipe } from '@/lib/hooks/use-food-item-selector';
 
-interface FoodItemOption {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
-
 interface InlineIngredientRowProps {
   ingredient: RecipeIngredient;
   onIngredientChange: (ingredient: RecipeIngredient) => void;
   onRemove: () => void;
   foodItems?: FoodItemOption[];
+  recipes?: Recipe[];
   onFoodItemAdded?: (newFoodItem: {
     _id?: string;
     name: string;
@@ -35,7 +28,6 @@ interface InlineIngredientRowProps {
   }) => Promise<void>;
   currentRecipeId?: string;
   selectedIds?: string[];
-  slotId: string;
   autoFocus?: boolean;
   allowPrepInstructions?: boolean;
 }
@@ -46,32 +38,18 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
     onIngredientChange,
     onRemove,
     foodItems: propFoodItems,
+    recipes = [],
     onFoodItemAdded,
     currentRecipeId,
     selectedIds = [],
     autoFocus = false,
     allowPrepInstructions = true,
   }) {
-    const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [prepExpanded, setPrepExpanded] = useState(!!ingredient.prepInstructions);
     const userExpandedPrep = useRef(false);
 
-    // Load recipes on mount
-    React.useEffect(() => {
-      const loadRecipes = async () => {
-        try {
-          const recipeRes = await fetch('/api/recipes?limit=1000');
-          const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
-          setRecipes(Array.isArray(recipesJson) ? recipesJson : recipesJson.data || []);
-        } catch (error) {
-          console.error('Error loading recipes:', error);
-        }
-      };
-      loadRecipes();
-    }, []);
-
-    // Use food item creator hook
-    const creator = useFoodItemCreator({
+    // Use food item creator hook for side effects (item creation flow)
+    useFoodItemCreator({
       onFoodItemAdded: onFoodItemAdded
         ? async (item) => {
             const convertedItem = {

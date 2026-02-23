@@ -1,7 +1,6 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { Session } from 'next-auth';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import {
@@ -31,8 +30,8 @@ import {
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
-import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
-import { fetchRecipe, updateRecipe, deleteRecipe } from '@/lib/recipe-utils';
+import { Recipe, UpdateRecipeRequest, RecipeIngredientList, FoodItemOption } from '@/types/recipe';
+import { fetchRecipe, updateRecipe, deleteRecipe, filterBlankIngredients, hasValidIngredients } from '@/lib/recipe-utils';
 import { fetchFoodItems } from '@/lib/food-items-utils';
 import { getUnitForm } from '@/lib/food-items-utils';
 import {
@@ -65,20 +64,13 @@ const recipeLinkSx = {
   },
 } as const;
 
-interface FoodItemOption {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
-
 function RecipeDetailContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const recipeId = params.id as string;
+  const rawId = params.id;
+  const recipeId = Array.isArray(rawId) ? rawId[0] : rawId ?? '';
 
   const isEditMode = searchParams.get('edit') === 'true';
 
@@ -140,12 +132,13 @@ function RecipeDetailContent() {
 
       // Determine access level from the fetched recipe
       if ('accessLevel' in fetchedRecipe) {
-        setAccessLevel(
-          (fetchedRecipe as Recipe & { accessLevel: string }).accessLevel as
-            | 'private'
-            | 'shared-by-you'
-            | 'shared-by-others',
-        );
+        const rawRecipe = fetchedRecipe as Record<string, unknown>;
+        if (typeof rawRecipe.accessLevel === 'string') {
+          const al = rawRecipe.accessLevel;
+          if (al === 'private' || al === 'shared-by-you' || al === 'shared-by-others') {
+            setAccessLevel(al);
+          }
+        }
       }
 
       // If edit mode, initialize editing state
@@ -310,32 +303,12 @@ function RecipeDetailContent() {
     setEditingRecipe({ ...editingRecipe, emoji });
   };
 
-  const filterBlankIngredients = (ingredients: RecipeIngredientList[]) => {
-    return ingredients.map((list) => ({
-      ...list,
-      ingredients: list.ingredients.filter(
-        (ingredient) => ingredient.id && ingredient.id.trim() !== '',
-      ),
-    }));
-  };
-
   const handleIngredientsChange = (ingredients: RecipeIngredientList[]) => {
     setEditingRecipe({ ...editingRecipe, ingredients });
   };
 
-  const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
-    const totalIngredients = ingredients.reduce(
-      (total, group) => total + (group.ingredients?.length || 0),
-      0,
-    );
-    if (totalIngredients === 0) return false;
-    return ingredients.every(
-      (group) => group.isStandalone || (group.title && group.title.trim() !== ''),
-    );
-  };
-
   const canEditRecipe = (r: Recipe) => {
-    return r.createdBy === (session?.user as Session['user'])?.id;
+    return r.createdBy === userId;
   };
 
   // ── Tags and rating handlers ──
@@ -444,7 +417,7 @@ function RecipeDetailContent() {
             </Button>
             <Box sx={{ flex: 1 }} />
             {!editMode && canEditRecipe(recipe) && (
-              <IconButton onClick={handleEnterEditMode} color="inherit" size="small">
+              <IconButton onClick={handleEnterEditMode} color="inherit" size="small" aria-label="Edit recipe">
                 <Edit />
               </IconButton>
             )}
@@ -464,6 +437,7 @@ function RecipeDetailContent() {
               >
                 <IconButton
                   onClick={() => emojiPickerDialog.openDialog()}
+                  aria-label="Choose emoji"
                   sx={{
                     border: '1px solid',
                     borderColor: 'divider',

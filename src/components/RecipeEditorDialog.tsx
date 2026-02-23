@@ -13,19 +13,11 @@ import {
   Button,
 } from '@mui/material';
 import { EmojiEmotions, Public, Person } from '@mui/icons-material';
-import { CreateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
+import { CreateRecipeRequest, RecipeIngredientList, FoodItemOption } from '@/types/recipe';
 import { responsiveDialogStyle } from '@/lib/theme';
 import { DialogActions, DialogTitle } from '@/components/ui';
 
 const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients'), { ssr: false });
-
-interface FoodItemOption {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
 
 export interface RecipeEditorDialogProps {
   open: boolean;

@@ -1,22 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Button, Typography, Alert, IconButton, Paper } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
-import { RecipeIngredientList, RecipeIngredient } from '../types/recipe';
+import { RecipeIngredientList, RecipeIngredient, FoodItemOption } from '../types/recipe';
 import { InlineIngredientRow } from './ui/InlineIngredientRow';
 import { CompactInput } from './ui/CompactInput';
+import type { Recipe } from '@/lib/hooks/use-food-item-selector';
 
 interface RecipeIngredientsProps {
   ingredients: RecipeIngredientList[];
   onChange: (ingredients: RecipeIngredientList[]) => void;
-  foodItems?: Array<{
-    _id: string;
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-  }>;
+  foodItems?: FoodItemOption[];
   onFoodItemAdded?: (newFoodItem: {
     name: string;
     singularName: string;
@@ -77,6 +72,22 @@ export default function RecipeIngredients({
   emptyNoGroupsText = 'No ingredients added yet. Click "Add Ingredient" to get started.',
 }: RecipeIngredientsProps) {
   const [error, setError] = useState('');
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+
+  // Load recipes once for all ingredient rows
+  const loadRecipes = useCallback(async () => {
+    try {
+      const recipeRes = await fetch('/api/recipes?limit=1000');
+      const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
+      setRecipes(Array.isArray(recipesJson) ? recipesJson : recipesJson.data || []);
+    } catch (err) {
+      console.error('Error loading recipes:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecipes();
+  }, [loadRecipes]);
 
   // Ensure we always have at least one group or standalone ingredients
   useEffect(() => {
@@ -283,9 +294,9 @@ export default function RecipeIngredients({
                 handleRemoveIngredient(0, index);
               }}
               foodItems={foodItems}
+              recipes={recipes}
               onFoodItemAdded={onFoodItemAdded}
               selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
-              slotId={`standalone-${index}`}
             />
           ))}
 
@@ -367,9 +378,9 @@ export default function RecipeIngredients({
                   }
                   onRemove={() => handleRemoveIngredient(groupIndex, ingredientIndex)}
                   foodItems={foodItems}
+                  recipes={recipes}
                   onFoodItemAdded={onFoodItemAdded}
                   selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
-                  slotId={`group-${groupIndex}-${ingredientIndex}`}
                 />
               ))}
 

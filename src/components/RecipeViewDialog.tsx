@@ -22,7 +22,7 @@ import {
   RestaurantMenu,
 } from '@mui/icons-material';
 import { Chip } from '@mui/material';
-import { Recipe, UpdateRecipeRequest, RecipeIngredientList } from '@/types/recipe';
+import { Recipe, UpdateRecipeRequest, RecipeIngredientList, FoodItemOption } from '@/types/recipe';
 import { getUnitForm } from '@/lib/food-items-utils';
 import { responsiveDialogStyle } from '@/lib/theme';
 import { DialogTitle } from '@/components/ui';
@@ -45,14 +45,6 @@ const recipeLinkSx = {
     textDecorationColor: 'currentcolor',
   },
 } as const;
-
-interface FoodItemOption {
-  _id: string;
-  name: string;
-  singularName: string;
-  pluralName: string;
-  unit: string;
-}
 
 export interface RecipeViewDialogProps {
   open: boolean;
