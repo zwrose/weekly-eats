@@ -1,8 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useCallback } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -14,6 +13,7 @@ import {
   ListItemText,
   Divider,
   Box,
+  IconButton,
 } from '@mui/material';
 import { CachedAvatar } from './CachedAvatar';
 import {
@@ -21,9 +21,6 @@ import {
   Logout,
   Person,
   FormatListBulleted,
-  CalendarMonth,
-  ShoppingCart,
-  Restaurant,
   Kitchen,
 } from '@mui/icons-material';
 import SessionWrapper from './SessionWrapper';
@@ -34,13 +31,6 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const sessionRef = useRef(session);
-
-  // Update ref when session changes
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
   useEffect(() => {
     // Redirect unapproved users to pending approval page
     if (session?.user && !session.user.isApproved && !session.user.isAdmin) {
@@ -106,66 +96,47 @@ export default function Header() {
         <AppBar
           position="sticky"
           color="default"
-          elevation={1}
+          elevation={0}
           sx={{ display: { xs: 'none', md: 'block' } }}
         >
-          <Toolbar>
-            {/* Mobile menu button is now replaced by bottom navigation */}
-
-            <Box
+          <Toolbar sx={{ minHeight: '48px !important' }}>
+            <Typography
+              component="div"
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
+                fontSize: '14px',
+                fontWeight: 600,
                 cursor: 'pointer',
                 userSelect: 'none',
-                flexGrow: 1,
+                color: 'text.primary',
+                mr: 2,
               }}
               onClick={handleNavMealPlans}
             >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                <Image
-                  src="/icon0.svg"
-                  alt="Weekly Eats"
-                  width={32}
-                  height={32}
-                  style={{ minWidth: 32, display: 'block' }}
-                  priority
-                />
-              </Box>
-              <Typography
-                variant="h4"
-                component="div"
-                sx={{
-                  fontWeight: 'bold',
-                }}
-              >
-                Weekly Eats
-              </Typography>
-            </Box>
+              Weekly Eats
+            </Typography>
 
             {/* Desktop Navigation */}
             <Box
               sx={{
                 display: { xs: 'none', md: 'flex' },
-                gap: 2,
-                ml: 4,
+                gap: 1,
                 flexGrow: 1,
               }}
             >
               <Button
                 onClick={handleNavMealPlans}
-                startIcon={<CalendarMonth sx={{ color: 'primary.main' }} />}
                 sx={{
                   textTransform: 'none',
                   color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/meal-plans' ? '3px solid #1976d2' : 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  borderBottom: pathname === '/meal-plans' ? '2px solid #5b9bd5' : '2px solid transparent',
                   borderRadius: 0,
+                  px: 1.5,
+                  py: 0.75,
+                  minHeight: 'auto',
                   '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #1976d2',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
                   },
                 }}
               >
@@ -173,17 +144,18 @@ export default function Header() {
               </Button>
               <Button
                 onClick={handleNavShoppingLists}
-                startIcon={<ShoppingCart sx={{ color: '#2e7d32' }} />}
                 sx={{
                   textTransform: 'none',
                   color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/shopping-lists' ? '3px solid #2e7d32' : 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  borderBottom: pathname === '/shopping-lists' ? '2px solid #6baf7b' : '2px solid transparent',
                   borderRadius: 0,
+                  px: 1.5,
+                  py: 0.75,
+                  minHeight: 'auto',
                   '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #2e7d32',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
                   },
                 }}
               >
@@ -191,17 +163,18 @@ export default function Header() {
               </Button>
               <Button
                 onClick={handleNavRecipes}
-                startIcon={<Restaurant sx={{ color: '#ed6c02' }} />}
                 sx={{
                   textTransform: 'none',
                   color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/recipes' ? '3px solid #ed6c02' : 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  borderBottom: pathname === '/recipes' ? '2px solid #d4915e' : '2px solid transparent',
                   borderRadius: 0,
+                  px: 1.5,
+                  py: 0.75,
+                  minHeight: 'auto',
                   '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #ed6c02',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
                   },
                 }}
               >
@@ -209,17 +182,18 @@ export default function Header() {
               </Button>
               <Button
                 onClick={handleNavPantry}
-                startIcon={<Kitchen sx={{ color: '#9c27b0' }} />}
                 sx={{
                   textTransform: 'none',
                   color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/pantry' ? '3px solid #9c27b0' : 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  borderBottom: pathname === '/pantry' ? '2px solid #a87bb5' : '2px solid transparent',
                   borderRadius: 0,
+                  px: 1.5,
+                  py: 0.75,
+                  minHeight: 'auto',
                   '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #9c27b0',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
                   },
                 }}
               >
@@ -228,31 +202,19 @@ export default function Header() {
             </Box>
 
             {/* Desktop user menu - hidden on mobile where bottom nav is used */}
-            <Button
+            <IconButton
               onClick={handleMenu}
               sx={{
-                textTransform: 'none',
-                color: 'inherit',
                 display: { xs: 'none', md: 'flex' },
-                alignItems: 'center',
-                gap: 1,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                },
+                p: 0.5,
               }}
             >
               <CachedAvatar
                 src={session.user.image}
                 alt={session.user.name || 'Profile'}
-                sx={{ width: 32, height: 32 }}
+                sx={{ width: 28, height: 28 }}
               />
-              <Typography variant="body1" color="text.secondary">
-                {session.user.name}
-              </Typography>
-            </Button>
+            </IconButton>
 
             {/* Desktop User Menu */}
             <Menu
@@ -270,6 +232,17 @@ export default function Header() {
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
+              <MenuItem disabled sx={{ opacity: '1 !important' }}>
+                <ListItemText
+                  primary={session.user.name}
+                  primaryTypographyProps={{
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    color: 'text.primary',
+                  }}
+                />
+              </MenuItem>
+              <Divider />
               <MenuItem onClick={handlePantry}>
                 <ListItemIcon>
                   <Kitchen fontSize="small" />

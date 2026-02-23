@@ -28,8 +28,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       <Box
         component="main"
         sx={{
-          pt: { xs: 2, md: 3 }, // Top padding on mobile matches side padding
-          pb: { xs: 10, md: 3 }, // Extra padding on mobile to account for bottom nav
+          pt: { xs: 1.5, md: 2 },
+          pb: { xs: 7, md: 2 },
+          px: { xs: 1.5, md: 3 },
         }}
       >
         {children}
