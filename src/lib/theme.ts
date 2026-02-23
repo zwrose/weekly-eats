@@ -3,20 +3,21 @@ import { createTheme, ThemeOptions } from '@mui/material/styles';
 // Linear-style dense, polished aesthetic
 const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
   const isDark = mode === 'dark';
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
 
   return {
     palette: {
       mode,
       primary: {
         main: '#5b9bd5',
-        light: isDark ? '#7db3e0' : '#7db3e0',
-        dark: isDark ? '#4a87bd' : '#4a87bd',
+        light: '#7db3e0',
+        dark: '#4a87bd',
         contrastText: '#ffffff',
       },
       secondary: {
         main: '#d4915e',
-        light: isDark ? '#e0a87a' : '#e0a87a',
-        dark: isDark ? '#b87a4a' : '#b87a4a',
+        light: '#e0a87a',
+        dark: '#b87a4a',
         contrastText: '#ffffff',
       },
       background: {
@@ -28,7 +29,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
         secondary: isDark ? '#8a8a8a' : '#6b6b6b',
         disabled: isDark ? '#5a5a5a' : '#9e9e9e',
       },
-      divider: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)',
+      divider: borderColor,
       error: {
         main: isDark ? '#e57373' : '#d32f2f',
       },
@@ -77,7 +78,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
         fontSize: '0.8125rem',
         fontWeight: 600,
         lineHeight: 1.4,
-        textTransform: 'uppercase' as const,
+        textTransform: 'uppercase',
         letterSpacing: '0.04em',
       },
       body1: {
@@ -97,7 +98,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
       },
       button: {
         fontSize: '0.8125rem',
-        textTransform: 'none' as const,
+        textTransform: 'none',
         fontWeight: 500,
       },
     },
@@ -136,7 +137,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
           root: {
             boxShadow: 'none',
             borderRadius: 8,
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+            border: `1px solid ${borderColor}`,
           },
         },
       },
@@ -152,7 +153,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
         styleOverrides: {
           root: {
             boxShadow: 'none',
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+            borderBottom: `1px solid ${borderColor}`,
           },
         },
       },
