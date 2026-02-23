@@ -145,6 +145,9 @@ src/
 - **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
 - **`globals.css`**: Exists in `src/app/` for base resets only. All component styling uses MUI `sx` prop.
 - **Fetch mocking**: Use `vi.stubGlobal('fetch', mockFetch)` in `beforeEach` + `vi.unstubAllGlobals()` in `afterEach`. Never assign `global.fetch` at module scope — it leaks across test files in single-fork vitest. Tests using MSW (from `vitest.setup.ts`) should NOT stub `global.fetch`.
+- **Windows environment**: This project may be developed on Windows. If a command fails with `ENOENT` or `command not found`, the issue is likely Windows-specific (e.g., `spawn('npx', ...)` needs `shell: true` or `.cmd` extension on Windows). Work with the user to troubleshoot cross-platform differences.
+- **MongoDB CLI tools on Windows**: `mongodump`/`mongorestore` are not bundled with MongoDB — install separately via [MongoDB Database Tools](https://www.mongodb.com/try/download/database-tools). Without them, worktree DB clone is skipped during `npm install`. Fallback: use the Node.js MongoDB driver to copy collections between databases.
+- **Preview vs Chrome extension**: The Claude Preview tool only supports localhost URLs — external redirects (e.g., Google OAuth to `accounts.google.com`) are blocked. Prefer the **Claude in Chrome** extension for testing auth flows and any interaction that involves external domains. Use Preview for quick layout/styling checks only.
 
 ## Claude Code Automations
 
