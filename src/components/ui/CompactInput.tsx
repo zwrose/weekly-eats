@@ -20,6 +20,7 @@ interface CompactInputProps {
   rows?: number;
   error?: boolean;
   helperText?: string;
+  autoFocus?: boolean;
 }
 
 export const CompactInput: React.FC<CompactInputProps> = React.memo(
@@ -39,6 +40,7 @@ export const CompactInput: React.FC<CompactInputProps> = React.memo(
     rows,
     error = false,
     helperText,
+    autoFocus = false,
   }) {
     return (
       <Box
@@ -73,6 +75,7 @@ export const CompactInput: React.FC<CompactInputProps> = React.memo(
           type={type}
           name={name}
           autoComplete={autoComplete}
+          autoFocus={autoFocus}
           multiline={multiline}
           rows={rows}
           fullWidth={fullWidth}

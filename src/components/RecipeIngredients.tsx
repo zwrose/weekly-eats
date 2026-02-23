@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Alert } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Box, Button, Typography, Alert, IconButton, Paper } from '@mui/material';
+import { Add, Delete } from '@mui/icons-material';
 import { RecipeIngredientList, RecipeIngredient } from '../types/recipe';
-import IngredientInput from './IngredientInput';
-import IngredientGroup from './IngredientGroup';
+import { InlineIngredientRow } from './ui/InlineIngredientRow';
+import { CompactInput } from './ui/CompactInput';
 
 interface RecipeIngredientsProps {
   ingredients: RecipeIngredientList[];
@@ -32,6 +32,40 @@ interface RecipeIngredientsProps {
   removeIngredientButtonText?: string;
 }
 
+const columnHeadersSx = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 0.5,
+  px: 0.5,
+  mb: 0.5,
+} as const;
+
+const columnLabelSx = {
+  fontSize: '0.6875rem',
+  fontWeight: 500,
+  color: 'text.secondary',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.04em',
+} as const;
+
+function ColumnHeaders() {
+  return (
+    <Box sx={columnHeadersSx}>
+      <Box sx={{ flex: '1 1 55%', minWidth: 0 }}>
+        <Typography sx={columnLabelSx}>Item</Typography>
+      </Box>
+      <Box sx={{ flex: '0 0 auto', width: { xs: 60, sm: 80 } }}>
+        <Typography sx={columnLabelSx}>Qty</Typography>
+      </Box>
+      <Box sx={{ flex: '0 0 auto', width: { xs: 90, sm: 140 } }}>
+        <Typography sx={columnLabelSx}>Unit</Typography>
+      </Box>
+      {/* Spacer for prep + delete icon columns */}
+      <Box sx={{ flex: '0 0 auto', width: 60 }} />
+    </Box>
+  );
+}
+
 export default function RecipeIngredients({
   ingredients,
   onChange,
@@ -41,7 +75,6 @@ export default function RecipeIngredients({
   addIngredientGroupButtonText = 'Add Ingredient Group',
   emptyGroupText = 'No ingredients in this group. Click "Add Ingredient" to get started.',
   emptyNoGroupsText = 'No ingredients added yet. Click "Add Ingredient" to get started.',
-  removeIngredientButtonText = 'Remove Ingredient',
 }: RecipeIngredientsProps) {
   const [error, setError] = useState('');
 
@@ -78,7 +111,7 @@ export default function RecipeIngredients({
               };
               onChange([newStandaloneGroup]);
             }}
-            variant="outlined"
+            variant="text"
             size="small"
             sx={{ mt: 1 }}
           >
@@ -139,6 +172,21 @@ export default function RecipeIngredients({
     }
   };
 
+  const handleAddIngredientToGroup = (groupIndex: number) => {
+    const newIngredient: RecipeIngredient = {
+      type: 'foodItem',
+      id: '',
+      quantity: 1,
+      unit: 'cup',
+    };
+    const updatedIngredients = [...ingredients];
+    updatedIngredients[groupIndex] = {
+      ...updatedIngredients[groupIndex],
+      ingredients: [...updatedIngredients[groupIndex].ingredients, newIngredient],
+    };
+    onChange(updatedIngredients);
+  };
+
   const handleAddGroup = () => {
     const newGroup: RecipeIngredientList = {
       title: '',
@@ -174,9 +222,33 @@ export default function RecipeIngredients({
     onChange(newIngredients);
   };
 
-  const handleGroupChange = (groupIndex: number, updatedGroup: RecipeIngredientList) => {
+  const handleGroupTitleChange = (groupIndex: number, title: string) => {
     const newIngredients = [...ingredients];
-    newIngredients[groupIndex] = updatedGroup;
+    newIngredients[groupIndex] = { ...newIngredients[groupIndex], title };
+    onChange(newIngredients);
+  };
+
+  const handleIngredientChange = (
+    groupIndex: number,
+    ingredientIndex: number,
+    updatedIngredient: RecipeIngredient
+  ) => {
+    const newIngredients = [...ingredients];
+    newIngredients[groupIndex] = {
+      ...newIngredients[groupIndex],
+      ingredients: newIngredients[groupIndex].ingredients.map((ing, i) =>
+        i === ingredientIndex ? updatedIngredient : ing
+      ),
+    };
+    onChange(newIngredients);
+  };
+
+  const handleRemoveIngredient = (groupIndex: number, ingredientIndex: number) => {
+    const newIngredients = [...ingredients];
+    newIngredients[groupIndex] = {
+      ...newIngredients[groupIndex],
+      ingredients: newIngredients[groupIndex].ingredients.filter((_, i) => i !== ingredientIndex),
+    };
     onChange(newIngredients);
   };
 
@@ -197,41 +269,30 @@ export default function RecipeIngredients({
       {isStandaloneMode ? (
         // Standalone mode - single group without title
         <Box>
+          {ingredients[0].ingredients.length > 0 && <ColumnHeaders />}
+
           {ingredients[0].ingredients.map((ingredient, index) => (
-            <IngredientInput
+            <InlineIngredientRow
               key={index}
               ingredient={ingredient}
               autoFocus={!ingredient.id || ingredient.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
-                const newIngredients = [...ingredients];
-                newIngredients[0] = {
-                  ...newIngredients[0],
-                  ingredients: newIngredients[0].ingredients.map((ing, i) =>
-                    i === index ? updatedIngredient : ing
-                  ),
-                };
-                onChange(newIngredients);
+                handleIngredientChange(0, index, updatedIngredient);
               }}
               onRemove={() => {
-                const newIngredients = [...ingredients];
-                newIngredients[0] = {
-                  ...newIngredients[0],
-                  ingredients: newIngredients[0].ingredients.filter((_, i) => i !== index),
-                };
-                onChange(newIngredients);
+                handleRemoveIngredient(0, index);
               }}
               foodItems={foodItems}
               onFoodItemAdded={onFoodItemAdded}
               selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
               slotId={`standalone-${index}`}
-              removeButtonText={removeIngredientButtonText}
             />
           ))}
 
           <Button
             startIcon={<Add />}
             onClick={handleAddIngredient}
-            variant="outlined"
+            variant="text"
             size="small"
             sx={{
               mt: 1,
@@ -248,7 +309,7 @@ export default function RecipeIngredients({
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
-            <Button onClick={handleConvertToGroups} variant="outlined" size="small">
+            <Button onClick={handleConvertToGroups} variant="text" size="small">
               Convert to Groups
             </Button>
           </Box>
@@ -257,17 +318,97 @@ export default function RecipeIngredients({
         // Group mode - multiple groups with titles
         <Box>
           {ingredients.map((group, groupIndex) => (
-            <IngredientGroup
+            <Paper
               key={groupIndex}
-              group={group}
-              onChange={(updatedGroup) => handleGroupChange(groupIndex, updatedGroup)}
-              onRemove={() => handleRemoveGroup(groupIndex)}
-              foodItems={foodItems}
-              onFoodItemAdded={onFoodItemAdded}
-              addIngredientButtonText={addIngredientButtonText}
-              emptyGroupText={emptyGroupText}
-              removeIngredientButtonText={removeIngredientButtonText}
-            />
+              sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider' }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ flex: 1, mr: 2 }}>
+                  <CompactInput
+                    placeholder="Group title (required)"
+                    value={group.title || ''}
+                    onChange={(e) => handleGroupTitleChange(groupIndex, e.target.value)}
+                    required
+                    error={!group.title || group.title.trim() === ''}
+                    helperText={
+                      !group.title || group.title.trim() === '' ? 'Group title is required' : ''
+                    }
+                  />
+                </Box>
+                <IconButton
+                  onClick={() => handleRemoveGroup(groupIndex)}
+                  color="error"
+                  size="small"
+                  sx={{
+                    display: { xs: 'none', sm: 'flex' },
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <Delete />
+                </IconButton>
+              </Box>
+
+              {group.ingredients.length > 0 && <ColumnHeaders />}
+
+              {group.ingredients.map((ingredient, ingredientIndex) => (
+                <InlineIngredientRow
+                  key={ingredientIndex}
+                  ingredient={ingredient}
+                  autoFocus={!ingredient.id || ingredient.id.trim() === ''}
+                  onIngredientChange={(updatedIngredient) =>
+                    handleIngredientChange(groupIndex, ingredientIndex, updatedIngredient)
+                  }
+                  onRemove={() => handleRemoveIngredient(groupIndex, ingredientIndex)}
+                  foodItems={foodItems}
+                  onFoodItemAdded={onFoodItemAdded}
+                  selectedIds={getAllSelectedIds().filter((id) => id !== ingredient.id)}
+                  slotId={`group-${groupIndex}-${ingredientIndex}`}
+                />
+              ))}
+
+              <Button
+                startIcon={<Add />}
+                onClick={() => handleAddIngredientToGroup(groupIndex)}
+                variant="text"
+                size="small"
+                sx={{
+                  mt: 1,
+                  width: { xs: '100%', sm: 'auto' },
+                }}
+              >
+                {addIngredientButtonText}
+              </Button>
+
+              {group.ingredients.length === 0 && (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                  {emptyGroupText}
+                </Typography>
+              )}
+
+              {/* Mobile remove group button */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button
+                  onClick={() => handleRemoveGroup(groupIndex)}
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Delete />}
+                  sx={{
+                    display: { xs: 'flex', sm: 'none' },
+                    width: '100%',
+                  }}
+                >
+                  Remove Group
+                </Button>
+              </Box>
+            </Paper>
           ))}
 
           {ingredients.length === 0 && (
@@ -277,7 +418,7 @@ export default function RecipeIngredients({
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
-            <Button onClick={handleAddGroup} variant="outlined" size="small">
+            <Button onClick={handleAddGroup} variant="text" size="small">
               {addIngredientGroupButtonText}
             </Button>
           </Box>
