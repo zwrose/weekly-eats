@@ -13,7 +13,7 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,12 +55,14 @@ if (resolve(worktreePath) === resolve(projectRoot)) {
 }
 
 // Drop MongoDB database
-const hasMongosh = spawnSync('which', ['mongosh'], { encoding: 'utf8' }).status === 0;
+const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+const hasMongosh = spawnSync(whichCmd, ['mongosh'], { encoding: 'utf8', shell: true }).status === 0;
 if (hasMongosh) {
   console.log("Dropping database '" + dbName + "'...");
   const dropResult = spawnSync('mongosh', ['--quiet', '--eval', "db.getSiblingDB('" + dbName + "').dropDatabase()"], {
     encoding: 'utf8',
-    stdio: 'pipe'
+    stdio: 'pipe',
+    shell: true
   });
   if (dropResult.status !== 0) {
     console.warn("Warning: Could not drop database. You may need to drop '" + dbName + "' manually.");
@@ -78,7 +80,7 @@ try {
   execSync('git worktree remove ' + JSON.stringify(worktreePath) + ' --force', { cwd: projectRoot, stdio: 'inherit' });
 } catch {
   console.warn('Warning: git worktree remove failed. Cleaning up manually...');
-  execSync('rm -rf ' + JSON.stringify(worktreePath), { cwd: projectRoot });
+  rmSync(worktreePath, { recursive: true, force: true });
 }
 
 execSync('git worktree prune', { cwd: projectRoot });

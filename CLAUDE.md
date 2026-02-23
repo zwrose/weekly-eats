@@ -138,8 +138,8 @@ src/
 
 ## Gotchas
 
-- **Build cache**: If `npm run check` fails with MODULE_NOT_FOUND, clear `.next` directory: `rm -rf .next`
-- **Dev server after build**: Turbopack dev server crashes with `Cannot find module 'chunks/ssr/[turbopack]_runtime.js'` after `npm run check` or `npm run build`. Fix: `rm -rf .next` then restart dev server.
+- **Build cache**: If `npm run check` fails with MODULE_NOT_FOUND, clear `.next` directory: `npm run clean`
+- **Dev server after build**: Turbopack dev server crashes with `Cannot find module 'chunks/ssr/[turbopack]_runtime.js'` after `npm run check` or `npm run build`. Fix: `npm run clean` then restart dev server.
 - **ESM project**: `package.json` has `"type": "module"`. Any standalone `.js` scripts need `.cjs` extension to use `require()`.
 - **Dynamic route params**: Next.js 15 params are async — use `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params;`
 - **Test environment**: Tests need fake env vars to avoid real DB connections: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true`
@@ -194,7 +194,21 @@ PreToolUse hooks block edits to protected files:
 
 - **`npm run check`** runs lint, test:coverage, and build in one command. Run it once — don't re-run individual steps after.
 - **Subagent test runs count.** If a subagent already confirmed tests pass, don't re-run the full suite. Only run `npm run check` once at the end as final validation.
-- **Investigating test failures:** Run the specific failing test in verbose mode (`npx vitest run path/to/test.tsx`) to confirm it reproduces. If it passes in isolation, it's a flaky test — note it and move on. Don't stash/checkout to test on prior commits (causes merge conflicts on branches with many changes).
+- **Investigating test failures:** Run the specific failing test in verbose mode (`npx vitest run path/to/test.tsx`) to confirm it reproduces. Don't stash/checkout to test on prior commits (causes merge conflicts on branches with many changes).
+- **Flaky tests must be fixed.** If a test passes in isolation but fails in the full suite, it has a real problem (timing, shared state, etc.) — fix it before moving on. Flaky tests block CI and merging.
+
+## Verification (UI Changes)
+
+- **Always use Chrome / "Claude in Chrome" MCP tools** for verifying UI changes — this app requires Google OAuth login, so Preview tools cannot access authenticated pages.
+- Preview tools (`preview_*`) may only be used for unauthenticated pages (landing page, sign-in screen).
+- For authenticated pages: use `mcp__Claude_in_Chrome__*` tools (screenshot, read_page, find, computer, etc.) to verify changes in a browser where the user is already signed in.
+
+## Windows Development
+
+- The project supports **native Windows** (PowerShell, cmd.exe) in addition to Unix/macOS.
+- All npm scripts use `cross-env` for environment variables — no Unix-only `VAR=x cmd` syntax.
+- All Node.js scripts use cross-platform APIs (`path.join`, `fs.rmSync`, `os.tmpdir`) — no `rm -rf`, `mktemp`, or `which`.
+- If adding new scripts: use Node.js built-in APIs for file operations, and `process.platform === 'win32'` for platform-specific command names.
 
 ## Do Not Edit
 

@@ -44,7 +44,7 @@ if (existsSync(envPath)) {
 
 console.log('Starting dev server on port ' + port + '...');
 
-const child = spawn('npx', ['next', 'dev', '--turbopack', '--port', String(port)], {
+const child = spawn(process.execPath, [resolve(projectRoot, 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '--turbopack', '--port', String(port)], {
   cwd: projectRoot,
   stdio: 'inherit',
   env: { ...process.env }
