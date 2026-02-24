@@ -135,7 +135,7 @@ describe('MealEditor', () => {
     );
 
     // Type a new food item name in the ingredient input
-    const input = screen.getByLabelText(/food item or recipe/i);
+    const input = screen.getByPlaceholderText(/food item or recipe/i);
     await user.type(input, 'Fresh Avocado');
 
     // Press Enter to open the add dialog
@@ -257,7 +257,7 @@ describe('MealEditor', () => {
     );
 
     // Type a new food item name
-    const input = screen.getByLabelText(/food item or recipe/i);
+    const input = screen.getByPlaceholderText(/food item or recipe/i);
     await user.type(input, 'Organic Blueberries');
 
     // Press Enter to open the add dialog
