@@ -3,6 +3,7 @@
 import { Box, CircularProgress, Container } from '@mui/material';
 import Header from './Header';
 import BottomNav from './BottomNav';
+import { PageTransition } from './PageTransition';
 import { useApprovalStatus } from '../lib/use-approval-status';
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           px: { xs: 1.5, md: 3 },
         }}
       >
-        {children}
+        <PageTransition>{children}</PageTransition>
       </Box>
       <BottomNav />
     </Box>

@@ -62,3 +62,31 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Micro-interaction feedback */
+@media (prefers-reduced-motion: no-preference) {
+  button:active {
+    transform: scale(0.97);
+  }
+
+  /* Checkbox animation */
+  .MuiCheckbox-root svg {
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .MuiCheckbox-root.Mui-checked svg {
+    animation: checkBounce var(--duration-normal) var(--ease-out);
+  }
+
+  @keyframes checkBounce {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.15);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+}
