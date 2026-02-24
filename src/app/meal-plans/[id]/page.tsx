@@ -49,6 +49,8 @@ const recipeLinkSx = {
   },
 } as const;
 
+const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner'];
+
 // Helper function to get meal type display name
 function getMealTypeName(mealType: string): string {
   if (mealType === 'staples') {
@@ -58,16 +60,16 @@ function getMealTypeName(mealType: string): string {
 }
 
 // Helper function to get days in order based on template start day
-function getDaysInOrder(startDay: string): string[] {
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[] {
+  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const startIndex = days.indexOf(startDay);
   return [...days.slice(startIndex), ...days.slice(0, startIndex)];
 }
 
 // Helper function to get the date for a specific day of week in the meal plan
-function getDateForDay(dayOfWeek: string, mealPlan: MealPlanWithTemplate): string {
+function getDateForDay(dayOfWeek: DayOfWeek, mealPlan: MealPlanWithTemplate): string {
   const startDate = parseLocalDate(mealPlan.startDate);
-  const targetDayIndex = dayOfWeekToIndex(dayOfWeek as DayOfWeek);
+  const targetDayIndex = dayOfWeekToIndex(dayOfWeek);
   const startDayIndex = dayOfWeekToIndex(mealPlan.template.startDay);
 
   let daysToAdd = targetDayIndex - startDayIndex;
@@ -291,8 +293,39 @@ function MealPlanDetailContent() {
     }
   };
 
+  // Helper to update a specific meal slot (find-or-create by dayOfWeek + mealType)
+  const updateMealSlot = useCallback(
+    (dayOfWeek: DayOfWeek, mealType: MealType, patch: Partial<MealPlanItem>, skipValidation?: boolean) => {
+      if (!mealPlan) return;
+      const updatedMealPlan = { ...mealPlan };
+      updatedMealPlan.items = [...updatedMealPlan.items];
+      const existingIndex = updatedMealPlan.items.findIndex(
+        (item) => item.dayOfWeek === dayOfWeek && item.mealType === mealType
+      );
+
+      if (existingIndex !== -1) {
+        updatedMealPlan.items[existingIndex] = {
+          ...updatedMealPlan.items[existingIndex],
+          ...patch,
+        };
+      } else {
+        updatedMealPlan.items.push({
+          _id: `temp-${Date.now()}`,
+          mealPlanId: mealPlan._id,
+          dayOfWeek,
+          mealType,
+          items: [],
+          ...patch,
+        });
+      }
+
+      updateMealPlanState(updatedMealPlan, skipValidation);
+    },
+    [mealPlan]
+  );
+
   // Check if a specific meal slot has content
-  const mealHasContent = (dayOfWeek: string, mealType: string): boolean => {
+  const mealHasContent = (dayOfWeek: DayOfWeek, mealType: MealType): boolean => {
     if (!mealPlan) return false;
     const mealPlanItem = mealPlan.items.find(
       (item) => item.dayOfWeek === dayOfWeek && item.mealType === mealType
@@ -440,31 +473,7 @@ function MealPlanDetailContent() {
                       mealPlan.items.find((item) => item.mealType === 'staples')?.items ?? []
                     }
                     onChange={(newStaples: MealItem[]) => {
-                      const updatedMealPlan = { ...mealPlan };
-                      const existingStaplesIndex = updatedMealPlan.items.findIndex(
-                        (item) => item.mealType === 'staples'
-                      );
-
-                      if (existingStaplesIndex !== -1) {
-                        updatedMealPlan.items = [...updatedMealPlan.items];
-                        updatedMealPlan.items[existingStaplesIndex] = {
-                          ...updatedMealPlan.items[existingStaplesIndex],
-                          items: newStaples,
-                        };
-                      } else {
-                        updatedMealPlan.items = [
-                          ...updatedMealPlan.items,
-                          {
-                            _id: `temp-${Date.now()}`,
-                            mealPlanId: mealPlan._id,
-                            dayOfWeek: 'saturday' as DayOfWeek,
-                            mealType: 'staples' as MealType,
-                            items: newStaples,
-                          },
-                        ];
-                      }
-
-                      updateMealPlanState(updatedMealPlan);
+                      updateMealSlot('saturday', 'staples', { items: newStaples });
                     }}
                   />
                 </Box>
@@ -475,7 +484,7 @@ function MealPlanDetailContent() {
                 const dayItems = mealPlan.items.filter(
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
-                const meals = (['breakfast', 'lunch', 'dinner'] as MealType[]).filter(
+                const meals = (mealTypes).filter(
                   (mealType) => mealPlan.template.meals[mealType]
                 );
 
@@ -516,35 +525,12 @@ function MealPlanDetailContent() {
                                 size="small"
                                 checked={isSkipped}
                                 onChange={(e) => {
-                                  const updatedMealPlan = { ...mealPlan };
-                                  updatedMealPlan.items = [...updatedMealPlan.items];
-                                  const existingIndex = updatedMealPlan.items.findIndex(
-                                    (item) =>
-                                      item.dayOfWeek === dayOfWeek &&
-                                      item.mealType === mealType
-                                  );
-
-                                  if (existingIndex !== -1) {
-                                    updatedMealPlan.items[existingIndex] = {
-                                      ...updatedMealPlan.items[existingIndex],
-                                      skipped: e.target.checked,
-                                      skipReason: e.target.checked
-                                        ? updatedMealPlan.items[existingIndex].skipReason || ''
-                                        : undefined,
-                                    };
-                                  } else {
-                                    updatedMealPlan.items.push({
-                                      _id: `temp-${Date.now()}`,
-                                      mealPlanId: mealPlan._id,
-                                      dayOfWeek: dayOfWeek as DayOfWeek,
-                                      mealType: mealType as MealType,
-                                      items: [],
-                                      skipped: e.target.checked,
-                                      skipReason: e.target.checked ? '' : undefined,
-                                    });
-                                  }
-
-                                  updateMealPlanState(updatedMealPlan);
+                                  updateMealSlot(dayOfWeek, mealType, {
+                                    skipped: e.target.checked,
+                                    skipReason: e.target.checked
+                                      ? (mealPlanItem?.skipReason || '')
+                                      : undefined,
+                                  });
                                 }}
                               />
                               <Typography variant="body2" color="text.secondary">
@@ -559,33 +545,10 @@ function MealPlanDetailContent() {
                                 fullWidth
                                 value={skipReason}
                                 onChange={(e) => {
-                                  const updatedMealPlan = { ...mealPlan };
-                                  updatedMealPlan.items = [...updatedMealPlan.items];
-                                  const existingIndex = updatedMealPlan.items.findIndex(
-                                    (item) =>
-                                      item.dayOfWeek === dayOfWeek &&
-                                      item.mealType === mealType
-                                  );
-
-                                  if (existingIndex !== -1) {
-                                    updatedMealPlan.items[existingIndex] = {
-                                      ...updatedMealPlan.items[existingIndex],
-                                      skipped: true,
-                                      skipReason: e.target.value,
-                                    };
-                                  } else {
-                                    updatedMealPlan.items.push({
-                                      _id: `temp-${Date.now()}`,
-                                      mealPlanId: mealPlan._id,
-                                      dayOfWeek: dayOfWeek as DayOfWeek,
-                                      mealType: mealType as MealType,
-                                      items: [],
-                                      skipped: true,
-                                      skipReason: e.target.value,
-                                    });
-                                  }
-
-                                  updateMealPlanState(updatedMealPlan, true);
+                                  updateMealSlot(dayOfWeek, mealType, {
+                                    skipped: true,
+                                    skipReason: e.target.value,
+                                  }, true);
                                 }}
                               />
                             )}
@@ -597,29 +560,7 @@ function MealPlanDetailContent() {
                           <MealEditor
                             mealItems={mealPlanItem?.items ?? []}
                             onChange={(newItems: MealItem[]) => {
-                              const updatedMealPlan = { ...mealPlan };
-                              updatedMealPlan.items = [...updatedMealPlan.items];
-                              const existingIndex = updatedMealPlan.items.findIndex(
-                                (item) =>
-                                  item.dayOfWeek === dayOfWeek && item.mealType === mealType
-                              );
-
-                              if (existingIndex !== -1) {
-                                updatedMealPlan.items[existingIndex] = {
-                                  ...updatedMealPlan.items[existingIndex],
-                                  items: newItems,
-                                };
-                              } else {
-                                updatedMealPlan.items.push({
-                                  _id: `temp-${Date.now()}`,
-                                  mealPlanId: mealPlan._id,
-                                  dayOfWeek: dayOfWeek as DayOfWeek,
-                                  mealType: mealType as MealType,
-                                  items: newItems,
-                                });
-                              }
-
-                              updateMealPlanState(updatedMealPlan);
+                              updateMealSlot(dayOfWeek, mealType, { items: newItems });
                             }}
                           />
                         )}
@@ -787,7 +728,7 @@ function MealPlanDetailContent() {
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
 
-                const meals = (['breakfast', 'lunch', 'dinner'] as MealType[])
+                const meals = (mealTypes)
                   .filter((mealType) => mealPlan.template.meals[mealType])
                   .map((mealType) => {
                     const mealPlanItem = dayItems.find((item) => item.mealType === mealType);

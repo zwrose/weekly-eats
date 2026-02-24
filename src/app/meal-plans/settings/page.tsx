@@ -19,7 +19,7 @@ import {
 import { ArrowBack } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
-import { MealPlanTemplate, DayOfWeek, MealType, MealItem } from '@/types/meal-plan';
+import { DayOfWeek, MealType, MealItem } from '@/types/meal-plan';
 import {
   fetchMealPlanTemplate,
   updateMealPlanTemplate,
@@ -29,12 +29,17 @@ import { CompactSelect } from '@/components/ui';
 
 const MealEditor = dynamic(() => import('@/components/MealEditor'), { ssr: false });
 
+const DAYS_OF_WEEK: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+function isDayOfWeek(value: string): value is DayOfWeek {
+  return (DAYS_OF_WEEK as string[]).includes(value);
+}
+
 function MealPlanSettingsContent() {
   const { status } = useSession();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [, setTemplate] = useState<MealPlanTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState<{
     startDay: DayOfWeek;
     meals: { [key in MealType]: boolean };
@@ -67,7 +72,6 @@ function MealPlanSettingsContent() {
     try {
       setLoading(true);
       const userTemplate = await fetchMealPlanTemplate();
-      setTemplate(userTemplate);
       if (userTemplate) {
         setTemplateForm({
           startDay: userTemplate.startDay,
@@ -160,12 +164,15 @@ function MealPlanSettingsContent() {
             <CompactSelect
               label="Start Day"
               value={templateForm.startDay}
-              onChange={(e) =>
-                setTemplateForm({
-                  ...templateForm,
-                  startDay: e.target.value as DayOfWeek,
-                })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                if (isDayOfWeek(value)) {
+                  setTemplateForm({
+                    ...templateForm,
+                    startDay: value,
+                  });
+                }
+              }}
             >
               <MenuItem value="monday">Monday</MenuItem>
               <MenuItem value="tuesday">Tuesday</MenuItem>

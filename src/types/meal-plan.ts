@@ -78,6 +78,7 @@ export interface UpdateMealPlanTemplateRequest {
 
 export interface CreateMealPlanRequest {
   startDate: string; // ISO date string
+  ownerId?: string;
 }
 
 export interface UpdateMealPlanRequest {

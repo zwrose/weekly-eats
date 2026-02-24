@@ -184,9 +184,8 @@ describe('MealEditor', () => {
       );
     });
 
-    // Verify that onFoodItemAdded was called with the new food item
+    // Verify that onFoodItemAdded was called with the new food item (without _id, matching prop type)
     expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-id',
       name: 'Fresh Avocado',
       singularName: 'Fresh Avocado',
       pluralName: 'Fresh Avocados',
@@ -293,9 +292,8 @@ describe('MealEditor', () => {
       );
     });
 
-    // Verify that the ref-based fallback worked correctly
+    // Verify that the ref-based fallback worked correctly (without _id, matching prop type)
     expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-timing-test',
       name: 'Organic Blueberries',
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',

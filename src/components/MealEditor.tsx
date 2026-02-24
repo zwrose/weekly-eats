@@ -119,24 +119,22 @@ export default function MealEditor({
           }
     ) => {
       if ('_id' in newFoodItem && newFoodItem._id) {
-        setFoodItems((prev) => {
-          const newItems = [...prev, newFoodItem as FoodItem];
-          return newItems;
-        });
+        const fullItem: FoodItem = {
+          _id: newFoodItem._id,
+          name: newFoodItem.name,
+          singularName: newFoodItem.singularName,
+          pluralName: newFoodItem.pluralName,
+          unit: newFoodItem.unit,
+          isGlobal: newFoodItem.isGlobal,
+        };
 
-        lastCreatedFoodItemRef.current = newFoodItem as FoodItem;
+        setFoodItems((prev) => [...prev, fullItem]);
+        lastCreatedFoodItemRef.current = fullItem;
       }
 
       if (onFoodItemAdded) {
-        await onFoodItemAdded(
-          newFoodItem as {
-            name: string;
-            singularName: string;
-            pluralName: string;
-            unit: string;
-            isGlobal: boolean;
-          }
-        );
+        const { name, singularName, pluralName, unit, isGlobal } = newFoodItem;
+        await onFoodItemAdded({ name, singularName, pluralName, unit, isGlobal });
       }
     },
     [onFoodItemAdded]

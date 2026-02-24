@@ -28,7 +28,7 @@ import {
   PersonAdd,
 } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
@@ -75,7 +75,7 @@ function MealPlansPageContent() {
   const [mealPlans, setMealPlans] = useState<MealPlanWithTemplate[]>([]);
   const [template, setTemplate] = useState<MealPlanTemplate | null>(null);
   const createDialog = useDialog();
-  const leaveSharingConfirmDialog = useConfirmDialog();
+  const leaveSharingConfirmDialog = useConfirmDialog<{ ownerId: string; ownerName: string }>();
 
   // Create meal plan form state
   const [newMealPlan, setNewMealPlan] = useState<CreateMealPlanRequest>({
@@ -123,7 +123,13 @@ function MealPlansPageContent() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
 
-  const mealPlansByOwner = () => {
+  const getOwnerName = useCallback((userId: string): string => {
+    if (userId === currentUserId) return 'Your Meal Plans';
+    const owner = mealPlanOwners.find((u) => u.userId === userId);
+    return `Shared by ${owner?.name || owner?.email || 'Unknown User'}`;
+  }, [currentUserId, mealPlanOwners]);
+
+  const groupedByOwner = useMemo(() => {
     const grouped: Record<string, MealPlanWithTemplate[]> = {};
 
     mealPlans.forEach((plan) => {
@@ -142,13 +148,7 @@ function MealPlansPageContent() {
     });
 
     return Object.fromEntries(sortedEntries);
-  };
-
-  const getOwnerName = (userId: string): string => {
-    if (userId === currentUserId) return 'Your Meal Plans';
-    const owner = mealPlanOwners.find((u) => u.userId === userId);
-    return `Shared by ${owner?.name || owner?.email || 'Unknown User'}`;
-  };
+  }, [mealPlans, currentUserId, getOwnerName]);
 
   // State to track if we skipped a default due to overlap
   const [skippedDefault, setSkippedDefault] = useState<{
@@ -241,7 +241,7 @@ function MealPlansPageContent() {
   };
 
   const handleConfirmLeaveSharing = async () => {
-    const data = leaveSharingConfirmDialog.data as { ownerId: string; ownerName: string } | null;
+    const data = leaveSharingConfirmDialog.data;
     if (!data) return;
 
     try {
@@ -282,9 +282,7 @@ function MealPlansPageContent() {
   const handleCreateMealPlan = async () => {
     try {
       const targetOwner = selectedOwner || currentUserId;
-      await createMealPlan({ ...newMealPlan, ownerId: targetOwner } as CreateMealPlanRequest & {
-        ownerId?: string;
-      });
+      await createMealPlan({ ...newMealPlan, ownerId: targetOwner });
       createDialog.closeDialog();
       setNewMealPlan({ startDate: '' });
       setSelectedOwner(null);
@@ -535,9 +533,9 @@ function MealPlansPageContent() {
                 {mealPlans.length} current meal plan{mealPlans.length !== 1 ? 's' : ''}
               </Typography>
 
-              {Object.entries(mealPlansByOwner()).map(
+              {Object.entries(groupedByOwner).map(
                 ([ownerId, ownerMealPlans], sectionIndex) => {
-                  const owners = Object.keys(mealPlansByOwner());
+                  const owners = Object.keys(groupedByOwner);
                   const hasMultipleOwners = owners.length > 1;
                   const isOnlyOwnerAndNotCurrentUser =
                     owners.length === 1 && ownerId !== currentUserId;
@@ -548,7 +546,7 @@ function MealPlansPageContent() {
                       key={ownerId}
                       sx={{
                         mb:
-                          sectionIndex < Object.keys(mealPlansByOwner()).length - 1 ? 2 : 0,
+                          sectionIndex < Object.keys(groupedByOwner).length - 1 ? 2 : 0,
                       }}
                     >
                       {shouldShowHeader && (
@@ -667,7 +665,7 @@ function MealPlansPageContent() {
             <DialogContent>
               <Typography>
                 Are you sure you want to leave{' '}
-                {(leaveSharingConfirmDialog.data as { ownerName: string } | null)?.ownerName}
+                {leaveSharingConfirmDialog.data?.ownerName}
                 &apos;s meal plans? You will no longer be able to view or edit their meal plans.
               </Typography>
 
