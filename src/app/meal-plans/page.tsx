@@ -7,7 +7,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  CircularProgress,
   Alert,
   Divider,
   IconButton,
@@ -16,6 +15,7 @@ import {
   ListItem,
   ListItemText,
   TextField,
+  Skeleton,
 } from '@mui/material';
 import {
   Add,
@@ -358,8 +358,24 @@ function MealPlansPageContent() {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="xl">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+          <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, md: 2 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Skeleton variant="circular" width={28} height={28} />
+                <Skeleton variant="text" width={100} height={28} />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Skeleton variant="rounded" width={140} height={32} />
+                <Skeleton variant="rounded" width={32} height={32} />
+              </Box>
+            </Box>
+            <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
+            {[0, 1, 2].map((i) => (
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                <Skeleton variant="rounded" width={20} height={20} />
+                <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
+              </Box>
+            ))}
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -500,8 +516,14 @@ function MealPlansPageContent() {
 
           {/* Current Meal Plans */}
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ py: 1 }}>
+              <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
+              {[0, 1, 2].map((i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                  <Skeleton variant="rounded" width={20} height={20} />
+                  <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
+                </Box>
+              ))}
             </Box>
           ) : mealPlans.length > 0 ? (
             <>
@@ -772,8 +794,24 @@ export default function MealPlansPage() {
       fallback={
         <AuthenticatedLayout>
           <Container maxWidth="xl">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, md: 2 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Skeleton variant="circular" width={28} height={28} />
+                  <Skeleton variant="text" width={100} height={28} />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Skeleton variant="rounded" width={140} height={32} />
+                  <Skeleton variant="rounded" width={32} height={32} />
+                </Box>
+              </Box>
+              <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
+              {[0, 1, 2].map((i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                  <Skeleton variant="rounded" width={20} height={20} />
+                  <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
+                </Box>
+              ))}
             </Box>
           </Container>
         </AuthenticatedLayout>

@@ -30,7 +30,7 @@ export default function MealPlansLoading() {
           <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
 
           {/* Flat row skeletons for current meal plans */}
-          {[...Array(3)].map((_, i) => (
+          {[55, 45, 60].map((width, i) => (
             <Box
               key={i}
               sx={{
@@ -48,7 +48,7 @@ export default function MealPlansLoading() {
               <Skeleton variant="rounded" width={20} height={20} />
 
               {/* Name */}
-              <Skeleton variant="text" width={`${40 + Math.random() * 30}%`} height={20} />
+              <Skeleton variant="text" width={`${width}%`} height={20} />
             </Box>
           ))}
 
@@ -56,7 +56,7 @@ export default function MealPlansLoading() {
           <Box sx={{ mt: 3 }}>
             <Skeleton variant="text" width={140} height={20} sx={{ mb: 1 }} />
             <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
-            {[...Array(2)].map((_, i) => (
+            {[40, 50].map((width, i) => (
               <Box
                 key={i}
                 sx={{
@@ -71,7 +71,7 @@ export default function MealPlansLoading() {
                 }}
               >
                 <Skeleton variant="rounded" width={20} height={20} />
-                <Skeleton variant="text" width={`${30 + Math.random() * 30}%`} height={20} />
+                <Skeleton variant="text" width={`${width}%`} height={20} />
               </Box>
             ))}
           </Box>

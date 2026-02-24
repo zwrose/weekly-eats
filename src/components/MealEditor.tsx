@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Box, Button, Typography, Alert, IconButton, Paper } from '@mui/material';
+import { Box, Button, Typography, Alert, IconButton } from '@mui/material';
 import { Group, Add, Delete } from '@mui/icons-material';
 import { RecipeIngredientList, RecipeIngredient, FoodItemOption } from '../types/recipe';
 import { InlineIngredientRow, CompactInput } from './ui';
@@ -277,8 +277,8 @@ export default function MealEditor({
           )}
 
           {item.type === 'ingredientGroup' && item.ingredients && item.ingredients.length > 0 && (
-            <Paper
-              sx={{ p: 2, border: '1px solid', borderColor: 'divider' }}
+            <Box
+              sx={{ pt: 2, pb: 1, borderTop: '1px solid', borderTopColor: 'divider' }}
             >
               {/* Group title */}
               <Box
@@ -403,7 +403,7 @@ export default function MealEditor({
                   Remove Group
                 </Button>
               </Box>
-            </Paper>
+            </Box>
           )}
         </Box>
       ))}

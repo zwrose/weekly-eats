@@ -10,7 +10,9 @@ import {
   Button,
   MenuItem,
   Divider,
-  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  Skeleton,
   Snackbar,
   Alert,
 } from '@mui/material';
@@ -108,8 +110,14 @@ function MealPlanSettingsContent() {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+          <Box sx={{ py: { xs: 1, md: 2 } }}>
+            <Skeleton variant="rounded" width={100} height={28} sx={{ mb: 2 }} />
+            <Skeleton variant="text" width="40%" height={36} sx={{ mb: 3 }} />
+            <Skeleton variant="rounded" width={200} height={40} sx={{ mb: 3 }} />
+            <Skeleton variant="text" width={120} height={20} sx={{ mb: 1 }} />
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="text" width={140} height={28} sx={{ mb: 0.5 }} />
+            ))}
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -173,46 +181,47 @@ function MealPlanSettingsContent() {
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Meals to Include:
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
-            {(['breakfast', 'lunch', 'dinner'] as MealType[]).map((meal) => (
-              <Box key={meal} sx={{ display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  id={`meal-${meal}`}
-                  checked={templateForm.meals?.[meal] || false}
-                  onChange={(e) =>
-                    setTemplateForm({
-                      ...templateForm,
-                      meals: { ...templateForm.meals, [meal]: e.target.checked },
-                    })
-                  }
-                />
-                <label
-                  htmlFor={`meal-${meal}`}
-                  style={{ marginLeft: 8, textTransform: 'capitalize' }}
-                >
-                  {meal}
-                </label>
-              </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 3 }}>
+            {(['breakfast', 'lunch', 'dinner', 'staples'] as MealType[]).map((meal) => (
+              <FormControlLabel
+                key={meal}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={templateForm.meals?.[meal] || false}
+                    onChange={(e) =>
+                      setTemplateForm({
+                        ...templateForm,
+                        meals: { ...templateForm.meals, [meal]: e.target.checked },
+                      })
+                    }
+                  />
+                }
+                label={meal === 'staples' ? 'Weekly Staples' : meal.charAt(0).toUpperCase() + meal.slice(1)}
+              />
             ))}
           </Box>
 
-          <Divider sx={{ my: 3 }} />
+          {/* Weekly Staples - only shown when staples checkbox is checked */}
+          {templateForm.meals.staples && (
+            <>
+              <Divider sx={{ my: 3 }} />
 
-          {/* Weekly Staples */}
-          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-            Weekly Staples (Optional):
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            These items will be automatically added once to new meal plans.
-          </Typography>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Weekly Staples:
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These items will be automatically added once to new meal plans.
+              </Typography>
 
-          <MealEditor
-            mealItems={templateForm.weeklyStaples}
-            onChange={(newStaples) => {
-              setTemplateForm({ ...templateForm, weeklyStaples: newStaples });
-            }}
-          />
+              <MealEditor
+                mealItems={templateForm.weeklyStaples}
+                onChange={(newStaples) => {
+                  setTemplateForm({ ...templateForm, weeklyStaples: newStaples });
+                }}
+              />
+            </>
+          )}
 
           {/* Action buttons */}
           <Box
@@ -267,8 +276,14 @@ export default function MealPlanSettingsPage() {
       fallback={
         <AuthenticatedLayout>
           <Container maxWidth="lg">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ py: { xs: 1, md: 2 } }}>
+              <Skeleton variant="rounded" width={100} height={28} sx={{ mb: 2 }} />
+              <Skeleton variant="text" width="40%" height={36} sx={{ mb: 3 }} />
+              <Skeleton variant="rounded" width={200} height={40} sx={{ mb: 3 }} />
+              <Skeleton variant="text" width={120} height={20} sx={{ mb: 1 }} />
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} variant="text" width={140} height={28} sx={{ mb: 0.5 }} />
+              ))}
             </Box>
           </Container>
         </AuthenticatedLayout>

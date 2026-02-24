@@ -15,7 +15,7 @@ import {
   DialogContent,
   Checkbox,
   TextField,
-  CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import { ArrowBack, Edit, Delete } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
@@ -291,15 +291,13 @@ function MealPlanDetailContent() {
     }
   };
 
-  // Check if a day has any content
-  const dayHasContent = (dayOfWeek: string): boolean => {
+  // Check if a specific meal slot has content
+  const mealHasContent = (dayOfWeek: string, mealType: string): boolean => {
     if (!mealPlan) return false;
-    const dayItems = mealPlan.items.filter(
-      (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
+    const mealPlanItem = mealPlan.items.find(
+      (item) => item.dayOfWeek === dayOfWeek && item.mealType === mealType
     );
-    return dayItems.some(
-      (item) => item.items.length > 0 || item.skipped
-    );
+    return (mealPlanItem?.items?.length ?? 0) > 0 || (mealPlanItem?.skipped ?? false);
   };
 
   // Render
@@ -307,8 +305,21 @@ function MealPlanDetailContent() {
     return (
       <AuthenticatedLayout>
         <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+          <Box sx={{ py: { xs: 1, md: 2 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Skeleton variant="rounded" width={100} height={28} />
+              <Box sx={{ flex: 1 }} />
+              <Skeleton variant="rounded" width={32} height={32} />
+            </Box>
+            <Skeleton variant="text" width="50%" height={36} sx={{ mb: 2 }} />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Box key={i} sx={{ borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 1, gap: 0.75 }}>
+                  <Skeleton variant="circular" width={18} height={18} />
+                  <Skeleton variant="text" width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`} height={24} />
+                </Box>
+              </Box>
+            ))}
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -460,7 +471,7 @@ function MealPlanDetailContent() {
               </CollapsibleSection>
 
               {/* Days - Edit */}
-              {orderedDays.map((dayOfWeek) => {
+              {orderedDays.flatMap((dayOfWeek) => {
                 const dayItems = mealPlan.items.filter(
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
@@ -468,143 +479,58 @@ function MealPlanDetailContent() {
                   (mealType) => mealPlan.template.meals[mealType]
                 );
 
-                return (
-                  <CollapsibleSection
-                    key={dayOfWeek}
-                    title={getDateForDay(dayOfWeek, mealPlan)}
-                    defaultExpanded={dayHasContent(dayOfWeek)}
-                  >
-                    <Box sx={{ p: 2 }}>
-                      {meals.map((mealType, mealIndex) => {
-                        const mealPlanItem = dayItems.find((item) => item.mealType === mealType);
-                        const hasItems = (mealPlanItem?.items?.length ?? 0) > 0;
-                        const isSkipped = !hasItems && (mealPlanItem?.skipped ?? false);
-                        const skipReason = !hasItems ? (mealPlanItem?.skipReason ?? '') : '';
+                return meals.map((mealType) => {
+                  const mealPlanItem = dayItems.find((item) => item.mealType === mealType);
+                  const hasItems = (mealPlanItem?.items?.length ?? 0) > 0;
+                  const isSkipped = !hasItems && (mealPlanItem?.skipped ?? false);
+                  const skipReason = !hasItems ? (mealPlanItem?.skipReason ?? '') : '';
+                  const hasContent = mealHasContent(dayOfWeek, mealType);
 
-                        return (
+                  return (
+                    <CollapsibleSection
+                      key={`${dayOfWeek}-${mealType}`}
+                      title={`${getDateForDay(dayOfWeek, mealPlan)} · ${getMealTypeName(mealType)}`}
+                      defaultExpanded={hasContent}
+                      rightContent={
+                        isSkipped ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Skipped
+                          </Typography>
+                        ) : undefined
+                      }
+                    >
+                      <Box sx={{ p: 2 }}>
+                        {/* Skip controls when no items */}
+                        {!hasItems && (
                           <Box
-                            key={mealType}
-                            sx={{ mb: mealIndex === meals.length - 1 ? 0 : 3 }}
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'flex-start',
+                              gap: 1,
+                              mb: 1.5,
+                            }}
                           >
-                            <Typography
-                              variant="subtitle1"
-                              sx={{
-                                mb: 1,
-                                fontWeight: 'bold',
-                                color: 'text.primary',
-                              }}
-                            >
-                              {getMealTypeName(mealType)}
-                            </Typography>
-
-                            {/* Skip controls when no items */}
-                            {!hasItems && (
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'flex-start',
-                                  gap: 1,
-                                  mb: 1.5,
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Checkbox
-                                    size="small"
-                                    checked={isSkipped}
-                                    onChange={(e) => {
-                                      const updatedMealPlan = { ...mealPlan };
-                                      updatedMealPlan.items = [...updatedMealPlan.items];
-                                      const existingIndex = updatedMealPlan.items.findIndex(
-                                        (item) =>
-                                          item.dayOfWeek === dayOfWeek &&
-                                          item.mealType === mealType
-                                      );
-
-                                      if (existingIndex !== -1) {
-                                        updatedMealPlan.items[existingIndex] = {
-                                          ...updatedMealPlan.items[existingIndex],
-                                          skipped: e.target.checked,
-                                          skipReason: e.target.checked
-                                            ? updatedMealPlan.items[existingIndex].skipReason || ''
-                                            : undefined,
-                                        };
-                                      } else {
-                                        updatedMealPlan.items.push({
-                                          _id: `temp-${Date.now()}`,
-                                          mealPlanId: mealPlan._id,
-                                          dayOfWeek: dayOfWeek as DayOfWeek,
-                                          mealType: mealType as MealType,
-                                          items: [],
-                                          skipped: e.target.checked,
-                                          skipReason: e.target.checked ? '' : undefined,
-                                        });
-                                      }
-
-                                      updateMealPlanState(updatedMealPlan);
-                                    }}
-                                  />
-                                  <Typography variant="body2" color="text.secondary">
-                                    Skip this meal
-                                  </Typography>
-                                </Box>
-                                {isSkipped && (
-                                  <TextField
-                                    autoFocus
-                                    label="Skip reason"
-                                    size="small"
-                                    fullWidth
-                                    value={skipReason}
-                                    onChange={(e) => {
-                                      const updatedMealPlan = { ...mealPlan };
-                                      updatedMealPlan.items = [...updatedMealPlan.items];
-                                      const existingIndex = updatedMealPlan.items.findIndex(
-                                        (item) =>
-                                          item.dayOfWeek === dayOfWeek &&
-                                          item.mealType === mealType
-                                      );
-
-                                      if (existingIndex !== -1) {
-                                        updatedMealPlan.items[existingIndex] = {
-                                          ...updatedMealPlan.items[existingIndex],
-                                          skipped: true,
-                                          skipReason: e.target.value,
-                                        };
-                                      } else {
-                                        updatedMealPlan.items.push({
-                                          _id: `temp-${Date.now()}`,
-                                          mealPlanId: mealPlan._id,
-                                          dayOfWeek: dayOfWeek as DayOfWeek,
-                                          mealType: mealType as MealType,
-                                          items: [],
-                                          skipped: true,
-                                          skipReason: e.target.value,
-                                        });
-                                      }
-
-                                      updateMealPlanState(updatedMealPlan, true);
-                                    }}
-                                  />
-                                )}
-                              </Box>
-                            )}
-
-                            {/* MealEditor when not skipped */}
-                            {!isSkipped && (
-                              <MealEditor
-                                mealItems={mealPlanItem?.items ?? []}
-                                onChange={(newItems: MealItem[]) => {
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Checkbox
+                                size="small"
+                                checked={isSkipped}
+                                onChange={(e) => {
                                   const updatedMealPlan = { ...mealPlan };
                                   updatedMealPlan.items = [...updatedMealPlan.items];
                                   const existingIndex = updatedMealPlan.items.findIndex(
                                     (item) =>
-                                      item.dayOfWeek === dayOfWeek && item.mealType === mealType
+                                      item.dayOfWeek === dayOfWeek &&
+                                      item.mealType === mealType
                                   );
 
                                   if (existingIndex !== -1) {
                                     updatedMealPlan.items[existingIndex] = {
                                       ...updatedMealPlan.items[existingIndex],
-                                      items: newItems,
+                                      skipped: e.target.checked,
+                                      skipReason: e.target.checked
+                                        ? updatedMealPlan.items[existingIndex].skipReason || ''
+                                        : undefined,
                                     };
                                   } else {
                                     updatedMealPlan.items.push({
@@ -612,20 +538,95 @@ function MealPlanDetailContent() {
                                       mealPlanId: mealPlan._id,
                                       dayOfWeek: dayOfWeek as DayOfWeek,
                                       mealType: mealType as MealType,
-                                      items: newItems,
+                                      items: [],
+                                      skipped: e.target.checked,
+                                      skipReason: e.target.checked ? '' : undefined,
                                     });
                                   }
 
                                   updateMealPlanState(updatedMealPlan);
                                 }}
-                                          />
+                              />
+                              <Typography variant="body2" color="text.secondary">
+                                Skip this meal
+                              </Typography>
+                            </Box>
+                            {isSkipped && (
+                              <TextField
+                                autoFocus
+                                label="Skip reason"
+                                size="small"
+                                fullWidth
+                                value={skipReason}
+                                onChange={(e) => {
+                                  const updatedMealPlan = { ...mealPlan };
+                                  updatedMealPlan.items = [...updatedMealPlan.items];
+                                  const existingIndex = updatedMealPlan.items.findIndex(
+                                    (item) =>
+                                      item.dayOfWeek === dayOfWeek &&
+                                      item.mealType === mealType
+                                  );
+
+                                  if (existingIndex !== -1) {
+                                    updatedMealPlan.items[existingIndex] = {
+                                      ...updatedMealPlan.items[existingIndex],
+                                      skipped: true,
+                                      skipReason: e.target.value,
+                                    };
+                                  } else {
+                                    updatedMealPlan.items.push({
+                                      _id: `temp-${Date.now()}`,
+                                      mealPlanId: mealPlan._id,
+                                      dayOfWeek: dayOfWeek as DayOfWeek,
+                                      mealType: mealType as MealType,
+                                      items: [],
+                                      skipped: true,
+                                      skipReason: e.target.value,
+                                    });
+                                  }
+
+                                  updateMealPlanState(updatedMealPlan, true);
+                                }}
+                              />
                             )}
                           </Box>
-                        );
-                      })}
-                    </Box>
-                  </CollapsibleSection>
-                );
+                        )}
+
+                        {/* MealEditor when not skipped */}
+                        {!isSkipped && (
+                          <MealEditor
+                            mealItems={mealPlanItem?.items ?? []}
+                            onChange={(newItems: MealItem[]) => {
+                              const updatedMealPlan = { ...mealPlan };
+                              updatedMealPlan.items = [...updatedMealPlan.items];
+                              const existingIndex = updatedMealPlan.items.findIndex(
+                                (item) =>
+                                  item.dayOfWeek === dayOfWeek && item.mealType === mealType
+                              );
+
+                              if (existingIndex !== -1) {
+                                updatedMealPlan.items[existingIndex] = {
+                                  ...updatedMealPlan.items[existingIndex],
+                                  items: newItems,
+                                };
+                              } else {
+                                updatedMealPlan.items.push({
+                                  _id: `temp-${Date.now()}`,
+                                  mealPlanId: mealPlan._id,
+                                  dayOfWeek: dayOfWeek as DayOfWeek,
+                                  mealType: mealType as MealType,
+                                  items: newItems,
+                                });
+                              }
+
+                              updateMealPlanState(updatedMealPlan);
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </CollapsibleSection>
+                  );
+                });
               })}
 
               {/* Bottom action buttons */}
@@ -781,7 +782,7 @@ function MealPlanDetailContent() {
               })()}
 
               {/* Days - View */}
-              {orderedDays.map((dayOfWeek) => {
+              {orderedDays.flatMap((dayOfWeek) => {
                 const dayItems = mealPlan.items.filter(
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
@@ -793,147 +794,139 @@ function MealPlanDetailContent() {
                     return { mealType, planItem: mealPlanItem ?? null };
                   });
 
-                const hasContent = dayHasContent(dayOfWeek);
+                return meals.map((meal) => {
+                  const isSkipped = meal.planItem?.skipped ?? false;
+                  const skipReason = meal.planItem?.skipReason ?? '';
+                  const items = meal.planItem?.items ?? [];
+                  const hasContent = mealHasContent(dayOfWeek, meal.mealType);
 
-                return (
-                  <CollapsibleSection
-                    key={dayOfWeek}
-                    title={getDateForDay(dayOfWeek, mealPlan)}
-                    defaultExpanded={hasContent}
-                  >
-                    <Box sx={{ p: 2 }}>
-                      {meals.map((meal) => {
-                        const isSkipped = meal.planItem?.skipped ?? false;
-                        const skipReason = meal.planItem?.skipReason ?? '';
-                        const items = meal.planItem?.items ?? [];
-
-                        return (
-                          <Box key={meal.mealType} sx={{ mb: 2 }}>
-                            <Typography
-                              variant="subtitle1"
-                              sx={{
-                                mb: 1,
-                                fontWeight: 'bold',
-                                color: 'text.primary',
-                              }}
-                            >
-                              {getMealTypeName(meal.mealType)}
-                            </Typography>
-                            {isSkipped ? (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ pl: 2, fontStyle: 'italic' }}
-                              >
-                                Skipped{skipReason ? `: ${skipReason}` : ''}
-                              </Typography>
-                            ) : items.length > 0 ? (
-                              <Box sx={{ pl: 2 }}>
-                                {items.map((mealItem, mealIndex) => {
-                                  if (mealItem.type === 'ingredientGroup') {
-                                    return (
-                                      <Box key={mealIndex} sx={{ mb: 1 }}>
-                                        {mealItem.ingredients &&
-                                          mealItem.ingredients.map((group, groupIndex) => (
-                                            <Box key={groupIndex} sx={{ mb: 1 }}>
-                                              {group.title && (
-                                                <Typography
-                                                  variant="body2"
-                                                  sx={{ fontWeight: 'bold', mb: 0.5 }}
-                                                >
-                                                  {group.title}:
-                                                </Typography>
-                                              )}
-                                              <Box sx={{ pl: 2 }}>
-                                                {group.ingredients.map((ingredient, ingIndex) => (
-                                                  <Typography
-                                                    key={ingIndex}
-                                                    variant="body2"
-                                                    sx={{ mb: 0.5 }}
-                                                  >
-                                                    &bull; {ingredient.quantity}{' '}
-                                                    {ingredient.type === 'foodItem' &&
-                                                    ingredient.unit &&
-                                                    ingredient.unit !== 'each'
-                                                      ? getUnitForm(
-                                                          ingredient.unit,
-                                                          ingredient.quantity
-                                                        ) + ' '
-                                                      : ''}
-                                                    {ingredient.name || 'Unknown'}
-                                                  </Typography>
-                                                ))}
-                                              </Box>
-                                            </Box>
-                                          ))}
-                                      </Box>
-                                    );
-                                  } else if (mealItem.type === 'recipe') {
-                                    return (
-                                      <Typography
-                                        key={mealIndex}
-                                        variant="body2"
-                                        sx={{ mb: 0.5 }}
-                                      >
-                                        &bull;{' '}
-                                        <Box
-                                          component="a"
-                                          href={`/recipes/${mealItem.id}`}
-                                          sx={recipeLinkSx}
-                                        >
-                                          {mealItem.name}
-                                        </Box>
-                                        {mealItem.quantity && (
-                                          <Box
-                                            component="span"
-                                            sx={{ color: 'text.secondary' }}
-                                          >
-                                            {' '}
-                                            ({mealItem.quantity}x)
-                                          </Box>
-                                        )}
-                                      </Typography>
-                                    );
-                                  } else {
-                                    return (
-                                      <Typography
-                                        key={mealIndex}
-                                        variant="body2"
-                                        sx={{ mb: 0.5 }}
-                                      >
-                                        &bull; {mealItem.name}
-                                        {mealItem.type === 'foodItem' &&
-                                          mealItem.quantity &&
-                                          mealItem.unit && (
-                                            <Box
-                                              component="span"
-                                              sx={{ color: 'text.secondary' }}
+                  return (
+                    <CollapsibleSection
+                      key={`${dayOfWeek}-${meal.mealType}`}
+                      title={`${getDateForDay(dayOfWeek, mealPlan)} · ${getMealTypeName(meal.mealType)}`}
+                      defaultExpanded={hasContent}
+                      rightContent={
+                        isSkipped ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Skipped
+                          </Typography>
+                        ) : undefined
+                      }
+                    >
+                      <Box sx={{ p: 2 }}>
+                        {isSkipped ? (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
+                            Skipped{skipReason ? `: ${skipReason}` : ''}
+                          </Typography>
+                        ) : items.length > 0 ? (
+                          <Box>
+                            {items.map((mealItem, mealIndex) => {
+                              if (mealItem.type === 'ingredientGroup') {
+                                return (
+                                  <Box key={mealIndex} sx={{ mb: 1 }}>
+                                    {mealItem.ingredients &&
+                                      mealItem.ingredients.map((group, groupIndex) => (
+                                        <Box key={groupIndex} sx={{ mb: 1 }}>
+                                          {group.title && (
+                                            <Typography
+                                              variant="body2"
+                                              sx={{ fontWeight: 'bold', mb: 0.5 }}
                                             >
-                                              {' '}
-                                              ({mealItem.quantity}{' '}
-                                              {getUnitForm(mealItem.unit, mealItem.quantity)})
-                                            </Box>
+                                              {group.title}:
+                                            </Typography>
                                           )}
-                                      </Typography>
-                                    );
-                                  }
-                                })}
-                              </Box>
-                            ) : (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ fontStyle: 'italic', pl: 2 }}
-                              >
-                                No items planned yet
-                              </Typography>
-                            )}
+                                          <Box sx={{ pl: 2 }}>
+                                            {group.ingredients.map((ingredient, ingIndex) => (
+                                              <Typography
+                                                key={ingIndex}
+                                                variant="body2"
+                                                sx={{ mb: 0.5 }}
+                                              >
+                                                &bull; {ingredient.quantity}{' '}
+                                                {ingredient.type === 'foodItem' &&
+                                                ingredient.unit &&
+                                                ingredient.unit !== 'each'
+                                                  ? getUnitForm(
+                                                      ingredient.unit,
+                                                      ingredient.quantity
+                                                    ) + ' '
+                                                  : ''}
+                                                {ingredient.name || 'Unknown'}
+                                              </Typography>
+                                            ))}
+                                          </Box>
+                                        </Box>
+                                      ))}
+                                  </Box>
+                                );
+                              } else if (mealItem.type === 'recipe') {
+                                return (
+                                  <Typography
+                                    key={mealIndex}
+                                    variant="body2"
+                                    sx={{ mb: 0.5 }}
+                                  >
+                                    &bull;{' '}
+                                    <Box
+                                      component="a"
+                                      href={`/recipes/${mealItem.id}`}
+                                      sx={recipeLinkSx}
+                                    >
+                                      {mealItem.name}
+                                    </Box>
+                                    {mealItem.quantity && (
+                                      <Box
+                                        component="span"
+                                        sx={{ color: 'text.secondary' }}
+                                      >
+                                        {' '}
+                                        ({mealItem.quantity}x)
+                                      </Box>
+                                    )}
+                                  </Typography>
+                                );
+                              } else {
+                                return (
+                                  <Typography
+                                    key={mealIndex}
+                                    variant="body2"
+                                    sx={{ mb: 0.5 }}
+                                  >
+                                    &bull; {mealItem.name}
+                                    {mealItem.type === 'foodItem' &&
+                                      mealItem.quantity &&
+                                      mealItem.unit && (
+                                        <Box
+                                          component="span"
+                                          sx={{ color: 'text.secondary' }}
+                                        >
+                                          {' '}
+                                          ({mealItem.quantity}{' '}
+                                          {getUnitForm(mealItem.unit, mealItem.quantity)})
+                                        </Box>
+                                      )}
+                                  </Typography>
+                                );
+                              }
+                            })}
                           </Box>
-                        );
-                      })}
-                    </Box>
-                  </CollapsibleSection>
-                );
+                        ) : (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
+                            No items planned yet
+                          </Typography>
+                        )}
+                      </Box>
+                    </CollapsibleSection>
+                  );
+                });
               })}
             </Box>
           )}
@@ -997,8 +990,21 @@ export default function MealPlanDetailPage() {
       fallback={
         <AuthenticatedLayout>
           <Container maxWidth="lg">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ py: { xs: 1, md: 2 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Skeleton variant="rounded" width={100} height={28} />
+                <Box sx={{ flex: 1 }} />
+                <Skeleton variant="rounded" width={32} height={32} />
+              </Box>
+              <Skeleton variant="text" width="50%" height={36} sx={{ mb: 2 }} />
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Box key={i} sx={{ borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 1, gap: 0.75 }}>
+                    <Skeleton variant="circular" width={18} height={18} />
+                    <Skeleton variant="text" width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`} height={24} />
+                  </Box>
+                </Box>
+              ))}
             </Box>
           </Container>
         </AuthenticatedLayout>
