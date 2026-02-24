@@ -451,7 +451,7 @@ function RecipeDetailContent() {
                 </IconButton>
                 <CompactInput
                   label="Recipe Title"
-                  value={editingRecipe.title}
+                  value={editingRecipe.title ?? ''}
                   onChange={(e) =>
                     setEditingRecipe({
                       ...editingRecipe,
@@ -533,7 +533,7 @@ function RecipeDetailContent() {
               </Typography>
               <CompactInput
                 label="Cooking Instructions"
-                value={editingRecipe.instructions}
+                value={editingRecipe.instructions ?? ''}
                 onChange={(e) =>
                   setEditingRecipe({
                     ...editingRecipe,

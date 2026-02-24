@@ -26,7 +26,7 @@ const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients')
 const EmojiPicker = dynamic(() => import('@/components/EmojiPicker'), { ssr: false });
 
 function NewRecipeContent() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   // ── Recipe state ──

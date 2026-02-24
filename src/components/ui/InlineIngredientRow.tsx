@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Box, IconButton, TextField } from '@mui/material';
-import { Delete, Add, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Delete, Add, ExpandLess } from '@mui/icons-material';
 import { RecipeIngredient, FoodItemOption } from '@/types/recipe';
 import { SearchOption } from '@/lib/hooks/use-food-item-selector';
 import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
