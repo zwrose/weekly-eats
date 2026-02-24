@@ -173,9 +173,11 @@ describe('ShoppingListsPage', () => {
   it('shows loading state initially', () => {
     mockFetchStores.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-    render(<ShoppingListsPage />);
+    const { container } = render(<ShoppingListsPage />);
 
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    // Loading state now uses skeleton rows instead of CircularProgress
+    const skeletons = container.querySelectorAll('.MuiSkeleton-root');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
   it('displays empty state when no stores exist', async () => {
@@ -256,7 +258,8 @@ describe('ShoppingListsPage', () => {
     render(<ShoppingListsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 items')).toBeInTheDocument();
+      // In the unified row layout, item count is rendered as just the number
+      expect(screen.getByText('2')).toBeInTheDocument();
     });
   });
 
@@ -571,12 +574,8 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    // Find start shopping buttons (there are multiple: desktop and mobile, including header icon)
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    // Filter to find only the green/success colored ones (start shopping buttons)
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
+    // Find start shopping buttons by title attribute
+    const startShoppingButtons = screen.getAllByTitle('Start Shopping');
 
     expect(startShoppingButtons.length).toBeGreaterThan(0);
 
@@ -615,11 +614,8 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    // Find start shopping buttons (filter by success color class)
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
+    // Find start shopping buttons by title attribute
+    const startShoppingButtons = screen.getAllByTitle('Start Shopping');
 
     expect(startShoppingButtons.length).toBeGreaterThan(0);
 
@@ -670,12 +666,8 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    // Find start shopping button by testId and click it
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
+    // Find start shopping button by title attribute and click it
+    const startShoppingButtons = screen.getAllByTitle('Start Shopping');
     await user.click(startShoppingButtons[0]!);
 
     // Wait for dialog to open (unified list)
@@ -739,11 +731,7 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
+    const startShoppingButtons = screen.getAllByTitle('Start Shopping');
     await user.click(startShoppingButtons[0]!);
 
     await waitFor(
@@ -902,11 +890,25 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('checkbox'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+    // Give React a tick to flush any pending re-renders from the
+    // dialog open and shopping list fetch.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
     });
+
+    // Verify the checkbox exists and click it
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeInTheDocument();
+    await user.click(checkbox);
+
+    // The optimistic toggle sets checked=true, which should show the Finish Shop button.
+    // The toggle fetch must succeed to prevent reverting.
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // After finishing, the handler calls fetchStores() then a useEffect
     // re-fetches the shopping list. Update mocks so refetched data reflects

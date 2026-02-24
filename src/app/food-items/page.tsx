@@ -6,15 +6,8 @@ import {
   Container,
   Typography,
   Box,
-  CircularProgress,
-  Paper,
+  Skeleton,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Alert,
   Chip,
   Button,
@@ -39,7 +32,7 @@ import { useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import { useServerPagination } from '@/lib/hooks/use-server-pagination';
 import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import { responsiveDialogStyle } from '@/lib/theme';
-import { DialogActions, DialogTitle } from '@/components/ui';
+import { DialogActions, DialogTitle, ListRow, StaggeredList } from '@/components/ui';
 
 interface FoodItemWithAccessLevel {
   _id: string;
@@ -74,6 +67,50 @@ const accessLevelOptions = [
   { value: 'shared-by-you', label: 'Shared by You' },
   { value: 'shared-by-others', label: 'Shared by Others' },
 ] as const;
+
+// ── Module-level sx constants ──
+
+const tinyChipSx = {
+  fontSize: '0.6875rem',
+  height: 18,
+  '& .MuiChip-label': { px: 0.75 },
+  '& .MuiChip-icon': { fontSize: 12, ml: 0.25 },
+} as const;
+
+const paginationContainerSx = {
+  display: 'flex',
+  justifyContent: 'center',
+  mt: 2,
+} as const;
+
+// ── Skeleton loader for in-page loading state ──
+
+function FoodItemsListSkeleton() {
+  const widths = [65, 50, 75, 55, 60, 70, 45, 58];
+  return (
+    <Box>
+      {widths.map((w, i) => (
+        <Box
+          key={i}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            minHeight: 36,
+            px: 1.5,
+            py: 1,
+            borderBottom: '1px solid',
+            borderBottomColor: 'divider',
+          }}
+        >
+          <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+          <Skeleton variant="rounded" width={60} height={18} sx={{ borderRadius: '9px', flexShrink: 0 }} />
+          <Skeleton variant="text" width={70} height={16} sx={{ flexShrink: 0 }} />
+        </Box>
+      ))}
+    </Box>
+  );
+}
 
 function FoodItemsPageContent() {
   const { data: session, status } = useSession();
@@ -284,9 +321,11 @@ function FoodItemsPageContent() {
   if (status === 'loading') {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="md">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+        <Container maxWidth="xl">
+          <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+            <Skeleton variant="text" width={120} height={28} sx={{ mb: 2 }} />
+            <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+            <FoodItemsListSkeleton />
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -301,27 +340,34 @@ function FoodItemsPageContent() {
     <Suspense
       fallback={
         <AuthenticatedLayout>
-          <Container maxWidth="md">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+          <Container maxWidth="xl">
+            <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+              <Skeleton variant="text" width={120} height={28} sx={{ mb: 2 }} />
+              <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+              <FoodItemsListSkeleton />
             </Box>
           </Container>
         </AuthenticatedLayout>
       }
     >
       <AuthenticatedLayout>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Manage Food Items
-          </Typography>
+        <Container maxWidth="xl">
+          <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+            {/* Compact page header */}
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{ fontSize: '1.125rem', fontWeight: 600, mb: { xs: 1.5, md: 2 } }}
+            >
+              Food Items
+            </Typography>
 
-          <Paper sx={{ p: 3, mt: { xs: 2, md: 3 } }}>
             {/* Desktop: Search + Filters */}
             <Box
               sx={{
                 display: { xs: 'none', md: 'flex' },
                 gap: 2,
-                mb: 3,
+                mb: 2,
                 flexWrap: 'wrap',
                 alignItems: 'center',
               }}
@@ -357,7 +403,7 @@ function FoodItemsPageContent() {
             </Box>
 
             {/* Mobile: Search + Filter button */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2, alignItems: 'center' }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 1.5, alignItems: 'center' }}>
               <TextField
                 size="small"
                 placeholder="Search food items..."
@@ -426,125 +472,80 @@ function FoodItemsPageContent() {
             </Drawer>
 
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
+              <FoodItemsListSkeleton />
             ) : (
               <>
                 {/* Summary */}
                 {total > 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1, fontSize: '0.75rem' }}
+                  >
                     {total} food item{total !== 1 ? 's' : ''} found
                   </Typography>
                 )}
 
                 {foodItems.length > 0 ? (
                   <>
-                    {/* Desktop Table View */}
-                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                      <TableContainer>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ width: '65%', fontWeight: 'bold' }}>Name</TableCell>
-                              <TableCell sx={{ width: '20%', fontWeight: 'bold' }}>
-                                Access Level
-                              </TableCell>
-                              <TableCell sx={{ width: '15%', fontWeight: 'bold' }}>
-                                Created
-                              </TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {foodItems.map((item) => {
-                              const chipProps = accessLevelChipProps[item.accessLevel];
-                              return (
-                                <TableRow
-                                  key={item._id}
-                                  onClick={() => handleViewItem(item)}
-                                  sx={{
-                                    cursor: 'pointer',
-                                    '&:hover': { backgroundColor: 'action.hover' },
-                                  }}
-                                >
-                                  <TableCell>{item.name}</TableCell>
-                                  <TableCell>
-                                    <Chip
-                                      label={chipProps.label}
-                                      size="small"
-                                      color={chipProps.color}
-                                      variant="outlined"
-                                      icon={chipProps.icon}
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.createdAt
-                                      ? new Date(item.createdAt).toLocaleDateString()
-                                      : ''}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Box>
-
-                    {/* Mobile Card View */}
-                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    {/* Flat row list — unified layout for desktop and mobile */}
+                    <StaggeredList>
                       {foodItems.map((item) => {
                         const chipProps = accessLevelChipProps[item.accessLevel];
                         return (
-                          <Paper
+                          <ListRow
                             key={item._id}
                             onClick={() => handleViewItem(item)}
-                            sx={{
-                              p: 3,
-                              mb: 2,
-                              cursor: 'pointer',
-                              '&:hover': {
-                                backgroundColor: 'action.hover',
-                                transform: 'translateY(-2px)',
-                                boxShadow: 4,
-                              },
-                              transition: 'all 0.2s ease-in-out',
-                              boxShadow: 2,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              borderRadius: 2,
-                            }}
                           >
-                            <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
-                              {item.name}
-                            </Typography>
-                            <Box
+                            {/* Name */}
+                            <Typography
+                              variant="body2"
                               sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
+                                flex: '1 1 auto',
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                fontWeight: 500,
                               }}
                             >
-                              <Chip
-                                label={chipProps.label}
-                                size="small"
-                                color={chipProps.color}
-                                variant="outlined"
-                                icon={chipProps.icon}
-                              />
-                              <Typography variant="body2" color="text.secondary">
-                                {item.createdAt
-                                  ? new Date(item.createdAt).toLocaleDateString()
-                                  : ''}
-                              </Typography>
-                            </Box>
-                          </Paper>
+                              {item.name}
+                            </Typography>
+
+                            {/* Access level badge (tiny chip) */}
+                            <Chip
+                              label={chipProps.label}
+                              size="small"
+                              color={chipProps.color}
+                              variant="outlined"
+                              icon={chipProps.icon}
+                              sx={tinyChipSx}
+                            />
+
+                            {/* Date */}
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                flexShrink: 0,
+                                width: { xs: 'auto', md: 90 },
+                                textAlign: 'right',
+                                fontSize: '0.75rem',
+                                display: { xs: 'none', sm: 'block' },
+                              }}
+                            >
+                              {item.createdAt
+                                ? new Date(item.createdAt).toLocaleDateString()
+                                : ''}
+                            </Typography>
+                          </ListRow>
                         );
                       })}
-                    </Box>
+                    </StaggeredList>
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                      <Box sx={paginationContainerSx}>
                         <MuiPagination
                           count={totalPages}
                           page={page}
@@ -560,7 +561,7 @@ function FoodItemsPageContent() {
                 )}
               </>
             )}
-          </Paper>
+          </Box>
         </Container>
 
         {/* View/Edit Dialog */}
@@ -833,9 +834,11 @@ export default function FoodItemsPage() {
     <Suspense
       fallback={
         <AuthenticatedLayout>
-          <Container maxWidth="md">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+          <Container maxWidth="xl">
+            <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+              <Skeleton variant="text" width={120} height={28} sx={{ mb: 2 }} />
+              <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+              <FoodItemsListSkeleton />
             </Box>
           </Container>
         </AuthenticatedLayout>

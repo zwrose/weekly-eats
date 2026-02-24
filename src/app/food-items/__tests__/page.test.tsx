@@ -271,10 +271,12 @@ describe('FoodItemsPage - Unified List', () => {
       refetch: mockRefetch,
     });
 
-    const { unmount } = render(<FoodItemsPage />);
+    const { container, unmount } = render(<FoodItemsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      // Loading state now uses skeleton rows instead of CircularProgress
+      const skeletons = container.querySelectorAll('.MuiSkeleton-root');
+      expect(skeletons.length).toBeGreaterThan(0);
     });
 
     unmount();
