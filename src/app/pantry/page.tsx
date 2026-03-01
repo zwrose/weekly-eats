@@ -6,18 +6,11 @@ import {
   Container,
   Typography,
   Box,
-  CircularProgress,
-  Paper,
+  Skeleton,
   Alert,
   Button,
   Dialog,
   DialogContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   IconButton,
 } from '@mui/material';
 import { Pagination as MuiPagination } from '@mui/material';
@@ -29,12 +22,50 @@ import { useServerPagination } from '@/lib/hooks/use-server-pagination';
 import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
-import Kitchen from '@mui/icons-material/Kitchen';
 import Add from '@mui/icons-material/Add';
 import Delete from '@mui/icons-material/Delete';
-import { DialogActions, DialogTitle } from '@/components/ui';
+import Kitchen from '@mui/icons-material/Kitchen';
+import { DialogActions, DialogTitle, ListRow, StaggeredList } from '@/components/ui';
 import FoodItemAutocomplete from '@/components/food-item-inputs/FoodItemAutocomplete';
 import { SearchOption } from '@/lib/hooks/use-food-item-selector';
+
+// ── Pantry accent color ──
+const PANTRY_ACCENT = '#a87bb5';
+
+// ── Module-level sx constants ──
+
+const paginationContainerSx = {
+  display: 'flex',
+  justifyContent: 'center',
+  mt: 2,
+} as const;
+
+// ── Skeleton loader for in-page loading state ──
+
+function PantryListSkeleton() {
+  const widths = [60, 45, 70, 55, 65];
+  return (
+    <Box>
+      {widths.map((w, i) => (
+        <Box
+          key={i}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: 40,
+            px: 1.5,
+            py: 1,
+            borderBottom: '1px solid',
+            borderBottomColor: 'divider',
+          }}
+        >
+          <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+          <Skeleton variant="circular" width={24} height={24} sx={{ flexShrink: 0, ml: 1 }} />
+        </Box>
+      ))}
+    </Box>
+  );
+}
 
 export default function PantryPage() {
   const { status } = useSession();
@@ -123,9 +154,23 @@ export default function PantryPage() {
   if (status === 'loading') {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+        <Container maxWidth="xl">
+          <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: { xs: 1.5, md: 2 },
+              }}
+            >
+              <Skeleton variant="text" width={160} height={28} />
+              <Skeleton variant="rounded" width={90} height={32} />
+            </Box>
+            <Skeleton variant="rounded" height={36} sx={{ mb: 2, maxWidth: 'md', mx: 'auto' }} />
+            <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+              <PantryListSkeleton />
+            </Box>
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -135,143 +180,110 @@ export default function PantryPage() {
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl" sx={{ py: { xs: 0.5, md: 1 } }}>
+        {/* Compact page header */}
         <Box
           sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: { xs: 2, sm: 0 },
-            mb: { xs: 2, md: 4 },
+            alignItems: 'center',
+            mb: { xs: 1.5, md: 2 },
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Kitchen sx={{ fontSize: 40, color: '#9c27b0' }} />
-            <Typography variant="h3" component="h1" sx={{ color: '#9c27b0' }}>
-              Pantry Items ({total})
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Kitchen sx={{ fontSize: { xs: 24, sm: 32 }, color: PANTRY_ACCENT }} />
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{ fontSize: '1.125rem', fontWeight: 600 }}
+            >
+              Pantry Items
             </Typography>
           </Box>
+          {/* Desktop: full add button */}
           <Button
             variant="contained"
             startIcon={<Add />}
             onClick={createDialog.openDialog}
+            size="small"
             sx={{
-              bgcolor: '#9c27b0',
-              color: '#fff',
-              '&:hover': { bgcolor: '#7b1fa2' },
-              minWidth: { xs: '100%', sm: 'auto' },
+              display: { xs: 'none', sm: 'flex' },
+              bgcolor: PANTRY_ACCENT,
+              '&:hover': { bgcolor: '#956ea2' },
             }}
           >
             Add Item
           </Button>
         </Box>
 
-        <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search your pantry..."
-          />
+        <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+          <Box sx={{ mb: 2 }}>
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search your pantry..."
+            />
+          </Box>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
+            <PantryListSkeleton />
           ) : (
             <>
               {pantryItems.length > 0 ? (
                 <>
-                  {/* Desktop Table View */}
-                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell
-                              sx={{
-                                width: '70%',
-                                fontWeight: 'bold',
-                                wordWrap: 'break-word',
-                              }}
-                            >
-                              Food Item
-                            </TableCell>
-                            <TableCell
-                              align="center"
-                              sx={{
-                                width: '30%',
-                                fontWeight: 'bold',
-                                wordWrap: 'break-word',
-                              }}
-                            >
-                              Delete
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {pantryItems.map((item) => (
-                            <TableRow
-                              key={item._id}
-                              sx={{
-                                '&:hover': { backgroundColor: 'action.hover' },
-                              }}
-                            >
-                              <TableCell sx={{ wordWrap: 'break-word' }}>
-                                <Typography variant="body1">{item.foodItem.pluralName}</Typography>
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                                <IconButton
-                                  color="error"
-                                  size="small"
-                                  onClick={() => deleteConfirmDialog.openDialog(item)}
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1, fontSize: '0.75rem' }}
+                  >
+                    {total} pantry item{total !== 1 ? 's' : ''} found
+                  </Typography>
 
-                  {/* Mobile Card View */}
-                  <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  {/* Flat row list — unified layout for desktop and mobile */}
+                  <StaggeredList>
                     {pantryItems.map((item) => (
-                      <Paper
+                      <ListRow
                         key={item._id}
-                        sx={{
-                          p: 3,
-                          mb: 2,
-                          boxShadow: 2,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          '&:hover': {
-                            backgroundColor: 'action.hover',
-                            transform: 'translateY(-2px)',
-                            boxShadow: 4,
-                          },
-                          transition: 'all 0.2s ease-in-out',
-                        }}
+                        accentColor={PANTRY_ACCENT}
+                        sx={{ minHeight: 40 }}
                       >
-                        <Typography variant="subtitle1">{item.foodItem.pluralName}</Typography>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => deleteConfirmDialog.openDialog(item)}
+                        {/* Name */}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            flex: '1 1 auto',
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 500,
+                          }}
                         >
-                          <Delete fontSize="small" />
+                          {item.foodItem.pluralName}
+                        </Typography>
+
+                        {/* Delete icon */}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConfirmDialog.openDialog(item);
+                          }}
+                          sx={{
+                            flexShrink: 0,
+                            color: 'text.tertiary',
+                            p: 0.5,
+                            '&:hover': { color: 'error.main' },
+                          }}
+                          aria-label={`Remove ${item.foodItem.name}`}
+                        >
+                          <Delete sx={{ fontSize: 16 }} />
                         </IconButton>
-                      </Paper>
+                      </ListRow>
                     ))}
-                  </Box>
+                  </StaggeredList>
 
                   {totalPages > 1 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                    <Box sx={paginationContainerSx}>
                       <MuiPagination
                         count={totalPages}
                         page={page}
@@ -289,7 +301,7 @@ export default function PantryPage() {
               )}
             </>
           )}
-        </Paper>
+        </Box>
 
         {/* Add Pantry Item Dialog */}
         <Dialog
@@ -298,6 +310,14 @@ export default function PantryPage() {
           maxWidth="xs"
           fullWidth
           sx={responsiveDialogStyle}
+          TransitionProps={{
+            onEntered: () => {
+              const input = document.querySelector<HTMLInputElement>(
+                '.MuiDialog-root .MuiAutocomplete-input'
+              );
+              input?.focus();
+            },
+          }}
         >
           <DialogTitle onClose={createDialog.closeDialog}>Add Pantry Item</DialogTitle>
           <DialogContent>
@@ -377,6 +397,27 @@ export default function PantryPage() {
           </DialogActions>
         </Dialog>
       </Container>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={createDialog.openDialog}
+        aria-label="Add pantry item"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: PANTRY_ACCENT,
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#956ea2' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }

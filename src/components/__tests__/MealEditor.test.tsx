@@ -135,7 +135,7 @@ describe('MealEditor', () => {
     );
 
     // Type a new food item name in the ingredient input
-    const input = screen.getByLabelText(/food item or recipe/i);
+    const input = screen.getByPlaceholderText(/food item or recipe/i);
     await user.type(input, 'Fresh Avocado');
 
     // Press Enter to open the add dialog
@@ -184,9 +184,8 @@ describe('MealEditor', () => {
       );
     });
 
-    // Verify that onFoodItemAdded was called with the new food item
+    // Verify that onFoodItemAdded was called with the new food item (without _id, matching prop type)
     expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-id',
       name: 'Fresh Avocado',
       singularName: 'Fresh Avocado',
       pluralName: 'Fresh Avocados',
@@ -257,7 +256,7 @@ describe('MealEditor', () => {
     );
 
     // Type a new food item name
-    const input = screen.getByLabelText(/food item or recipe/i);
+    const input = screen.getByPlaceholderText(/food item or recipe/i);
     await user.type(input, 'Organic Blueberries');
 
     // Press Enter to open the add dialog
@@ -293,9 +292,8 @@ describe('MealEditor', () => {
       );
     });
 
-    // Verify that the ref-based fallback worked correctly
+    // Verify that the ref-based fallback worked correctly (without _id, matching prop type)
     expect(onFoodItemAdded).toHaveBeenCalledWith({
-      _id: 'new-food-timing-test',
       name: 'Organic Blueberries',
       singularName: 'Organic Blueberries',
       pluralName: 'Organic Blueberries',

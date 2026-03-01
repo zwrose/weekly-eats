@@ -1,8 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useCallback } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -14,6 +13,7 @@ import {
   ListItemText,
   Divider,
   Box,
+  IconButton,
 } from '@mui/material';
 import { CachedAvatar } from './CachedAvatar';
 import {
@@ -21,11 +21,9 @@ import {
   Logout,
   Person,
   FormatListBulleted,
-  CalendarMonth,
-  ShoppingCart,
-  Restaurant,
   Kitchen,
 } from '@mui/icons-material';
+import Image from 'next/image';
 import SessionWrapper from './SessionWrapper';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -34,13 +32,6 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const sessionRef = useRef(session);
-
-  // Update ref when session changes
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
   useEffect(() => {
     // Redirect unapproved users to pending approval page
     if (session?.user && !session.user.isApproved && !session.user.isAdmin) {
@@ -93,10 +84,6 @@ export default function Header() {
     router.push('/recipes');
   }, [router]);
 
-  const handleNavPantry = useCallback(() => {
-    router.push('/pantry');
-  }, [router]);
-
   // Check if we should hide the header for unapproved users
   const shouldHideHeader = session?.user && !session.user.isApproved && !session.user.isAdmin;
 
@@ -106,38 +93,28 @@ export default function Header() {
         <AppBar
           position="sticky"
           color="default"
-          elevation={1}
+          elevation={0}
           sx={{ display: { xs: 'none', md: 'block' } }}
         >
-          <Toolbar>
-            {/* Mobile menu button is now replaced by bottom navigation */}
-
+          <Toolbar sx={{ minHeight: '48px !important' }}>
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
+                gap: 0.75,
                 cursor: 'pointer',
                 userSelect: 'none',
-                flexGrow: 1,
+                mr: 2,
               }}
               onClick={handleNavMealPlans}
             >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                <Image
-                  src="/icon0.svg"
-                  alt="Weekly Eats"
-                  width={32}
-                  height={32}
-                  style={{ minWidth: 32, display: 'block' }}
-                  priority
-                />
-              </Box>
+              <Image src="/icon0.svg" alt="" width={24} height={24} />
               <Typography
-                variant="h4"
                 component="div"
                 sx={{
-                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: 'text.primary',
                 }}
               >
                 Weekly Eats
@@ -148,111 +125,57 @@ export default function Header() {
             <Box
               sx={{
                 display: { xs: 'none', md: 'flex' },
-                gap: 2,
-                ml: 4,
+                gap: 1,
                 flexGrow: 1,
               }}
             >
-              <Button
-                onClick={handleNavMealPlans}
-                startIcon={<CalendarMonth sx={{ color: 'primary.main' }} />}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/meal-plans' ? '3px solid #1976d2' : 'none',
-                  borderRadius: 0,
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #1976d2',
-                  },
-                }}
-              >
-                Meal Plans
-              </Button>
-              <Button
-                onClick={handleNavShoppingLists}
-                startIcon={<ShoppingCart sx={{ color: '#2e7d32' }} />}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/shopping-lists' ? '3px solid #2e7d32' : 'none',
-                  borderRadius: 0,
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #2e7d32',
-                  },
-                }}
-              >
-                Shopping Lists
-              </Button>
-              <Button
-                onClick={handleNavRecipes}
-                startIcon={<Restaurant sx={{ color: '#ed6c02' }} />}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/recipes' ? '3px solid #ed6c02' : 'none',
-                  borderRadius: 0,
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #ed6c02',
-                  },
-                }}
-              >
-                Recipes
-              </Button>
-              <Button
-                onClick={handleNavPantry}
-                startIcon={<Kitchen sx={{ color: '#9c27b0' }} />}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  fontWeight: 'medium',
-                  borderBottom: pathname === '/pantry' ? '3px solid #9c27b0' : 'none',
-                  borderRadius: 0,
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                    borderBottom: '3px solid #9c27b0',
-                  },
-                }}
-              >
-                Pantry
-              </Button>
+              {([
+                { label: 'Meal Plans', path: '/meal-plans', color: '#5b9bd5', onClick: handleNavMealPlans },
+                { label: 'Shopping Lists', path: '/shopping-lists', color: '#6baf7b', onClick: handleNavShoppingLists },
+                { label: 'Recipes', path: '/recipes', color: '#d4915e', onClick: handleNavRecipes },
+              ] as const).map(({ label, path, color, onClick }) => {
+                const isActive = pathname === path || pathname?.startsWith(path + '/');
+                return (
+                  <Button
+                    key={path}
+                    onClick={onClick}
+                    sx={{
+                      textTransform: 'none',
+                      color: 'text.primary',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
+                      borderRadius: 0,
+                      px: 1.5,
+                      py: 0.75,
+                      minHeight: 'auto',
+                      transition: 'border-color var(--duration-fast) ease',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                        borderBottomColor: isActive ? color : `${color}80`,
+                      },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
             </Box>
 
             {/* Desktop user menu - hidden on mobile where bottom nav is used */}
-            <Button
+            <IconButton
               onClick={handleMenu}
               sx={{
-                textTransform: 'none',
-                color: 'inherit',
                 display: { xs: 'none', md: 'flex' },
-                alignItems: 'center',
-                gap: 1,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                },
+                p: 0.5,
               }}
             >
               <CachedAvatar
                 src={session.user.image}
                 alt={session.user.name || 'Profile'}
-                sx={{ width: 32, height: 32 }}
+                sx={{ width: 28, height: 28 }}
               />
-              <Typography variant="body1" color="text.secondary">
-                {session.user.name}
-              </Typography>
-            </Button>
+            </IconButton>
 
             {/* Desktop User Menu */}
             <Menu
@@ -270,6 +193,17 @@ export default function Header() {
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
+              <MenuItem disabled sx={{ opacity: '1 !important' }}>
+                <ListItemText
+                  primary={session.user.name}
+                  primaryTypographyProps={{
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    color: 'text.primary',
+                  }}
+                />
+              </MenuItem>
+              <Divider />
               <MenuItem onClick={handlePantry}>
                 <ListItemIcon>
                   <Kitchen fontSize="small" />

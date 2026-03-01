@@ -102,6 +102,7 @@ export default function BottomNav() {
           right: 0,
           display: { xs: 'block', md: 'none' },
           zIndex: 1100,
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}
         elevation={3}
       >
@@ -109,40 +110,43 @@ export default function BottomNav() {
           value={getCurrentValue()}
           showLabels={false}
           sx={{
-            height: 70,
+            height: 48,
             '& .MuiBottomNavigationAction-root': {
               minWidth: 'auto',
-              padding: '6px 12px 8px',
+              padding: '6px 8px 4px',
+            },
+            '& .MuiBottomNavigationAction-label': {
+              fontSize: '10px',
             },
           }}
         >
           <BottomNavigationAction
             aria-label="Meal Plans"
-            icon={<CalendarMonth />}
+            icon={<CalendarMonth sx={{ fontSize: 20 }} />}
             onClick={handleNavMealPlans}
             sx={{
               '&.Mui-selected': {
-                color: '#1976d2',
+                color: '#5b9bd5',
               },
             }}
           />
           <BottomNavigationAction
             aria-label="Shopping Lists"
-            icon={<ShoppingCart />}
+            icon={<ShoppingCart sx={{ fontSize: 20 }} />}
             onClick={handleNavShoppingLists}
             sx={{
               '&.Mui-selected': {
-                color: '#2e7d32',
+                color: '#6baf7b',
               },
             }}
           />
           <BottomNavigationAction
             aria-label="Recipes"
-            icon={<Restaurant />}
+            icon={<Restaurant sx={{ fontSize: 20 }} />}
             onClick={handleNavRecipes}
             sx={{
               '&.Mui-selected': {
-                color: '#ed6c02',
+                color: '#d4915e',
               },
             }}
           />
@@ -152,7 +156,7 @@ export default function BottomNav() {
               <CachedAvatar
                 src={session.user.image}
                 alt={session.user.name || 'Profile'}
-                sx={{ width: 24, height: 24 }}
+                sx={{ width: 20, height: 20 }}
               />
             }
             onClick={handleProfileMenu}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { TextField, Box } from '@mui/material';
+import { TextField, InputAdornment } from '@mui/material';
+import { Search } from '@mui/icons-material';
 
 interface SearchBarProps {
   value: string;
@@ -11,18 +12,26 @@ interface SearchBarProps {
 const SearchBar = React.memo<SearchBarProps>(
   ({ value, onChange, placeholder = 'Start typing to search...', fullWidth = true }) => {
     return (
-      <Box sx={{ mb: 4 }}>
-        <TextField
-          fullWidth={fullWidth}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete="off"
-          size="small"
-        />
-      </Box>
+      <TextField
+        fullWidth={fullWidth}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        size="small"
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+            sx: { height: 36 },
+          },
+        }}
+      />
     );
-  }
+  },
 );
 
 SearchBar.displayName = 'SearchBar';

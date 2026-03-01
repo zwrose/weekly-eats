@@ -25,14 +25,13 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
   }, [childrenArray, primaryButtonIndex]);
 
   return (
-    <MuiDialogActions>
+    <MuiDialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+      {/* Mobile: primary button first (column layout) */}
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          // Ensure visible spacing between action buttons on all breakpoints.
-          gap: { xs: 1.5, sm: 1 },
-          justifyContent: { xs: 'stretch', sm: 'flex-end' },
+          display: { xs: 'flex', sm: 'none' },
+          flexDirection: 'column',
+          gap: 1.5,
           width: '100%',
         }}
       >
@@ -40,12 +39,26 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
           <Box
             key={index}
             sx={{
-              width: { xs: '100%', sm: 'auto' },
-              '& > *': {
-                width: { xs: '100%', sm: 'auto' },
-              },
+              width: '100%',
+              '& > *': { width: '100%' },
             }}
           >
+            {child}
+          </Box>
+        ))}
+      </Box>
+      {/* Desktop: original order (Cancel left, action right) */}
+      <Box
+        sx={{
+          display: { xs: 'none', sm: 'flex' },
+          flexDirection: 'row',
+          gap: 1,
+          justifyContent: 'flex-end',
+          width: '100%',
+        }}
+      >
+        {childrenArray.map((child, index) => (
+          <Box key={index} sx={{ width: 'auto', '& > *': { width: 'auto' } }}>
             {child}
           </Box>
         ))}

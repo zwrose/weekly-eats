@@ -14,6 +14,22 @@ vi.mock('next-auth/react', async () => {
   };
 });
 
+// Mock next/navigation
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({
+    push: mockPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  })),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useParams: vi.fn(() => ({})),
+  usePathname: vi.fn(() => '/recipes'),
+}));
+
 // Mock server pagination hook
 const mockSetPage = vi.fn();
 const mockSetSort = vi.fn();
@@ -46,7 +62,7 @@ vi.mock('@/lib/hooks/use-debounced-search', () => ({
   })),
 }));
 
-// Mock the recipe utilities and hooks
+// Mock the hooks
 vi.mock('@/lib/hooks', () => ({
   useDialog: vi.fn(() => ({
     open: false,
@@ -67,36 +83,11 @@ vi.mock('@/lib/hooks', () => ({
   })),
 }));
 
-vi.mock('../../../lib/recipe-utils', () => ({
-  fetchRecipe: vi.fn(() =>
-    Promise.resolve({
-      _id: 'recipe-123',
-      title: 'Test Recipe',
-      emoji: '🍝',
-      ingredients: [
-        {
-          title: '',
-          ingredients: [{ type: 'foodItem' as const, id: 'food-1', quantity: 2, unit: 'cup' }],
-          isStandalone: true,
-        },
-      ],
-      instructions: 'Test instructions',
-      isGlobal: false,
-      createdBy: 'user-123',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    })
-  ),
-  createRecipe: vi.fn(),
-  updateRecipe: vi.fn(),
-  deleteRecipe: vi.fn(),
-}));
-
 vi.mock('../../../lib/food-items-utils', () => ({
   fetchFoodItems: vi.fn(() =>
     Promise.resolve([
       { _id: 'food-1', name: 'Pasta', singularName: 'pasta', pluralName: 'pasta', unit: 'cup' },
-    ])
+    ]),
   ),
   getUnitForm: vi.fn((unit: string, quantity: number) => (quantity === 1 ? unit : `${unit}s`)),
 }));
@@ -106,16 +97,8 @@ vi.mock('../../../components/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../../../components/RecipeIngredients', () => ({
-  default: () => <div data-testid="recipe-ingredients">Recipe Ingredients</div>,
-}));
-
-vi.mock('../../../components/EmojiPicker', () => ({
-  default: () => <div data-testid="emoji-picker">Emoji Picker</div>,
-}));
-
 vi.mock('@/components/RecipeFilterBar', () => ({
-  default: ({ searchTerm, onSearchChange }: any) => (
+  default: ({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (v: string) => void }) => (
     <div data-testid="recipe-filter-bar">
       <input
         data-testid="filter-search"
@@ -128,89 +111,43 @@ vi.mock('@/components/RecipeFilterBar', () => ({
 }));
 
 // Mock recipe user data utilities
-const mockFetchRecipeUserData = vi.fn();
-const mockUpdateRecipeTags = vi.fn();
-const mockUpdateRecipeRating = vi.fn();
-const mockDeleteRecipeRating = vi.fn();
-
 vi.mock('../../../lib/recipe-user-data-utils', () => ({
-  fetchRecipeUserData: () => mockFetchRecipeUserData(),
+  fetchRecipeUserData: vi.fn(() => Promise.resolve({ tags: [], rating: undefined })),
   fetchRecipeUserDataBatch: vi.fn(() => Promise.resolve(new Map())),
-  updateRecipeTags: () => mockUpdateRecipeTags(),
-  updateRecipeRating: () => mockUpdateRecipeRating(),
-  deleteRecipeRating: () => mockDeleteRecipeRating(),
+  updateRecipeTags: vi.fn(),
+  updateRecipeRating: vi.fn(),
+  deleteRecipeRating: vi.fn(),
   fetchUserTags: vi.fn(() => Promise.resolve([])),
 }));
 
 // Mock recipe sharing utilities
 const mockFetchPendingRecipeSharingInvitations = vi.fn();
 const mockFetchSharedRecipeUsers = vi.fn();
-const mockFetchRecipeSharingOwners = vi.fn();
 
 vi.mock('../../../lib/recipe-sharing-utils', () => ({
   fetchPendingRecipeSharingInvitations: () => mockFetchPendingRecipeSharingInvitations(),
   fetchSharedRecipeUsers: () => mockFetchSharedRecipeUsers(),
-  fetchRecipeSharingOwners: () => mockFetchRecipeSharingOwners(),
+  fetchRecipeSharingOwners: vi.fn(() => Promise.resolve([])),
   inviteUserToRecipeSharing: vi.fn(),
   respondToRecipeSharingInvitation: vi.fn(),
   removeUserFromRecipeSharing: vi.fn(),
 }));
 
-// Mock RecipeTagsEditor and RecipeStarRating components
-vi.mock('../../../components/RecipeTagsEditor', () => ({
-  default: ({ tags, editable, onChange, sharedTags }: any) => {
-    const tagsArray = Array.isArray(tags) ? tags : [];
-    const sharedTagsArray = Array.isArray(sharedTags) ? sharedTags : [];
-
-    return (
-      <div data-testid="recipe-tags-editor" data-editable={String(editable)}>
-        <div>Tags Editor</div>
-        {tagsArray.map((tag: string) => (
-          <span key={tag} data-testid={`tag-${tag}`}>
-            {tag}
-          </span>
-        ))}
-        {sharedTagsArray.length > 0 && (
-          <div data-testid="shared-tags">
-            {sharedTagsArray.map((tag: string) => (
-              <span key={tag} data-testid={`shared-tag-${tag}`}>
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        {editable && onChange && <button onClick={() => onChange(['new-tag'])}>Add Tag</button>}
+// Mock UI components
+vi.mock('@/components/ui', async () => {
+  const actual = await vi.importActual('@/components/ui');
+  return {
+    ...actual,
+    ListRow: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+      <div data-testid="list-row" onClick={onClick} role="button">
+        {children}
       </div>
-    );
-  },
-}));
-
-vi.mock('../../../components/RecipeStarRating', () => ({
-  default: ({ rating, editable, onChange, sharedRatings }: any) => {
-    const sharedRatingsArray = Array.isArray(sharedRatings) ? sharedRatings : [];
-
-    return (
-      <div data-testid="recipe-star-rating" data-editable={String(editable)}>
-        <div>Star Rating: {rating || 'none'}</div>
-        {sharedRatingsArray.length > 0 && (
-          <div data-testid="shared-ratings">
-            {sharedRatingsArray.map((sr: any, idx: number) => (
-              <span key={idx} data-testid={`shared-rating-${sr.rating}`}>
-                {sr.userEmail}: {sr.rating}
-              </span>
-            ))}
-          </div>
-        )}
-        {editable && onChange && (
-          <>
-            <button onClick={() => onChange(5)}>Set 5 Stars</button>
-            <button onClick={() => onChange(undefined)}>Clear Rating</button>
-          </>
-        )}
-      </div>
-    );
-  },
-}));
+    ),
+    StaggeredList: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="staggered-list">{children}</div>
+    ),
+  };
+});
 
 // Import after mocks
 import RecipesPage from '../page';
@@ -243,22 +180,13 @@ const globalRecipe = {
   accessLevel: 'shared-by-others' as const,
 };
 
-const sharedRecipe = {
-  ...mockRecipe,
-  _id: 'recipe-789',
-  title: 'Shared Recipe',
-  isGlobal: true,
-  createdBy: 'user-123',
-  accessLevel: 'shared-by-you' as const,
-};
-
 describe('RecipesPage - Unified List', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    // Reset mock implementations to defaults (clearAllMocks only clears call counts)
+    // Reset mock implementations to defaults
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [],
       total: 0,
       page: 1,
@@ -274,7 +202,7 @@ describe('RecipesPage - Unified List', () => {
     });
 
     const { useDebouncedSearch } = await import('@/lib/hooks/use-debounced-search');
-    (useDebouncedSearch as any).mockReturnValue({
+    (useDebouncedSearch as ReturnType<typeof vi.fn>).mockReturnValue({
       searchTerm: '',
       debouncedSearchTerm: '',
       setSearchTerm: vi.fn(),
@@ -283,8 +211,6 @@ describe('RecipesPage - Unified List', () => {
 
     mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
     mockFetchSharedRecipeUsers.mockResolvedValue([]);
-    mockFetchRecipeSharingOwners.mockResolvedValue([]);
-    mockFetchRecipeUserData.mockResolvedValue({ tags: [], rating: undefined });
   });
 
   afterEach(() => {
@@ -303,7 +229,7 @@ describe('RecipesPage - Unified List', () => {
 
   it('renders a single unified recipe list (no Your Recipes / Global Recipes sections)', async () => {
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [mockRecipe, globalRecipe],
       total: 2,
       page: 1,
@@ -321,7 +247,7 @@ describe('RecipesPage - Unified List', () => {
     const { unmount } = render(<RecipesPage />);
 
     await waitFor(() => {
-      // Both desktop table and mobile card views render, so use getAllByText
+      // Both desktop and mobile rows render, so use getAllByText
       expect(screen.getAllByText('Test Recipe').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Global Recipe').length).toBeGreaterThan(0);
     });
@@ -332,6 +258,9 @@ describe('RecipesPage - Unified List', () => {
 
     // Should show total count
     expect(screen.getByText('2 recipes found')).toBeInTheDocument();
+
+    // Should use StaggeredList wrapper
+    expect(screen.getByTestId('staggered-list')).toBeInTheDocument();
 
     unmount();
   });
@@ -348,7 +277,7 @@ describe('RecipesPage - Unified List', () => {
 
   it('shows filter-specific empty state when filters are active', async () => {
     const { useDebouncedSearch } = await import('@/lib/hooks/use-debounced-search');
-    (useDebouncedSearch as any).mockReturnValue({
+    (useDebouncedSearch as ReturnType<typeof vi.fn>).mockReturnValue({
       searchTerm: 'nonexistent',
       debouncedSearchTerm: 'nonexistent',
       setSearchTerm: vi.fn(),
@@ -366,7 +295,7 @@ describe('RecipesPage - Unified List', () => {
 
   it('shows loading state', async () => {
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [],
       total: 0,
       page: 1,
@@ -392,7 +321,7 @@ describe('RecipesPage - Unified List', () => {
 
   it('shows pagination when multiple pages exist', async () => {
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [mockRecipe],
       total: 50,
       page: 1,
@@ -418,82 +347,27 @@ describe('RecipesPage - Unified List', () => {
   });
 });
 
-describe('RecipesPage - Delete Functionality', () => {
-  beforeEach(() => {
+describe('RecipesPage - Navigation', () => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
     mockFetchSharedRecipeUsers.mockResolvedValue([]);
-    mockFetchRecipeSharingOwners.mockResolvedValue([]);
-    mockFetchRecipeUserData.mockResolvedValue({ tags: [], rating: undefined });
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it('shows delete button in edit mode', async () => {
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe],
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
-    });
-
-    unmount();
-  });
-
-  it('opens confirmation dialog when delete button is clicked', async () => {
+  it('navigates to /recipes/new when add button is clicked', async () => {
     const user = userEvent.setup();
-    const mockOpenConfirmDialog = vi.fn();
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const mockConfirmDialog = vi.fn(() => ({
-      open: false,
-      openDialog: mockOpenConfirmDialog,
-      closeDialog: vi.fn(),
-    }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe],
-      total: 1,
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: [],
+      total: 0,
       page: 1,
       limit: 10,
-      totalPages: 1,
+      totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
       loading: false,
@@ -503,45 +377,26 @@ describe('RecipesPage - Delete Functionality', () => {
       refetch: mockRefetch,
     });
 
-    const { useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
-
     const { unmount } = render(<RecipesPage />);
 
     await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
+      expect(screen.getByText('Recipes')).toBeInTheDocument();
     });
 
-    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
-    await user.click(deleteButtons[0]);
+    // Click the visible "Add Recipe" button (desktop)
+    const addButton = screen.getByRole('button', { name: /add recipe/i });
+    await user.click(addButton);
 
-    expect(mockOpenConfirmDialog).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/recipes/new');
+
     unmount();
   });
 
-  it('calls deleteRecipe when deletion is confirmed', async () => {
+  it('navigates to /recipes/[id] when a recipe row is clicked', async () => {
     const user = userEvent.setup();
-    const mockCloseDialog = vi.fn();
-    const mockCloseConfirmDialog = vi.fn();
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn(),
-    }));
-
-    const mockConfirmDialog = vi.fn(() => ({
-      open: true,
-      openDialog: vi.fn(),
-      closeDialog: mockCloseConfirmDialog,
-    }));
 
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [mockRecipe],
       total: 1,
       page: 1,
@@ -556,68 +411,24 @@ describe('RecipesPage - Delete Functionality', () => {
       refetch: mockRefetch,
     });
 
-    const { useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
-
-    const { deleteRecipe: mockDeleteRecipe } = await import('../../../lib/recipe-utils');
-    (mockDeleteRecipe as any).mockResolvedValue(undefined);
-
     const { unmount } = render(<RecipesPage />);
 
     await waitFor(() => {
-      const deleteTexts = screen.queryAllByText(/are you sure you want to delete/i);
-      expect(deleteTexts.length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Test Recipe').length).toBeGreaterThan(0);
     });
 
-    const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i });
-    const confirmButton = deleteButtons[deleteButtons.length - 1];
-    await user.click(confirmButton);
+    // Click on the recipe row
+    const rows = screen.getAllByTestId('list-row');
+    await user.click(rows[0]);
 
-    await waitFor(() => {
-      expect(mockDeleteRecipe).toHaveBeenCalledWith('recipe-123');
-      expect(mockCloseConfirmDialog).toHaveBeenCalled();
-      expect(mockCloseDialog).toHaveBeenCalled();
-    });
+    expect(mockPush).toHaveBeenCalledWith('/recipes/recipe-123');
 
     unmount();
   });
-});
 
-describe('RecipesPage - Tags and Ratings', () => {
-  const otherUserRecipe = {
-    ...mockRecipe,
-    _id: 'recipe-456',
-    createdBy: 'other-user-456',
-    accessLevel: 'shared-by-others' as const,
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockFetchRecipeUserData.mockResolvedValue({ tags: [], rating: undefined });
-    mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
-    mockFetchSharedRecipeUsers.mockResolvedValue([]);
-    mockFetchRecipeSharingOwners.mockResolvedValue([]);
-    mockUpdateRecipeTags.mockResolvedValue({ tags: [] });
-    mockUpdateRecipeRating.mockResolvedValue({ rating: 5 });
-    mockDeleteRecipeRating.mockResolvedValue(undefined);
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
-
-  it('shows tags and ratings as editable in edit mode for owned recipes', async () => {
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
+  it('renders flat ListRow components instead of Table or Paper cards', async () => {
     const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
+    (useServerPagination as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [mockRecipe],
       total: 1,
       page: 1,
@@ -632,281 +443,15 @@ describe('RecipesPage - Tags and Ratings', () => {
       refetch: mockRefetch,
     });
 
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
     const { unmount } = render(<RecipesPage />);
 
     await waitFor(() => {
-      const tagsEditor = screen.getByTestId('recipe-tags-editor');
-      expect(tagsEditor).toBeInTheDocument();
-      expect(tagsEditor.getAttribute('data-editable')).toBe('true');
+      // Should use ListRow components
+      expect(screen.getAllByTestId('list-row').length).toBeGreaterThan(0);
     });
 
-    await waitFor(() => {
-      const starRating = screen.getByTestId('recipe-star-rating');
-      expect(starRating).toBeInTheDocument();
-      expect(starRating.getAttribute('data-editable')).toBe('true');
-    });
-
-    unmount();
-  });
-
-  it('shows tags and ratings as NOT editable in view mode for owned recipes', async () => {
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe],
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const tagsEditor = screen.getByTestId('recipe-tags-editor');
-      expect(tagsEditor).toBeInTheDocument();
-      expect(tagsEditor.getAttribute('data-editable')).toBe('false');
-    });
-
-    await waitFor(() => {
-      const starRating = screen.getByTestId('recipe-star-rating');
-      expect(starRating).toBeInTheDocument();
-      expect(starRating.getAttribute('data-editable')).toBe('false');
-    });
-
-    unmount();
-  });
-
-  it('shows tags and ratings as editable in view mode for recipes not owned', async () => {
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-456' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [otherUserRecipe],
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { fetchRecipe } = await import('../../../lib/recipe-utils');
-    (fetchRecipe as any).mockResolvedValueOnce(otherUserRecipe);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const tagsEditor = screen.getByTestId('recipe-tags-editor');
-      expect(tagsEditor).toBeInTheDocument();
-      expect(tagsEditor.getAttribute('data-editable')).toBe('true');
-    });
-
-    await waitFor(() => {
-      const starRating = screen.getByTestId('recipe-star-rating');
-      expect(starRating).toBeInTheDocument();
-      expect(starRating.getAttribute('data-editable')).toBe('true');
-    });
-
-    unmount();
-  });
-
-  it('calls updateRecipeTags when tags are changed in edit mode', async () => {
-    const user = userEvent.setup();
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe],
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const addTagButtons = screen.queryAllByText('Add Tag');
-      expect(addTagButtons.length).toBeGreaterThan(0);
-    });
-
-    const addTagButtons = screen.getAllByText('Add Tag');
-    await user.click(addTagButtons[0]);
-
-    await waitFor(
-      () => {
-        expect(mockUpdateRecipeTags).toHaveBeenCalled();
-      },
-      { timeout: 2000 }
-    );
-
-    unmount();
-  });
-
-  it('calls updateRecipeRating when rating is changed in edit mode', async () => {
-    const user = userEvent.setup();
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { recipeId: 'recipe-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useServerPagination } = await import('@/lib/hooks/use-server-pagination');
-    (useServerPagination as any).mockReturnValue({
-      data: [mockRecipe],
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
-      loading: false,
-      error: null,
-      setPage: mockSetPage,
-      setSort: mockSetSort,
-      refetch: mockRefetch,
-    });
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const setRatingButtons = screen.queryAllByText('Set 5 Stars');
-      expect(setRatingButtons.length).toBeGreaterThan(0);
-    });
-
-    const setRatingButtons = screen.getAllByText('Set 5 Stars');
-    await user.click(setRatingButtons[0]);
-
-    await waitFor(
-      () => {
-        expect(mockUpdateRecipeRating).toHaveBeenCalled();
-      },
-      { timeout: 2000 }
-    );
-
-    unmount();
-  });
-
-  it('auto-focuses Recipe Title field when create dialog opens', async () => {
-    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(() => ({
-      open: false,
-      data: null,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-    (useConfirmDialog as any).mockImplementation(() => ({
-      open: false,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-    }));
-    let callCount = 0;
-    (useDialog as any).mockImplementation(() => {
-      const index = callCount % 3;
-      callCount++;
-      if (index === 0) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // createDialog: open
-      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
-    });
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const titleInput = screen.getByLabelText(/recipe title/i);
-      expect(titleInput).toHaveFocus();
-    });
-
-    unmount();
-  });
-
-  it('auto-focuses Email Address field when share recipes dialog opens', async () => {
-    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(() => ({
-      open: false,
-      data: null,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-    (useConfirmDialog as any).mockImplementation(() => ({
-      open: false,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-    }));
-    let callCount = 0;
-    (useDialog as any).mockImplementation(() => {
-      const index = callCount % 3;
-      callCount++;
-      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // shareDialog: open
-      return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
-    });
-
-    mockFetchPendingRecipeSharingInvitations.mockResolvedValue([]);
-    mockFetchSharedRecipeUsers.mockResolvedValue([]);
-    mockFetchRecipeSharingOwners.mockResolvedValue([]);
-
-    const { unmount } = render(<RecipesPage />);
-
-    await waitFor(() => {
-      const emailInput = screen.getByLabelText(/email address/i);
-      expect(emailInput).toHaveFocus();
-    });
+    // Should NOT have table elements
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
 
     unmount();
   });

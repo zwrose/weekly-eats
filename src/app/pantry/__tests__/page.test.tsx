@@ -222,10 +222,12 @@ describe('PantryPage - Server Paginated', () => {
       refetch: mockRefetch,
     });
 
-    const { unmount } = render(<PantryPage />);
+    const { container, unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      // Loading state now uses skeleton rows instead of CircularProgress
+      const skeletons = container.querySelectorAll('.MuiSkeleton-root');
+      expect(skeletons.length).toBeGreaterThan(0);
     });
 
     unmount();

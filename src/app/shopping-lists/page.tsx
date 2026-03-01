@@ -7,6 +7,7 @@ import {
   Container,
   Typography,
   Box,
+  Skeleton,
   CircularProgress,
   Paper,
   Button,
@@ -24,12 +25,6 @@ import {
   Divider,
   Autocomplete,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Snackbar,
   Chip,
 } from '@mui/material';
@@ -102,6 +97,7 @@ const StoreHistoryDialog = dynamic(
 );
 import { DialogTitle } from '../../components/ui/DialogTitle';
 import { DialogActions } from '../../components/ui/DialogActions';
+import { ListRow, StaggeredList } from '@/components/ui';
 import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
@@ -135,6 +131,9 @@ interface FoodItem {
   pluralName: string;
   unit: string;
 }
+
+// ── Shopping accent color ──
+const SHOPPING_ACCENT = '#6baf7b';
 
 function ShoppingListsPageContent() {
   const { status } = useSession();
@@ -545,13 +544,16 @@ function ShoppingListsPageContent() {
     await handleViewList(store);
   };
 
+  // Stable storeId extracted from dialog data to avoid re-fetching when
+  // the data object reference changes but the value stays the same.
+  const dialogStoreId = viewListDialog.data?.storeId;
+
   // Restore selected store and mode from URL when dialog is open
   useEffect(() => {
     if (!viewListDialog.open) return;
-    const storeId = viewListDialog.data?.storeId;
-    if (!storeId) return;
+    if (!dialogStoreId) return;
 
-    const store = stores.find((s) => s._id === storeId);
+    const store = stores.find((s) => s._id === dialogStoreId);
     if (!store) {
       return;
     }
@@ -571,7 +573,7 @@ function ShoppingListsPageContent() {
     };
 
     void loadLatestList();
-  }, [viewListDialog.open, viewListDialog.data, stores]);
+  }, [viewListDialog.open, dialogStoreId, stores]);
 
   const handleEmojiSelect = (emoji: string) => {
     setNewStoreEmoji(emoji);
@@ -1416,9 +1418,40 @@ function ShoppingListsPageContent() {
   if (status === 'loading') {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="md">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+        <Container maxWidth="xl">
+          <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: { xs: 1.5, md: 2 },
+              }}
+            >
+              <Skeleton variant="text" width={160} height={28} />
+              <Skeleton variant="rounded" width={100} height={32} />
+            </Box>
+            <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+              <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+              {[55, 65, 50, 70].map((w, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    minHeight: 40,
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderBottomColor: 'divider',
+                  }}
+                >
+                  <Skeleton variant="text" width={24} height={24} sx={{ mr: 1, flexShrink: 0 }} />
+                  <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+                  <Skeleton variant="text" width={40} height={16} sx={{ flexShrink: 0, ml: 1 }} />
+                </Box>
+              ))}
+            </Box>
           </Box>
         </Container>
       </AuthenticatedLayout>
@@ -1434,45 +1467,61 @@ function ShoppingListsPageContent() {
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+          {/* Compact page header */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
+              alignItems: 'center',
+              mb: { xs: 1.5, md: 2 },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ShoppingCart sx={{ fontSize: 40, color: '#2e7d32' }} />
-              <Typography variant="h3" component="h1" sx={{ color: '#2e7d32' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ShoppingCart sx={{ fontSize: { xs: 24, sm: 32 }, color: SHOPPING_ACCENT }} />
+              <Typography
+                variant="h5"
+                component="h1"
+                sx={{ fontSize: '1.125rem', fontWeight: 600 }}
+              >
                 Shopping Lists
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={createStoreDialog.openDialog}
-              sx={{
-                bgcolor: '#2e7d32',
-                '&:hover': { bgcolor: '#1b5e20' },
-                width: { xs: '100%', sm: 'auto' },
-              }}
-            >
-              Add Store
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* Desktop: full add button */}
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={createStoreDialog.openDialog}
+                size="small"
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                  bgcolor: SHOPPING_ACCENT,
+                  '&:hover': { bgcolor: '#5a9a69' },
+                }}
+              >
+                Add Store
+              </Button>
+            </Box>
           </Box>
 
           {/* Pending Invitations Section */}
           {pendingInvitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
+            <Box sx={{ mb: 2, maxWidth: 'md', mx: 'auto' }}>
               <Typography
                 variant="h6"
-                gutterBottom
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: 'text.secondary',
+                  mb: 1,
+                }}
               >
-                <PersonAdd />
+                <PersonAdd sx={{ fontSize: 16 }} />
                 Pending Invitations ({pendingInvitations.length})
               </Typography>
               <List>
@@ -1518,19 +1567,38 @@ function ShoppingListsPageContent() {
                   </Box>
                 ))}
               </List>
-            </Paper>
+            </Box>
           )}
 
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <SearchBar
-              value={storePagination.searchTerm}
-              onChange={storePagination.setSearchTerm}
-              placeholder="Search stores..."
-            />
+          <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+            <Box sx={{ mb: 2 }}>
+              <SearchBar
+                value={storePagination.searchTerm}
+                onChange={storePagination.setSearchTerm}
+                placeholder="Search stores..."
+              />
+            </Box>
 
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
+              <Box>
+                {[55, 65, 50, 70].map((w, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 40,
+                      px: 1.5,
+                      py: 1,
+                      borderBottom: '1px solid',
+                      borderBottomColor: 'divider',
+                    }}
+                  >
+                    <Skeleton variant="text" width={24} height={24} sx={{ mr: 1, flexShrink: 0 }} />
+                    <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+                    <Skeleton variant="text" width={40} height={16} sx={{ flexShrink: 0, ml: 1 }} />
+                  </Box>
+                ))}
               </Box>
             ) : storePagination.paginatedData.length === 0 ? (
               <Alert severity="info">
@@ -1540,217 +1608,82 @@ function ShoppingListsPageContent() {
               </Alert>
             ) : (
               <>
-                {/* Desktop Table View */}
-                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell
-                            sx={{
-                              width: '50%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Store (click to view list)
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '20%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Items on Lists
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '30%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Manage Store
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {storePagination.paginatedData.map((store) => (
-                          <TableRow
-                            key={store._id}
-                            onClick={() => handleViewList(store)}
-                            sx={{
-                              '&:hover': { backgroundColor: 'action.hover' },
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <TableCell sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1,
-                                }}
-                              >
-                                <Typography variant="h6">{store.emoji}</Typography>
-                                <Typography variant="body1">{store.name}</Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {store.shoppingList?.itemCount || 0}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  gap: 1,
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  title="Start Shopping"
-                                  disabled={!store.shoppingList?.itemCount}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartShopping(store);
-                                  }}
-                                >
-                                  <ShoppingCart fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  title="Purchase History"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenHistory(store);
-                                  }}
-                                >
-                                  <History fontSize="small" />
-                                </IconButton>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1, fontSize: '0.75rem' }}
+                >
+                  {storePagination.totalItems} store{storePagination.totalItems !== 1 ? 's' : ''}{' '}
+                  found
+                </Typography>
 
-                                {isStoreOwner(store) ? (
-                                  <>
-                                    <IconButton
-                                      size="small"
-                                      title="Share Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenShareDialog(store);
-                                      }}
-                                    >
-                                      <Share fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      title="Edit Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditStore(store);
-                                      }}
-                                    >
-                                      <Edit fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      title="Delete Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedStore(store);
-                                        deleteConfirmDialog.openDialog();
-                                      }}
-                                    >
-                                      <Delete fontSize="small" />
-                                    </IconButton>
-                                  </>
-                                ) : (
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    title="Leave Store"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleLeaveStore(store);
-                                    }}
-                                  >
-                                    <CloseIcon fontSize="small" />
-                                  </IconButton>
-                                )}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-
-                {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                {/* Flat row store list — unified layout */}
+                <StaggeredList>
                   {storePagination.paginatedData.map((store) => (
-                    <Paper
+                    <ListRow
                       key={store._id}
                       onClick={() => handleViewList(store)}
-                      sx={{
-                        p: 3,
-                        mb: 2,
-                        boxShadow: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                          transform: 'translateY(-2px)',
-                          boxShadow: 4,
-                        },
-                        transition: 'all 0.2s ease-in-out',
-                      }}
+                      accentColor={SHOPPING_ACCENT}
+                      sx={{ minHeight: 40 }}
                     >
-                      <Box
+                      {/* Emoji */}
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          mb: 2,
+                          fontSize: '1.1rem',
+                          lineHeight: 1,
+                          flexShrink: 0,
+                          width: 24,
+                          textAlign: 'center',
+                          mr: 1,
                         }}
                       >
-                        <Typography variant="h4">{store.emoji}</Typography>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                            {store.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {store.shoppingList?.itemCount || 0} items
-                          </Typography>
-                        </Box>
-                      </Box>
+                        {store.emoji}
+                      </Typography>
+
+                      {/* Name */}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          flex: '1 1 auto',
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {store.name}
+                      </Typography>
+
+                      {/* Item count */}
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ flexShrink: 0, fontSize: '0.75rem', mr: 1 }}
+                      >
+                        {store.shoppingList?.itemCount || 0}
+                      </Typography>
+
+                      {/* Action icons */}
                       <Box
                         sx={{
                           display: 'flex',
-                          gap: 1,
-                          justifyContent: 'flex-end',
+                          gap: 0.5,
+                          alignItems: 'center',
+                          flexShrink: 0,
                         }}
                       >
                         <IconButton
                           size="small"
-                          color="success"
                           title="Start Shopping"
                           disabled={!store.shoppingList?.itemCount}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartShopping(store);
                           }}
+                          sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: SHOPPING_ACCENT } }}
                         >
-                          <ShoppingCart fontSize="small" />
+                          <ShoppingCart sx={{ fontSize: 16 }} />
                         </IconButton>
                         <IconButton
                           size="small"
@@ -1759,8 +1692,9 @@ function ShoppingListsPageContent() {
                             e.stopPropagation();
                             handleOpenHistory(store);
                           }}
+                          sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
                         >
-                          <History fontSize="small" />
+                          <History sx={{ fontSize: 16 }} />
                         </IconButton>
 
                         {isStoreOwner(store) ? (
@@ -1772,8 +1706,9 @@ function ShoppingListsPageContent() {
                                 e.stopPropagation();
                                 handleOpenShareDialog(store);
                               }}
+                              sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
                             >
-                              <Share fontSize="small" />
+                              <Share sx={{ fontSize: 16 }} />
                             </IconButton>
                             <IconButton
                               size="small"
@@ -1782,39 +1717,40 @@ function ShoppingListsPageContent() {
                                 e.stopPropagation();
                                 handleEditStore(store);
                               }}
+                              sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
                             >
-                              <Edit fontSize="small" />
+                              <Edit sx={{ fontSize: 16 }} />
                             </IconButton>
                             <IconButton
                               size="small"
-                              color="error"
                               title="Delete Store"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedStore(store);
                                 deleteConfirmDialog.openDialog();
                               }}
+                              sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: 'error.main' }, display: { xs: 'none', sm: 'flex' } }}
                             >
-                              <Delete fontSize="small" />
+                              <Delete sx={{ fontSize: 16 }} />
                             </IconButton>
                           </>
                         ) : (
                           <IconButton
                             size="small"
-                            color="warning"
                             title="Leave Store"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleLeaveStore(store);
                             }}
+                            sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: 'warning.main' }, display: { xs: 'none', sm: 'flex' } }}
                           >
-                            <CloseIcon fontSize="small" />
+                            <CloseIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         )}
                       </Box>
-                    </Paper>
+                    </ListRow>
                   ))}
-                </Box>
+                </StaggeredList>
 
                 <Pagination
                   count={storePagination.totalPages}
@@ -1824,7 +1760,7 @@ function ShoppingListsPageContent() {
                 />
               </>
             )}
-          </Paper>
+          </Box>
         </Box>
       </Container>
 
@@ -2862,6 +2798,27 @@ function ShoppingListsPageContent() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={createStoreDialog.openDialog}
+        aria-label="Add shopping list"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: SHOPPING_ACCENT,
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#5a9a69' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }
@@ -2871,9 +2828,40 @@ export default function ShoppingListsPage() {
     <Suspense
       fallback={
         <AuthenticatedLayout>
-          <Container maxWidth="md">
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+          <Container maxWidth="xl">
+            <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: { xs: 1.5, md: 2 },
+                }}
+              >
+                <Skeleton variant="text" width={160} height={28} />
+                <Skeleton variant="rounded" width={100} height={32} />
+              </Box>
+              <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+                <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+                {[55, 65, 50, 70].map((w, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 40,
+                      px: 1.5,
+                      py: 1,
+                      borderBottom: '1px solid',
+                      borderBottomColor: 'divider',
+                    }}
+                  >
+                    <Skeleton variant="text" width={24} height={24} sx={{ mr: 1, flexShrink: 0 }} />
+                    <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+                    <Skeleton variant="text" width={40} height={16} sx={{ flexShrink: 0, ml: 1 }} />
+                  </Box>
+                ))}
+              </Box>
             </Box>
           </Container>
         </AuthenticatedLayout>

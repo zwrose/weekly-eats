@@ -1,4 +1,4 @@
-import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from '../types/recipe';
+import { Recipe, CreateRecipeRequest, UpdateRecipeRequest, RecipeIngredientList } from '../types/recipe';
 
 export const fetchRecipes = async (): Promise<Recipe[]> => {
   const response = await fetch('/api/recipes');
@@ -83,4 +83,24 @@ export const deleteRecipe = async (id: string): Promise<void> => {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete recipe');
   }
+};
+
+export const filterBlankIngredients = (ingredients: RecipeIngredientList[]): RecipeIngredientList[] => {
+  return ingredients.map((list) => ({
+    ...list,
+    ingredients: list.ingredients.filter(
+      (ingredient) => ingredient.id && ingredient.id.trim() !== '',
+    ),
+  }));
+};
+
+export const hasValidIngredients = (ingredients: RecipeIngredientList[]): boolean => {
+  const totalIngredients = ingredients.reduce(
+    (total, group) => total + (group.ingredients?.length || 0),
+    0,
+  );
+  if (totalIngredients === 0) return false;
+  return ingredients.every(
+    (group) => group.isStandalone || (group.title && group.title.trim() !== ''),
+  );
 };
