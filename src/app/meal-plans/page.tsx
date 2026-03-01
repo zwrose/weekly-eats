@@ -408,21 +408,6 @@ function MealPlansPageContent() {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {/* Mobile: icon-only add button */}
-              <IconButton
-                onClick={handleOpenCreateDialog}
-                size="small"
-                sx={{
-                  display: { xs: 'flex', sm: 'none' },
-                  bgcolor: '#5b9bd5',
-                  color: 'white',
-                  width: 32,
-                  height: 32,
-                  '&:hover': { bgcolor: '#4a82b5' },
-                }}
-              >
-                <Add sx={{ fontSize: 18 }} />
-              </IconButton>
               {/* Desktop: full add button */}
               <Button
                 variant="contained"
@@ -782,6 +767,27 @@ function MealPlansPageContent() {
           </Snackbar>
         </Box>
       </Container>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={handleOpenCreateDialog}
+        aria-label="Create meal plan"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: '#5b9bd5',
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#4a82b5' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }

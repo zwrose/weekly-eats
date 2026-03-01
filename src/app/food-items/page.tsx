@@ -23,8 +23,9 @@ import {
   Switch,
   IconButton,
   Drawer,
+  InputAdornment,
 } from '@mui/material';
-import { Public, Person, Edit, Delete, IosShare, FilterList, Close } from '@mui/icons-material';
+import { Public, Person, Edit, Delete, IosShare, FilterList, Close, Add, Search } from '@mui/icons-material';
 import { Pagination as MuiPagination } from '@mui/material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import { getUnitOptions } from '@/lib/food-items-utils';
@@ -33,6 +34,8 @@ import { useServerPagination } from '@/lib/hooks/use-server-pagination';
 import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import { responsiveDialogStyle } from '@/lib/theme';
 import { DialogActions, DialogTitle, ListRow, StaggeredList } from '@/components/ui';
+import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
+import AddFoodItemDialog from '@/components/AddFoodItemDialog';
 
 interface FoodItemWithAccessLevel {
   _id: string;
@@ -174,6 +177,13 @@ function FoodItemsPageContent() {
   const viewDialog = usePersistentDialog('viewFoodItem');
   const deleteConfirmDialog = useConfirmDialog();
   const confirmGlobalDialog = useDialog();
+
+  // Add food item
+  const foodItemCreator = useFoodItemCreator({
+    onItemCreated: () => {
+      refetch();
+    },
+  });
 
   // Selected item state
   const [selectedItem, setSelectedItem] = useState<FoodItemWithAccessLevel | null>(null);
@@ -354,13 +364,34 @@ function FoodItemsPageContent() {
         <Container maxWidth="xl">
           <Box sx={{ py: { xs: 0.5, md: 1 } }}>
             {/* Compact page header */}
-            <Typography
-              variant="h5"
-              component="h1"
-              sx={{ fontSize: '1.125rem', fontWeight: 600, mb: { xs: 1.5, md: 2 } }}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: { xs: 1.5, md: 2 },
+              }}
             >
-              Food Items
-            </Typography>
+              <Typography
+                variant="h5"
+                component="h1"
+                sx={{ fontSize: '1.125rem', fontWeight: 600 }}
+              >
+                Food Items
+              </Typography>
+              {/* Desktop: full add button */}
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => foodItemCreator.openDialog()}
+                size="small"
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                }}
+              >
+                Add Food Item
+              </Button>
+            </Box>
 
             {/* Desktop: Search + Filters */}
             <Box
@@ -379,6 +410,15 @@ function FoodItemsPageContent() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 autoComplete="off"
                 sx={{ flex: 1, minWidth: 200 }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               <FormControl size="small" sx={{ minWidth: 160 }}>
                 <InputLabel id="access-level-label">Access Level</InputLabel>
@@ -411,6 +451,15 @@ function FoodItemsPageContent() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 autoComplete="off"
                 sx={{ flex: 1 }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               <IconButton
                 onClick={() => setFilterDrawerOpen(true)}
@@ -824,6 +873,35 @@ function FoodItemsPageContent() {
             </DialogActions>
           </DialogContent>
         </Dialog>
+
+        {/* Add Food Item Dialog */}
+        <AddFoodItemDialog
+          open={foodItemCreator.isDialogOpen}
+          onClose={foodItemCreator.closeDialog}
+          onAdd={foodItemCreator.handleCreate}
+          prefillName={foodItemCreator.prefillName}
+        />
+
+        {/* Mobile FAB */}
+        <IconButton
+          onClick={() => foodItemCreator.openDialog()}
+          aria-label="Add food item"
+          sx={{
+            display: { xs: 'flex', sm: 'none' },
+            position: 'fixed',
+            bottom: 68,
+            right: 20,
+            zIndex: 1050,
+            bgcolor: 'primary.main',
+            color: 'white',
+            width: 48,
+            height: 48,
+            boxShadow: 3,
+            '&:hover': { bgcolor: 'primary.dark' },
+          }}
+        >
+          <Add />
+        </IconButton>
       </AuthenticatedLayout>
     </Suspense>
   );

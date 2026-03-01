@@ -24,6 +24,7 @@ import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Add from '@mui/icons-material/Add';
 import Delete from '@mui/icons-material/Delete';
+import Kitchen from '@mui/icons-material/Kitchen';
 import { DialogActions, DialogTitle, ListRow, StaggeredList } from '@/components/ui';
 import FoodItemAutocomplete from '@/components/food-item-inputs/FoodItemAutocomplete';
 import { SearchOption } from '@/lib/hooks/use-food-item-selector';
@@ -188,52 +189,40 @@ export default function PantryPage() {
             mb: { xs: 1.5, md: 2 },
           }}
         >
-          <Typography
-            variant="h5"
-            component="h1"
-            sx={{ fontSize: '1.125rem', fontWeight: 600 }}
-          >
-            Pantry Items ({total})
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            {/* Mobile: icon-only add button */}
-            <IconButton
-              onClick={createDialog.openDialog}
-              size="small"
-              sx={{
-                display: { xs: 'flex', sm: 'none' },
-                bgcolor: PANTRY_ACCENT,
-                color: 'white',
-                width: 32,
-                height: 32,
-                '&:hover': { bgcolor: '#956ea2' },
-              }}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Kitchen sx={{ fontSize: { xs: 24, sm: 32 }, color: PANTRY_ACCENT }} />
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{ fontSize: '1.125rem', fontWeight: 600 }}
             >
-              <Add sx={{ fontSize: 18 }} />
-            </IconButton>
-            {/* Desktop: full add button */}
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={createDialog.openDialog}
-              size="small"
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                bgcolor: PANTRY_ACCENT,
-                '&:hover': { bgcolor: '#956ea2' },
-              }}
-            >
-              Add Item
-            </Button>
+              Pantry Items
+            </Typography>
           </Box>
+          {/* Desktop: full add button */}
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={createDialog.openDialog}
+            size="small"
+            sx={{
+              display: { xs: 'none', sm: 'flex' },
+              bgcolor: PANTRY_ACCENT,
+              '&:hover': { bgcolor: '#956ea2' },
+            }}
+          >
+            Add Item
+          </Button>
         </Box>
 
         <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search your pantry..."
-          />
+          <Box sx={{ mb: 2 }}>
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search your pantry..."
+            />
+          </Box>
 
           {loading ? (
             <PantryListSkeleton />
@@ -241,6 +230,14 @@ export default function PantryPage() {
             <>
               {pantryItems.length > 0 ? (
                 <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1, fontSize: '0.75rem' }}
+                  >
+                    {total} pantry item{total !== 1 ? 's' : ''} found
+                  </Typography>
+
                   {/* Flat row list — unified layout for desktop and mobile */}
                   <StaggeredList>
                     {pantryItems.map((item) => (
@@ -313,6 +310,14 @@ export default function PantryPage() {
           maxWidth="xs"
           fullWidth
           sx={responsiveDialogStyle}
+          TransitionProps={{
+            onEntered: () => {
+              const input = document.querySelector<HTMLInputElement>(
+                '.MuiDialog-root .MuiAutocomplete-input'
+              );
+              input?.focus();
+            },
+          }}
         >
           <DialogTitle onClose={createDialog.closeDialog}>Add Pantry Item</DialogTitle>
           <DialogContent>
@@ -392,6 +397,27 @@ export default function PantryPage() {
           </DialogActions>
         </Dialog>
       </Container>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={createDialog.openDialog}
+        aria-label="Add pantry item"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: PANTRY_ACCENT,
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#956ea2' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }

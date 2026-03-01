@@ -1487,21 +1487,6 @@ function ShoppingListsPageContent() {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {/* Mobile: icon-only add button */}
-              <IconButton
-                onClick={createStoreDialog.openDialog}
-                size="small"
-                sx={{
-                  display: { xs: 'flex', sm: 'none' },
-                  bgcolor: SHOPPING_ACCENT,
-                  color: 'white',
-                  width: 32,
-                  height: 32,
-                  '&:hover': { bgcolor: '#5a9a69' },
-                }}
-              >
-                <Add sx={{ fontSize: 18 }} />
-              </IconButton>
               {/* Desktop: full add button */}
               <Button
                 variant="contained"
@@ -1586,11 +1571,13 @@ function ShoppingListsPageContent() {
           )}
 
           <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
-            <SearchBar
-              value={storePagination.searchTerm}
-              onChange={storePagination.setSearchTerm}
-              placeholder="Search stores..."
-            />
+            <Box sx={{ mb: 2 }}>
+              <SearchBar
+                value={storePagination.searchTerm}
+                onChange={storePagination.setSearchTerm}
+                placeholder="Search stores..."
+              />
+            </Box>
 
             {loading ? (
               <Box>
@@ -1621,6 +1608,15 @@ function ShoppingListsPageContent() {
               </Alert>
             ) : (
               <>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1, fontSize: '0.75rem' }}
+                >
+                  {storePagination.totalItems} store{storePagination.totalItems !== 1 ? 's' : ''}{' '}
+                  found
+                </Typography>
+
                 {/* Flat row store list — unified layout */}
                 <StaggeredList>
                   {storePagination.paginatedData.map((store) => (
@@ -2802,6 +2798,27 @@ function ShoppingListsPageContent() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={createStoreDialog.openDialog}
+        aria-label="Add shopping list"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: SHOPPING_ACCENT,
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#5a9a69' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }

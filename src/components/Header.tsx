@@ -23,6 +23,7 @@ import {
   FormatListBulleted,
   Kitchen,
 } from '@mui/icons-material';
+import Image from 'next/image';
 import SessionWrapper from './SessionWrapper';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -83,10 +84,6 @@ export default function Header() {
     router.push('/recipes');
   }, [router]);
 
-  const handleNavPantry = useCallback(() => {
-    router.push('/pantry');
-  }, [router]);
-
   // Check if we should hide the header for unapproved users
   const shouldHideHeader = session?.user && !session.user.isApproved && !session.user.isAdmin;
 
@@ -100,20 +97,29 @@ export default function Header() {
           sx={{ display: { xs: 'none', md: 'block' } }}
         >
           <Toolbar sx={{ minHeight: '48px !important' }}>
-            <Typography
-              component="div"
+            <Box
               sx={{
-                fontSize: '14px',
-                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
                 cursor: 'pointer',
                 userSelect: 'none',
-                color: 'text.primary',
                 mr: 2,
               }}
               onClick={handleNavMealPlans}
             >
-              Weekly Eats
-            </Typography>
+              <Image src="/icon0.svg" alt="" width={24} height={24} />
+              <Typography
+                component="div"
+                sx={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: 'text.primary',
+                }}
+              >
+                Weekly Eats
+              </Typography>
+            </Box>
 
             {/* Desktop Navigation */}
             <Box
@@ -123,82 +129,37 @@ export default function Header() {
                 flexGrow: 1,
               }}
             >
-              <Button
-                onClick={handleNavMealPlans}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  borderBottom: pathname === '/meal-plans' ? '2px solid #5b9bd5' : '2px solid transparent',
-                  borderRadius: 0,
-                  px: 1.5,
-                  py: 0.75,
-                  minHeight: 'auto',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                  },
-                }}
-              >
-                Meal Plans
-              </Button>
-              <Button
-                onClick={handleNavShoppingLists}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  borderBottom: pathname === '/shopping-lists' ? '2px solid #6baf7b' : '2px solid transparent',
-                  borderRadius: 0,
-                  px: 1.5,
-                  py: 0.75,
-                  minHeight: 'auto',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                  },
-                }}
-              >
-                Shopping Lists
-              </Button>
-              <Button
-                onClick={handleNavRecipes}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  borderBottom: pathname === '/recipes' ? '2px solid #d4915e' : '2px solid transparent',
-                  borderRadius: 0,
-                  px: 1.5,
-                  py: 0.75,
-                  minHeight: 'auto',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                  },
-                }}
-              >
-                Recipes
-              </Button>
-              <Button
-                onClick={handleNavPantry}
-                sx={{
-                  textTransform: 'none',
-                  color: 'text.primary',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  borderBottom: pathname === '/pantry' ? '2px solid #a87bb5' : '2px solid transparent',
-                  borderRadius: 0,
-                  px: 1.5,
-                  py: 0.75,
-                  minHeight: 'auto',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                  },
-                }}
-              >
-                Pantry
-              </Button>
+              {([
+                { label: 'Meal Plans', path: '/meal-plans', color: '#5b9bd5', onClick: handleNavMealPlans },
+                { label: 'Shopping Lists', path: '/shopping-lists', color: '#6baf7b', onClick: handleNavShoppingLists },
+                { label: 'Recipes', path: '/recipes', color: '#d4915e', onClick: handleNavRecipes },
+              ] as const).map(({ label, path, color, onClick }) => {
+                const isActive = pathname === path || pathname?.startsWith(path + '/');
+                return (
+                  <Button
+                    key={path}
+                    onClick={onClick}
+                    sx={{
+                      textTransform: 'none',
+                      color: 'text.primary',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
+                      borderRadius: 0,
+                      px: 1.5,
+                      py: 0.75,
+                      minHeight: 'auto',
+                      transition: 'border-color var(--duration-fast) ease',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                        borderBottomColor: isActive ? color : `${color}80`,
+                      },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
             </Box>
 
             {/* Desktop user menu - hidden on mobile where bottom nav is used */}

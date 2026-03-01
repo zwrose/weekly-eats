@@ -164,13 +164,32 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
             fontSize: '0.875rem',
           },
           input: {
-            padding: '6px 10px',
+            padding: '8.5px 10px',
           },
         },
       },
       MuiTextField: {
         defaultProps: {
           size: 'small',
+        },
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            // MUI zeros out top padding when DialogContent follows DialogTitle,
+            // which clips floating labels on form fields. Restore it.
+            paddingTop: '6px !important',
+          },
+        },
+      },
+      MuiSnackbar: {
+        styleOverrides: {
+          anchorOriginBottomCenter: {
+            // Push above the 48px BottomNav on mobile
+            '@media (max-width: 899.95px)': {
+              bottom: '64px !important',
+            },
+          },
         },
       },
     },
@@ -185,10 +204,9 @@ export const darkTheme = createTheme(createThemeOptions('dark'));
 export const responsiveDialogStyle = {
   '& .MuiDialog-paper': {
     margin: { xs: 0, sm: 2 },
-    width: { xs: '100%', sm: 'auto' },
+    width: { xs: '100%' },
     height: { xs: '100%', sm: 'auto' },
     maxHeight: { xs: '100%', sm: '85vh' },
-    maxWidth: { xs: '100%', sm: 600 },
     borderRadius: { xs: 0, sm: 2 },
   },
 };

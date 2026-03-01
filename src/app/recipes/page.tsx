@@ -318,21 +318,6 @@ function RecipesPageContent() {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {/* Mobile: icon-only add button */}
-              <IconButton
-                onClick={() => router.push('/recipes/new')}
-                size="small"
-                sx={{
-                  display: { xs: 'flex', sm: 'none' },
-                  bgcolor: '#d4915e',
-                  color: 'white',
-                  width: 32,
-                  height: 32,
-                  '&:hover': { bgcolor: '#c07f4e' },
-                }}
-              >
-                <Add sx={{ fontSize: 18 }} />
-              </IconButton>
               {/* Desktop: full add button */}
               <Button
                 variant="contained"
@@ -637,6 +622,27 @@ function RecipesPageContent() {
           </Alert>
         </Snackbar>
       </Container>
+
+      {/* Mobile FAB */}
+      <IconButton
+        onClick={() => router.push('/recipes/new')}
+        aria-label="Add recipe"
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 68,
+          right: 20,
+          zIndex: 1050,
+          bgcolor: '#d4915e',
+          color: 'white',
+          width: 48,
+          height: 48,
+          boxShadow: 3,
+          '&:hover': { bgcolor: '#c07f4e' },
+        }}
+      >
+        <Add />
+      </IconButton>
     </AuthenticatedLayout>
   );
 }
