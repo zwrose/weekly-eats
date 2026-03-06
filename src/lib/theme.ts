@@ -3,7 +3,9 @@ import { createTheme, ThemeOptions } from '@mui/material/styles';
 // Linear-style dense, polished aesthetic
 const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
   const isDark = mode === 'dark';
-  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+  const borderColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const inputBorderColor = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.23)';
+  const inputHoverBorderColor = isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.40)';
 
   return {
     palette: {
@@ -162,6 +164,12 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => {
           root: {
             borderRadius: 6,
             fontSize: '0.875rem',
+            '& .MuiOutlinedInput-notchedOutline': {
+              borderColor: inputBorderColor,
+            },
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: inputHoverBorderColor,
+            },
           },
           input: {
             padding: '8.5px 10px',

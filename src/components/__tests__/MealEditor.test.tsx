@@ -6,12 +6,19 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../vitest.setup';
 import MealEditor from '../MealEditor';
 
+// Disable pointer-events check globally for this file.
+// MUI Dialog's scroll lock (overflow:hidden, padding-right) persists on document.body
+// across tests in single-fork vitest mode, causing userEvent to falsely reject clicks.
+// The events themselves fire correctly — only the pre-check is unreliable.
+const setupUser = () => userEvent.setup({ pointerEventsCheck: 0 });
+
 // Mock fetch for API calls
 const mockFetch = vi.fn();
 
 describe('MealEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   afterEach(() => {
@@ -101,11 +108,13 @@ describe('MealEditor', () => {
   it('auto-selects newly created food item in meal editor', async () => {
     // This test uses MSW for all fetches (food items GET, recipes GET, food item POST).
     // MSW's default POST handler returns { _id: 'new-food-id', ...body }.
-    const user = userEvent.setup();
+    const user = setupUser();
     const onChange = vi.fn();
     const onFoodItemAdded = vi.fn();
 
-    render(<MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />);
+    const { rerender } = render(
+      <MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />
+    );
 
     // Add a meal item
     const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
@@ -126,7 +135,7 @@ describe('MealEditor', () => {
     const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
 
     // Re-render with the updated meal items
-    render(
+    rerender(
       <MealEditor
         mealItems={updatedMealItems}
         onChange={onChange}
@@ -141,29 +150,31 @@ describe('MealEditor', () => {
     // Press Enter to open the add dialog
     await user.keyboard('{Enter}');
 
-    // Wait for the dialog to appear and fill in the form (single page now)
+    // Wait for the dialog to appear and fill in the form
     const nameField = await screen.findByLabelText(/default name/i);
     await user.clear(nameField);
     await user.type(nameField, 'Fresh Avocado');
 
-    // Select unit (using "each" so singular/plural fields will appear)
-    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
-    const listbox = await screen.findByRole('listbox');
-    await user.click(within(listbox).getByRole('option', { name: /each/i }));
+    // Click the name field to ensure focus is in the dialog and close any autocomplete popups
+    await user.click(nameField);
 
-    // Wait for singular/plural fields to appear
+    // Wait for any stale popup to close before opening the unit selector
     await waitFor(() => {
-      expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
-    // Fill in singular/plural fields
-    const singularField = screen.getByLabelText(/singular name/i);
-    await user.clear(singularField);
-    await user.type(singularField, 'Fresh Avocado');
+    // Select "cup" unit — type to reliably trigger popup open
+    const dialog = screen.getByRole('dialog');
+    const unitCombobox = within(dialog).getByRole('combobox', { name: /typical usage unit/i });
+    await user.clear(unitCombobox);
+    await user.type(unitCombobox, 'cup');
+    const unitListbox = await screen.findByRole('listbox');
+    await user.click(within(unitListbox).getByRole('option', { name: /cup/i }));
 
-    const pluralField = screen.getByLabelText(/plural name/i);
-    await user.clear(pluralField);
-    await user.type(pluralField, 'Fresh Avocados');
+    // Wait for unit popup to close
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
 
     // Submit the form
     const addButton = screen.getByRole('button', { name: /add food item/i });
@@ -179,23 +190,28 @@ describe('MealEditor', () => {
           id: 'new-food-id',
           name: 'Fresh Avocado',
           quantity: 1,
-          unit: 'each',
+          unit: 'cup',
         })
       );
     });
 
-    // Verify that onFoodItemAdded was called with the new food item (without _id, matching prop type)
+    // Verify that onFoodItemAdded was called with the new food item
     expect(onFoodItemAdded).toHaveBeenCalledWith({
       name: 'Fresh Avocado',
       singularName: 'Fresh Avocado',
-      pluralName: 'Fresh Avocados',
-      unit: 'each',
+      pluralName: 'Fresh Avocado',
+      unit: 'cup',
       isGlobal: true,
+    });
+
+    // Wait for the dialog to close so MUI's modal manager cleans up properly
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
 
   it('handles auto-selection when foodItems state is not yet updated', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onChange = vi.fn();
     const onFoodItemAdded = vi.fn();
 
@@ -237,7 +253,9 @@ describe('MealEditor', () => {
       })
     );
 
-    render(<MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />);
+    const { rerender } = render(
+      <MealEditor mealItems={[]} onChange={onChange} onFoodItemAdded={onFoodItemAdded} />
+    );
 
     // Add a meal item
     const addMealItemButton = screen.getByRole('button', { name: /^add meal item$/i });
@@ -247,7 +265,7 @@ describe('MealEditor', () => {
     const updatedMealItems = onChange.mock.calls[onChange.mock.calls.length - 1][0];
 
     // Re-render with the updated meal items
-    render(
+    rerender(
       <MealEditor
         mealItems={updatedMealItems}
         onChange={onChange}
@@ -267,11 +285,21 @@ describe('MealEditor', () => {
     await user.clear(nameField);
     await user.type(nameField, 'Organic Blueberries');
 
-    // Select unit (not "each", so no singular/plural fields needed)
-    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
-    const listbox = await screen.findByRole('listbox');
-    // Select a non-"each" unit (e.g., "cup")
-    await user.click(within(listbox).getByRole('option', { name: /cup/i }));
+    // Click the name field to ensure focus is in the dialog
+    await user.click(nameField);
+
+    // Wait for any stale popup to close
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    // Select "cup" unit — type to reliably trigger popup open
+    const dialog = screen.getByRole('dialog');
+    const unitCombobox = within(dialog).getByRole('combobox', { name: /typical usage unit/i });
+    await user.clear(unitCombobox);
+    await user.type(unitCombobox, 'cup');
+    const unitListbox2 = await screen.findByRole('listbox');
+    await user.click(within(unitListbox2).getByRole('option', { name: /cup/i }));
 
     // Submit the form (no Step 2 needed - single page form)
     const addButton = screen.getByRole('button', { name: /add food item/i });
@@ -303,7 +331,7 @@ describe('MealEditor', () => {
   });
 
   it('adds meal item group correctly', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onChange = vi.fn();
 
     // Mock the initial data loading

@@ -97,7 +97,7 @@ const StoreHistoryDialog = dynamic(
 );
 import { DialogTitle } from '../../components/ui/DialogTitle';
 import { DialogActions } from '../../components/ui/DialogActions';
-import { ListRow, StaggeredList } from '@/components/ui';
+import { ListRow, ShareDialog, StaggeredList } from '@/components/ui';
 import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
@@ -178,7 +178,6 @@ function ShoppingListsPageContent() {
 
   // Auto-focus refs for dialog inputs
   const storeNameRef = useRef<HTMLInputElement>(null);
-  const shareEmailRef = useRef<HTMLInputElement>(null);
 
   // Notification state
   const [snackbar, setSnackbar] = useState<{
@@ -1595,7 +1594,12 @@ function ShoppingListsPageContent() {
                     }}
                   >
                     <Skeleton variant="text" width={24} height={24} sx={{ mr: 1, flexShrink: 0 }} />
-                    <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+                    <Skeleton
+                      variant="text"
+                      width={`${w}%`}
+                      height={20}
+                      sx={{ flex: '1 1 auto' }}
+                    />
                     <Skeleton variant="text" width={40} height={16} sx={{ flexShrink: 0, ml: 1 }} />
                   </Box>
                 ))}
@@ -1681,7 +1685,11 @@ function ShoppingListsPageContent() {
                             e.stopPropagation();
                             handleStartShopping(store);
                           }}
-                          sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: SHOPPING_ACCENT } }}
+                          sx={{
+                            color: 'text.secondary',
+                            p: 0.5,
+                            '&:hover': { color: SHOPPING_ACCENT },
+                          }}
                         >
                           <ShoppingCart sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -1692,7 +1700,11 @@ function ShoppingListsPageContent() {
                             e.stopPropagation();
                             handleOpenHistory(store);
                           }}
-                          sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
+                          sx={{
+                            color: 'text.secondary',
+                            p: 0.5,
+                            display: { xs: 'none', sm: 'flex' },
+                          }}
                         >
                           <History sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -1706,7 +1718,11 @@ function ShoppingListsPageContent() {
                                 e.stopPropagation();
                                 handleOpenShareDialog(store);
                               }}
-                              sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
+                              sx={{
+                                color: 'text.secondary',
+                                p: 0.5,
+                                display: { xs: 'none', sm: 'flex' },
+                              }}
                             >
                               <Share sx={{ fontSize: 16 }} />
                             </IconButton>
@@ -1717,7 +1733,11 @@ function ShoppingListsPageContent() {
                                 e.stopPropagation();
                                 handleEditStore(store);
                               }}
-                              sx={{ color: 'text.secondary', p: 0.5, display: { xs: 'none', sm: 'flex' } }}
+                              sx={{
+                                color: 'text.secondary',
+                                p: 0.5,
+                                display: { xs: 'none', sm: 'flex' },
+                              }}
                             >
                               <Edit sx={{ fontSize: 16 }} />
                             </IconButton>
@@ -1729,7 +1749,12 @@ function ShoppingListsPageContent() {
                                 setSelectedStore(store);
                                 deleteConfirmDialog.openDialog();
                               }}
-                              sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: 'error.main' }, display: { xs: 'none', sm: 'flex' } }}
+                              sx={{
+                                color: 'text.secondary',
+                                p: 0.5,
+                                '&:hover': { color: 'error.main' },
+                                display: { xs: 'none', sm: 'flex' },
+                              }}
                             >
                               <Delete sx={{ fontSize: 16 }} />
                             </IconButton>
@@ -1742,7 +1767,12 @@ function ShoppingListsPageContent() {
                               e.stopPropagation();
                               handleLeaveStore(store);
                             }}
-                            sx={{ color: 'text.secondary', p: 0.5, '&:hover': { color: 'warning.main' }, display: { xs: 'none', sm: 'flex' } }}
+                            sx={{
+                              color: 'text.secondary',
+                              p: 0.5,
+                              '&:hover': { color: 'warning.main' },
+                              display: { xs: 'none', sm: 'flex' },
+                            }}
                           >
                             <CloseIcon sx={{ fontSize: 16 }} />
                           </IconButton>
@@ -2531,87 +2561,23 @@ function ShoppingListsPageContent() {
       </Dialog>
 
       {/* Share Store Dialog */}
-      <Dialog
+      <ShareDialog
         open={shareDialog.open}
         onClose={shareDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
-      >
-        <DialogTitle onClose={shareDialog.closeDialog}>
-          Share &quot;{sharingStore?.name}&quot;
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Invite users by email. They&apos;ll be able to view and edit the shopping list.
-          </Typography>
-
-          {/* Invite Section */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <TextField
-              inputRef={shareEmailRef}
-              label="Email Address"
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && shareEmail.trim()) {
-                  handleInviteUser();
-                }
-              }}
-              size="small"
-              fullWidth
-              placeholder="user@example.com"
-            />
-            <Button
-              variant="contained"
-              onClick={handleInviteUser}
-              disabled={!shareEmail.trim()}
-              sx={{ minWidth: 100 }}
-            >
-              Invite
-            </Button>
-          </Box>
-
-          {/* Shared Users List */}
-          {sharingStore?.invitations && sharingStore.invitations.length > 0 && (
-            <>
-              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                Shared With:
-              </Typography>
-              <List>
-                {sharingStore.invitations
-                  .filter((inv) => inv.status === 'accepted' || inv.status === 'pending')
-                  .map((inv) => (
-                    <ListItem key={inv.userId}>
-                      <ListItemText
-                        primary={inv.userEmail}
-                        secondary={inv.status === 'pending' ? 'Pending' : 'Accepted'}
-                      />
-                      {inv.status === 'accepted' && (
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Remove user"
-                          onClick={() => handleRemoveUser(sharingStore._id, inv.userId)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      )}
-                    </ListItem>
-                  ))}
-              </List>
-            </>
-          )}
-
-          <DialogActions primaryButtonIndex={0}>
-            <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              Done
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+        title={`Share "${sharingStore?.name}"`}
+        description="Invite users by email. They'll be able to view and edit the shopping list."
+        email={shareEmail}
+        onEmailChange={setShareEmail}
+        onInvite={handleInviteUser}
+        sharedUsers={(sharingStore?.invitations || [])
+          .filter((inv) => inv.status === 'accepted' || inv.status === 'pending')
+          .map((inv) => ({
+            key: inv.userId,
+            primary: inv.userEmail,
+            secondary: inv.status === 'pending' ? 'Pending' : 'Accepted',
+          }))}
+        onRemoveUser={(userId) => sharingStore && handleRemoveUser(sharingStore._id, userId)}
+      />
 
       {/* Pantry Check Dialog */}
       <Dialog
@@ -2857,7 +2823,12 @@ export default function ShoppingListsPage() {
                     }}
                   >
                     <Skeleton variant="text" width={24} height={24} sx={{ mr: 1, flexShrink: 0 }} />
-                    <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+                    <Skeleton
+                      variant="text"
+                      width={`${w}%`}
+                      height={20}
+                      sx={{ flex: '1 1 auto' }}
+                    />
                     <Skeleton variant="text" width={40} height={16} sx={{ flexShrink: 0, ml: 1 }} />
                   </Box>
                 ))}

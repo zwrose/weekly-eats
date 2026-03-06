@@ -14,21 +14,19 @@ import {
   List,
   ListItem,
   ListItemText,
-  TextField,
   Skeleton,
 } from '@mui/material';
 import {
   Add,
   CalendarMonth,
   Settings,
-  Delete,
   Share,
   Check,
   Close as CloseIcon,
   PersonAdd,
 } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
-import { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useState, useCallback, useEffect, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
@@ -64,7 +62,7 @@ import {
 } from '../../lib/meal-plan-sharing-utils';
 import { useDialog, useConfirmDialog } from '@/lib/hooks';
 import { responsiveDialogStyle } from '@/lib/theme';
-import { DialogActions, DialogTitle, ListRow, StaggeredList } from '@/components/ui';
+import { DialogActions, DialogTitle, ListRow, ShareDialog, StaggeredList } from '@/components/ui';
 import { formatDateForAPI } from '../../lib/date-utils';
 import MealPlanBrowser from '../../components/MealPlanBrowser';
 
@@ -93,7 +91,7 @@ function MealPlansPageContent() {
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
   const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]);
   const [shareEmail, setShareEmail] = useState('');
-  const shareEmailRef = useRef<HTMLInputElement>(null);
+
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null);
   const [userSettings, setUserSettings] = useState<{ defaultMealPlanOwner?: string } | null>(null);
 
@@ -123,11 +121,14 @@ function MealPlansPageContent() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
 
-  const getOwnerName = useCallback((userId: string): string => {
-    if (userId === currentUserId) return 'Your Meal Plans';
-    const owner = mealPlanOwners.find((u) => u.userId === userId);
-    return `Shared by ${owner?.name || owner?.email || 'Unknown User'}`;
-  }, [currentUserId, mealPlanOwners]);
+  const getOwnerName = useCallback(
+    (userId: string): string => {
+      if (userId === currentUserId) return 'Your Meal Plans';
+      const owner = mealPlanOwners.find((u) => u.userId === userId);
+      return `Shared by ${owner?.name || owner?.email || 'Unknown User'}`;
+    },
+    [currentUserId, mealPlanOwners]
+  );
 
   const groupedByOwner = useMemo(() => {
     const grouped: Record<string, MealPlanWithTemplate[]> = {};
@@ -357,7 +358,14 @@ function MealPlansPageContent() {
       <AuthenticatedLayout>
         <Container maxWidth="xl">
           <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, md: 2 } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: { xs: 1.5, md: 2 },
+              }}
+            >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Skeleton variant="circular" width={28} height={28} />
                 <Skeleton variant="text" width={100} height={28} />
@@ -369,7 +377,18 @@ function MealPlansPageContent() {
             </Box>
             <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
             {[0, 1, 2].map((i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+              <Box
+                key={i}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.5,
+                  py: 1,
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                }}
+              >
                 <Skeleton variant="rounded" width={20} height={20} />
                 <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
               </Box>
@@ -502,7 +521,18 @@ function MealPlansPageContent() {
             <Box sx={{ py: 1 }}>
               <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
               {[0, 1, 2].map((i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                <Box
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderBottomColor: 'divider',
+                  }}
+                >
                   <Skeleton variant="rounded" width={20} height={20} />
                   <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
                 </Box>
@@ -518,91 +548,85 @@ function MealPlansPageContent() {
                 {mealPlans.length} current meal plan{mealPlans.length !== 1 ? 's' : ''}
               </Typography>
 
-              {Object.entries(groupedByOwner).map(
-                ([ownerId, ownerMealPlans], sectionIndex) => {
-                  const owners = Object.keys(groupedByOwner);
-                  const hasMultipleOwners = owners.length > 1;
-                  const isOnlyOwnerAndNotCurrentUser =
-                    owners.length === 1 && ownerId !== currentUserId;
-                  const shouldShowHeader = hasMultipleOwners || isOnlyOwnerAndNotCurrentUser;
+              {Object.entries(groupedByOwner).map(([ownerId, ownerMealPlans], sectionIndex) => {
+                const owners = Object.keys(groupedByOwner);
+                const hasMultipleOwners = owners.length > 1;
+                const isOnlyOwnerAndNotCurrentUser =
+                  owners.length === 1 && ownerId !== currentUserId;
+                const shouldShowHeader = hasMultipleOwners || isOnlyOwnerAndNotCurrentUser;
 
-                  return (
-                    <Box
-                      key={ownerId}
-                      sx={{
-                        mb:
-                          sectionIndex < Object.keys(groupedByOwner).length - 1 ? 2 : 0,
-                      }}
-                    >
-                      {shouldShowHeader && (
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            mb: 1,
-                          }}
+                return (
+                  <Box
+                    key={ownerId}
+                    sx={{
+                      mb: sectionIndex < Object.keys(groupedByOwner).length - 1 ? 2 : 0,
+                    }}
+                  >
+                    {shouldShowHeader && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          mb: 1,
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {getOwnerName(ownerId)}
+                        </Typography>
+                        {ownerId !== currentUserId && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            color="error"
+                            onClick={() => handleLeaveSharedMealPlans(ownerId)}
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Leave
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+
+                    <StaggeredList>
+                      {ownerMealPlans.map((mealPlan) => (
+                        <ListRow
+                          key={mealPlan._id}
+                          onClick={() => handleMealPlanClick(mealPlan)}
+                          accentColor="#5b9bd5"
                         >
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              width: '100%',
+                              minWidth: 0,
+                            }}
                           >
-                            {getOwnerName(ownerId)}
-                          </Typography>
-                          {ownerId !== currentUserId && (
-                            <Button
-                              variant="text"
-                              size="small"
-                              color="error"
-                              onClick={() => handleLeaveSharedMealPlans(ownerId)}
-                              sx={{ fontSize: '0.75rem' }}
-                            >
-                              Leave
-                            </Button>
-                          )}
-                        </Box>
-                      )}
-
-                      <StaggeredList>
-                        {ownerMealPlans.map((mealPlan) => (
-                          <ListRow
-                            key={mealPlan._id}
-                            onClick={() => handleMealPlanClick(mealPlan)}
-                            accentColor="#5b9bd5"
-                          >
-                            <Box
+                            <CalendarMonth
+                              sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }}
+                            />
+                            <Typography
+                              variant="body2"
                               sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                width: '100%',
+                                flex: 1,
                                 minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                fontWeight: 500,
                               }}
                             >
-                              <CalendarMonth
-                                sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }}
-                              />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  flex: 1,
-                                  minWidth: 0,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  fontWeight: 500,
-                                }}
-                              >
-                                {mealPlan.name}
-                              </Typography>
-                            </Box>
-                          </ListRow>
-                        ))}
-                      </StaggeredList>
-                    </Box>
-                  );
-                }
-              )}
+                              {mealPlan.name}
+                            </Typography>
+                          </Box>
+                        </ListRow>
+                      ))}
+                    </StaggeredList>
+                  </Box>
+                );
+              })}
             </>
           ) : (
             <Alert severity="info">
@@ -612,11 +636,7 @@ function MealPlansPageContent() {
 
           {/* Meal Plan History Browser */}
           <Box sx={{ mt: 3 }}>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 1 }}
-            >
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
               Meal Plan History
             </Typography>
             <MealPlanBrowser onPlanSelect={handleMealPlanClick} />
@@ -649,8 +669,7 @@ function MealPlansPageContent() {
             </DialogTitle>
             <DialogContent>
               <Typography>
-                Are you sure you want to leave{' '}
-                {leaveSharingConfirmDialog.data?.ownerName}
+                Are you sure you want to leave {leaveSharingConfirmDialog.data?.ownerName}
                 &apos;s meal plans? You will no longer be able to view or edit their meal plans.
               </Typography>
 
@@ -674,81 +693,21 @@ function MealPlansPageContent() {
           </Dialog>
 
           {/* Share Meal Plans Dialog */}
-          <Dialog
+          <ShareDialog
             open={shareDialog.open}
             onClose={shareDialog.closeDialog}
-            maxWidth="sm"
-            fullWidth
-            sx={responsiveDialogStyle}
-            TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
-          >
-            <DialogTitle onClose={shareDialog.closeDialog}>Share Meal Plans</DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Invite users by email. They&apos;ll be able to view and edit all your meal plans.
-              </Typography>
-
-              {/* Invite Section */}
-              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <TextField
-                  inputRef={shareEmailRef}
-                  label="Email Address"
-                  type="email"
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && shareEmail.trim()) {
-                      handleInviteUser();
-                    }
-                  }}
-                  size="small"
-                  fullWidth
-                  placeholder="user@example.com"
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleInviteUser}
-                  disabled={!shareEmail.trim()}
-                  sx={{ minWidth: 100 }}
-                >
-                  Invite
-                </Button>
-              </Box>
-
-              {/* Shared Users List */}
-              {sharedUsers && sharedUsers.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                    Shared With:
-                  </Typography>
-                  <List>
-                    {sharedUsers.map((user) => (
-                      <ListItem key={user.userId}>
-                        <ListItemText primary={user.name || user.email} secondary={user.email} />
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Remove user"
-                          onClick={() => handleRemoveMealPlanUser(user.userId)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </ListItem>
-                    ))}
-                  </List>
-                </>
-              )}
-
-              <DialogActions primaryButtonIndex={0}>
-                <Button
-                  onClick={shareDialog.closeDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Done
-                </Button>
-              </DialogActions>
-            </DialogContent>
-          </Dialog>
+            title="Share Meal Plans"
+            description="Invite users by email. They'll be able to view and edit all your meal plans."
+            email={shareEmail}
+            onEmailChange={setShareEmail}
+            onInvite={handleInviteUser}
+            sharedUsers={(sharedUsers || []).map((user) => ({
+              key: user.userId,
+              primary: user.name || user.email,
+              secondary: user.email,
+            }))}
+            onRemoveUser={handleRemoveMealPlanUser}
+          />
 
           {/* Snackbar for notifications */}
           <Snackbar
@@ -799,7 +758,14 @@ export default function MealPlansPage() {
         <AuthenticatedLayout>
           <Container maxWidth="xl">
             <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, md: 2 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: { xs: 1.5, md: 2 },
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Skeleton variant="circular" width={28} height={28} />
                   <Skeleton variant="text" width={100} height={28} />
@@ -811,7 +777,18 @@ export default function MealPlansPage() {
               </Box>
               <Skeleton variant="text" width={120} height={16} sx={{ mb: 1 }} />
               {[0, 1, 2].map((i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                <Box
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderBottomColor: 'divider',
+                  }}
+                >
                   <Skeleton variant="rounded" width={20} height={20} />
                   <Skeleton variant="text" width={`${[55, 45, 60][i]}%`} height={20} />
                 </Box>

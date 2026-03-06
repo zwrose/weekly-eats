@@ -71,7 +71,7 @@ describe('Stores API', () => {
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -105,7 +105,7 @@ describe('Stores API', () => {
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       // Should have itemCount, not items array
@@ -148,7 +148,7 @@ describe('Stores API', () => {
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(data[0].shoppingList.itemCount).toBe(0);
@@ -179,7 +179,7 @@ describe('Stores API', () => {
       });
 
       const request = new NextRequest('http://localhost:3000/api/stores');
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(data[0].shoppingList.storeId).toBe('store-1');
@@ -191,7 +191,7 @@ describe('Stores API', () => {
       (getServerSession as any).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/stores');
-      const response = await GET(request);
+      const response = await GET();
 
       expect(response.status).toBe(401);
     });

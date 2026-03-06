@@ -40,7 +40,7 @@ vi.mock('@/lib/hooks/use-server-pagination', () => ({
     data: [],
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 25,
     totalPages: 0,
     sortBy: 'updatedAt',
     sortOrder: 'desc',
@@ -87,7 +87,7 @@ vi.mock('../../../lib/food-items-utils', () => ({
   fetchFoodItems: vi.fn(() =>
     Promise.resolve([
       { _id: 'food-1', name: 'Pasta', singularName: 'pasta', pluralName: 'pasta', unit: 'cup' },
-    ]),
+    ])
   ),
   getUnitForm: vi.fn((unit: string, quantity: number) => (quantity === 1 ? unit : `${unit}s`)),
 }));
@@ -98,7 +98,13 @@ vi.mock('../../../components/AuthenticatedLayout', () => ({
 }));
 
 vi.mock('@/components/RecipeFilterBar', () => ({
-  default: ({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (v: string) => void }) => (
+  default: ({
+    searchTerm,
+    onSearchChange,
+  }: {
+    searchTerm: string;
+    onSearchChange: (v: string) => void;
+  }) => (
     <div data-testid="recipe-filter-bar">
       <input
         data-testid="filter-search"
@@ -190,7 +196,7 @@ describe('RecipesPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -233,7 +239,7 @@ describe('RecipesPage - Unified List', () => {
       data: [mockRecipe, globalRecipe],
       total: 2,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -299,7 +305,7 @@ describe('RecipesPage - Unified List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -325,7 +331,7 @@ describe('RecipesPage - Unified List', () => {
       data: [mockRecipe],
       total: 50,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 2,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -366,7 +372,7 @@ describe('RecipesPage - Navigation', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -383,9 +389,9 @@ describe('RecipesPage - Navigation', () => {
       expect(screen.getByText('Recipes')).toBeInTheDocument();
     });
 
-    // Click the visible "Add Recipe" button (desktop)
-    const addButton = screen.getByRole('button', { name: /add recipe/i });
-    await user.click(addButton);
+    // Click the "Add Recipe" button (there are mobile + desktop variants, grab the first)
+    const addButtons = screen.getAllByRole('button', { name: /add recipe/i });
+    await user.click(addButtons[0]);
 
     expect(mockPush).toHaveBeenCalledWith('/recipes/new');
 
@@ -400,7 +406,7 @@ describe('RecipesPage - Navigation', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
@@ -432,7 +438,7 @@ describe('RecipesPage - Navigation', () => {
       data: [mockRecipe],
       total: 1,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 1,
       sortBy: 'updatedAt',
       sortOrder: 'desc',

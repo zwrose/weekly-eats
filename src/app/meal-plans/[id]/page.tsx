@@ -15,6 +15,7 @@ import {
   DialogContent,
   Checkbox,
   TextField,
+  Paper,
   Skeleton,
 } from '@mui/material';
 import { ArrowBack, Edit, Delete } from '@mui/icons-material';
@@ -61,7 +62,15 @@ function getMealTypeName(mealType: string): string {
 
 // Helper function to get days in order based on template start day
 function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[] {
-  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const days: DayOfWeek[] = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
   const startIndex = days.indexOf(startDay);
   return [...days.slice(startIndex), ...days.slice(0, startIndex)];
 }
@@ -85,9 +94,7 @@ function getDateForDay(dayOfWeek: DayOfWeek, mealPlan: MealPlanWithTemplate): st
 }
 
 // Validation function for meal plan items
-function validateMealPlan(
-  items: MealPlanItem[]
-): { isValid: boolean; errors: string[] } {
+function validateMealPlan(items: MealPlanItem[]): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   items.forEach((mealPlanItem) => {
@@ -123,15 +130,13 @@ function validateMealPlan(
           }
 
           if (group.ingredients && Array.isArray(group.ingredients)) {
-            group.ingredients.forEach(
-              (ingredient: RecipeIngredient, ingredientIndex: number) => {
-                if (!ingredient.id || ingredient.id.trim() === '') {
-                  errors.push(
-                    `${getMealTypeName(mealType)} on ${getMealTypeName(dayOfWeek)}: Ingredient group "${group.title || 'Untitled'}" - ingredient ${ingredientIndex + 1} must have a food item or recipe selected`
-                  );
-                }
+            group.ingredients.forEach((ingredient: RecipeIngredient, ingredientIndex: number) => {
+              if (!ingredient.id || ingredient.id.trim() === '') {
+                errors.push(
+                  `${getMealTypeName(mealType)} on ${getMealTypeName(dayOfWeek)}: Ingredient group "${group.title || 'Untitled'}" - ingredient ${ingredientIndex + 1} must have a food item or recipe selected`
+                );
               }
-            );
+            });
           }
         }
       }
@@ -147,7 +152,7 @@ function MealPlanDetailContent() {
   const searchParams = useSearchParams();
   const params = useParams();
   const rawId = params.id;
-  const mealPlanId = Array.isArray(rawId) ? rawId[0] : rawId ?? '';
+  const mealPlanId = Array.isArray(rawId) ? rawId[0] : (rawId ?? '');
 
   const isEditMode = searchParams.get('edit') === 'true';
 
@@ -295,7 +300,12 @@ function MealPlanDetailContent() {
 
   // Helper to update a specific meal slot (find-or-create by dayOfWeek + mealType)
   const updateMealSlot = useCallback(
-    (dayOfWeek: DayOfWeek, mealType: MealType, patch: Partial<MealPlanItem>, skipValidation?: boolean) => {
+    (
+      dayOfWeek: DayOfWeek,
+      mealType: MealType,
+      patch: Partial<MealPlanItem>,
+      skipValidation?: boolean
+    ) => {
       if (!mealPlan) return;
       const updatedMealPlan = { ...mealPlan };
       updatedMealPlan.items = [...updatedMealPlan.items];
@@ -349,7 +359,11 @@ function MealPlanDetailContent() {
               <Box key={i} sx={{ borderBottom: '1px solid', borderBottomColor: 'divider' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 1, gap: 0.75 }}>
                   <Skeleton variant="circular" width={18} height={18} />
-                  <Skeleton variant="text" width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`} height={24} />
+                  <Skeleton
+                    variant="text"
+                    width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`}
+                    height={24}
+                  />
                 </Box>
               </Box>
             ))}
@@ -444,7 +458,7 @@ function MealPlanDetailContent() {
 
           {editMode ? (
             /* Edit Mode */
-            <Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {/* Validation Errors */}
               {showValidationErrors && validationErrors.length > 0 && (
                 <Alert
@@ -484,9 +498,7 @@ function MealPlanDetailContent() {
                 const dayItems = mealPlan.items.filter(
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
-                const meals = (mealTypes).filter(
-                  (mealType) => mealPlan.template.meals[mealType]
-                );
+                const meals = mealTypes.filter((mealType) => mealPlan.template.meals[mealType]);
 
                 return meals.map((mealType) => {
                   const mealPlanItem = dayItems.find((item) => item.mealType === mealType);
@@ -502,7 +514,11 @@ function MealPlanDetailContent() {
                       defaultExpanded={hasContent}
                       rightContent={
                         isSkipped ? (
-                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
                             Skipped
                           </Typography>
                         ) : undefined
@@ -528,7 +544,7 @@ function MealPlanDetailContent() {
                                   updateMealSlot(dayOfWeek, mealType, {
                                     skipped: e.target.checked,
                                     skipReason: e.target.checked
-                                      ? (mealPlanItem?.skipReason || '')
+                                      ? mealPlanItem?.skipReason || ''
                                       : undefined,
                                   });
                                 }}
@@ -545,10 +561,15 @@ function MealPlanDetailContent() {
                                 fullWidth
                                 value={skipReason}
                                 onChange={(e) => {
-                                  updateMealSlot(dayOfWeek, mealType, {
-                                    skipped: true,
-                                    skipReason: e.target.value,
-                                  }, true);
+                                  updateMealSlot(
+                                    dayOfWeek,
+                                    mealType,
+                                    {
+                                      skipped: true,
+                                      skipReason: e.target.value,
+                                    },
+                                    true
+                                  );
                                 }}
                               />
                             )}
@@ -624,12 +645,10 @@ function MealPlanDetailContent() {
             </Box>
           ) : (
             /* View Mode */
-            <Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {/* Weekly Staples */}
               {(() => {
-                const staplesItems = mealPlan.items.filter(
-                  (item) => item.mealType === 'staples'
-                );
+                const staplesItems = mealPlan.items.filter((item) => item.mealType === 'staples');
                 if (staplesItems.length > 0 && staplesItems[0].items.length > 0) {
                   return (
                     <CollapsibleSection title="Weekly Staples" defaultExpanded>
@@ -660,10 +679,8 @@ function MealPlanDetailContent() {
                                             {ingredient.type === 'foodItem' &&
                                             ingredient.unit &&
                                             ingredient.unit !== 'each'
-                                              ? getUnitForm(
-                                                  ingredient.unit,
-                                                  ingredient.quantity
-                                                ) + ' '
+                                              ? getUnitForm(ingredient.unit, ingredient.quantity) +
+                                                ' '
                                               : ''}
                                             {ingredient.name || 'Unknown'}
                                           </Typography>
@@ -677,18 +694,11 @@ function MealPlanDetailContent() {
                             return (
                               <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
                                 &bull;{' '}
-                                <Box
-                                  component="a"
-                                  href={`/recipes/${staple.id}`}
-                                  sx={recipeLinkSx}
-                                >
+                                <Box component="a" href={`/recipes/${staple.id}`} sx={recipeLinkSx}>
                                   {staple.name}
                                 </Box>
                                 {staple.quantity && (
-                                  <Box
-                                    component="span"
-                                    sx={{ color: 'text.secondary' }}
-                                  >
+                                  <Box component="span" sx={{ color: 'text.secondary' }}>
                                     {' '}
                                     ({staple.quantity}x)
                                   </Box>
@@ -699,18 +709,12 @@ function MealPlanDetailContent() {
                             return (
                               <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
                                 &bull; {staple.name}
-                                {staple.type === 'foodItem' &&
-                                  staple.quantity &&
-                                  staple.unit && (
-                                    <Box
-                                      component="span"
-                                      sx={{ color: 'text.secondary' }}
-                                    >
-                                      {' '}
-                                      ({staple.quantity}{' '}
-                                      {getUnitForm(staple.unit, staple.quantity)})
-                                    </Box>
-                                  )}
+                                {staple.type === 'foodItem' && staple.quantity && staple.unit && (
+                                  <Box component="span" sx={{ color: 'text.secondary' }}>
+                                    {' '}
+                                    ({staple.quantity} {getUnitForm(staple.unit, staple.quantity)})
+                                  </Box>
+                                )}
                               </Typography>
                             );
                           }
@@ -728,7 +732,7 @@ function MealPlanDetailContent() {
                   (item) => item.dayOfWeek === dayOfWeek && item.mealType !== 'staples'
                 );
 
-                const meals = (mealTypes)
+                const meals = mealTypes
                   .filter((mealType) => mealPlan.template.meals[mealType])
                   .map((mealType) => {
                     const mealPlanItem = dayItems.find((item) => item.mealType === mealType);
@@ -748,7 +752,11 @@ function MealPlanDetailContent() {
                       defaultExpanded={hasContent}
                       rightContent={
                         isSkipped ? (
-                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
                             Skipped
                           </Typography>
                         ) : undefined
@@ -806,11 +814,7 @@ function MealPlanDetailContent() {
                                 );
                               } else if (mealItem.type === 'recipe') {
                                 return (
-                                  <Typography
-                                    key={mealIndex}
-                                    variant="body2"
-                                    sx={{ mb: 0.5 }}
-                                  >
+                                  <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
                                     &bull;{' '}
                                     <Box
                                       component="a"
@@ -820,10 +824,7 @@ function MealPlanDetailContent() {
                                       {mealItem.name}
                                     </Box>
                                     {mealItem.quantity && (
-                                      <Box
-                                        component="span"
-                                        sx={{ color: 'text.secondary' }}
-                                      >
+                                      <Box component="span" sx={{ color: 'text.secondary' }}>
                                         {' '}
                                         ({mealItem.quantity}x)
                                       </Box>
@@ -832,19 +833,12 @@ function MealPlanDetailContent() {
                                 );
                               } else {
                                 return (
-                                  <Typography
-                                    key={mealIndex}
-                                    variant="body2"
-                                    sx={{ mb: 0.5 }}
-                                  >
+                                  <Typography key={mealIndex} variant="body2" sx={{ mb: 0.5 }}>
                                     &bull; {mealItem.name}
                                     {mealItem.type === 'foodItem' &&
                                       mealItem.quantity &&
                                       mealItem.unit && (
-                                        <Box
-                                          component="span"
-                                          sx={{ color: 'text.secondary' }}
-                                        >
+                                        <Box component="span" sx={{ color: 'text.secondary' }}>
                                           {' '}
                                           ({mealItem.quantity}{' '}
                                           {getUnitForm(mealItem.unit, mealItem.quantity)})
@@ -942,7 +936,11 @@ export default function MealPlanDetailPage() {
                 <Box key={i} sx={{ borderBottom: '1px solid', borderBottomColor: 'divider' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 1, gap: 0.75 }}>
                     <Skeleton variant="circular" width={18} height={18} />
-                    <Skeleton variant="text" width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`} height={24} />
+                    <Skeleton
+                      variant="text"
+                      width={i === 0 ? 120 : `${[35, 40, 30, 45][i - 1]}%`}
+                      height={24}
+                    />
                   </Box>
                 </Box>
               ))}

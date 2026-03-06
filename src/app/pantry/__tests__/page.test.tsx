@@ -23,7 +23,7 @@ vi.mock('@/lib/hooks/use-server-pagination', () => ({
     data: [],
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 25,
     totalPages: 0,
     sortBy: 'foodItem.name',
     sortOrder: 'asc',
@@ -115,7 +115,7 @@ describe('PantryPage - Server Paginated', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 0,
       sortBy: 'foodItem.name',
       sortOrder: 'asc',
@@ -155,7 +155,7 @@ describe('PantryPage - Server Paginated', () => {
       data: [pantryItem1, pantryItem2],
       total: 2,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 1,
       sortBy: 'foodItem.name',
       sortOrder: 'asc',
@@ -211,7 +211,7 @@ describe('PantryPage - Server Paginated', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 0,
       sortBy: 'foodItem.name',
       sortOrder: 'asc',
@@ -239,7 +239,7 @@ describe('PantryPage - Server Paginated', () => {
       data: [pantryItem1],
       total: 50,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 5,
       sortBy: 'foodItem.name',
       sortOrder: 'asc',
@@ -265,7 +265,7 @@ describe('PantryPage - Server Paginated', () => {
       data: [pantryItem1, pantryItem2],
       total: 2,
       page: 1,
-      limit: 10,
+      limit: 25,
       totalPages: 1,
       sortBy: 'foodItem.name',
       sortOrder: 'asc',
@@ -279,7 +279,7 @@ describe('PantryPage - Server Paginated', () => {
     const { unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/pantry items \(2\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 pantry items found/i)).toBeInTheDocument();
     });
 
     unmount();

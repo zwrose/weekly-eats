@@ -2,12 +2,23 @@ import '@testing-library/jest-dom/vitest';
 import { vi, beforeAll, afterEach, afterAll } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+
 // Simplify MUI transitions to reduce async act warnings from transitions
-vi.mock('@mui/material/Collapse', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
-vi.mock('@mui/material/Fade', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
-vi.mock('@mui/material/Grow', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
-vi.mock('@mui/material/Slide', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
-vi.mock('@mui/material/Zoom', () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock('@mui/material/Collapse', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('@mui/material/Fade', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('@mui/material/Grow', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('@mui/material/Slide', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('@mui/material/Zoom', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 // ReadableStream polyfill is set up in react-act.setup.ts (runs first)
 // This ensures it's available before any Next.js modules are imported
@@ -39,7 +50,9 @@ const handlers = [
       { _id: 'f2', name: 'Banana', singularName: 'banana', pluralName: 'bananas', unit: 'each' },
     ];
     const filtered = query
-      ? all.filter((i) => `${i.name} ${i.singularName} ${i.pluralName}`.toLowerCase().includes(query))
+      ? all.filter((i) =>
+          `${i.name} ${i.singularName} ${i.pluralName}`.toLowerCase().includes(query)
+        )
       : all;
     return HttpResponse.json(filtered, { status: 200 });
   }),
@@ -76,9 +89,21 @@ beforeAll(() => {
 
 afterEach(() => {
   server.resetHandlers();
+  // Clean up stale MUI state that persists across tests in single-fork mode.
+  // When a Dialog/Modal is force-unmounted via cleanup() instead of being properly closed:
+  // 1. Scroll lock styles (overflow: hidden, padding-right) remain on document.body
+  // 2. Portal/Popper DOM nodes remain as body children
+  // Both can prevent MUI Autocomplete popups from opening in subsequent tests.
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    // Remove stale MUI portal containers (Popper, Modal, Autocomplete popups)
+    document
+      .querySelectorAll('[role="presentation"], .MuiPopper-root, .MuiAutocomplete-popper')
+      .forEach((el) => el.remove());
+  }
 });
 
 afterAll(() => {
   server.close();
 });
-

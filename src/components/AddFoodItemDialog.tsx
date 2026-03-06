@@ -30,7 +30,7 @@ interface AddFoodItemDialogProps {
     unit: string;
     isGlobal: boolean;
     addToPantry: boolean;
-  }) => void | Promise<void>;
+  }) => void | Promise<unknown>;
   prefillName?: string;
 }
 
@@ -193,9 +193,7 @@ export default function AddFoodItemDialog({
           clearOnBlur={false}
           autoHighlight
           fullWidth
-          renderInput={(params) => (
-            <TextField {...params} label="Typical Usage Unit" required />
-          )}
+          renderInput={(params) => <TextField {...params} label="Typical Usage Unit" required />}
         />
 
         {/* Show singular/plural fields only when "each" unit is selected */}
@@ -241,10 +239,7 @@ export default function AddFoodItemDialog({
 
         <FormControlLabel
           control={
-            <Checkbox
-              checked={addToPantry}
-              onChange={(e) => setAddToPantry(e.target.checked)}
-            />
+            <Checkbox checked={addToPantry} onChange={(e) => setAddToPantry(e.target.checked)} />
           }
           label="Also add to my pantry list"
         />
@@ -255,9 +250,7 @@ export default function AddFoodItemDialog({
           onClick={handleSubmit}
           variant="contained"
           disabled={
-            !name.trim() ||
-            !unit ||
-            (isEachUnit && (!singularName.trim() || !pluralName.trim()))
+            !name.trim() || !unit || (isEachUnit && (!singularName.trim() || !pluralName.trim()))
           }
         >
           Add Food Item

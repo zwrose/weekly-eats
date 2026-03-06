@@ -13,6 +13,8 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Paper,
+  TextField,
 } from '@mui/material';
 import { ArrowBack, EmojiEmotions, Public, Person } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
@@ -151,14 +153,14 @@ function NewRecipeContent() {
           </Box>
 
           {/* Form */}
-          <Box>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider' }}>
             <Box
               sx={{
                 display: 'flex',
                 gap: 2,
                 mb: 3,
                 flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: { xs: 'stretch', sm: 'flex-start' },
+                alignItems: { xs: 'stretch', sm: 'center' },
               }}
             >
               <IconButton
@@ -170,49 +172,41 @@ function NewRecipeContent() {
                   width: 48,
                   height: 48,
                   fontSize: '1.5rem',
-                  alignSelf: 'flex-start',
                 }}
               >
                 {recipe.emoji || <EmojiEmotions />}
               </IconButton>
-              <CompactInput
+              <TextField
                 autoFocus
                 label="Recipe Title"
                 value={recipe.title}
                 onChange={(e) => setRecipe({ ...recipe, title: e.target.value })}
                 fullWidth
                 required
+                size="small"
               />
             </Box>
 
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Access Level
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" sx={{ mb: 0.5 }}>
+                Access
               </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 2,
-                  flexDirection: { xs: 'column', sm: 'row' },
-                }}
-              >
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant={recipe.isGlobal ? 'contained' : 'outlined'}
                   onClick={() => setRecipe({ ...recipe, isGlobal: true })}
                   startIcon={<Public />}
                   size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
-                  Global (visible to all users)
+                  Global
                 </Button>
                 <Button
                   variant={recipe.isGlobal ? 'outlined' : 'contained'}
                   onClick={() => setRecipe({ ...recipe, isGlobal: false })}
                   startIcon={<Person />}
                   size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
-                  Personal (only visible to you)
+                  Personal
                 </Button>
               </Box>
             </Box>
@@ -275,7 +269,7 @@ function NewRecipeContent() {
                 {saving ? 'Creating...' : 'Create Recipe'}
               </Button>
             </Box>
-          </Box>
+          </Paper>
         </Box>
 
         {/* Emoji Picker */}

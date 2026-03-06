@@ -17,6 +17,11 @@ import {
   DialogContent,
   DialogContentText,
   CircularProgress,
+  FormControl,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -31,7 +36,13 @@ import {
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList, FoodItemOption } from '@/types/recipe';
-import { fetchRecipe, updateRecipe, deleteRecipe, filterBlankIngredients, hasValidIngredients } from '@/lib/recipe-utils';
+import {
+  fetchRecipe,
+  updateRecipe,
+  deleteRecipe,
+  filterBlankIngredients,
+  hasValidIngredients,
+} from '@/lib/recipe-utils';
 import { fetchFoodItems } from '@/lib/food-items-utils';
 import { getUnitForm } from '@/lib/food-items-utils';
 import {
@@ -70,7 +81,7 @@ function RecipeDetailContent() {
   const searchParams = useSearchParams();
   const params = useParams();
   const rawId = params.id;
-  const recipeId = Array.isArray(rawId) ? rawId[0] : rawId ?? '';
+  const recipeId = Array.isArray(rawId) ? rawId[0] : (rawId ?? '');
 
   const isEditMode = searchParams.get('edit') === 'true';
 
@@ -329,7 +340,7 @@ function RecipeDetailContent() {
       if (rating === undefined) {
         await deleteRecipeRating(recipe._id);
         setRecipeUserData((prev) =>
-          prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined },
+          prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined }
         );
       } else {
         await updateRecipeRating(recipe._id, rating);
@@ -417,7 +428,12 @@ function RecipeDetailContent() {
             </Button>
             <Box sx={{ flex: 1 }} />
             {!editMode && canEditRecipe(recipe) && (
-              <IconButton onClick={handleEnterEditMode} color="inherit" size="small" aria-label="Edit recipe">
+              <IconButton
+                onClick={handleEnterEditMode}
+                color="inherit"
+                size="small"
+                aria-label="Edit recipe"
+              >
                 <Edit />
               </IconButton>
             )}
@@ -425,14 +441,14 @@ function RecipeDetailContent() {
 
           {editMode ? (
             /* ── Edit Mode ── */
-            <Box>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider' }}>
               <Box
                 sx={{
                   display: 'flex',
                   gap: 2,
                   mb: 3,
                   flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'stretch', sm: 'flex-start' },
+                  alignItems: { xs: 'stretch', sm: 'center' },
                 }}
               >
                 <IconButton
@@ -444,12 +460,11 @@ function RecipeDetailContent() {
                     width: 48,
                     height: 48,
                     fontSize: '1.5rem',
-                    alignSelf: 'flex-start',
                   }}
                 >
                   {editingRecipe.emoji || <EmojiEmotions />}
                 </IconButton>
-                <CompactInput
+                <TextField
                   label="Recipe Title"
                   value={editingRecipe.title ?? ''}
                   onChange={(e) =>
@@ -460,43 +475,68 @@ function RecipeDetailContent() {
                   }
                   fullWidth
                   required
+                  size="small"
                 />
               </Box>
 
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Access Level
-                </Typography>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 2,
-                    flexDirection: { xs: 'column', sm: 'row' },
-                  }}
-                >
-                  <Button
-                    variant={editingRecipe.isGlobal ? 'contained' : 'outlined'}
-                    onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: true })}
-                    startIcon={<Public />}
-                    size="small"
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+              {/* Metadata — compact selects on mobile, full controls on desktop */}
+              <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, mb: 1.5 }}>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Access
+                  </Typography>
+                  <Select
+                    value={editingRecipe.isGlobal ? 'global' : 'personal'}
+                    onChange={(e) =>
+                      setEditingRecipe({ ...editingRecipe, isGlobal: e.target.value === 'global' })
+                    }
                   >
-                    Global (visible to all users)
-                  </Button>
-                  <Button
-                    variant={editingRecipe.isGlobal ? 'outlined' : 'contained'}
-                    onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: false })}
-                    startIcon={<Person />}
-                    size="small"
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    <MenuItem value="global">
+                      <Public sx={{ fontSize: 16, mr: 0.75, verticalAlign: 'text-bottom' }} />
+                      Global
+                    </MenuItem>
+                    <MenuItem value="personal">
+                      <Person sx={{ fontSize: 16, mr: 0.75, verticalAlign: 'text-bottom' }} />
+                      Personal
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 100 }}>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Rating
+                  </Typography>
+                  <Select
+                    value={recipeUserData?.rating ?? 0}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      handleRatingChange(val === 0 ? undefined : val);
+                    }}
+                    renderValue={(val) =>
+                      val === 0 ? (
+                        'None'
+                      ) : (
+                        <Box component="span" sx={{ color: 'warning.main' }}>
+                          {'★'.repeat(val as number)}
+                        </Box>
+                      )
+                    }
                   >
-                    Personal (only visible to you)
-                  </Button>
-                </Box>
+                    <MenuItem value={0}>None</MenuItem>
+                    {[1, 2, 3, 4, 5].map((v) => (
+                      <MenuItem key={v} value={v}>
+                        <Box component="span" sx={{ color: 'warning.main' }}>
+                          {'★'.repeat(v)}
+                        </Box>
+                        <Box component="span" sx={{ color: 'text.secondary', ml: 0.5 }}>
+                          ({v}/5)
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 0.5 }}>
                   Tags
                 </Typography>
                 <RecipeTagsEditor
@@ -507,12 +547,59 @@ function RecipeDetailContent() {
                 />
               </Box>
 
-              <Box sx={{ mb: 3 }}>
-                <RecipeStarRating
-                  rating={recipeUserData?.rating}
-                  onChange={handleRatingChange}
-                  editable={true}
-                />
+              {/* Desktop: full controls in a row */}
+              <Box
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                  flexWrap: 'wrap',
+                  gap: 2,
+                  mb: 2,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Access
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant={editingRecipe.isGlobal ? 'contained' : 'outlined'}
+                      onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: true })}
+                      startIcon={<Public />}
+                      size="small"
+                    >
+                      Global
+                    </Button>
+                    <Button
+                      variant={editingRecipe.isGlobal ? 'outlined' : 'contained'}
+                      onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: false })}
+                      startIcon={<Person />}
+                      size="small"
+                    >
+                      Personal
+                    </Button>
+                  </Box>
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <RecipeStarRating
+                    rating={recipeUserData?.rating}
+                    onChange={handleRatingChange}
+                    editable={true}
+                  />
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Tags
+                  </Typography>
+                  <RecipeTagsEditor
+                    tags={recipeUserData?.tags || []}
+                    onChange={handleTagsChange}
+                    editable={true}
+                    label=""
+                  />
+                </Box>
               </Box>
 
               <Typography variant="h6" gutterBottom>
@@ -595,10 +682,10 @@ function RecipeDetailContent() {
                   Update Recipe
                 </Button>
               </Box>
-            </Box>
+            </Paper>
           ) : (
             /* ── View Mode ── */
-            <Box>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider' }}>
               {/* Title */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 {recipe.emoji ? (
@@ -609,44 +696,101 @@ function RecipeDetailContent() {
                 <Typography variant="h5">{recipe.title}</Typography>
               </Box>
 
-              {/* Tags */}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Tags
-                </Typography>
-                <RecipeTagsEditor
-                  tags={recipeUserData?.tags || []}
-                  sharedTags={recipeUserData?.sharedTags}
-                  onChange={handleTagsChange}
-                  editable={!canEditRecipe(recipe)}
-                  label=""
-                />
-              </Box>
-
-              {/* Rating */}
-              <Box sx={{ mb: 2 }}>
-                <RecipeStarRating
-                  rating={recipeUserData?.rating}
-                  sharedRatings={recipeUserData?.sharedRatings}
-                  onChange={handleRatingChange}
-                  editable={!canEditRecipe(recipe)}
-                />
-              </Box>
-
-              {/* Access level */}
-              {accessLevel && accessLevelChipMap[accessLevel] && (
-                <Box sx={{ mb: 3 }}>
-                  <Chip
-                    label={accessLevelChipMap[accessLevel].label}
-                    size="small"
-                    color={accessLevelChipMap[accessLevel].color}
-                    variant="outlined"
-                    icon={accessLevelChipMap[accessLevel].icon}
+              {/* Metadata — stacked on mobile, row on desktop */}
+              <Box
+                sx={{
+                  display: { xs: 'flex', sm: 'none' },
+                  flexDirection: 'column',
+                  gap: 1.5,
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                  {accessLevel && accessLevelChipMap[accessLevel] && (
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 0.5 }}>
+                        Access
+                      </Typography>
+                      <Chip
+                        label={accessLevelChipMap[accessLevel].label}
+                        size="small"
+                        color={accessLevelChipMap[accessLevel].color}
+                        variant="outlined"
+                        icon={accessLevelChipMap[accessLevel].icon}
+                      />
+                    </Box>
+                  )}
+                  <Box>
+                    <RecipeStarRating
+                      rating={recipeUserData?.rating}
+                      sharedRatings={recipeUserData?.sharedRatings}
+                      onChange={handleRatingChange}
+                      editable={!canEditRecipe(recipe)}
+                    />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Tags
+                  </Typography>
+                  <RecipeTagsEditor
+                    tags={recipeUserData?.tags || []}
+                    sharedTags={recipeUserData?.sharedTags}
+                    onChange={handleTagsChange}
+                    editable={!canEditRecipe(recipe)}
+                    label=""
                   />
                 </Box>
-              )}
+              </Box>
 
-              <Divider sx={{ mb: 3 }} />
+              <Box
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                  flexWrap: 'wrap',
+                  gap: 2,
+                  mb: 2,
+                  alignItems: 'flex-start',
+                }}
+              >
+                {accessLevel && accessLevelChipMap[accessLevel] && (
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 0.5 }}>
+                      Access
+                    </Typography>
+                    <Chip
+                      label={accessLevelChipMap[accessLevel].label}
+                      size="small"
+                      color={accessLevelChipMap[accessLevel].color}
+                      variant="outlined"
+                      icon={accessLevelChipMap[accessLevel].icon}
+                    />
+                  </Box>
+                )}
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <RecipeStarRating
+                    rating={recipeUserData?.rating}
+                    sharedRatings={recipeUserData?.sharedRatings}
+                    onChange={handleRatingChange}
+                    editable={!canEditRecipe(recipe)}
+                  />
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="h6" sx={{ mb: 0.5 }}>
+                    Tags
+                  </Typography>
+                  <RecipeTagsEditor
+                    tags={recipeUserData?.tags || []}
+                    sharedTags={recipeUserData?.sharedTags}
+                    onChange={handleTagsChange}
+                    editable={!canEditRecipe(recipe)}
+                    label=""
+                  />
+                </Box>
+              </Box>
+
+              <Divider sx={{ mb: 2 }} />
 
               {/* Ingredients + Instructions */}
               <Box
@@ -673,6 +817,9 @@ function RecipeDetailContent() {
                       flex: 1,
                       overflow: 'auto',
                       pr: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
                     }}
                   >
                     {recipe.ingredients.map((list, index) => (
@@ -681,7 +828,7 @@ function RecipeDetailContent() {
                         title={list.title || 'Ingredients'}
                         defaultExpanded
                       >
-                        <Box component="ul" sx={{ pl: 2, py: 1 }}>
+                        <Box component="ul" sx={{ pl: 4, py: 1 }}>
                           {list.ingredients.map((ingredient, ingIndex) => (
                             <Typography key={ingIndex} component="li" variant="body1">
                               {ingredient.quantity}{' '}
@@ -732,7 +879,7 @@ function RecipeDetailContent() {
                   </Box>
                 </Box>
               </Box>
-            </Box>
+            </Paper>
           )}
         </Box>
 

@@ -7,7 +7,7 @@ describe('parsePaginationParams', () => {
     const result = parsePaginationParams(params);
     expect(result).toEqual({
       page: 1,
-      limit: 10,
+      limit: 25,
       sortBy: 'updatedAt',
       sortOrder: -1,
     });
@@ -63,10 +63,10 @@ describe('parsePaginationParams', () => {
     expect(result.page).toBe(1);
   });
 
-  it('handles non-numeric limit gracefully (defaults to 10)', () => {
+  it('handles non-numeric limit gracefully (defaults to 25)', () => {
     const params = new URLSearchParams({ limit: 'xyz' });
     const result = parsePaginationParams(params);
-    expect(result.limit).toBe(10);
+    expect(result.limit).toBe(25);
   });
 
   it('accepts custom defaults', () => {

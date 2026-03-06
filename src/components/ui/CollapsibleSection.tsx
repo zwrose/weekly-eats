@@ -14,13 +14,7 @@ interface CollapsibleSectionProps {
 }
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
-  function CollapsibleSection({
-    title,
-    defaultExpanded = false,
-    children,
-    rightContent,
-    sx,
-  }) {
+  function CollapsibleSection({ title, defaultExpanded = false, children, rightContent, sx }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
     const contentId = useId();
     const headerId = useId();
@@ -36,11 +30,20 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
           handleToggle();
         }
       },
-      [handleToggle],
+      [handleToggle]
     );
 
     return (
-      <Box sx={sx}>
+      <Box
+        sx={{
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1,
+          backgroundColor: 'background.paper',
+          overflow: 'hidden',
+          ...(sx as object),
+        }}
+      >
         {/* Header */}
         <Box
           id={headerId}
@@ -57,7 +60,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
             px: 1.5,
             py: 1,
             cursor: 'pointer',
-            borderBottom: '1px solid',
+            borderBottom: expanded ? '1px solid' : 'none',
             borderBottomColor: 'divider',
             userSelect: 'none',
             '&:hover': {
@@ -77,18 +80,11 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
               },
             }}
           />
-          <Typography
-            variant="h5"
-            component="span"
-            sx={{ flex: 1, lineHeight: 1.4 }}
-          >
+          <Typography variant="h5" component="span" sx={{ flex: 1, lineHeight: 1.4 }}>
             {title}
           </Typography>
           {rightContent && (
-            <Box
-              data-testid="collapsible-right-content"
-              sx={{ ml: 1 }}
-            >
+            <Box data-testid="collapsible-right-content" sx={{ ml: 1 }}>
               {rightContent}
             </Box>
           )}
@@ -103,8 +99,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
           sx={{
             display: 'grid',
             gridTemplateRows: expanded ? '1fr' : '0fr',
-            transition:
-              'grid-template-rows var(--duration-normal), opacity var(--duration-normal)',
+            transition: 'grid-template-rows var(--duration-normal), opacity var(--duration-normal)',
             opacity: expanded ? 1 : 0,
             '@media (prefers-reduced-motion: reduce)': {
               transition: 'none',
@@ -115,5 +110,5 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = React.memo(
         </Box>
       </Box>
     );
-  },
+  }
 );
