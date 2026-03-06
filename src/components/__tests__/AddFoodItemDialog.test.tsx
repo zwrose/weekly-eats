@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, within, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, within, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddFoodItemDialog from '../AddFoodItemDialog';
+
+// Disable pointer-events check globally for this file.
+// MUI Dialog's scroll lock (overflow:hidden, padding-right) persists on document.body
+// across tests in single-fork vitest mode, causing userEvent to falsely reject clicks.
+// The events themselves fire correctly — only the pre-check is unreliable.
+const setupUser = () => userEvent.setup({ pointerEventsCheck: 0 });
 
 describe('AddFoodItemDialog', () => {
   const handleAdd = vi.fn();
@@ -11,16 +17,11 @@ describe('AddFoodItemDialog', () => {
     vi.clearAllMocks();
     handleAdd.mockReset();
     handleClose.mockReset();
+    cleanup();
   });
 
-  afterEach(async () => {
-    // Ensure all dialogs are closed and cleaned up
-    await waitFor(
-      () => {
-        cleanup();
-      },
-      { timeout: 100 }
-    );
+  afterEach(() => {
+    cleanup();
   });
 
   it('renders single-page form (no stepper)', () => {
@@ -36,7 +37,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('shows singular/plural fields when "each" unit is selected', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -60,7 +61,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('auto-calculates singular/plural when "each" is selected and name is entered', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -82,7 +83,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('hides singular/plural fields when switching from "each" to another unit', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -92,13 +93,21 @@ describe('AddFoodItemDialog', () => {
     const listbox1 = await screen.findByRole('listbox');
     await user.click(within(listbox1).getByRole('option', { name: /each/i }));
 
+    // Wait for popup to fully close before re-opening
+    // (with V8 coverage, the popup close re-render can lag)
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
     // Verify singular/plural fields are visible
     await waitFor(() => {
       expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
     });
 
-    // Switch to "cup" unit
-    await user.click(screen.getByRole('combobox', { name: /typical usage unit/i }));
+    // Switch to "cup" unit — clear and type to reliably trigger popup open
+    const combobox = screen.getByRole('combobox', { name: /typical usage unit/i });
+    await user.clear(combobox);
+    await user.type(combobox, 'cup');
     const listbox2 = await screen.findByRole('listbox');
     await user.click(within(listbox2).getByRole('option', { name: /cup/i }));
 
@@ -110,7 +119,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('creates food item with "each" unit using singular/plural names', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -122,20 +131,13 @@ describe('AddFoodItemDialog', () => {
     const listbox = await screen.findByRole('listbox');
     await user.click(within(listbox).getByRole('option', { name: /each/i }));
 
-    // Wait for auto-calculated fields and optionally edit them
+    // Wait for auto-calculated singular/plural values
     await waitFor(() => {
-      expect(screen.getByLabelText(/singular name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/singular name/i)).toHaveValue('apple');
+      expect(screen.getByLabelText(/plural name/i)).toHaveValue('apples');
     });
 
-    const singularField = screen.getByLabelText(/singular name/i);
-    await user.clear(singularField);
-    await user.type(singularField, 'apple');
-
-    const pluralField = screen.getByLabelText(/plural name/i);
-    await user.clear(pluralField);
-    await user.type(pluralField, 'apples');
-
-    // Submit
+    // Submit with auto-calculated values
     await user.click(screen.getByRole('button', { name: /add food item/i }));
 
     expect(handleAdd).toHaveBeenCalledWith({
@@ -149,7 +151,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('creates food item with non-"each" unit using default name for both singular and plural', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -178,6 +180,8 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('disables submit button when required fields are missing', async () => {
+    const user = setupUser();
+
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
     const submitButton = screen.getByRole('button', { name: /add food item/i });
@@ -186,12 +190,12 @@ describe('AddFoodItemDialog', () => {
     expect(submitButton).toBeDisabled();
 
     // Type name but no unit - still disabled
-    await userEvent.type(screen.getByLabelText(/default name/i), 'Flour');
+    await user.type(screen.getByLabelText(/default name/i), 'Flour');
     expect(submitButton).toBeDisabled();
   });
 
   it('disables submit button when "each" is selected but singular/plural are missing', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -220,7 +224,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('includes addToPantry option in onAdd callback', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -258,7 +262,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('disables submit button when validation fails', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -283,7 +287,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('resets form when closed', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { rerender } = render(
       <AddFoodItemDialog open={true} onClose={handleClose} onAdd={handleAdd} />
     );
@@ -331,7 +335,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('allows editing auto-calculated singular/plural names', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -348,15 +352,16 @@ describe('AddFoodItemDialog', () => {
       expect(screen.getByLabelText(/singular name/i)).toHaveValue('apple');
     });
 
-    // Edit the singular name
+    // Edit the singular name — use fireEvent.change for reliability
+    // (userEvent.clear + userEvent.type races with React re-renders in single-fork jsdom)
     const singularField = screen.getByLabelText(/singular name/i);
-    await user.clear(singularField);
-    await user.type(singularField, 'green apple');
+    fireEvent.change(singularField, { target: { value: 'green apple' } });
+    expect(singularField).toHaveValue('green apple');
 
     // Edit the plural name
     const pluralField = screen.getByLabelText(/plural name/i);
-    await user.clear(pluralField);
-    await user.type(pluralField, 'green apples');
+    fireEvent.change(pluralField, { target: { value: 'green apples' } });
+    expect(pluralField).toHaveValue('green apples');
 
     // Submit
     await user.click(screen.getByRole('button', { name: /add food item/i }));
@@ -372,7 +377,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('handles personal access level option', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
 
@@ -395,7 +400,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('shows error when onAdd rejects with an error', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     handleAdd.mockRejectedValueOnce(new Error('Food item already exists'));
 
     render(<AddFoodItemDialog open onClose={handleClose} onAdd={handleAdd} />);
@@ -420,7 +425,7 @@ describe('AddFoodItemDialog', () => {
   });
 
   it('clears error and resets form on successful onAdd after failure', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     handleAdd
       .mockRejectedValueOnce(new Error('Food item already exists'))
       .mockResolvedValueOnce(undefined);

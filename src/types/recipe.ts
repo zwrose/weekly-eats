@@ -40,3 +40,11 @@ export interface UpdateRecipeRequest {
   instructions?: string;
   isGlobal?: boolean;
 }
+
+export interface FoodItemOption {
+  _id: string;
+  name: string;
+  singularName: string;
+  pluralName: string;
+  unit: string;
+}

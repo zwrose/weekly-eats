@@ -12,12 +12,13 @@ const Pagination = React.memo<PaginationProps>(({ count, page, onChange, show = 
   if (!show || count <= 1) return null;
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
       <MuiPagination
         count={count}
         page={page}
         onChange={(_, newPage) => onChange(newPage)}
         color="primary"
+        size="small"
       />
     </Box>
   );

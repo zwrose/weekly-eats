@@ -1,2 +1,10 @@
+export { CollapsibleSection } from './CollapsibleSection';
+export { CompactInput } from './CompactInput';
+export { CompactSelect } from './CompactSelect';
 export { DialogActions } from './DialogActions';
 export { DialogTitle } from './DialogTitle';
+export { InlineIngredientRow } from './InlineIngredientRow';
+export { ListRow } from './ListRow';
+export { ShareDialog } from './ShareDialog';
+export type { ShareDialogProps, SharedUserItem } from './ShareDialog';
+export { StaggeredList } from './StaggeredList';

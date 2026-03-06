@@ -1,48 +1,42 @@
 'use client';
 
 import React from 'react';
-import { DialogActions as MuiDialogActions, Box } from '@mui/material';
+import { DialogActions as MuiDialogActions, Box, SxProps, Theme } from '@mui/material';
 
 interface DialogActionsProps {
   children: React.ReactNode;
   primaryButtonIndex?: number; // Index of the primary button (0-based)
+  sx?: SxProps<Theme>;
 }
 
 export const DialogActions: React.FC<DialogActionsProps> = ({
   children,
   primaryButtonIndex = 0,
+  sx,
 }) => {
   const childrenArray = React.Children.toArray(children);
 
-  // Reorder children so primary button comes first on mobile
-  const reorderedChildren = React.useMemo(() => {
-    if (childrenArray.length <= 1) return childrenArray;
-
-    const primaryButton = childrenArray[primaryButtonIndex];
-    const otherButtons = childrenArray.filter((_, index) => index !== primaryButtonIndex);
-
-    return [primaryButton, ...otherButtons];
-  }, [childrenArray, primaryButtonIndex]);
-
   return (
-    <MuiDialogActions>
+    <MuiDialogActions sx={{ px: 3, pb: 2.5, pt: 1, ...(sx as object) }}>
       <Box
         sx={{
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
-          // Ensure visible spacing between action buttons on all breakpoints.
           gap: { xs: 1.5, sm: 1 },
-          justifyContent: { xs: 'stretch', sm: 'flex-end' },
+          justifyContent: { sm: 'flex-end' },
           width: '100%',
         }}
       >
-        {reorderedChildren.map((child, index) => (
+        {childrenArray.map((child, index) => (
           <Box
             key={index}
             sx={{
               width: { xs: '100%', sm: 'auto' },
-              '& > *': {
-                width: { xs: '100%', sm: 'auto' },
+              '& > *': { width: { xs: '100%', sm: 'auto' } },
+              // On mobile, reorder so primary button comes first
+              order: {
+                xs: index === primaryButtonIndex ? -1 : index,
+                sm: 0,
               },
             }}
           >

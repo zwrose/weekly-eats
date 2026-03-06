@@ -40,7 +40,7 @@ export default function RecipeStarRating({
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
         {label}
       </Typography>
       {editable && onChange ? (

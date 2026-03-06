@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Box, Button, Typography, Alert } from '@mui/material';
-import { Group, Add } from '@mui/icons-material';
-import { RecipeIngredientList } from '../types/recipe';
-import IngredientInput from './IngredientInput';
-import IngredientGroup from './IngredientGroup';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Box, Button, Typography, Alert, IconButton } from '@mui/material';
+import { Group, Add, Delete } from '@mui/icons-material';
+import { RecipeIngredientList, RecipeIngredient, FoodItemOption } from '../types/recipe';
+import { InlineIngredientRow, CompactInput } from './ui';
+import type { Recipe } from '@/lib/hooks/use-food-item-selector';
 
 interface FoodItem {
   _id: string;
@@ -16,19 +16,13 @@ interface FoodItem {
   isGlobal: boolean;
 }
 
-interface Recipe {
-  _id?: string;
-  title: string;
-  emoji?: string;
-}
-
 interface MealItem {
   type: 'foodItem' | 'recipe' | 'ingredientGroup';
   id: string;
   name: string;
   quantity?: number;
   unit?: string;
-  ingredients?: RecipeIngredientList[]; // For ingredient groups
+  ingredients?: RecipeIngredientList[];
 }
 
 interface MealEditorProps {
@@ -41,14 +35,47 @@ interface MealEditorProps {
     unit: string;
     isGlobal: boolean;
   }) => Promise<void>;
-  removeItemButtonText?: string; // Text for remove button on items within ingredient groups
+  removeItemButtonText?: string;
+}
+
+const columnHeadersSx = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 0.5,
+  px: 0.5,
+  mb: 0.5,
+} as const;
+
+const columnLabelSx = {
+  fontSize: '0.6875rem',
+  fontWeight: 500,
+  color: 'text.secondary',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.04em',
+} as const;
+
+function ColumnHeaders() {
+  return (
+    <Box sx={columnHeadersSx}>
+      <Box sx={{ flex: '1 1 55%', minWidth: 0 }}>
+        <Typography sx={columnLabelSx}>Item</Typography>
+      </Box>
+      <Box sx={{ flex: '0 0 auto', width: { xs: 60, sm: 80 } }}>
+        <Typography sx={columnLabelSx}>Qty</Typography>
+      </Box>
+      <Box sx={{ flex: '0 0 auto', width: { xs: 90, sm: 140 } }}>
+        <Typography sx={columnLabelSx}>Unit</Typography>
+      </Box>
+      {/* Spacer for delete icon column */}
+      <Box sx={{ flex: '0 0 auto', width: 32 }} />
+    </Box>
+  );
 }
 
 export default function MealEditor({
   mealItems,
   onChange,
   onFoodItemAdded,
-  removeItemButtonText = 'Remove Meal Item',
 }: MealEditorProps) {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -69,8 +96,8 @@ export default function MealEditor({
         const recipesJson = recipeRes.ok ? await recipeRes.json() : { data: [] };
         setFoodItems(Array.isArray(foodItemsJson) ? foodItemsJson : foodItemsJson.data || []);
         setRecipes(Array.isArray(recipesJson) ? recipesJson : recipesJson.data || []);
-      } catch (error) {
-        console.error('Error loading data:', error);
+      } catch (err) {
+        console.error('Error loading data:', err);
       }
     };
 
@@ -78,40 +105,44 @@ export default function MealEditor({
   }, []);
 
   // Handle food item creation and update local state
-  const handleFoodItemAdded = async (
-    newFoodItem:
-      | FoodItem
-      | { name: string; singularName: string; pluralName: string; unit: string; isGlobal: boolean }
-  ) => {
-    // Add the new food item to local state if it has _id (already created)
-    if ('_id' in newFoodItem) {
-      setFoodItems((prev) => {
-        const newItems = [...prev, newFoodItem as FoodItem];
-        return newItems;
-      });
+  const handleFoodItemAdded = useCallback(
+    async (
+      newFoodItem:
+        | FoodItem
+        | {
+            _id?: string;
+            name: string;
+            singularName: string;
+            pluralName: string;
+            unit: string;
+            isGlobal: boolean;
+          }
+    ) => {
+      if ('_id' in newFoodItem && newFoodItem._id) {
+        const fullItem: FoodItem = {
+          _id: newFoodItem._id,
+          name: newFoodItem.name,
+          singularName: newFoodItem.singularName,
+          pluralName: newFoodItem.pluralName,
+          unit: newFoodItem.unit,
+          isGlobal: newFoodItem.isGlobal,
+        };
 
-      // Store the newly created food item temporarily so we can use it in onIngredientChange
-      // This will be used when the auto-selection happens before the state update
-      lastCreatedFoodItemRef.current = newFoodItem;
-    }
+        setFoodItems((prev) => [...prev, fullItem]);
+        lastCreatedFoodItemRef.current = fullItem;
+      }
 
-    // Also notify parent component if callback exists
-    if (onFoodItemAdded) {
-      await onFoodItemAdded(
-        newFoodItem as {
-          name: string;
-          singularName: string;
-          pluralName: string;
-          unit: string;
-          isGlobal: boolean;
-        }
-      );
-    }
-  };
+      if (onFoodItemAdded) {
+        const { name, singularName, pluralName, unit, isGlobal } = newFoodItem;
+        await onFoodItemAdded({ name, singularName, pluralName, unit, isGlobal });
+      }
+    },
+    [onFoodItemAdded]
+  );
 
   const handleAddMealItem = () => {
     const newItem: MealItem = {
-      type: 'foodItem', // Default to foodItem, but IngredientInput will allow selecting recipes too
+      type: 'foodItem',
       id: '',
       name: '',
       quantity: 1,
@@ -162,6 +193,20 @@ export default function MealEditor({
     return mealItems.filter((item) => item.id && item.id.trim() !== '').map((item) => item.id);
   };
 
+  // Convert FoodItem[] to FoodItemOption[] for InlineIngredientRow
+  const foodItemOptions: FoodItemOption[] = foodItems.map((fi) => ({
+    _id: fi._id,
+    name: fi.name,
+    singularName: fi.singularName,
+    pluralName: fi.pluralName,
+    unit: fi.unit,
+  }));
+
+  // Check if any regular (non-group) meal items exist for column headers
+  const hasRegularItems = mealItems.some(
+    (item) => item.type === 'foodItem' || item.type === 'recipe'
+  );
+
   return (
     <Box>
       {error && (
@@ -170,48 +215,45 @@ export default function MealEditor({
         </Alert>
       )}
 
+      {/* Column headers - shown above first regular item */}
+      {hasRegularItems && <ColumnHeaders />}
+
       {/* Meal Items */}
       {mealItems.map((item, index) => (
-        <Box key={index} sx={{ mb: 2 }}>
+        <Box key={index} sx={{ mb: item.type === 'ingredientGroup' ? 2 : 0 }}>
           {(item.type === 'foodItem' || item.type === 'recipe') && (
-            <IngredientInput
+            <InlineIngredientRow
               ingredient={{
-                type: item.type, // Use the actual type from the meal item
+                type: item.type,
                 id: item.id,
                 quantity: item.quantity ?? 1,
                 unit: item.type === 'foodItem' ? item.unit || 'cup' : undefined,
-                name: item.name, // ✅ Preserve the name from the meal item
+                name: item.name,
               }}
               autoFocus={!item.id || item.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
-                let itemName = updatedIngredient.name || ''; // Start with the name from IngredientInput
+                let itemName = updatedIngredient.name || '';
 
-                // If we have the data loaded, look up the name to ensure it's correct (especially for singular/plural)
                 if (updatedIngredient.id && (foodItems.length > 0 || recipes.length > 0)) {
                   const foodItem = foodItems.find((f) => f._id === updatedIngredient.id);
                   const recipe = recipes.find((r) => r._id === updatedIngredient.id);
 
                   if (foodItem) {
-                    // For food items, use singular/plural based on quantity
                     itemName =
                       updatedIngredient.quantity === 1
                         ? foodItem.singularName
                         : foodItem.pluralName;
                   } else if (recipe) {
-                    // For recipes, use the title
                     itemName = recipe.title;
                   } else if (
                     lastCreatedFoodItemRef.current &&
                     lastCreatedFoodItemRef.current._id === updatedIngredient.id
                   ) {
-                    // Use newly created food item (before it's in foodItems state)
                     itemName = lastCreatedFoodItemRef.current.name;
                     lastCreatedFoodItemRef.current = null;
                   }
-                  // If lookup fails but we have a name from updatedIngredient, keep it
                 }
 
-                // Update the meal item with the ingredient data
                 handleItemChange(index, {
                   type: updatedIngredient.type,
                   id: updatedIngredient.id,
@@ -224,27 +266,142 @@ export default function MealEditor({
                 });
               }}
               onRemove={() => handleRemoveItem(index)}
-              foodItems={foodItems}
+              foodItems={foodItemOptions}
+              recipes={recipes}
               onFoodItemAdded={handleFoodItemAdded}
               selectedIds={getAllSelectedIds().filter((id) => id !== item.id)}
-              slotId={`meal-item-${index}`}
-              removeButtonText="Remove Meal Item"
               allowPrepInstructions={false}
             />
           )}
 
           {item.type === 'ingredientGroup' && item.ingredients && item.ingredients.length > 0 && (
-            <IngredientGroup
-              group={item.ingredients[0]}
-              onChange={(group) => handleIngredientGroupChange(index, [group])}
-              onRemove={() => handleRemoveItem(index)}
-              foodItems={foodItems}
-              onFoodItemAdded={handleFoodItemAdded}
-              addIngredientButtonText="Add Ingredient"
-              emptyGroupText="No ingredients in this group. Click 'Add Ingredient' to begin."
-              removeIngredientButtonText={removeItemButtonText}
-              allowPrepInstructions={false}
-            />
+            <Box
+              sx={{ pt: 2, pb: 1, borderTop: '1px solid', borderTopColor: 'divider' }}
+            >
+              {/* Group title */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ flex: 1, mr: 2 }}>
+                  <CompactInput
+                    placeholder="Group title (required)"
+                    value={item.ingredients[0].title || ''}
+                    onChange={(e) => {
+                      const updatedGroup = {
+                        ...item.ingredients![0],
+                        title: e.target.value,
+                      };
+                      handleIngredientGroupChange(index, [updatedGroup]);
+                    }}
+                    required
+                    error={!item.ingredients[0].title || item.ingredients[0].title.trim() === ''}
+                    helperText={
+                      !item.ingredients[0].title || item.ingredients[0].title.trim() === ''
+                        ? 'Group title is required'
+                        : ''
+                    }
+                  />
+                </Box>
+                <IconButton
+                  onClick={() => handleRemoveItem(index)}
+                  color="error"
+                  size="small"
+                  sx={{
+                    display: { xs: 'none', sm: 'flex' },
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <Delete />
+                </IconButton>
+              </Box>
+
+              {/* Group ingredients column headers */}
+              {item.ingredients[0].ingredients.length > 0 && <ColumnHeaders />}
+
+              {/* Group ingredients */}
+              {item.ingredients[0].ingredients.map(
+                (ingredient: RecipeIngredient, ingIndex: number) => (
+                  <InlineIngredientRow
+                    key={ingIndex}
+                    ingredient={ingredient}
+                    autoFocus={!ingredient.id || ingredient.id.trim() === ''}
+                    onIngredientChange={(updatedIngredient) => {
+                      const updatedGroup = { ...item.ingredients![0] };
+                      updatedGroup.ingredients = updatedGroup.ingredients.map(
+                        (ing: RecipeIngredient, i: number) =>
+                          i === ingIndex ? updatedIngredient : ing
+                      );
+                      handleIngredientGroupChange(index, [updatedGroup]);
+                    }}
+                    onRemove={() => {
+                      const updatedGroup = { ...item.ingredients![0] };
+                      updatedGroup.ingredients = updatedGroup.ingredients.filter(
+                        (_: RecipeIngredient, i: number) => i !== ingIndex
+                      );
+                      handleIngredientGroupChange(index, [updatedGroup]);
+                    }}
+                    foodItems={foodItemOptions}
+                    recipes={recipes}
+                    onFoodItemAdded={handleFoodItemAdded}
+                    selectedIds={
+                      item
+                        .ingredients![0].ingredients.map((ing: RecipeIngredient) => ing.id)
+                        .filter((id: string) => id !== '' && id !== ingredient.id)
+                    }
+                    allowPrepInstructions={false}
+                  />
+                )
+              )}
+
+              {/* Add ingredient to group */}
+              <Button
+                startIcon={<Add />}
+                onClick={() => {
+                  const updatedGroup = { ...item.ingredients![0] };
+                  const newIngredient: RecipeIngredient = {
+                    type: 'foodItem',
+                    id: '',
+                    quantity: 1,
+                    unit: 'cup',
+                  };
+                  updatedGroup.ingredients = [...updatedGroup.ingredients, newIngredient];
+                  handleIngredientGroupChange(index, [updatedGroup]);
+                }}
+                variant="text"
+                size="small"
+                sx={{ mt: 1 }}
+              >
+                Add Ingredient
+              </Button>
+
+              {item.ingredients[0].ingredients.length === 0 && (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={1}>
+                  No ingredients in this group. Click &apos;Add Ingredient&apos; to begin.
+                </Typography>
+              )}
+
+              {/* Mobile remove group button */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button
+                  onClick={() => handleRemoveItem(index)}
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Delete />}
+                  sx={{
+                    display: { xs: 'flex', sm: 'none' },
+                    width: '100%',
+                  }}
+                >
+                  Remove Group
+                </Button>
+              </Box>
+            </Box>
           )}
         </Box>
       ))}
@@ -256,14 +413,14 @@ export default function MealEditor({
       )}
 
       {/* Action Buttons */}
-      <Box sx={{ display: 'flex', gap: 1, mt: 3, flexWrap: 'wrap' }}>
-        <Button startIcon={<Add />} onClick={handleAddMealItem} variant="outlined" size="small">
+      <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
+        <Button startIcon={<Add />} onClick={handleAddMealItem} variant="text" size="small">
           Add Meal Item
         </Button>
         <Button
           startIcon={<Group />}
           onClick={handleAddIngredientGroup}
-          variant="outlined"
+          variant="text"
           size="small"
         >
           Add Meal Item Group

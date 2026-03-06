@@ -203,8 +203,13 @@ export default function SettingsPage() {
         </Paper>
       </Container>
 
-      <Snackbar open={showSuccess} autoHideDuration={3000} onClose={() => setShowSuccess(false)}>
-        <Alert onClose={() => setShowSuccess(false)} severity="success">
+      <Snackbar
+        open={showSuccess}
+        autoHideDuration={4000}
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setShowSuccess(false)} severity="success" sx={{ width: '100%' }}>
           Settings saved successfully!
         </Alert>
       </Snackbar>

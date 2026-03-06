@@ -163,13 +163,13 @@ describe('MealEditor - Name Display in Edit Mode', () => {
     // Wait for data to load
     await waitFor(
       () => {
-        expect(screen.getByLabelText(/quantity/i)).toBeInTheDocument();
+        expect(screen.getByRole('spinbutton')).toBeInTheDocument();
       },
       { timeout: 2000 }
     );
 
-    // Find the quantity input
-    const quantityInput = screen.getByLabelText(/quantity/i);
+    // Find the quantity input (type="number" renders as spinbutton role)
+    const quantityInput = screen.getByRole('spinbutton');
 
     // Change quantity to 2 (type without clearing to avoid the "12" issue)
     await user.click(quantityInput);

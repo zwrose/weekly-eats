@@ -1,42 +1,52 @@
-import { Container, Box, Skeleton, Paper } from '@mui/material';
+import { Container, Box, Skeleton } from '@mui/material';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 
 export default function PantryLoading() {
+  const widths = [60, 45, 70, 55, 65];
+
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-          {/* Page header */}
+          {/* Compact page header */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
+              alignItems: 'center',
+              mb: { xs: 1.5, md: 2 },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={200} height={48} />
-            </Box>
-            <Skeleton variant="rounded" width={120} height={36} />
+            <Skeleton variant="text" width={160} height={28} />
+            <Skeleton variant="rounded" width={90} height={32} />
           </Box>
 
-          {/* Search + content */}
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <Skeleton variant="rounded" height={56} sx={{ mb: 3 }} />
-            {[...Array(5)].map((_, i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Skeleton variant="circular" width={32} height={32} />
-                <Box sx={{ flex: 1 }}>
-                  <Skeleton variant="text" width="55%" height={24} />
-                  <Skeleton variant="text" width="30%" height={18} />
-                </Box>
+          {/* Search bar */}
+          <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+            <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+
+            {/* Flat row skeletons */}
+            {widths.map((w, i) => (
+              <Box
+                key={i}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  minHeight: 40,
+                  px: 1.5,
+                  py: 1,
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                }}
+              >
+                {/* Name */}
+                <Skeleton variant="text" width={`${w}%`} height={20} sx={{ flex: '1 1 auto' }} />
+
+                {/* Delete icon */}
+                <Skeleton variant="circular" width={24} height={24} sx={{ flexShrink: 0, ml: 1 }} />
               </Box>
             ))}
-          </Paper>
+          </Box>
         </Box>
       </Container>
     </AuthenticatedLayout>

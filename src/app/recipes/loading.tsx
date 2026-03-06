@@ -1,4 +1,4 @@
-import { Container, Box, Skeleton, Paper } from '@mui/material';
+import { Container, Box, Skeleton } from '@mui/material';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 
 export default function RecipesLoading() {
@@ -6,40 +6,82 @@ export default function RecipesLoading() {
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-          {/* Page header */}
+          {/* Compact page header */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
+              alignItems: 'center',
+              mb: { xs: 1.5, md: 2 },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={140} height={48} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Skeleton variant="circular" width={28} height={28} />
+              <Skeleton variant="text" width={100} height={28} />
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Skeleton variant="rounded" width={160} height={36} />
-              <Skeleton variant="rounded" width={40} height={36} />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Skeleton variant="rounded" width={100} height={32} />
+              <Skeleton variant="rounded" width={32} height={32} />
             </Box>
           </Box>
 
-          {/* Search + content */}
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <Skeleton variant="rounded" height={56} sx={{ mb: 3 }} />
-            {[...Array(5)].map((_, i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Skeleton variant="circular" width={32} height={32} />
-                <Box sx={{ flex: 1 }}>
-                  <Skeleton variant="text" width="55%" height={24} />
-                  <Skeleton variant="text" width="30%" height={18} />
-                </Box>
+          {/* Filter bar skeleton */}
+          <Skeleton variant="rounded" height={36} sx={{ mb: 2 }} />
+
+          {/* Recipe count */}
+          <Skeleton variant="text" width={100} height={16} sx={{ mb: 1 }} />
+
+          {/* Flat row skeletons */}
+          {[...Array(8)].map((_, i) => (
+            <Box
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                minHeight: 36,
+                px: 1.5,
+                py: 1,
+                borderBottom: '1px solid',
+                borderBottomColor: 'divider',
+              }}
+            >
+              {/* Emoji */}
+              <Skeleton variant="rounded" width={24} height={24} />
+
+              {/* Name */}
+              <Skeleton variant="text" width={`${30 + Math.random() * 30}%`} height={20} />
+
+              {/* Spacer */}
+              <Box sx={{ flex: 1 }} />
+
+              {/* Tag pills */}
+              <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.5 }}>
+                {Math.random() > 0.3 && (
+                  <Skeleton
+                    variant="rounded"
+                    width={50}
+                    height={18}
+                    sx={{ borderRadius: '9px' }}
+                  />
+                )}
+                {Math.random() > 0.5 && (
+                  <Skeleton
+                    variant="rounded"
+                    width={40}
+                    height={18}
+                    sx={{ borderRadius: '9px' }}
+                  />
+                )}
               </Box>
-            ))}
-          </Paper>
+
+              {/* Rating */}
+              <Skeleton variant="text" width={30} height={16} />
+
+              {/* Date */}
+              <Skeleton variant="text" width={70} height={16} />
+            </Box>
+          ))}
         </Box>
       </Container>
     </AuthenticatedLayout>

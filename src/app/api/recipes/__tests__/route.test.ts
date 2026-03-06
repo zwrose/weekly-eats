@@ -107,7 +107,7 @@ describe('GET /api/recipes', () => {
     expect(res.status).toBe(200);
     expect(json.total).toBe(2);
     expect(json.page).toBe(1);
-    expect(json.limit).toBe(10);
+    expect(json.limit).toBe(25);
     expect(json.totalPages).toBe(1);
     expect(json.data).toHaveLength(2);
   });

@@ -15,8 +15,9 @@ import {
   Typography,
   Divider,
   Button,
+  InputAdornment,
 } from '@mui/material';
-import { FilterList, Close } from '@mui/icons-material';
+import { FilterList, Close, Search } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material';
 
 export type SortOrder = 'asc' | 'desc';
@@ -192,6 +193,15 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(
             placeholder="Search recipes..."
             size="small"
             autoComplete="off"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -272,6 +282,15 @@ const RecipeFilterBar = React.memo<RecipeFilterBarProps>(
             placeholder="Search recipes..."
             size="small"
             autoComplete="off"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <IconButton
             onClick={() => setDrawerOpen(true)}

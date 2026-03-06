@@ -1,15 +1,11 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import {
-  Dialog,
-  DialogContent,
   Box,
   Typography,
-  TextField,
   IconButton,
   Divider,
-  Button,
   Paper,
   List,
   ListItem,
@@ -17,9 +13,8 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
-import { Check, Close as CloseIcon, PersonAdd, Delete } from '@mui/icons-material';
-import { responsiveDialogStyle } from '@/lib/theme';
-import { DialogActions, DialogTitle } from '@/components/ui';
+import { Check, Close as CloseIcon, PersonAdd } from '@mui/icons-material';
+import { ShareDialog } from '@/components/ui';
 import { PendingRecipeInvitation, SharedUser } from '@/lib/recipe-sharing-utils';
 
 export interface RecipeSharingSectionProps {
@@ -57,7 +52,11 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
   sharedUsers,
   onRemoveUser,
 }) => {
-  const shareEmailRef = useRef<HTMLInputElement>(null);
+  const mappedUsers = sharedUsers.map((user) => ({
+    key: user.userId,
+    primary: user.name || user.email,
+    secondary: `${user.email} - Sharing: ${user.sharingTypes.join(', ')}`,
+  }));
 
   return (
     <>
@@ -121,106 +120,36 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
         </Paper>
       )}
 
-      {/* Share Recipe Data Dialog */}
-      <Dialog
+      <ShareDialog
         open={shareDialogOpen}
         onClose={onShareDialogClose}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-        TransitionProps={{
-          onEntered: () => shareEmailRef.current?.focus(),
-        }}
+        title="Share Recipe Data"
+        description="Invite users by email. Select what to share: tags, ratings, or both."
+        email={shareEmail}
+        onEmailChange={onShareEmailChange}
+        onInvite={onInviteUser}
+        inviteDisabled={!shareEmail.trim() || (!shareTags && !shareRatings)}
+        sharedUsers={mappedUsers}
+        onRemoveUser={onRemoveUser}
       >
-        <DialogTitle onClose={onShareDialogClose}>Share Recipe Data</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Invite users by email. Select what to share: tags, ratings, or both.
-          </Typography>
-
-          {/* Sharing Type Selection */}
-          <Box sx={{ mb: 3 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={shareTags}
-                  onChange={(e) => onShareTagsChange(e.target.checked)}
-                />
-              }
-              label="Share Tags"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={shareRatings}
-                  onChange={(e) => onShareRatingsChange(e.target.checked)}
-                />
-              }
-              label="Share Ratings"
-            />
-          </Box>
-
-          {/* Invite Section */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <TextField
-              inputRef={shareEmailRef}
-              label="Email Address"
-              type="email"
-              value={shareEmail}
-              onChange={(e) => onShareEmailChange(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && shareEmail.trim()) {
-                  onInviteUser();
-                }
-              }}
-              size="small"
-              fullWidth
-              placeholder="user@example.com"
-            />
-            <Button
-              variant="contained"
-              onClick={onInviteUser}
-              disabled={!shareEmail.trim() || (!shareTags && !shareRatings)}
-              sx={{ minWidth: 100 }}
-            >
-              Invite
-            </Button>
-          </Box>
-
-          {/* Shared Users List */}
-          {sharedUsers && sharedUsers.length > 0 && (
-            <>
-              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                Shared With:
-              </Typography>
-              <List>
-                {sharedUsers.map((user) => (
-                  <ListItem key={user.userId}>
-                    <ListItemText
-                      primary={user.name || user.email}
-                      secondary={`${user.email} - Sharing: ${user.sharingTypes.join(', ')}`}
-                    />
-                    <IconButton
-                      size="small"
-                      color="error"
-                      title="Remove user"
-                      onClick={() => onRemoveUser(user.userId)}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </ListItem>
-                ))}
-              </List>
-            </>
-          )}
-
-          <DialogActions primaryButtonIndex={0}>
-            <Button onClick={onShareDialogClose} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              Done
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+        <Box sx={{ mb: 3 }}>
+          <FormControlLabel
+            control={
+              <Checkbox checked={shareTags} onChange={(e) => onShareTagsChange(e.target.checked)} />
+            }
+            label="Share Tags"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={shareRatings}
+                onChange={(e) => onShareRatingsChange(e.target.checked)}
+              />
+            }
+            label="Share Ratings"
+          />
+        </Box>
+      </ShareDialog>
     </>
   );
 };
