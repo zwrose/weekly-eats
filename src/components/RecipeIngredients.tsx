@@ -27,40 +27,6 @@ interface RecipeIngredientsProps {
   removeIngredientButtonText?: string;
 }
 
-const columnHeadersSx = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 0.5,
-  px: 0.5,
-  mb: 0.5,
-} as const;
-
-const columnLabelSx = {
-  fontSize: '0.6875rem',
-  fontWeight: 500,
-  color: 'text.secondary',
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.04em',
-} as const;
-
-function ColumnHeaders() {
-  return (
-    <Box sx={columnHeadersSx}>
-      <Box sx={{ flex: '1 1 55%', minWidth: 0 }}>
-        <Typography sx={columnLabelSx}>Item</Typography>
-      </Box>
-      <Box sx={{ flex: '0 0 auto', width: { xs: 60, sm: 80 } }}>
-        <Typography sx={columnLabelSx}>Qty</Typography>
-      </Box>
-      <Box sx={{ flex: '0 0 auto', width: { xs: 90, sm: 140 } }}>
-        <Typography sx={columnLabelSx}>Unit</Typography>
-      </Box>
-      {/* Spacer for prep + delete icon columns */}
-      <Box sx={{ flex: '0 0 auto', width: 60 }} />
-    </Box>
-  );
-}
-
 export default function RecipeIngredients({
   ingredients,
   onChange,
@@ -280,8 +246,6 @@ export default function RecipeIngredients({
       {isStandaloneMode ? (
         // Standalone mode - single group without title
         <Box>
-          {ingredients[0].ingredients.length > 0 && <ColumnHeaders />}
-
           {ingredients[0].ingredients.map((ingredient, index) => (
             <InlineIngredientRow
               key={index}
@@ -365,8 +329,6 @@ export default function RecipeIngredients({
                   <Delete />
                 </IconButton>
               </Box>
-
-              {group.ingredients.length > 0 && <ColumnHeaders />}
 
               {group.ingredients.map((ingredient, ingredientIndex) => (
                 <InlineIngredientRow

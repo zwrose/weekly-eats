@@ -17,10 +17,7 @@ import {
   DialogContent,
   DialogContentText,
   CircularProgress,
-  FormControl,
-  MenuItem,
   Paper,
-  Select,
   TextField,
 } from '@mui/material';
 import {
@@ -35,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import RecipeMetadataEditor from '@/components/RecipeMetadataEditor';
 import { Recipe, UpdateRecipeRequest, RecipeIngredientList, FoodItemOption } from '@/types/recipe';
 import {
   fetchRecipe,
@@ -479,128 +477,14 @@ function RecipeDetailContent() {
                 />
               </Box>
 
-              {/* Metadata — compact selects on mobile, full controls on desktop */}
-              <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, mb: 1.5 }}>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <Typography variant="h6" sx={{ mb: 0.5 }}>
-                    Access
-                  </Typography>
-                  <Select
-                    value={editingRecipe.isGlobal ? 'global' : 'personal'}
-                    onChange={(e) =>
-                      setEditingRecipe({ ...editingRecipe, isGlobal: e.target.value === 'global' })
-                    }
-                  >
-                    <MenuItem value="global">
-                      <Public sx={{ fontSize: 16, mr: 0.75, verticalAlign: 'text-bottom' }} />
-                      Global
-                    </MenuItem>
-                    <MenuItem value="personal">
-                      <Person sx={{ fontSize: 16, mr: 0.75, verticalAlign: 'text-bottom' }} />
-                      Personal
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 100 }}>
-                  <Typography variant="h6" sx={{ mb: 0.5 }}>
-                    Rating
-                  </Typography>
-                  <Select
-                    value={recipeUserData?.rating ?? 0}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      handleRatingChange(val === 0 ? undefined : val);
-                    }}
-                    renderValue={(val) =>
-                      val === 0 ? (
-                        'None'
-                      ) : (
-                        <Box component="span" sx={{ color: 'warning.main' }}>
-                          {'★'.repeat(val as number)}
-                        </Box>
-                      )
-                    }
-                  >
-                    <MenuItem value={0}>None</MenuItem>
-                    {[1, 2, 3, 4, 5].map((v) => (
-                      <MenuItem key={v} value={v}>
-                        <Box component="span" sx={{ color: 'warning.main' }}>
-                          {'★'.repeat(v)}
-                        </Box>
-                        <Box component="span" sx={{ color: 'text.secondary', ml: 0.5 }}>
-                          ({v}/5)
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-              <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>
-                <Typography variant="h6" sx={{ mb: 0.5 }}>
-                  Tags
-                </Typography>
-                <RecipeTagsEditor
-                  tags={recipeUserData?.tags || []}
-                  onChange={handleTagsChange}
-                  editable={true}
-                  label=""
-                />
-              </Box>
-
-              {/* Desktop: full controls in a row */}
-              <Box
-                sx={{
-                  display: { xs: 'none', sm: 'flex' },
-                  flexWrap: 'wrap',
-                  gap: 2,
-                  mb: 2,
-                  alignItems: 'flex-start',
-                }}
-              >
-                <Box>
-                  <Typography variant="h6" sx={{ mb: 0.5 }}>
-                    Access
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant={editingRecipe.isGlobal ? 'contained' : 'outlined'}
-                      onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: true })}
-                      startIcon={<Public />}
-                      size="small"
-                    >
-                      Global
-                    </Button>
-                    <Button
-                      variant={editingRecipe.isGlobal ? 'outlined' : 'contained'}
-                      onClick={() => setEditingRecipe({ ...editingRecipe, isGlobal: false })}
-                      startIcon={<Person />}
-                      size="small"
-                    >
-                      Personal
-                    </Button>
-                  </Box>
-                </Box>
-                <Divider orientation="vertical" flexItem />
-                <Box>
-                  <RecipeStarRating
-                    rating={recipeUserData?.rating}
-                    onChange={handleRatingChange}
-                    editable={true}
-                  />
-                </Box>
-                <Divider orientation="vertical" flexItem />
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="h6" sx={{ mb: 0.5 }}>
-                    Tags
-                  </Typography>
-                  <RecipeTagsEditor
-                    tags={recipeUserData?.tags || []}
-                    onChange={handleTagsChange}
-                    editable={true}
-                    label=""
-                  />
-                </Box>
-              </Box>
+              <RecipeMetadataEditor
+                isGlobal={editingRecipe.isGlobal ?? false}
+                onIsGlobalChange={(isGlobal) => setEditingRecipe({ ...editingRecipe, isGlobal })}
+                rating={recipeUserData?.rating}
+                onRatingChange={handleRatingChange}
+                tags={recipeUserData?.tags || []}
+                onTagsChange={handleTagsChange}
+              />
 
               <Typography variant="h6" gutterBottom>
                 Ingredients

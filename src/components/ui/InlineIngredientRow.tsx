@@ -1,10 +1,19 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Box, IconButton, TextField } from '@mui/material';
-import { Delete, Add, ExpandLess } from '@mui/icons-material';
+import {
+  Box,
+  Divider,
+  IconButton,
+  TextField,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
+import { MoreVert, Delete, NoteAdd, RemoveCircleOutline } from '@mui/icons-material';
 import { RecipeIngredient, FoodItemOption } from '@/types/recipe';
-import { SearchOption } from '@/lib/hooks/use-food-item-selector';
+import { SearchOption, FoodItem } from '@/lib/hooks/use-food-item-selector';
 import { useFoodItemCreator } from '@/lib/hooks/use-food-item-creator';
 import { useQuantityInput } from '@/lib/hooks/use-quantity-input';
 import FoodItemAutocomplete from '@/components/food-item-inputs/FoodItemAutocomplete';
@@ -47,6 +56,7 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
   }) {
     const [prepExpanded, setPrepExpanded] = useState(!!ingredient.prepInstructions);
     const userExpandedPrep = useRef(false);
+    const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
     // Use food item creator hook for side effects (item creation flow)
     useFoodItemCreator({
@@ -147,153 +157,237 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
       onQuantityChange: handleQuantityChange,
     });
 
+    const showPrepOption = allowPrepInstructions && ingredient.type === 'foodItem' && ingredient.id;
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+      setMenuAnchor(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+      setMenuAnchor(null);
+    };
+
+    const handleTogglePrep = () => {
+      handleMenuClose();
+      if (prepExpanded) {
+        // Remove prep instructions
+        onIngredientChange({ ...ingredient, prepInstructions: undefined });
+        setPrepExpanded(false);
+      } else {
+        userExpandedPrep.current = true;
+        setPrepExpanded(true);
+      }
+    };
+
+    const handleDelete = () => {
+      handleMenuClose();
+      onRemove();
+    };
+
+    const kebabMenu = (
+      <>
+        <IconButton
+          onClick={handleMenuOpen}
+          size="small"
+          sx={{
+            flex: '0 0 auto',
+            width: 28,
+            height: 28,
+            color: 'text.secondary',
+          }}
+          aria-label="Ingredient options"
+        >
+          <MoreVert sx={{ fontSize: 16 }} />
+        </IconButton>
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={handleMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={handleDelete} dense sx={{ color: 'error.main' }}>
+            <ListItemIcon>
+              <Delete fontSize="small" sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText>Delete</ListItemText>
+          </MenuItem>
+          {showPrepOption && <Divider />}
+          {showPrepOption && (
+            <MenuItem onClick={handleTogglePrep} dense>
+              <ListItemIcon>
+                {prepExpanded ? (
+                  <RemoveCircleOutline fontSize="small" />
+                ) : (
+                  <NoteAdd fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText>
+                {prepExpanded ? 'Remove prep instructions' : 'Add prep instructions'}
+              </ListItemText>
+            </MenuItem>
+          )}
+        </Menu>
+      </>
+    );
+
+    const showPrep = prepExpanded && showPrepOption;
+
+    const prepFieldProps = {
+      placeholder: 'e.g. sifted',
+      value: ingredient.prepInstructions || '',
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        onIngredientChange({
+          ...ingredient,
+          prepInstructions: e.target.value || undefined,
+        });
+      },
+      size: 'small' as const,
+      sx: {
+        '& .MuiInputBase-input': {
+          fontStyle: 'italic',
+          fontSize: '0.875rem',
+        },
+      },
+    };
+
+    const foodItemAutocompleteProps = {
+      allowRecipes: true,
+      excludeIds: selectedIds,
+      excludedItemLabel: 'Already in recipe',
+      foodItems: propFoodItems,
+      recipes,
+      currentRecipeId,
+      onFoodItemAdded: onFoodItemAdded
+        ? async (item: {
+            _id?: string;
+            name: string;
+            singularName: string;
+            pluralName: string;
+            unit: string;
+            isGlobal?: boolean;
+          }) => {
+            await onFoodItemAdded({
+              _id: item._id,
+              name: item.name,
+              singularName: item.singularName,
+              pluralName: item.pluralName,
+              unit: item.unit,
+              isGlobal: item.isGlobal ?? false,
+            });
+          }
+        : undefined,
+      autoLoad: !propFoodItems,
+      value: selectedOption,
+      onChange: handleSelect,
+      label: '',
+      placeholder: 'Food item or recipe',
+      size: 'small' as const,
+      fullWidth: true,
+      autoFocus,
+      onCreateItem: (item: FoodItem) => {
+        handleSelect({ ...item, type: 'foodItem' as const });
+      },
+    };
+
     return (
-      <Box>
-        {/* Main inline row */}
+      <Box sx={{ mb: { xs: 1.5, sm: 0.5 } }}>
+        {/* Desktop: single row */}
         <Box
           sx={{
-            display: 'flex',
+            display: { xs: 'none', sm: 'flex' },
             alignItems: 'center',
             gap: 0.5,
-            minHeight: 36,
+            minHeight: 40,
           }}
         >
-          {/* Food Item Autocomplete ~55% */}
-          <Box sx={{ flex: '1 1 55%', minWidth: 0 }}>
-            <FoodItemAutocomplete
-              allowRecipes={true}
-              excludeIds={selectedIds}
-              excludedItemLabel="Already in recipe"
-              foodItems={propFoodItems}
-              recipes={recipes}
-              currentRecipeId={currentRecipeId}
-              onFoodItemAdded={
-                onFoodItemAdded
-                  ? async (item) => {
-                      await onFoodItemAdded({
-                        _id: item._id,
-                        name: item.name,
-                        singularName: item.singularName,
-                        pluralName: item.pluralName,
-                        unit: item.unit,
-                        isGlobal: item.isGlobal ?? false,
-                      });
-                    }
-                  : undefined
-              }
-              autoLoad={!propFoodItems}
-              value={selectedOption}
-              onChange={handleSelect}
-              label=""
-              placeholder="Food item or recipe"
-              size="small"
-              fullWidth
-              autoFocus={autoFocus}
-              onCreateItem={(item) => {
-                const searchOption: SearchOption = {
-                  ...item,
-                  type: 'foodItem' as const,
-                };
-                handleSelect(searchOption);
-              }}
-            />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <FoodItemAutocomplete {...foodItemAutocompleteProps} />
           </Box>
 
-          {/* Quantity ~15% */}
-          <Box sx={{ flex: '0 0 auto', width: { xs: 60, sm: 80 } }}>
+          {/* Prep instructions — inline */}
+          {showPrep && (
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <TextField autoFocus={userExpandedPrep.current} fullWidth {...prepFieldProps} />
+            </Box>
+          )}
+
+          <Box sx={{ flex: '0 0 auto', width: 80 }}>
             <QuantityInput
               value={ingredient.quantity ?? 1}
               onChange={handleQuantityChange}
               label=""
               size="small"
               inputRef={quantity.quantityRef}
-              sx={{
-                '& .MuiInputBase-root': { height: 32 },
-                '& .MuiInputBase-input': { fontSize: '0.875rem', py: 0.5 },
-              }}
             />
           </Box>
 
-          {/* Unit ~20% */}
           {ingredient.type === 'foodItem' && (
-            <Box sx={{ flex: '0 0 auto', width: { xs: 90, sm: 140 } }}>
+            <Box sx={{ flex: '0 0 auto', width: 140 }}>
               <UnitSelector
                 value={ingredient.unit || 'cup'}
                 quantity={ingredient.quantity ?? 1}
                 onChange={(unit) => onIngredientChange({ ...ingredient, unit })}
                 label=""
                 size="small"
-                sx={{
-                  '& .MuiInputBase-root': { height: 32 },
-                  '& .MuiInputBase-input': { fontSize: '0.875rem' },
-                }}
               />
             </Box>
           )}
 
-          {/* Prep instructions toggle (small icon) */}
-          {allowPrepInstructions && ingredient.type === 'foodItem' && ingredient.id && (
-            <IconButton
-              onClick={() => {
-                userExpandedPrep.current = true;
-                setPrepExpanded(!prepExpanded);
-              }}
-              size="small"
-              sx={{
-                flex: '0 0 auto',
-                width: 28,
-                height: 28,
-                color: ingredient.prepInstructions ? 'primary.main' : 'text.tertiary',
-              }}
-              aria-label={prepExpanded ? 'Hide prep instructions' : 'Add prep instructions'}
-            >
-              {prepExpanded ? <ExpandLess sx={{ fontSize: 16 }} /> : <Add sx={{ fontSize: 16 }} />}
-            </IconButton>
-          )}
-
-          {/* Delete icon ~10% */}
-          <IconButton
-            onClick={onRemove}
-            size="small"
-            sx={{
-              flex: '0 0 auto',
-              width: 28,
-              height: 28,
-              color: 'text.secondary',
-              '&:hover': { color: 'error.main' },
-            }}
-            aria-label="Remove ingredient"
-          >
-            <Delete sx={{ fontSize: 16 }} />
-          </IconButton>
+          {kebabMenu}
         </Box>
 
-        {/* Prep instructions (expandable) */}
-        {prepExpanded &&
-          allowPrepInstructions &&
-          ingredient.type === 'foodItem' &&
-          ingredient.id && (
-            <Box sx={{ pl: 1, pr: 4.5, mt: 0.5, mb: 0.5 }}>
-              <TextField
-                autoFocus={userExpandedPrep.current}
-                placeholder="e.g., chopped, diced, peeled"
-                value={ingredient.prepInstructions || ''}
-                onChange={(e) => {
-                  onIngredientChange({
-                    ...ingredient,
-                    prepInstructions: e.target.value || undefined,
-                  });
-                }}
-                size="small"
-                fullWidth
-                sx={{
-                  '& .MuiInputBase-root': { height: 28, fontSize: '0.8125rem' },
-                  '& .MuiInputBase-input': { py: 0.25 },
-                }}
-              />
+        {/* Mobile: two rows */}
+        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+          {/* Row 1: Item + kebab */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <FoodItemAutocomplete {...foodItemAutocompleteProps} />
+            </Box>
+            {kebabMenu}
+          </Box>
+
+          {/* Row 2: Prep instructions (if active) */}
+          {showPrep && (
+            <Box sx={{ mt: 0.5, mr: '32px' }}>
+              <TextField autoFocus={userExpandedPrep.current} fullWidth {...prepFieldProps} />
             </Box>
           )}
+
+          {/* Row 3: Qty + Unit */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              mt: 0.5,
+              mr: '32px',
+            }}
+          >
+            <Box sx={{ flex: '0 0 auto', width: 70 }}>
+              <QuantityInput
+                value={ingredient.quantity ?? 1}
+                onChange={handleQuantityChange}
+                label=""
+                size="small"
+                inputRef={quantity.quantityRef}
+              />
+            </Box>
+            {ingredient.type === 'foodItem' && (
+              <Box sx={{ flex: '1 1 auto', minWidth: 80 }}>
+                <UnitSelector
+                  value={ingredient.unit || 'cup'}
+                  quantity={ingredient.quantity ?? 1}
+                  onChange={(unit) => onIngredientChange({ ...ingredient, unit })}
+                  label=""
+                  size="small"
+                  fullWidth
+                />
+              </Box>
+            )}
+          </Box>
+        </Box>
       </Box>
     );
-  },
+  }
 );

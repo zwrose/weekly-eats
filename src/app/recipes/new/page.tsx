@@ -16,13 +16,15 @@ import {
   Paper,
   TextField,
 } from '@mui/material';
-import { ArrowBack, EmojiEmotions, Public, Person } from '@mui/icons-material';
+import { ArrowBack, EmojiEmotions } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import RecipeMetadataEditor from '@/components/RecipeMetadataEditor';
 import { CompactInput } from '@/components/ui';
 import { CreateRecipeRequest, FoodItemOption } from '@/types/recipe';
 import { createRecipe, filterBlankIngredients, hasValidIngredients } from '@/lib/recipe-utils';
 import { fetchFoodItems } from '@/lib/food-items-utils';
+import { updateRecipeTags, updateRecipeRating } from '@/lib/recipe-user-data-utils';
 
 const RecipeIngredients = dynamic(() => import('@/components/RecipeIngredients'), { ssr: false });
 const EmojiPicker = dynamic(() => import('@/components/EmojiPicker'), { ssr: false });
@@ -40,6 +42,10 @@ function NewRecipeContent() {
     isGlobal: true,
   });
   const [saving, setSaving] = useState(false);
+
+  // ── Tags & Rating (saved after creation) ──
+  const [tags, setTags] = useState<string[]>([]);
+  const [rating, setRating] = useState<number | undefined>(undefined);
 
   // ── Food items ──
   const [foodItemsList, setFoodItemsList] = useState<FoodItemOption[]>([]);
@@ -96,6 +102,11 @@ function NewRecipeContent() {
       };
       const created = await createRecipe(filteredRecipe);
       if (created._id) {
+        // Save tags and rating in parallel if set
+        const saves: Promise<unknown>[] = [];
+        if (tags.length > 0) saves.push(updateRecipeTags(created._id, tags));
+        if (rating !== undefined) saves.push(updateRecipeRating(created._id, rating));
+        if (saves.length > 0) await Promise.all(saves);
         router.push(`/recipes/${created._id}`);
       } else {
         router.push('/recipes');
@@ -187,29 +198,14 @@ function NewRecipeContent() {
               />
             </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="h6" sx={{ mb: 0.5 }}>
-                Access
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={recipe.isGlobal ? 'contained' : 'outlined'}
-                  onClick={() => setRecipe({ ...recipe, isGlobal: true })}
-                  startIcon={<Public />}
-                  size="small"
-                >
-                  Global
-                </Button>
-                <Button
-                  variant={recipe.isGlobal ? 'outlined' : 'contained'}
-                  onClick={() => setRecipe({ ...recipe, isGlobal: false })}
-                  startIcon={<Person />}
-                  size="small"
-                >
-                  Personal
-                </Button>
-              </Box>
-            </Box>
+            <RecipeMetadataEditor
+              isGlobal={recipe.isGlobal}
+              onIsGlobalChange={(isGlobal) => setRecipe({ ...recipe, isGlobal })}
+              rating={rating}
+              onRatingChange={setRating}
+              tags={tags}
+              onTagsChange={setTags}
+            />
 
             <Typography variant="h6" gutterBottom>
               Ingredients
