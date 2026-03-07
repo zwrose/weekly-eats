@@ -10,6 +10,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { MoreVert, Delete, NoteAdd, RemoveCircleOutline } from '@mui/icons-material';
 import { RecipeIngredient, FoodItemOption } from '@/types/recipe';
@@ -39,6 +41,7 @@ interface InlineIngredientRowProps {
   selectedIds?: string[];
   autoFocus?: boolean;
   allowPrepInstructions?: boolean;
+  index?: number;
 }
 
 export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.memo(
@@ -53,10 +56,13 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
     selectedIds = [],
     autoFocus = false,
     allowPrepInstructions = true,
+    index = 0,
   }) {
     const [prepExpanded, setPrepExpanded] = useState(!!ingredient.prepInstructions);
     const userExpandedPrep = useRef(false);
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+    const theme = useTheme();
+    const isDesktop = useMediaQuery(theme.breakpoints.up('sm'));
 
     // Use food item creator hook for side effects (item creation flow)
     useFoodItemCreator({
@@ -206,14 +212,29 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
+          {isDesktop && showPrepOption && (
+            <MenuItem onClick={handleTogglePrep} dense>
+              <ListItemIcon>
+                {prepExpanded ? (
+                  <RemoveCircleOutline fontSize="small" />
+                ) : (
+                  <NoteAdd fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText>
+                {prepExpanded ? 'Remove prep instructions' : 'Add prep instructions'}
+              </ListItemText>
+            </MenuItem>
+          )}
+          {isDesktop && showPrepOption && <Divider />}
           <MenuItem onClick={handleDelete} dense sx={{ color: 'error.main' }}>
             <ListItemIcon>
               <Delete fontSize="small" sx={{ color: 'error.main' }} />
             </ListItemIcon>
             <ListItemText>Delete</ListItemText>
           </MenuItem>
-          {showPrepOption && <Divider />}
-          {showPrepOption && (
+          {!isDesktop && showPrepOption && <Divider />}
+          {!isDesktop && showPrepOption && (
             <MenuItem onClick={handleTogglePrep} dense>
               <ListItemIcon>
                 {prepExpanded ? (
@@ -291,7 +312,16 @@ export const InlineIngredientRow: React.FC<InlineIngredientRowProps> = React.mem
     };
 
     return (
-      <Box sx={{ mb: { xs: 1.5, sm: 0.5 } }}>
+      <Box
+        sx={{
+          mb: { xs: 0, sm: 0.5 },
+          pt: { xs: index > 0 ? 1.5 : 0, sm: 0 },
+          pb: { xs: 1.5, sm: 0 },
+          ...(index > 0 && {
+            borderTop: { xs: '1px solid rgba(255,255,255,0.09)', sm: 'none' },
+          }),
+        }}
+      >
         {/* Desktop: single row */}
         <Box
           sx={{

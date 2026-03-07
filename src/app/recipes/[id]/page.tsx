@@ -17,6 +17,10 @@ import {
   DialogContent,
   DialogContentText,
   CircularProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   TextField,
 } from '@mui/material';
@@ -25,9 +29,11 @@ import {
   Edit,
   Delete,
   EmojiEmotions,
+  MoreVert,
   Public,
   Person,
   IosShare,
+  OpenInFull,
   RestaurantMenu,
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
@@ -110,9 +116,11 @@ function RecipeDetailContent() {
   }>({});
   const [foodItemsList, setFoodItemsList] = useState<FoodItemOption[]>([]);
 
-  // ── Dialogs ──
+  // ── Dialogs & menus ──
   const deleteConfirmDialog = useConfirmDialog();
   const emojiPickerDialog = useDialog();
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [instructionsFullscreen, setInstructionsFullscreen] = useState(false);
 
   // ── Snackbar ──
   const [snackbar, setSnackbar] = useState<{
@@ -435,6 +443,38 @@ function RecipeDetailContent() {
                 <Edit />
               </IconButton>
             )}
+            {editMode && (
+              <>
+                <IconButton
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                  size="small"
+                  aria-label="Recipe options"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <MoreVert />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={() => setMenuAnchor(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      setMenuAnchor(null);
+                      deleteConfirmDialog.openDialog();
+                    }}
+                    sx={{ color: 'error.main' }}
+                  >
+                    <ListItemIcon>
+                      <Delete fontSize="small" sx={{ color: 'error.main' }} />
+                    </ListItemIcon>
+                    <ListItemText>Delete recipe</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </>
+            )}
           </Box>
 
           {editMode ? (
@@ -499,11 +539,25 @@ function RecipeDetailContent() {
 
               <Divider sx={{ my: 3 }} />
 
-              <Typography variant="h6" gutterBottom>
-                Instructions
-              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1,
+                }}
+              >
+                <Typography variant="h6">Instructions</Typography>
+                <IconButton
+                  onClick={() => setInstructionsFullscreen(true)}
+                  size="small"
+                  aria-label="Edit instructions fullscreen"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <OpenInFull sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Box>
               <CompactInput
-                label="Cooking Instructions"
                 value={editingRecipe.instructions ?? ''}
                 onChange={(e) =>
                   setEditingRecipe({
@@ -512,7 +566,8 @@ function RecipeDetailContent() {
                   })
                 }
                 multiline
-                rows={6}
+                minRows={8}
+                maxRows={12}
                 fullWidth
                 required
               />
@@ -523,28 +578,10 @@ function RecipeDetailContent() {
                   flexDirection: { xs: 'column-reverse', sm: 'row' },
                   gap: 1,
                   mt: 3,
-                  justifyContent: { xs: 'stretch', sm: 'flex-start' },
+                  justifyContent: { xs: 'stretch', sm: 'flex-end' },
                   alignItems: { xs: 'stretch', sm: 'center' },
                 }}
               >
-                <Button
-                  onClick={() => deleteConfirmDialog.openDialog()}
-                  color="error"
-                  variant="outlined"
-                  startIcon={<Delete />}
-                  size="small"
-                  sx={{
-                    width: { xs: '100%', sm: 'auto' },
-                    mr: { xs: 0, sm: 'auto' },
-                    border: { sm: 'none' },
-                    '&:hover': {
-                      border: { sm: 'none' },
-                      backgroundColor: { sm: 'rgba(211, 47, 47, 0.04)' },
-                    },
-                  }}
-                >
-                  Delete
-                </Button>
                 <Button
                   onClick={handleCancelEdit}
                   size="small"
@@ -774,19 +811,93 @@ function RecipeDetailContent() {
           sx={responsiveDialogStyle}
         >
           <DialogTitle onClose={() => deleteConfirmDialog.closeDialog()}>Delete Recipe</DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ flex: '1 1 auto' }}>
             <DialogContentText>
               Are you sure you want to delete &quot;{recipe?.title}
               &quot;? This action cannot be undone.
             </DialogContentText>
-
-            <DialogActions primaryButtonIndex={1}>
-              <Button onClick={() => deleteConfirmDialog.closeDialog()}>Cancel</Button>
-              <Button onClick={handleDeleteRecipe} color="error" variant="contained">
-                Delete
-              </Button>
-            </DialogActions>
           </DialogContent>
+          <DialogActions primaryButtonIndex={1} sx={{ mt: 'auto' }}>
+            <Button onClick={() => deleteConfirmDialog.closeDialog()}>Cancel</Button>
+            <Button onClick={handleDeleteRecipe} color="error" variant="contained">
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Instructions Fullscreen Dialog */}
+        <Dialog
+          open={instructionsFullscreen}
+          onClose={() => setInstructionsFullscreen(false)}
+          fullWidth
+          maxWidth="md"
+          sx={{
+            ...responsiveDialogStyle,
+            '& .MuiDialog-paper': {
+              ...responsiveDialogStyle['& .MuiDialog-paper'],
+              minHeight: { sm: '70vh' },
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+        >
+          <DialogTitle onClose={() => setInstructionsFullscreen(false)}>Instructions</DialogTitle>
+          <DialogContent
+            sx={{
+              flex: '1 1 auto',
+              display: 'flex',
+              flexDirection: 'column',
+              p: 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              component="textarea"
+              autoFocus
+              value={editingRecipe.instructions ?? ''}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setEditingRecipe({
+                  ...editingRecipe,
+                  instructions: e.target.value,
+                })
+              }
+              placeholder="Enter cooking instructions..."
+              sx={{
+                flex: 1,
+                width: '100%',
+                resize: 'none',
+                border: '1px solid',
+                borderColor: 'rgba(255,255,255,0.20)',
+                borderRadius: '6px',
+                bgcolor: 'transparent',
+                color: 'text.primary',
+                fontSize: '0.875rem',
+                fontFamily: 'inherit',
+                p: 1.5,
+                outline: 'none',
+                '&:focus': {
+                  borderColor: 'primary.main',
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255,255,255,0.35) transparent',
+                '&::-webkit-scrollbar': { width: 6 },
+                '&::-webkit-scrollbar-track': { background: 'transparent' },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: 'rgba(255,255,255,0.35)',
+                  borderRadius: 999,
+                },
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ mt: 'auto' }}>
+            <Button
+              onClick={() => setInstructionsFullscreen(false)}
+              variant="contained"
+              size="small"
+            >
+              Done
+            </Button>
+          </DialogActions>
         </Dialog>
 
         {/* Emoji Picker */}

@@ -1,11 +1,27 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Button, Typography, Alert, IconButton, Paper } from '@mui/material';
-import { Add, Delete } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Typography,
+  Alert,
+  IconButton,
+  Paper,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+} from '@mui/material';
+import { Add, Delete, MoreVert } from '@mui/icons-material';
 import { RecipeIngredientList, RecipeIngredient, FoodItemOption } from '../types/recipe';
 import { InlineIngredientRow } from './ui/InlineIngredientRow';
 import { CompactInput } from './ui/CompactInput';
+import { DialogActions, DialogTitle } from './ui';
+import { responsiveDialogStyle } from '@/lib/theme';
 import type { Recipe } from '@/lib/hooks/use-food-item-selector';
 
 interface RecipeIngredientsProps {
@@ -39,6 +55,9 @@ export default function RecipeIngredients({
 }: RecipeIngredientsProps) {
   const [error, setError] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [groupMenuAnchor, setGroupMenuAnchor] = useState<null | HTMLElement>(null);
+  const [groupMenuIndex, setGroupMenuIndex] = useState<number | null>(null);
+  const [removeGroupConfirm, setRemoveGroupConfirm] = useState<number | null>(null);
 
   // Load recipes once for all ingredient rows
   const loadRecipes = useCallback(async () => {
@@ -249,6 +268,7 @@ export default function RecipeIngredients({
           {ingredients[0].ingredients.map((ingredient, index) => (
             <InlineIngredientRow
               key={index}
+              index={index}
               ingredient={ingredient}
               autoFocus={!ingredient.id || ingredient.id.trim() === ''}
               onIngredientChange={(updatedIngredient) => {
@@ -302,10 +322,13 @@ export default function RecipeIngredients({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
-                  mb: 2,
+                  mb: 1.5,
+                  pb: 1,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
                 }}
               >
-                <Box sx={{ flex: 1, mr: 2 }}>
+                <Box sx={{ flex: 1, mr: 1 }}>
                   <CompactInput
                     placeholder="Group title (required)"
                     value={group.title || ''}
@@ -317,8 +340,9 @@ export default function RecipeIngredients({
                     }
                   />
                 </Box>
+                {/* Desktop: delete icon */}
                 <IconButton
-                  onClick={() => handleRemoveGroup(groupIndex)}
+                  onClick={() => setRemoveGroupConfirm(groupIndex)}
                   color="error"
                   size="small"
                   sx={{
@@ -328,11 +352,29 @@ export default function RecipeIngredients({
                 >
                   <Delete />
                 </IconButton>
+                {/* Mobile: kebab menu */}
+                <IconButton
+                  onClick={(e) => {
+                    setGroupMenuAnchor(e.currentTarget);
+                    setGroupMenuIndex(groupIndex);
+                  }}
+                  size="small"
+                  sx={{
+                    display: { xs: 'flex', sm: 'none' },
+                    color: 'text.secondary',
+                    width: 28,
+                    height: 28,
+                  }}
+                  aria-label="Group options"
+                >
+                  <MoreVert sx={{ fontSize: 18 }} />
+                </IconButton>
               </Box>
 
               {group.ingredients.map((ingredient, ingredientIndex) => (
                 <InlineIngredientRow
                   key={ingredientIndex}
+                  index={ingredientIndex}
                   ingredient={ingredient}
                   autoFocus={!ingredient.id || ingredient.id.trim() === ''}
                   onIngredientChange={(updatedIngredient) =>
@@ -364,23 +406,6 @@ export default function RecipeIngredients({
                   {emptyGroupText}
                 </Typography>
               )}
-
-              {/* Mobile remove group button */}
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                <Button
-                  onClick={() => handleRemoveGroup(groupIndex)}
-                  color="error"
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Delete />}
-                  sx={{
-                    display: { xs: 'flex', sm: 'none' },
-                    width: '100%',
-                  }}
-                >
-                  Remove Group
-                </Button>
-              </Box>
             </Paper>
           ))}
 
@@ -395,6 +420,63 @@ export default function RecipeIngredients({
               {addIngredientGroupButtonText}
             </Button>
           </Box>
+
+          {/* Mobile group kebab menu */}
+          <Menu
+            anchorEl={groupMenuAnchor}
+            open={Boolean(groupMenuAnchor)}
+            onClose={() => {
+              setGroupMenuAnchor(null);
+              setGroupMenuIndex(null);
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem
+              onClick={() => {
+                setGroupMenuAnchor(null);
+                if (groupMenuIndex !== null) setRemoveGroupConfirm(groupMenuIndex);
+                setGroupMenuIndex(null);
+              }}
+              dense
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon>
+                <Delete fontSize="small" sx={{ color: 'error.main' }} />
+              </ListItemIcon>
+              <ListItemText>Remove group</ListItemText>
+            </MenuItem>
+          </Menu>
+
+          {/* Remove group confirmation dialog */}
+          <Dialog
+            open={removeGroupConfirm !== null}
+            onClose={() => setRemoveGroupConfirm(null)}
+            sx={responsiveDialogStyle}
+          >
+            <DialogTitle onClose={() => setRemoveGroupConfirm(null)}>Remove Group</DialogTitle>
+            <DialogContent sx={{ flex: '1 1 auto' }}>
+              <DialogContentText>
+                {removeGroupConfirm !== null &&
+                ingredients[removeGroupConfirm]?.ingredients.length > 0
+                  ? `This will remove the group "${ingredients[removeGroupConfirm]?.title || 'Untitled'}" and its ${ingredients[removeGroupConfirm]?.ingredients.length} ingredient(s). This cannot be undone.`
+                  : `Remove the group "${removeGroupConfirm !== null ? ingredients[removeGroupConfirm]?.title || 'Untitled' : ''}"?`}
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions primaryButtonIndex={1} sx={{ mt: 'auto' }}>
+              <Button onClick={() => setRemoveGroupConfirm(null)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (removeGroupConfirm !== null) handleRemoveGroup(removeGroupConfirm);
+                  setRemoveGroupConfirm(null);
+                }}
+                color="error"
+                variant="contained"
+              >
+                Remove
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
     </Box>

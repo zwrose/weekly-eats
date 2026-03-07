@@ -18,6 +18,8 @@ interface CompactInputProps {
   name?: string;
   multiline?: boolean;
   rows?: number;
+  minRows?: number;
+  maxRows?: number;
   error?: boolean;
   helperText?: string;
   autoFocus?: boolean;
@@ -37,6 +39,8 @@ export const CompactInput: React.FC<CompactInputProps> = React.memo(function Com
   name,
   multiline = false,
   rows,
+  minRows,
+  maxRows,
   error = false,
   helperText,
   autoFocus = false,
@@ -74,6 +78,8 @@ export const CompactInput: React.FC<CompactInputProps> = React.memo(function Com
         autoFocus={autoFocus}
         multiline={multiline}
         rows={rows}
+        minRows={minRows}
+        maxRows={maxRows}
         fullWidth={fullWidth}
         inputProps={inputProps}
         sx={{
@@ -93,6 +99,18 @@ export const CompactInput: React.FC<CompactInputProps> = React.memo(function Com
           '& .MuiInputBase-input': {
             padding: 0,
           },
+          ...(multiline && {
+            '& textarea': {
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255,255,255,0.35) transparent',
+              '&::-webkit-scrollbar': { width: 6 },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(255,255,255,0.35)',
+                borderRadius: 999,
+              },
+            },
+          }),
         }}
       />
       {helperText && (
