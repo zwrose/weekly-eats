@@ -110,7 +110,7 @@ Emit findings as a JSON array per `REVIEW.md`'s "Findings Output Format" section
 
 - `src/components/MealEditor.tsx:42 — Component imports getMongoClient directly. Move data access into a custom hook in src/lib/hooks/ following the useFoodItems pattern (src/lib/hooks/use-food-items.ts), and call a route handler under src/app/api/.` **Important — layering.**
 - `src/lib/hooks/use-foo-data.ts:1-30 — New custom hook wraps a single fetch with no shared logic and is only called from FooPage.tsx (grep confirmed 1 caller). This abstraction is premature; inline the fetch in the page until a second caller emerges.` **Minor — abstraction.**
-- `src/app/api/recipes/route.ts:78 — File is now 642 lines. The handlers for user-specific recipe data belong in a separate src/app/api/recipes/user-data/route.ts following the existing recipes/user-data pattern.` **Important — complexity + pattern fit.**
+- `src/app/api/recipes/route.ts:78 — File is now 642 lines. The handlers for per-recipe user data belong in a separate src/app/api/recipes/[id]/user-data/route.ts as a per-resource sub-route, following the existing pattern at that path.` **Important — complexity + pattern fit.**
 - `src/components/PantryView.tsx:15 — Imports from '../meal-plans/components/internal/MealRow'. Cross-feature imports of internals break feature boundaries; lift the shared piece into src/components/ui/ or expose its data shape via src/types/ + a hook.` **Important — module coupling.**
 
 **Bad findings** (do NOT write — these will be dropped):
