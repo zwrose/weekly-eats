@@ -23,7 +23,7 @@
     "test:manual:gen-catalog": "tsx test/manual/cli.ts gen-catalog",
     "test:manual:unlock": "tsx test/manual/cli.ts unlock",
     "seed:demo": "tsx test/manual/cli.ts apply --manifest demo",
-    "check": "npm run lint -- --max-warnings=0 && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run test:coverage && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run build",
+    "check": "npm run lint -- --max-warnings=0 && npm run test:manual:gen-catalog -- --check && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run test:coverage && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run build",
     "worktree:remove": "node scripts/worktree-remove.js"
   },
   "dependencies": {

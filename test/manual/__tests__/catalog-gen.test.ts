@@ -1,5 +1,7 @@
 // test/manual/__tests__/catalog-gen.test.ts
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { generateCatalog } from '../catalog-gen.js';
 import { registry } from '../scenarios/registry.js';
 
@@ -36,5 +38,11 @@ describe('generateCatalog', () => {
         expect(md).toContain(c);
       }
     }
+  });
+
+  it('matches the committed CATALOG.md (drift detection)', () => {
+    const committed = readFileSync(resolve(__dirname, '../scenarios/CATALOG.md'), 'utf8');
+    const generated = generateCatalog(registry);
+    expect(committed.trim()).toBe(generated.trim());
   });
 });
