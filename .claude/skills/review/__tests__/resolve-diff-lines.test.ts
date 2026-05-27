@@ -88,4 +88,29 @@ new file mode 100644
     expect(result.dropped).toEqual([]);
     expect(result.moved).toEqual([]);
   });
+
+  it('correctly skips deletion lines when tracking new-file line numbers', () => {
+    const diff = `diff --git a/foo.ts b/foo.ts
+--- a/foo.ts
++++ b/foo.ts
+@@ -1,4 +1,4 @@
+ line1
+-OLD line2
++NEW line2
+ line3
+ line4`;
+    // line 2 in new file = NEW line2 (a + line) — should pass through
+    const inHunk = [{ path: 'foo.ts', line: 2, body: 'on NEW line2' }];
+    const r1 = resolveCommentLines(diff, inHunk);
+    expect(r1.resolved).toHaveLength(1);
+    expect(r1.resolved[0]).toEqual(inHunk[0]);
+    expect(r1.moved).toEqual([]);
+
+    // line 99 is out of any hunk — should move to nearest in-hunk line (1, 2, 3, or 4)
+    const outOfHunk = [{ path: 'foo.ts', line: 99, body: 'far away' }];
+    const r2 = resolveCommentLines(diff, outOfHunk);
+    expect(r2.resolved).toHaveLength(1);
+    expect(r2.resolved[0].body).toContain('(Re: line 99)');
+    expect([1, 2, 3, 4]).toContain(r2.resolved[0].line);
+  });
 });
