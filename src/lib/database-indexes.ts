@@ -104,6 +104,48 @@ export const createDatabaseIndexes = async () => {
     await usersCollection.createIndex({ email: 1 }, { name: 'users_email', unique: true });
     await usersCollection.createIndex({ isApproved: 1 }, { name: 'users_isApproved' });
 
+    // Manual-testing seed tags — speed up clean() filters
+    const seededCollections = [
+      'mealPlans',
+      'mealPlanTemplates',
+      'foodItems',
+      'recipes',
+      'recipeUserData',
+      'pantry',
+      'stores',
+      'storeItemPositions',
+      'shoppingLists',
+      'purchaseHistory',
+      'users',
+    ];
+    for (const colName of seededCollections) {
+      await db
+        .collection(colName)
+        .createIndex(
+          { _seedManifestId: 1, _seedScenarioId: 1 },
+          { name: `${colName}_seedTag`, sparse: true }
+        );
+    }
+
+    // manualTestState collection
+    await db
+      .collection('manualTestState')
+      .createIndex(
+        { manifestId: 1, scenarioId: 1 },
+        { name: 'manualTestState_manifest_scenario', unique: true }
+      );
+
+    // manualTestLocks collection
+    await db
+      .collection('manualTestLocks')
+      .createIndex({ manifestId: 1 }, { name: 'manualTestLocks_manifestId', unique: true });
+    await db
+      .collection('manualTestLocks')
+      .createIndex(
+        { expireAt: 1 },
+        { name: 'manualTestLocks_expireAt_ttl', expireAfterSeconds: 0 }
+      );
+
     console.log('Database indexes created successfully');
   } catch (error) {
     console.error('Error creating database indexes:', error);
@@ -132,6 +174,8 @@ export const dropAllIndexes = async () => {
       'storeItemPositions',
       'shoppingLists',
       'purchaseHistory',
+      'manualTestState',
+      'manualTestLocks',
     ];
 
     for (const collectionName of collections) {
