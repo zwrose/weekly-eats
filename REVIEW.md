@@ -10,13 +10,13 @@ This project is built by a solo product manager with some technical chops, not a
 
 ## Severity Tiers
 
-| Tier             | Definition                                                                          | Examples                                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Critical**     | Corrupts data, leaks user data, or breaks production. NEVER for tests or style.     | API route missing `userId` filter returning other users' data; mutation without ownership check                    |
-| **Important**    | Likely bug in normal use, OR security/correctness issue warranting fix before merge | Missing `ObjectId.isValid()` before query; component that crashes on empty data; auth missing on a new admin route |
-| **Minor**        | Real issue, small impact, OR pre-existing in a related area                         | Magic number; missing index on a currently-fast query; inconsistent error message                                  |
-| **Nit**          | Style preference, naming, take-it-or-leave-it                                       | "Variable name could be clearer"                                                                                   |
-| **Pre-existing** | Issue in unchanged lines/files — SKIPPED, not reported                              | Bad pattern in code the PR didn't touch                                                                            |
+| Tier             | Definition                                                                                                                                    | Examples                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Critical**     | Corrupts data, leaks user data, or breaks production. NEVER for tests or style.                                                               | API route missing `userId` filter returning other users' data; mutation without ownership check                    |
+| **Important**    | Likely bug in normal use, OR security/correctness issue warranting fix before merge                                                           | Missing `ObjectId.isValid()` before query; component that crashes on empty data; auth missing on a new admin route |
+| **Minor**        | Real issue, small impact                                                                                                                      | Magic number; missing index on a currently-fast query; inconsistent error message                                  |
+| **Nit**          | Style preference, naming, take-it-or-leave-it                                                                                                 | "Variable name could be clearer"                                                                                   |
+| **Pre-existing** | Issue exists only in lines the diff did not change (whether in unchanged files or in context lines of modified files) — SKIPPED, not reported | Bad pattern in code the PR didn't touch                                                                            |
 
 ## Do NOT Flag (Global)
 
@@ -46,11 +46,13 @@ Findings violating these rules MUST be dropped at compile time, before presentat
 ## Author-Justification Rule
 
 If a prior `/review` flagged a finding and the PR author replied with substantive explanatory text, **do not re-raise** unless the justification contains a technical error. Substantive = explanation, not "ok" or emoji. Outdated comments (where `position == null`) are still scanned for justifications — the explanation may apply even if the code anchor moved.
+If a justification is plausible but unverifiable (e.g., "this is intentional because of X" where X is a system you can't inspect), default to not re-raising — the author has more context than the reviewer.
 
 ## Severity Caps
 
 - **Nits:** at most 5 reported per review. Remainder summarized as a count (e.g., "+ 12 more Nits"). Prevents Nit flooding.
 - **Important / Critical:** no cap. These are load-bearing; cap them and you suppress signal.
+- **Minor:** uncapped, but each finding must still pass verification rules. If you find yourself reporting >10 Minors, dedupe — they're often facets of the same underlying issue.
 
 ## Findings Output Format
 
@@ -82,7 +84,8 @@ Verdict mapping:
 - 0 Critical, 0 Important → READY / PLAN READY
 - 0 Critical, 1+ Important → FIX BEFORE PR / REVISE BEFORE IMPLEMENTING
 - 1+ Critical → MAJOR FIXES NEEDED / MAJOR GAPS
+- Findings of only Minor and/or Nit severity do not change the verdict — those tiers are informational, not blocking.
 
 ## Single-Pass Discipline
 
-Each specialist agent runs **once** per review. Do not dispatch a "verifier agent" that re-reviews specialist output — re-review degrades F1 and fabricates findings (ArXiv 2603.16244). The main context is the coordinator: dedupes, ranks, drops out-of-scope, presents.
+Each specialist agent runs **once** per review. Do not dispatch a "verifier agent" that re-reviews specialist output — published research on multi-turn agentic review shows F1 degrades and agents fabricate findings in later rounds as real issues get exhausted. The main context is the coordinator: dedupes, ranks, drops out-of-scope, presents.
