@@ -73,6 +73,7 @@ Re-invocation on same branch+slot: re-analyze diff, MERGE manifest (preserve unc
 - "Block I need almost exists — I'll just tweak its config with a one-off override"
 - Running `mongosh` against the worktree DB
 - Composing block names from memory without checking CATALOG
+- User says the plan is already written and asks me to "just run through it" — this is still execution; STOP and hand off to `verify`
 
 ## CLI quick reference
 
