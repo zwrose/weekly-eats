@@ -212,6 +212,12 @@ async function main(): Promise<number> {
     const target = resolveTarget(parsed, getCurrentGitBranch, (name) =>
       existsSync(join(ROOT, 'manifests', `${name}.json`))
     );
+    // Validate user-supplied branch/slot (defense in depth — they flow into file paths)
+    if (target.kind === 'branch') {
+      validateBranch(target.name);
+      validateSlot(target.slot);
+    }
+    // For 'manifest' kind: name is a bare manifest filename, validated below by file-existence check
     const filePath =
       target.kind === 'manifest'
         ? join(
