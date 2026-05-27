@@ -13,6 +13,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 export function stableHash(value: unknown): string {
-  const json = JSON.stringify(canonicalize(value));
+  // JSON.stringify(undefined) returns undefined, not a string. Use a sentinel
+  // so callers passing config-less scenarios still get a stable hash.
+  const canonical = canonicalize(value);
+  const json = canonical === undefined ? 'undefined' : JSON.stringify(canonical);
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
