@@ -46,3 +46,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# manual-testing local plans (when no PR exists)
+test/manual/plans/*
+!test/manual/plans/.gitkeep
