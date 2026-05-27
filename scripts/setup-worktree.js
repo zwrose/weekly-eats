@@ -16,13 +16,18 @@ import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { MongoClient } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..');
 
 // Skip in CI/test environments
-if (process.env.CI === 'true' || process.env.NODE_ENV === 'test' || process.env.SKIP_DB_SETUP === 'true') {
+if (
+  process.env.CI === 'true' ||
+  process.env.NODE_ENV === 'test' ||
+  process.env.SKIP_DB_SETUP === 'true'
+) {
   console.log('Skipping worktree setup (CI/test/disabled).');
   process.exit(0);
 }
@@ -33,8 +38,14 @@ if (process.env.CI === 'true' || process.env.NODE_ENV === 'test' || process.env.
  */
 function detectWorktreeContext() {
   try {
-    const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8', cwd: projectRoot }).trim();
-    const gitDir = execSync('git rev-parse --git-dir', { encoding: 'utf8', cwd: projectRoot }).trim();
+    const commonDir = execSync('git rev-parse --git-common-dir', {
+      encoding: 'utf8',
+      cwd: projectRoot,
+    }).trim();
+    const gitDir = execSync('git rev-parse --git-dir', {
+      encoding: 'utf8',
+      cwd: projectRoot,
+    }).trim();
 
     const resolvedCommon = resolve(projectRoot, commonDir);
     const resolvedGit = resolve(projectRoot, gitDir);
@@ -46,7 +57,10 @@ function detectWorktreeContext() {
 
     // The common dir is <main-repo>/.git — its parent is the main worktree
     const mainWorktreePath = resolve(resolvedCommon, '..');
-    const branchName = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', cwd: projectRoot }).trim();
+    const branchName = execSync('git rev-parse --abbrev-ref HEAD', {
+      encoding: 'utf8',
+      cwd: projectRoot,
+    }).trim();
 
     return { isWorktree: true, mainWorktreePath, branchName };
   } catch {
@@ -67,7 +81,10 @@ function portFromBranchName(branchName) {
  * Sanitize branch name for use as a database name suffix.
  */
 function sanitizeBranchName(branchName) {
-  return branchName.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return branchName
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 /**
@@ -114,8 +131,10 @@ function generateEnvLocal(mainWorktreePath, branchName) {
  */
 function cloneDatabase(mainWorktreePath, dbName) {
   const whichCmd = process.platform === 'win32' ? 'where' : 'which';
-  const hasMongodump = spawnSync(whichCmd, ['mongodump'], { encoding: 'utf8', shell: true }).status === 0;
-  const hasMongorestore = spawnSync(whichCmd, ['mongorestore'], { encoding: 'utf8', shell: true }).status === 0;
+  const hasMongodump =
+    spawnSync(whichCmd, ['mongodump'], { encoding: 'utf8', shell: true }).status === 0;
+  const hasMongorestore =
+    spawnSync(whichCmd, ['mongorestore'], { encoding: 'utf8', shell: true }).status === 0;
 
   if (!hasMongodump || !hasMongorestore) {
     console.warn('Warning: mongodump/mongorestore not found. Skipping database clone.');
@@ -136,7 +155,7 @@ function cloneDatabase(mainWorktreePath, dbName) {
     const dumpResult = spawnSync('mongodump', ['--db', mainDbName, '--out', tmpDir, '--quiet'], {
       encoding: 'utf8',
       stdio: 'pipe',
-      shell: true
+      shell: true,
     });
 
     if (dumpResult.status !== 0) {
@@ -144,11 +163,15 @@ function cloneDatabase(mainWorktreePath, dbName) {
       return;
     }
 
-    const restoreResult = spawnSync('mongorestore', ['--db', dbName, join(tmpDir, mainDbName), '--quiet', '--drop'], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-      shell: true
-    });
+    const restoreResult = spawnSync(
+      'mongorestore',
+      ['--db', dbName, join(tmpDir, mainDbName), '--quiet', '--drop'],
+      {
+        encoding: 'utf8',
+        stdio: 'pipe',
+        shell: true,
+      }
+    );
 
     if (restoreResult.status !== 0) {
       console.warn('Warning: mongorestore failed. Database may be empty.');
@@ -158,7 +181,52 @@ function cloneDatabase(mainWorktreePath, dbName) {
   } finally {
     try {
       rmSync(tmpDir, { recursive: true, force: true });
-    } catch { /* ignore cleanup errors */ }
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
+}
+
+/**
+ * Strip _seed* tags and drop manual-testing state collections from the cloned
+ * worktree DB so it starts clean from a manual-testing perspective.
+ */
+async function stripSeedTags(targetUri) {
+  const seededCollections = [
+    'mealPlans',
+    'mealPlanTemplates',
+    'foodItems',
+    'recipes',
+    'recipeUserData',
+    'pantry',
+    'stores',
+    'storeItemPositions',
+    'shoppingLists',
+    'purchaseHistory',
+    'users',
+  ];
+  const tmpClient = await MongoClient.connect(targetUri);
+  try {
+    const db = tmpClient.db();
+    for (const col of seededCollections) {
+      await db
+        .collection(col)
+        .updateMany(
+          { _seedManifestId: { $exists: true } },
+          { $unset: { _seedManifestId: '', _seedScenarioId: '' } }
+        );
+    }
+    await db
+      .collection('manualTestState')
+      .drop()
+      .catch(() => undefined);
+    await db
+      .collection('manualTestLocks')
+      .drop()
+      .catch(() => undefined);
+    console.log('Stripped _seed* fields and cleared manual-testing state.');
+  } finally {
+    await tmpClient.close();
   }
 }
 
@@ -186,6 +254,15 @@ if (!context.isWorktree) {
   console.log("Worktree detected: branch '" + context.branchName + "'");
   const { dbName } = generateEnvLocal(context.mainWorktreePath, context.branchName);
   cloneDatabase(context.mainWorktreePath, dbName);
+  // Strip seed tags from cloned DB so the worktree starts clean.
+  // Read the worktree .env.local we just wrote to get the target URI.
+  const worktreeEnv = readFileSync(resolve(projectRoot, '.env.local'), 'utf8');
+  const uriMatch = worktreeEnv.match(/^MONGODB_URI=(.+)$/m);
+  if (uriMatch) {
+    stripSeedTags(uriMatch[1].trim()).catch((err) => {
+      console.warn('Warning: could not strip _seed* fields from cloned DB:', err.message);
+    });
+  }
   runSetupDb();
   console.log('Worktree setup complete.');
 }
