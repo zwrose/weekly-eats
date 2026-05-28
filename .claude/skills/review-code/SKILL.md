@@ -6,21 +6,29 @@ user-invocable: true
 
 # Review Code
 
-Run a multi-dimensional code review on either an open pull request or a local branch (vs `main`). The main context is an **orchestrator** — it fetches metadata, dispatches five specialist agents in parallel, compiles their findings, runs an interactive tiered approval, and optionally posts approved findings as inline GitHub review comments. It never loads the full diff or any agent's raw output into its own conversation; subagents do all heavy reading and write structured results to disk.
+Run a multi-dimensional code review on either an open pull request or a local branch (vs `main`), then **autonomously fix what it finds**. The main context is an **orchestrator** — it fetches metadata, dispatches five specialist agents in parallel, compiles their findings, triages each into auto-fixable vs needs-your-judgment, applies fixes via a fixer subagent, and re-reviews — looping until no Critical/Important findings remain or a circuit breaker halts. It never loads the full diff or any agent's raw output into its own conversation; subagents do all heavy reading and write structured results to disk.
 
-This skill **replaces the legacy `/review-pr` skill.** Unlike the old version, it auto-detects whether you're reviewing a PR or a local branch, always dispatches the full set of specialists (architecture, code, security, a11y, test) so coverage is uniform across reviews, enforces the severity and verification rules in `REVIEW.md` at compile time (not just by hope), and exposes a `--post` mode that pushes approved findings to GitHub through `resolve-diff-lines.ts` so out-of-hunk anchors never trigger 422 errors.
+This skill **replaces the legacy `/review-pr` skill.** Unlike the old version, it auto-detects whether you're reviewing a PR or a local branch, always dispatches the full set of specialists (architecture, code, security, a11y, test) so coverage is uniform across reviews, enforces the severity and verification rules in `REVIEW.md` at compile time (not just by hope), and — by default — drives an auto-fix loop that commits fixes locally (never pushes). Two read-only behaviors are preserved as flags.
 
-The five specialist agents live under `.claude/agents/` and read `REVIEW.md` (severity rubric, exclusions, verification rules) plus `CLAUDE.md` (project conventions) before producing findings. Every finding they emit must cite a `file:line` and target a `+`/`-` line in the diff — context-line and unchanged-code findings are dropped at compile time. The orchestrator does not chain a "verifier agent" or run agents twice; single-pass discipline is enforced by `REVIEW.md` because multi-turn agentic review degrades F1 and fabricates findings as real ones get exhausted.
+There are three top-level paths, chosen at invocation:
+
+- **`--post`** → one review pass, then read-only GitHub posting (push approved findings to GitHub through `resolve-diff-lines.ts` so out-of-hunk anchors never trigger 422 errors). Never touches the working tree.
+- **`--review-only`** → one review pass, then a read-only interactive terminal presentation. No commits.
+- **otherwise (default)** → the auto-fix loop: review → triage → fix → re-review, committing locally until clean or halted.
+
+The five specialist agents live under `.claude/agents/` and read `REVIEW.md` (severity rubric, exclusions, verification rules) plus `CLAUDE.md` (project conventions) before producing findings. Every finding they emit must cite a `file:line` and target a `+`/`-` line in the diff — context-line and unchanged-code findings are dropped at compile time. Each specialist runs once per round; the orchestrator does not chain a "verifier agent" or run a specialist twice within a round, because multi-turn agentic review within a single pass degrades F1 and fabricates findings as real ones get exhausted. The loop re-reviews from scratch each round on a fresh diff, which is different from re-running a specialist on its own output.
 
 ## Invocation
 
-| Form                           | Behavior                                                                                                                           |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/review-code`                 | Auto-detect mode. If the current branch has an open PR on the remote, run PR mode against it; otherwise run branch mode vs `main`. |
-| `/review-code pr <N>`          | Explicit PR mode against PR `<N>`.                                                                                                 |
-| `/review-code branch`          | Explicit branch mode (diff `main...HEAD`), even if the current branch has an open PR.                                              |
-| `/review-code --post`          | PR mode (auto-detected or explicit). After interactive approval, post approved findings as inline review comments to GitHub.       |
-| `/review-code --focus <notes>` | Pass `<notes>` to every specialist as additional focus. Combinable with the other forms (e.g. `/review-code pr 42 --focus a11y`).  |
+| Form                             | Behavior                                                                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/review-code`                   | **Auto-fix loop (default).** Review → triage → fix → re-review until no Critical/Important findings remain, or a halt condition fires. Commits locally; never pushes. |
+| `/review-code --review-only`     | One review pass, interactive tiered presentation, no commits. (The pre-loop behavior.)                                                                                |
+| `/review-code pr <N> --post`     | One review pass, read-only, post inline findings to GitHub. Never touches the tree.                                                                                   |
+| `/review-code branch` / `pr <N>` | Force branch or PR mode; still runs the auto-fix loop unless combined with `--review-only`/`--post`.                                                                  |
+| `/review-code --focus <notes>`   | Pass focus notes to every specialist. Combinable with any form.                                                                                                       |
+
+The three top-level paths: `--post` → read-only GitHub posting; `--review-only` → read-only terminal presentation; otherwise → auto-fix loop.
 
 **Auto-detection rule.** Run `gh pr list --head "$(git rev-parse --abbrev-ref HEAD)" --json number,headRefOid,headRefName --limit 1`. If the result is non-empty, default to PR mode. Otherwise default to branch mode. If the user passed `branch` explicitly, skip the lookup. If the user passed `pr <N>` explicitly, use `<N>` and don't auto-detect.
 
@@ -34,24 +42,27 @@ All review artifacts live in a per-invocation temp directory so parallel reviews
 SESSION_DIR=$(mktemp -d /tmp/review-XXXXXXXX)
 ```
 
-Files written during the review:
+Files written during the review. **Per-round artifacts live under `$SESSION_DIR/round-<N>/`** in the auto-fix loop (round 1, 2, …); the read-only paths (`--review-only`, `--post`) run a single pass and write that pass's artifacts under `round-1/` as well. Only `meta.json` lives at the session-dir root.
 
-| Path                                      | Written by     | Purpose                                                                   |
-| ----------------------------------------- | -------------- | ------------------------------------------------------------------------- |
-| `$SESSION_DIR/meta.json`                  | orchestrator   | Mode, PR number (if any), repo, branch, head SHA, focus notes             |
-| `$SESSION_DIR/diff.txt`                   | orchestrator   | Full unified diff. **Never read by the main context.**                    |
-| `$SESSION_DIR/repo/`                      | orchestrator   | PR-mode only: detached `git worktree` at the PR head SHA                  |
-| `$SESSION_DIR/prior-comments.json`        | orchestrator   | PR-mode only: prior review comments + threads (for author justifications) |
-| `$SESSION_DIR/findings-architecture.json` | arch agent     | Architecture-reviewer findings array                                      |
-| `$SESSION_DIR/findings-code.json`         | code agent     | Code-reviewer findings array                                              |
-| `$SESSION_DIR/findings-security.json`     | sec agent      | Security-reviewer findings array                                          |
-| `$SESSION_DIR/findings-a11y.json`         | a11y agent     | A11y-reviewer findings array                                              |
-| `$SESSION_DIR/findings-test.json`         | test agent     | Test-reviewer findings array                                              |
-| `$SESSION_DIR/compiled.json`              | orchestrator   | Deduplicated, verified findings + summary + verdict                       |
-| `$SESSION_DIR/review.json`                | orchestrator   | PR-mode posting: review body + approved comments (pre-resolve)            |
-| `$SESSION_DIR/review-resolved.json`       | resolve script | PR-mode posting: comments after line-anchor resolution                    |
+| Path                                                | Written by     | Purpose                                                                                     |
+| --------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
+| `$SESSION_DIR/meta.json`                            | orchestrator   | Mode, PR number (if any), repo, branch, head SHA, base ref, focus notes                     |
+| `$SESSION_DIR/repo/`                                | orchestrator   | `--post`/`--review-only` PR paths only: detached `git worktree` at the PR head SHA          |
+| `$SESSION_DIR/prior-comments.json`                  | orchestrator   | PR-mode only: prior review comments + threads (for author justifications)                   |
+| `$SESSION_DIR/round-<N>/diff.txt`                   | orchestrator   | Round `<N>` unified diff (`git diff <baseRef>...HEAD`). **Never read by the main context.** |
+| `$SESSION_DIR/round-<N>/findings-architecture.json` | arch agent     | Architecture-reviewer findings array                                                        |
+| `$SESSION_DIR/round-<N>/findings-code.json`         | code agent     | Code-reviewer findings array                                                                |
+| `$SESSION_DIR/round-<N>/findings-security.json`     | sec agent      | Security-reviewer findings array                                                            |
+| `$SESSION_DIR/round-<N>/findings-a11y.json`         | a11y agent     | A11y-reviewer findings array                                                                |
+| `$SESSION_DIR/round-<N>/findings-test.json`         | test agent     | Test-reviewer findings array                                                                |
+| `$SESSION_DIR/round-<N>/compiled.json`              | orchestrator   | Deduplicated, verified findings + summary + verdict (read by `circuit-breaker.ts`)          |
+| `$SESSION_DIR/round-<N>/triage.json`                | triage agent   | Per-finding `auto_fix`/`needs_user` classification (loop only)                              |
+| `$SESSION_DIR/round-<N>/resolutions.json`           | orchestrator   | User decisions on `needs_user` findings (loop only; read by `circuit-breaker.ts`)           |
+| `$SESSION_DIR/round-<N>/fix-batch.json`             | orchestrator   | Findings handed to the fixer this round (loop only)                                         |
+| `$SESSION_DIR/round-<N>/review.json`                | orchestrator   | `--post` only: review body + approved comments (pre-resolve)                                |
+| `$SESSION_DIR/round-<N>/review-resolved.json`       | resolve script | `--post` only: comments after line-anchor resolution                                        |
 
-**CRITICAL:** The main context only ever runs `wc -l < $SESSION_DIR/diff.txt` to size the diff. It never `cat`s the diff, never reads the full thing, never echoes it back. Subagents read the diff from disk and write structured findings; the orchestrator reads the findings JSON, not the diff.
+**CRITICAL:** The main context only ever runs `wc -l < $SESSION_DIR/round-<N>/diff.txt` to size the diff. It never `cat`s the diff, never reads the full thing, never echoes it back. Subagents read the diff from disk and write structured findings; the orchestrator reads the findings JSON, not the diff.
 
 ## Workflow
 
@@ -72,33 +83,52 @@ fi
 gh pr view "$PR_NUMBER" --json number,title,author,headRefName,headRefOid,baseRefName,url > "$SESSION_DIR/pr.json"
 HEAD_SHA=$(jq -r .headRefOid "$SESSION_DIR/pr.json")
 PR_BRANCH=$(jq -r .headRefName "$SESSION_DIR/pr.json")
+BASE_REF=$(jq -r .baseRefName "$SESSION_DIR/pr.json")   # PR base branch — used as the diff base
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
-
-# Save the full diff to disk — never load into context
-gh pr diff "$PR_NUMBER" > "$SESSION_DIR/diff.txt"
 
 # Prior review comments — used for author-justification handling
 gh api "repos/$REPO/pulls/$PR_NUMBER/comments" \
   --jq '[.[] | {id, in_reply_to_id, path, line, position, body, user: .user.login}]' \
   > "$SESSION_DIR/prior-comments.json"
 
-# Worktree checkout at the PR head — subagents verify code against this tree
+# Read-only paths ONLY (--post / --review-only): a detached worktree at the PR head
+# gives subagents a clean source of truth to verify against. NOT used on the
+# auto-fix path — that path edits and commits on the current branch directly.
 git fetch origin "$PR_BRANCH"
-git worktree add --detach "$SESSION_DIR/repo" "$HEAD_SHA"
+git worktree add --detach "$SESSION_DIR/repo" "$HEAD_SHA"   # --post / --review-only ONLY
 ```
+
+**Auto-fix branch guard (PR mode, default loop only).** Before entering the loop, the orchestrator must be standing on the PR's own branch so fix commits land where they belong:
+
+```bash
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "$PR_BRANCH" ]; then
+  echo "Auto-fix needs PR branch '$PR_BRANCH' checked out (currently on '$CURRENT_BRANCH')."
+  echo "Check out the branch, or re-run with --post (read-only GitHub) or --review-only (read-only terminal)."
+  exit 1
+fi
+```
+
+If the guard fails (detached HEAD, or you're reviewing someone else's PR), STOP — do not create the detached worktree and do not enter the loop. Tell the user to use `--post` or `--review-only`. The detached `git worktree add --detach` step above is for the `--post`/`--review-only` PR paths ONLY, never for the auto-fix path.
 
 **Branch mode:**
 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 HEAD_SHA=$(git rev-parse HEAD)
+BASE_REF=main   # branch mode always diffs against main
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo "local")
-
-# Diff against main — same shape as gh pr diff so subagents can apply the diff-scope rule uniformly
-git diff main...HEAD > "$SESSION_DIR/diff.txt"
 
 # No worktree, no prior comments — subagents verify against the current working tree
 ```
+
+**Per-round diff is ALWAYS local.** Do NOT use `gh pr diff` to fetch the diff. Each round computes the diff locally from `<baseRef>` (PR mode: the PR's `baseRefName`; branch mode: `main`), because rounds 2+ have local fix commits that are not on the remote — `gh pr diff` would miss them. The per-round command (run inside the loop, see `## Auto-Fix Loop`) is:
+
+```bash
+git diff "$BASE_REF"...HEAD > "$SESSION_DIR/round-<round>/diff.txt"
+```
+
+The read-only paths run a single pass and compute the same local diff into `round-1/diff.txt`.
 
 Then write `meta.json` in both modes:
 
@@ -110,19 +140,20 @@ cat > "$SESSION_DIR/meta.json" <<EOF
   "repo": "${REPO}",
   "branch": "${BRANCH}",
   "headSha": "${HEAD_SHA}",
+  "baseRef": "${BASE_REF}",
   "sessionDir": "${SESSION_DIR}",
   "focusNotes": ${FOCUS_JSON:-null}
 }
 EOF
 ```
 
-Size the diff for the dispatch plan:
+Size the round-1 diff for the dispatch plan (after writing it to `round-1/diff.txt` per the command above):
 
 ```bash
-DIFF_LINES=$(wc -l < "$SESSION_DIR/diff.txt")
+DIFF_LINES=$(wc -l < "$SESSION_DIR/round-1/diff.txt")
 ```
 
-**CRITICAL:** Do not `cat`, `head`, `tail`, or otherwise read `$SESSION_DIR/diff.txt` from the main context. The line count is the only thing the orchestrator needs to know about its contents.
+**CRITICAL:** Do not `cat`, `head`, `tail`, or otherwise read any `diff.txt` from the main context. The line count is the only thing the orchestrator needs to know about its contents.
 
 ### 2. Plan Dispatch
 
@@ -140,9 +171,10 @@ Enter plan mode via `EnterPlanMode`. The dispatch plan shows the user:
   - `security-reviewer` → `findings-security.json`
   - `a11y-reviewer` → `findings-a11y.json`
   - `test-reviewer` → `findings-test.json`
-- **Session directory:** `$SESSION_DIR`
+- **Session directory:** `$SESSION_DIR` (round 1 artifacts under `round-1/`)
 - **Focus notes:** the `--focus` argument, if any
-- **What happens after dispatch:** compile + dedupe → tiered interactive approval → (PR mode + `--post`) post to GitHub
+- **Path:** default → auto-fix loop (compile + dedupe → triage → fix → re-review, committing locally); `--review-only` → one pass + interactive presentation; `--post` → one pass + post to GitHub
+- **What happens after dispatch (default loop):** compile + dedupe → triage → user interventions on judgment calls → fixer subagent commits → `npm run check` → circuit-breaker → re-review or exit
 
 Do **not** tier or skip specialists based on which files changed. Coverage uniformity matters more than saving an agent dispatch — a "no UI files changed" guess is exactly when an a11y issue slips through. All five always run. The agents themselves return an empty findings array when there's nothing in their dimension, which is cheap.
 
@@ -157,24 +189,26 @@ You are reviewing <mode> for repo <repo>, target <pr-or-branch>.
 
 ## Your assignment
 Apply the methodology in `.claude/agents/<agent>.md` to the diff at
-$SESSION_DIR/diff.txt. Read REVIEW.md (repo root) for severity calibration
-and verification rules. Apply the diff-scope rule: only flag code in
+$SESSION_DIR/round-<round>/diff.txt. Read REVIEW.md (repo root) for severity
+calibration and verification rules. Apply the diff-scope rule: only flag code in
 `+` or `-` lines.
 
 ## Context files
-- Diff: $SESSION_DIR/diff.txt
+- Diff: $SESSION_DIR/round-<round>/diff.txt
 - REVIEW.md: REVIEW.md
 - CLAUDE.md: CLAUDE.md
 - Agent methodology: .claude/agents/<agent>.md
-- <PR mode only> PR branch checkout: $SESSION_DIR/repo/
+- <PR read-only paths only> PR branch checkout: $SESSION_DIR/repo/
 - <PR mode only> Prior comments + author justifications: $SESSION_DIR/prior-comments.json
 - <if focus notes> Focus: <focus notes>
 
-## PR branch checkout (PR mode only)
-The PR branch is checked out at $SESSION_DIR/repo/. This is the ONLY
-source of truth for verifying code. Use Read, Grep, and Glob against
-this directory, NOT the main repo working directory — it may be on a
-different branch with stale or missing code.
+## PR branch checkout (--post / --review-only PR paths only)
+On the read-only PR paths the PR branch is checked out at $SESSION_DIR/repo/.
+This is the ONLY source of truth for verifying code. Use Read, Grep, and Glob
+against this directory, NOT the main repo working directory — it may be on a
+different branch with stale or missing code. (On the auto-fix loop there is no
+detached checkout: the PR branch IS the current working tree, so verify against
+the working tree directly.)
 
 ## Diff-scope rule — CRITICAL
 You are reviewing CHANGES MADE BY THIS PR/BRANCH. Do NOT flag pre-existing
@@ -204,9 +238,11 @@ justification contains a technical error. Outdated comments (where
 code anchor moved.
 
 ## Output
-Write findings to $SESSION_DIR/findings-<agent>.json as a JSON array per
-REVIEW.md's "Findings Output Format" section. Each finding has:
-  { id, severity, dimension, title, file, line, body, suggestion }
+Write findings to $SESSION_DIR/round-<round>/findings-<agent>.json as a JSON
+array per REVIEW.md's "Findings Output Format" section. Each finding has:
+  { id, severity, dimension, title, file, line, body, suggestion, tradeoff? }
+Set `tradeoff: true` only when a finding has multiple valid fix approaches (a
+judgment call). Omit it otherwise. See REVIEW.md "Triage Rubric".
 Set `dimension` to "<dimension>" on every entry. Severity caps from
 REVIEW.md apply: Nits at most 5 reported per agent. If you have nothing
 to flag, write an empty array (`[]`) — do not skip writing the file.
@@ -222,18 +258,18 @@ Per-agent substitutions:
 | a11y-reviewer         | a11y-reviewer         | A11y          |
 | test-reviewer         | test-reviewer         | Test          |
 
-After dispatch, wait for all five agents to return. Each writes its findings file to `$SESSION_DIR/`. The orchestrator does not read agent transcripts — only the JSON files.
+After dispatch, wait for all five agents to return. Each writes its findings file to `$SESSION_DIR/round-<round>/`. The orchestrator does not read agent transcripts — only the JSON files.
 
 ### 4. Compile + Dedupe (main context)
 
-Read the five `$SESSION_DIR/findings-*.json` files. Apply, in order:
+Read the five `$SESSION_DIR/round-<round>/findings-*.json` files. Apply, in order:
 
 1. **Citation check.** Drop any finding with `file == null` or `line == null`. `REVIEW.md` requires a `file:line` citation.
-2. **Diff-scope verification.** Parse `$SESSION_DIR/diff.txt` to identify, for each file, the set of line numbers on `+` or `-` lines (use the same hunk-walking logic that `resolve-diff-lines.ts` uses). Drop findings whose `(file, line)` pair isn't in that set. This is the same rule the subagents are supposed to enforce — duplicating it at compile time catches the cases they slip up on, especially context-line flags.
-3. **Reachability pre-check on Important findings.** For each remaining `severity == "Important"` finding, open the cited file (in `$SESSION_DIR/repo/` for PR mode, working tree for branch mode), find the call sites of the affected symbol, and confirm the edge case is reachable. **When in doubt, downgrade to Minor rather than drop** — the user can still see and approve it, but it isn't blocking the verdict.
+2. **Diff-scope verification.** Parse `$SESSION_DIR/round-<round>/diff.txt` to identify, for each file, the set of line numbers on `+` or `-` lines (use the same hunk-walking logic that `resolve-diff-lines.ts` uses). Drop findings whose `(file, line)` pair isn't in that set. This is the same rule the subagents are supposed to enforce — duplicating it at compile time catches the cases they slip up on, especially context-line flags.
+3. **Reachability pre-check on Important findings.** For each remaining `severity == "Important"` finding, open the cited file (in `$SESSION_DIR/repo/` for the read-only PR paths, working tree otherwise), find the call sites of the affected symbol, and confirm the edge case is reachable. **When in doubt, downgrade to Minor rather than drop** — the user can still see and approve it, but it isn't blocking the verdict.
 4. **Dedupe by `(file, line)`.** When two findings target the same `(file, line)`, merge them: concatenate bodies with a separator, keep the higher severity, list both dimensions (e.g. `"Security + Code"`). This prevents the visual clutter of two GitHub comments on the same line.
 5. **Author-justification filter (PR mode).** Cross-reference `prior-comments.json`. If a prior comment thread on the same `(file, line)` (or with the same finding topic on an outdated anchor) shows a substantive author justification, drop the new finding unless its body identifies a technical error in the justification.
-6. **Nit cap.** After dedupe, if more than 5 Nits remain, keep the first 5 and replace the rest with a single summary entry like `"+ 12 more Nits — see $SESSION_DIR/findings-*.json for details"`.
+6. **Nit cap.** After dedupe, if more than 5 Nits remain, keep the first 5 and replace the rest with a single summary entry like `"+ 12 more Nits — see $SESSION_DIR/round-<round>/findings-*.json for details"`.
 
 Determine the verdict per `REVIEW.md`'s mapping (count post-dedupe, post-filter findings):
 
@@ -242,7 +278,7 @@ Determine the verdict per `REVIEW.md`'s mapping (count post-dedupe, post-filter 
 - 1+ Critical → **MAJOR FIXES NEEDED**
 - Only Minor and/or Nit → **READY FOR PR** (Minor/Nit are informational)
 
-Write the result to `$SESSION_DIR/compiled.json`:
+Write the result to `$SESSION_DIR/round-<round>/compiled.json` (preserve each finding's `tradeoff` field through dedupe so triage can read it):
 
 ```json
 {
@@ -252,11 +288,123 @@ Write the result to `$SESSION_DIR/compiled.json`:
 }
 ```
 
-Order findings: Critical → Important → Minor → Nit, then by file path, then by line. This is the order they'll be presented in step 5.
+Order findings: Critical → Important → Minor → Nit, then by file path, then by line.
 
-### 5. Interactive Tiered Presentation
+## Auto-Fix Loop (default path)
 
-**If context was compacted between dispatch and presentation**, re-read `$SESSION_DIR/compiled.json` and `$SESSION_DIR/meta.json` to restore state. The skill is resumable from disk.
+Runs when neither `--post` nor `--review-only` is set. The orchestrator keeps a **skip-set** of finding identities the user chose to skip (identity = `file::normalized-title`, matching `circuit-breaker.ts`). Initialize `round = 1`, `skip-set = {}`.
+
+**If context was compacted mid-loop**, re-read `$SESSION_DIR/meta.json`, the highest-numbered `round-N/` files, and every `round-*/resolutions.json` (to rebuild the skip-set) before continuing.
+
+Each round:
+
+1. `mkdir -p $SESSION_DIR/round-<round>`. Regenerate the diff locally: `git diff <baseRef>...HEAD > $SESSION_DIR/round-<round>/diff.txt`. Size it with `wc -l` only — never `cat` it.
+2. **Review.** Dispatch the five specialists in parallel (same prompt template as `## Dispatch Specialists in Parallel`), writing `round-<round>/findings-<agent>.json`. Point them at `round-<round>/diff.txt`.
+3. **Compile + dedupe** into `round-<round>/compiled.json` with verdict (same pipeline as `## Compile + Dedupe`).
+4. **Effective findings** = `compiled.findings` whose identity is NOT in the skip-set.
+5. If `effective` is empty → **EXIT SUCCESS** (jump to End-of-Loop Summary).
+6. **Triage.** Dispatch the triage subagent (template below) over `effective`, writing `round-<round>/triage.json`.
+7. **Interventions.** `needs_user` = effective findings classified `needs_user`.
+   - If non-empty: present ONE consolidated `AskUserQuestion`. For each deferred finding offer **Fix as suggested** / **Fix with my guidance** (free text) / **Skip**. List the `auto_fix` findings in the same prompt as an FYI (no per-item action). Write `round-<round>/resolutions.json`:
+     ```json
+     { "round": <N>, "resolutions": [
+       { "id": "<finding id>", "file": "<file>", "title": "<title>", "action": "fix" | "fix-with-guidance" | "skip", "guidance": "<text or omitted>" }
+     ] }
+     ```
+     Add every `skip` identity to the skip-set. `approved` = entries with action `fix`/`fix-with-guidance` (carry `guidance`).
+   - If empty: `approved = []`, write no resolutions file.
+8. **Fix batch.** `auto_fix` = effective findings classified `auto_fix`. `fix-batch` = `auto_fix ∪ approved`. Write `round-<round>/fix-batch.json` (full finding objects; attach `userGuidance` to any with guidance).
+9. **Blocking-to-fix** = count of `fix-batch` findings with severity Critical or Important.
+10. If `fix-batch` is empty (everything this round was skipped) → **EXIT** with a "remaining findings deliberately skipped" note (list them).
+11. **Fix.** Dispatch the fixer subagent (template below) with `fix-batch.json`.
+    - Status `CHECK_FAILED` → **HALT**; surface the failing `npm run check` output.
+    - Status `ESCALATED` → for each escalated finding, present it as a `needs_user` intervention now (same prompt shape as step 7) and fold the user's decision into a follow-up fixer dispatch this same round; do NOT add it to the skip-set unless the user skips it.
+12. **Verify.** Orchestrator independently runs `npm run check`. Fail → **HALT**; surface output. (Do not re-review on a broken tree.)
+13. **Circuit breaker.** Run `npx tsx .claude/skills/review-code/circuit-breaker.ts "$SESSION_DIR" 7`. Parse its JSON. If `halt: true` → **HALT**; surface `reason` + `detail` + still-open findings + the diff so far.
+14. If `blocking-to-fix == 0` → **EXIT SUCCESS** (this round had no Critical/Important to fix; any Minor/Nit are now fixed). Otherwise `round += 1` and repeat from step 1.
+
+### Triage subagent prompt
+
+```
+You are triaging code-review findings for one round of an auto-fix loop.
+
+## Input
+- Findings to classify: $SESSION_DIR/round-<N>/compiled.json (use only the
+  findings whose ids are in this list: <ids of effective findings>)
+- Triage rubric: REVIEW.md, "Triage Rubric (auto-fix loop)" section
+- Project conventions: CLAUDE.md
+- Code to inspect: the current working tree (read the cited files to judge
+  whether a fix is mechanical or a judgment call)
+
+## Your job
+Classify EACH listed finding as "auto_fix" or "needs_user" per the rubric.
+Bias hard toward auto_fix. Mark needs_user ONLY when the FIX involves judgment:
+- finding.tradeoff === true  → always needs_user
+- UX judgment call (copy, layout, interaction model, empty/error-state design)
+  AND more than one reasonable design exists → needs_user
+- the fix would change established product behavior the user may have an
+  opinion on → needs_user
+Everything else (mechanical/determinate fix) → auto_fix.
+
+Read the cited file before deciding. "Add aria-label to icon button" =
+mechanical = auto_fix. "Modal focus trap fights drawer, pick interaction
+model" = judgment = needs_user.
+
+## Output
+Write $SESSION_DIR/round-<N>/triage.json — every listed finding id exactly once:
+[ { "id": "<id>", "classification": "auto_fix" | "needs_user", "reason": "<one sentence>" } ]
+```
+
+### Fixer subagent prompt
+
+```
+You are the fixer for one round of an auto-fix code-review loop.
+
+## Input
+- Findings to fix: $SESSION_DIR/round-<N>/fix-batch.json (array; each has
+  id, severity, dimension, file, line, body, suggestion, and optional
+  userGuidance)
+- Conventions: CLAUDE.md and REVIEW.md
+- Work in the current branch's working tree at <cwd>
+
+## Your job
+1. Apply a fix for EACH finding. Follow CLAUDE.md conventions. When a finding
+   has userGuidance, follow it over the original suggestion.
+2. Fix ONLY what the findings call for. No unrelated refactors (YAGNI).
+3. Run `npm run check`. If it fails, fix the failure and retry ONCE. If it
+   still fails, STOP and report CHECK_FAILED with the failing output — never
+   commit broken code.
+4. If check passes, commit ALL changes in ONE commit:
+   `git commit -m "Auto-fix round <N>: <count> findings (<dimensions>)"`
+5. Report back.
+
+## Escalation
+If a finding you were told to auto-fix actually requires a judgment call you
+cannot make (multiple valid approaches, ambiguous intent), do NOT guess.
+Report it under "escalated" with the id and why.
+
+## Report format
+- Status: DONE | CHECK_FAILED | ESCALATED
+- fixed: [ids]
+- escalated: [ { id, why } ]
+- newIssuesNoticed: [brief notes on anything seen but not fixed]
+- commit: <sha or "none">
+- checkOutput: <tail of npm run check, only if CHECK_FAILED>
+```
+
+### End-of-Loop Summary
+
+Print: final verdict, rounds run, commits created (one per round), findings fixed by severity, any findings deliberately skipped, and any new findings the fixer noticed/introduced along the way (informational). Because fixes are local-only, offer to push the branch (or, if this was a PR you don't own, point to `--post`). Do not push without explicit confirmation.
+
+## Read-Only Paths
+
+These two paths run a **single review pass** (loop steps 1-3, writing artifacts under `round-1/`) and then diverge. Neither triages, fixes, commits, or loops.
+
+### `--review-only`
+
+After the single pass, run the interactive tiered presentation and a terminal report. No commits.
+
+**If context was compacted between dispatch and presentation**, re-read `$SESSION_DIR/round-1/compiled.json` and `$SESSION_DIR/meta.json` to restore state. The skill is resumable from disk.
 
 Open with the verdict banner and the one-line summary, then run the tiered presentation:
 
@@ -269,13 +417,11 @@ Open with the verdict banner and the one-line summary, then run the tiered prese
 
 - **Minor and Nit findings — batched, multi-select.** Present in batches of 4 via `AskUserQuestion` with multi-select. For each finding, show severity, `file:line`, and a 2-3 sentence summary (enough to decide include/skip without follow-up). Always offer **Include all** and **Skip all** as alternatives at the bottom of the batch.
 
-After the last batch, summarize how many of each severity were approved.
+After the last batch, summarize how many of each severity were approved, then print a terminal report grouped by severity. Lead with the verdict label in bold. For each approved finding: severity tag, `file:line`, title, and body. End with the count summary (e.g. `"3 Critical, 5 Important, 2 Minor approved"`). Save nothing else to disk — `compiled.json` already has the full record.
 
-### 6. Output
+### `--post`
 
-**Branch mode (always) and PR mode without `--post`:** print a terminal report grouped by severity. Lead with the verdict label in bold. For each approved finding: severity tag, `file:line`, title, and body. End with the count summary (e.g. `"3 Critical, 5 Important, 2 Minor approved"`). Save nothing else to disk — `compiled.json` already has the full record.
-
-**PR mode with `--post`:** ask the user the review event type via `AskUserQuestion`:
+After the single pass (PR mode only), post approved findings to GitHub. No triage, no fix, no loop, no commits to the tree. Run the interactive tiered presentation above to select which findings to post, then ask the user the review event type via `AskUserQuestion`:
 
 - **COMMENT** — findings without approval/rejection
 - **REQUEST_CHANGES** — blocks merge until resolved
@@ -284,7 +430,7 @@ After the last batch, summarize how many of each severity were approved.
 Then build the review JSON from approved findings:
 
 ```bash
-cat > "$SESSION_DIR/review.json" <<EOF
+cat > "$SESSION_DIR/round-1/review.json" <<EOF
 {
   "commit_id": "<HEAD_SHA from meta.json>",
   "body": "<summary from compiled.json + verdict label>",
@@ -300,9 +446,9 @@ Run `resolve-diff-lines.ts` to validate every comment anchor against the diff. T
 
 ```bash
 npx tsx .claude/skills/review-code/resolve-diff-lines.ts \
-  "$SESSION_DIR/diff.txt" \
-  "$SESSION_DIR/review.json" \
-  --output "$SESSION_DIR/review-resolved.json"
+  "$SESSION_DIR/round-1/diff.txt" \
+  "$SESSION_DIR/round-1/review.json" \
+  --output "$SESSION_DIR/round-1/review-resolved.json"
 ```
 
 Surface the script's stderr to the user — any `MOVED:` or `DROPPED:` lines mean a finding got relocated or excluded, and the user should know before the review goes out.
@@ -311,7 +457,7 @@ Post the review:
 
 ```bash
 gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-  --input "$SESSION_DIR/review-resolved.json"
+  --input "$SESSION_DIR/round-1/review-resolved.json"
 ```
 
 **Post-submit verification — non-optional.** Fetch the last review to confirm it actually landed (silent failures and accidental duplicates have burned us before):
@@ -355,3 +501,9 @@ These are restated in every subagent prompt and enforced again at compile time. 
 | Skipping `--post` verification when GH returns success  | `gh api` can return 200 on a malformed body that GitHub silently treats as a no-op. Always run the post-submit verify call.                                        |
 | Trying to delete a bad review via API                   | Submitted reviews cannot be deleted via the GitHub API. Never iterate by re-posting — fix `review-resolved.json` and retry only after the resolve script is clean. |
 | Tiering or skipping specialists based on "what changed" | All five specialists always run. Coverage uniformity beats saving one agent dispatch — the agent returns `[]` if there's nothing to flag.                          |
+| Using `gh pr diff` inside the loop                      | Rounds 2+ have local fix commits not on the remote. Always recompute `git diff <baseRef>...HEAD` locally each round.                                               |
+| Auto-fixing a PR you don't have checked out             | Auto-fix needs the PR's branch as the current branch. If it isn't, stop and direct the user to `--post` or `--review-only`.                                        |
+| Re-reviewing on a broken tree                           | If `npm run check` fails after a fix, HALT. Never run the next review round on code that doesn't build/test.                                                       |
+| Re-raising a finding the user skipped                   | Skipped identities go in the skip-set and are excluded from every later round's effective findings AND the circuit breaker.                                        |
+| Eyeballing "are we stuck?" by hand                      | Always call `circuit-breaker.ts`. Finding-identity comparison across rounds is deterministic; manual judgment drifts after compaction.                             |
+| Pushing automatically at loop end                       | The loop commits locally only. Pushing is always a separate, user-confirmed step.                                                                                  |
