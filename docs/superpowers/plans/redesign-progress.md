@@ -10,26 +10,28 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status      | Tag               | Plan doc                             | PR test comment | Done       |
-| --- | ---------------------------- | ----------- | ----------------- | ------------------------------------ | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                           | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | in-progress | —                 | redesign-chunk-01-foundation-plan.md | —               | —          |
-| 2   | Nav chrome                   | pending     | —                 | —                                    | —               | —          |
-| 3   | Meal Plans                   | pending     | —                 | — _(review-plan)_                    | —               | —          |
-| 4   | Recipes                      | pending     | —                 | — _(review-plan)_                    | —               | —          |
-| 5   | Shopping Lists               | pending     | —                 | — _(review-plan)_                    | —               | —          |
-| 6   | Pantry                       | pending     | —                 | —                                    | —               | —          |
-| 7   | Food Items                   | pending     | —                 | —                                    | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                    | —               | —          |
-| 9   | Settings (placeholder)       | pending     | —                 | —                                    | —               | —          |
-| 10  | Marketing / home             | pending     | —                 | —                                    | —               | —          |
-| 11  | Cleanup                      | pending     | —                 | —                                    | —               | —          |
+| #   | Chunk                        | Status  | Tag               | Plan doc                             | PR test comment | Done       |
+| --- | ---------------------------- | ------- | ----------------- | ------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done    | redesign-chunk-00 | §6 of spec                           | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done    | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | pending | —                 | —                                    | —               | —          |
+| 3   | Meal Plans                   | pending | —                 | — _(review-plan)_                    | —               | —          |
+| 4   | Recipes                      | pending | —                 | — _(review-plan)_                    | —               | —          |
+| 5   | Shopping Lists               | pending | —                 | — _(review-plan)_                    | —               | —          |
+| 6   | Pantry                       | pending | —                 | —                                    | —               | —          |
+| 7   | Food Items                   | pending | —                 | —                                    | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending | —                 | —                                    | —               | —          |
+| 9   | Settings (placeholder)       | pending | —                 | —                                    | —               | —          |
+| 10  | Marketing / home             | pending | —                 | —                                    | —               | —          |
+| 11  | Cleanup                      | pending | —                 | —                                    | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
 ## Next up
 
-**Chunk 1 — Foundation: code done + reviewed + pushed; awaiting user's local verification, then tag.** Implementation on the branch (`8b0425d`…`3004858`); `/review-code --base redesign-chunk-00` exited clean (READY FOR PR; 1 auto-fix commit; 1 Minor → #88). Draft PR #89 open. Post-review additions this session: tabular-nums applied app-wide via CssBaseline (`5601b00`), manual-test seed-block id-shape fixes (`7888852`), **interim approval gate REVERTED** (`3004858` — see #83 note below), Vercel beta infra fully wired (domain+DNS+OAuth+prod env). Issues filed: #91 (route `createFromHexString` guards), #92 (manual-test clean/orphan robustness), #93 (worktree shared-DB decision). **Remaining before `done`:** (1) user runs the localhost manual-test plan (dark theme, Bricolage/Outfit + tabular nums, an icon glyph, Settings placeholder, each surface renders dark, recipes open) — the approval-gate steps are **dropped** (now #83's, see below); (2) final `npm run check` (after the worktree dev server can take the `.next` clobber — or stop it first); (3) tag `redesign-chunk-01`; (4) flip this ledger to done. **Do NOT close #83 from here.** **Then Chunk 2 — Nav chrome.**
+**Chunk 2 — Nav chrome (spec §3).** New `src/components/nav/*` (`TopNav`, `BottomNav`, `AppIcon`, `NavAvatar`, `AvatarMenu`) from the bundle's `nav-chrome.jsx`; collapse active-section detection into a shared `getSectionForPath` helper + `useActiveSection` hook; rewire `AuthenticatedLayout` to render the new chrome; **remove old `Header.tsx` + `BottomNav.tsx`**; avatar menu has **no Settings link**; Pantry lives in the avatar menu (not a bottom-nav slot). This is also where `SectionThemeProvider` (per-section `palette.primary` rebind) gets introduced/wired. Start with `writing-plans` → `redesign-chunk-02-nav-plan.md` (Chunk 2 is NOT in the review-plan set). `review-code --base redesign-chunk-01`. **Load-bearing:** the kept `AuthenticatedLayout.test.tsx` must still pass after the rewrite (it locks the client approval-gate mount). When `fix/83` has merged to main, back-merge main → branch before/early in Chunk 2 to pull the canonical server-side approval fix (clean merge — this branch's middleware/auth match main).
+
+**Chunk 1 — Foundation: DONE (2026-05-28), tagged `redesign-chunk-01`.** Verified locally by the user (dark theme, Bricolage/Outfit + tabular nums, icon webfont, Settings placeholder, all surfaces dark, recipes open). `npm run check` green (131 files / 1326 tests). `/review-code --base redesign-chunk-00` clean. Draft PR #89 open. This session also: tabular-nums app-wide via CssBaseline (`5601b00`), manual-test seed-block id-shape fixes (`7888852`), **interim approval gate REVERTED** (`3004858`, now #83's — see note below), Vercel beta infra fully wired. Issues filed: **#88** (middleware dotted-path bypass, deferred), **#91** (route `createFromHexString` guards), **#92** (manual-test clean/orphan robustness), **#93** (worktree shared-DB decision). #83 left OPEN (owned by `fix/83`; can't close from this long-lived branch).
 
 **Vercel beta deployment — DONE.** `beta.weekly-eats.zamilyfam.com` added to the `weekly-eats` Vercel project and bound to branch `claude-design-redesign` (gitBranch); DNS CNAME → `ec2bda90c0efdc89.vercel-dns-017.com` live in Squarespace-managed Google Cloud DNS (`misconfigured:false`); OAuth redirect URI `…/api/auth/callback/google` added to the **prd** client. Branch-scoped env on the project: `NEXTAUTH_URL=https://beta…`, and overrides so beta mirrors prod — `MONGODB_URI`→prod DB (`weekly-eats-prd`), `GOOGLE_CLIENT_ID`/`SECRET`→prd client (mtua). `ABLY_API_KEY`/`NEXTAUTH_SECRET` inherited from Preview. **Decision: beta runs on the PROD DB + PROD OAuth client** (per spec §1 — real dogfooding; honor the destructive-path discipline). Squarespace has no DNS API/CLI; OAuth Web-client URIs are Console-only — both were manual one-time human steps.
 
