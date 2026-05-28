@@ -1,6 +1,14 @@
 // test/manual/scenarios/user-baseline.ts
 import { z } from 'zod';
+import type { ObjectId } from 'mongodb';
 import type { Block, BlockDocumentation } from '../types.js';
+
+interface UserDoc {
+  _id: ObjectId;
+  email: string;
+  name?: string;
+  isApproved?: boolean;
+}
 
 const ConfigSchema = z.object({
   email: z
@@ -30,7 +38,7 @@ const block: Block<Config, State> = {
   },
 
   async apply(config, ctx) {
-    const users = ctx.db.collection('users');
+    const users = ctx.db.collection<UserDoc>('users');
     const all = await users.find({}).toArray();
     if (all.length === 0) {
       throw new Error(
@@ -38,19 +46,19 @@ const block: Block<Config, State> = {
       );
     }
     const email = config.email ?? process.env.MANUAL_TEST_USER_EMAIL;
-    let chosen: any;
+    let chosen: UserDoc | undefined;
     if (email) {
-      chosen = all.find((u: any) => u.email === email);
+      chosen = all.find((u) => u.email === email);
       if (!chosen) {
         throw new Error(
-          `user not found with email "${email}". DB has: ${all.map((u: any) => u.email).join(', ')}`
+          `user not found with email "${email}". DB has: ${all.map((u) => u.email).join(', ')}`
         );
       }
     } else if (all.length === 1) {
       chosen = all[0];
     } else {
       throw new Error(
-        `multiple users in DB; ambiguous. found ${all.length}: ${all.map((u: any) => u.email).join(', ')}\n  hint: set MANUAL_TEST_USER_EMAIL=<email> or add config.email to the user-baseline scenario`
+        `multiple users in DB; ambiguous. found ${all.length}: ${all.map((u) => u.email).join(', ')}\n  hint: set MANUAL_TEST_USER_EMAIL=<email> or add config.email to the user-baseline scenario`
       );
     }
     if (chosen.isApproved !== true) {

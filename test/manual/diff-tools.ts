@@ -2,10 +2,10 @@
 import { ObjectId } from 'mongodb';
 
 function isObjectId(v: unknown): boolean {
-  return (
-    v instanceof ObjectId ||
-    (typeof v === 'object' && v !== null && (v as any)._bsontype === 'ObjectID')
-  );
+  if (v instanceof ObjectId) return true;
+  if (typeof v !== 'object' || v === null) return false;
+  if (!('_bsontype' in v)) return false;
+  return (v as { _bsontype: unknown })._bsontype === 'ObjectID';
 }
 
 export function normalizeDoc(

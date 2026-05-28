@@ -13,7 +13,7 @@ const ConfigSchema = z.object({
     dinner: z.boolean(),
     staples: z.boolean(),
   }),
-  weeklyStaples: z.array(z.any()).optional(),
+  weeklyStaples: z.array(z.unknown()).optional(),
 });
 type Config = z.infer<typeof ConfigSchema>;
 type State = { templateId: ObjectId };
