@@ -251,18 +251,24 @@ const context = detectWorktreeContext();
 if (!context.isWorktree) {
   runSetupDb();
 } else {
-  console.log("Worktree detected: branch '" + context.branchName + "'");
-  const { dbName } = generateEnvLocal(context.mainWorktreePath, context.branchName);
-  cloneDatabase(context.mainWorktreePath, dbName);
-  // Strip seed tags from cloned DB so the worktree starts clean.
-  // Read the worktree .env.local we just wrote to get the target URI.
-  const worktreeEnv = readFileSync(resolve(projectRoot, '.env.local'), 'utf8');
-  const uriMatch = worktreeEnv.match(/^MONGODB_URI=(.+)$/m);
-  if (uriMatch) {
-    stripSeedTags(uriMatch[1].trim()).catch((err) => {
-      console.warn('Warning: could not strip _seed* fields from cloned DB:', err.message);
-    });
-  }
-  runSetupDb();
-  console.log('Worktree setup complete.');
+  // Wrap in async IIFE so stripSeedTags() finishes before runSetupDb() runs.
+  // Otherwise execSync inside runSetupDb blocks the event loop while
+  // stripSeedTags' Mongo I/O is pending, and the strip resumes AFTER
+  // setup-database.js indexes the same collections it then drops.
+  await (async () => {
+    console.log("Worktree detected: branch '" + context.branchName + "'");
+    const { dbName } = generateEnvLocal(context.mainWorktreePath, context.branchName);
+    cloneDatabase(context.mainWorktreePath, dbName);
+    const worktreeEnv = readFileSync(resolve(projectRoot, '.env.local'), 'utf8');
+    const uriMatch = worktreeEnv.match(/^MONGODB_URI=(.+)$/m);
+    if (uriMatch) {
+      try {
+        await stripSeedTags(uriMatch[1].trim());
+      } catch (err) {
+        console.warn('Warning: could not strip _seed* fields from cloned DB:', err.message);
+      }
+    }
+    runSetupDb();
+    console.log('Worktree setup complete.');
+  })();
 }
