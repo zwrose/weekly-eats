@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -91,8 +92,17 @@ describe('api/recipes/[id]/tags route', () => {
     expect(data.error).toBe('Unauthorized');
   });
 
+  it('POST returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user-1' }));
+    const res = await routes.POST(
+      makeRequest(validRecipeId, { tags: [] }),
+      makeParams(validRecipeId)
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('POST returns 400 for invalid recipe ID', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     const res = await routes.POST(
       makeRequest('invalid-id', { tags: [] }),
       makeParams('invalid-id')
@@ -103,7 +113,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST returns 400 when tags is not an array', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(mockRecipe);
     const res = await routes.POST(
       makeRequest(validRecipeId, { tags: 'not-an-array' }),
@@ -115,7 +125,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST returns 400 when tags contains non-string values', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(mockRecipe);
     const res = await routes.POST(
       makeRequest(validRecipeId, { tags: ['tag1', 123, 'tag2'] }),
@@ -127,7 +137,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST returns 404 when recipe does not exist', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(null);
     const res = await routes.POST(
       makeRequest(validRecipeId, { tags: ['tag1'] }),
@@ -139,7 +149,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST successfully updates tags', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(mockRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -170,7 +180,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST trims and filters empty tags', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(mockRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -193,7 +203,7 @@ describe('api/recipes/[id]/tags route', () => {
   });
 
   it('POST allows access to global recipes', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-2' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-2' }));
     findOneMock.mockResolvedValueOnce(mockRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -216,7 +226,7 @@ describe('api/recipes/[id]/tags route', () => {
       createdBy: 'user-1',
     };
 
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'user-1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
     findOneMock.mockResolvedValueOnce(userRecipe);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 

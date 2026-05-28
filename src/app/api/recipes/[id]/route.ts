@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
+import { requireApprovedSession } from '@/lib/user-utils';
 import { ObjectId } from 'mongodb';
 import { UpdateRecipeRequest } from '../../../../types/recipe';
-import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,10 +11,8 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -95,10 +92,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -199,10 +194,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {

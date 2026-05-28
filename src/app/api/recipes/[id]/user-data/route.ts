@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
+import { requireApprovedSession } from '@/lib/user-utils';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { RecipeSharingInvitation } from '@/lib/user-settings';
 
 interface RouteParams {
@@ -12,10 +11,8 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id: recipeId } = await params;
     if (!ObjectId.isValid(recipeId)) {

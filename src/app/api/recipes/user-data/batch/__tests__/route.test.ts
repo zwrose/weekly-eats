@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({
   getServerSession: vi.fn(),
@@ -63,18 +64,24 @@ describe('POST /api/recipes/user-data/batch', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved', async () => {
+    mockedGetSession.mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const res = await POST(makeRequest({ recipeIds: ['abc'] }));
+    expect(res.status).toBe(403);
+  });
+
   it('returns 400 for missing or empty recipeIds', async () => {
-    mockedGetSession.mockResolvedValueOnce({ user: { id: 'u1' }, expires: '' });
+    mockedGetSession.mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(400);
 
-    mockedGetSession.mockResolvedValueOnce({ user: { id: 'u1' }, expires: '' });
+    mockedGetSession.mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res2 = await POST(makeRequest({ recipeIds: [] }));
     expect(res2.status).toBe(400);
   });
 
   it('returns empty data for all invalid ObjectIds', async () => {
-    mockedGetSession.mockResolvedValueOnce({ user: { id: 'u1' }, expires: '' });
+    mockedGetSession.mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await POST(makeRequest({ recipeIds: ['not-valid'] }));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -82,7 +89,7 @@ describe('POST /api/recipes/user-data/batch', () => {
   });
 
   it('returns user data for accessible recipes', async () => {
-    mockedGetSession.mockResolvedValueOnce({ user: { id: 'u1' }, expires: '' });
+    mockedGetSession.mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
     const recipeId = '507f1f77bcf86cd799439011';
 
@@ -108,7 +115,7 @@ describe('POST /api/recipes/user-data/batch', () => {
   });
 
   it('includes shared tags and ratings from sharing owners', async () => {
-    mockedGetSession.mockResolvedValueOnce({ user: { id: 'u1' }, expires: '' });
+    mockedGetSession.mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
     const recipeId = '507f1f77bcf86cd799439011';
 
