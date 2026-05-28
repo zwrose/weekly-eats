@@ -1,24 +1,11 @@
 import { getMongoClient } from './mongodb';
-import { SEEDABLE_COLLECTIONS as SEEDABLE_COLLECTIONS_RAW } from './seedable-collections.js';
+import { SEEDABLE_COLLECTIONS } from './seedable-collections.js';
 
-/**
- * Re-export of SEEDABLE_COLLECTIONS from `./seedable-collections.js` with a
- * TypeScript-friendly literal-tuple type. The .js file is the single source of
- * truth so plain-Node scripts (setup-worktree.js) can import without TS tooling.
- */
-export const SEEDABLE_COLLECTIONS = SEEDABLE_COLLECTIONS_RAW as readonly [
-  'mealPlans',
-  'mealPlanTemplates',
-  'foodItems',
-  'recipes',
-  'recipeUserData',
-  'pantry',
-  'stores',
-  'storeItemPositions',
-  'shoppingLists',
-  'purchaseHistory',
-  'users',
-];
+// Re-export the single source of truth. The .js file is plain ESM (so the
+// postinstall-invoked setup-worktree.js can import it without TS tooling); its
+// JSDoc `@type {const}` cast gives it a readonly literal-tuple type, so the
+// derived SeedableCollection union below stays exact with no cast here.
+export { SEEDABLE_COLLECTIONS };
 
 export type SeedableCollection = (typeof SEEDABLE_COLLECTIONS)[number];
 

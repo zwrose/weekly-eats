@@ -13,7 +13,7 @@
  * tests, and `setup-worktree.js` uses it to strip stale `_seed*` fields on
  * worktree clone.
  */
-export const SEEDABLE_COLLECTIONS = [
+export const SEEDABLE_COLLECTIONS = /** @type {const} */ ([
   'mealPlans',
   'mealPlanTemplates',
   'foodItems',
@@ -25,4 +25,4 @@ export const SEEDABLE_COLLECTIONS = [
   'shoppingLists',
   'purchaseHistory',
   'users',
-];
+]);
