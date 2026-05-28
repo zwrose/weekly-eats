@@ -136,6 +136,7 @@ Then write `meta.json` in both modes:
 cat > "$SESSION_DIR/meta.json" <<EOF
 {
   "mode": "${MODE}",
+  "path": "${REVIEW_PATH}",
   "pr": ${PR_NUMBER:-null},
   "repo": "${REPO}",
   "branch": "${BRANCH}",
@@ -146,6 +147,8 @@ cat > "$SESSION_DIR/meta.json" <<EOF
 }
 EOF
 ```
+
+`REVIEW_PATH` is `loop` (default), `review-only`, or `post`, decided from the flags at invocation. It is written to `meta.json` so a cold-resumed orchestrator (after compaction) knows which top-level flow to continue.
 
 Size the round-1 diff for the dispatch plan (after writing it to `round-1/diff.txt` per the command above):
 
@@ -294,7 +297,15 @@ Order findings: Critical → Important → Minor → Nit, then by file path, the
 
 Runs when neither `--post` nor `--review-only` is set. The orchestrator keeps a **skip-set** of finding identities the user chose to skip (identity = `file::normalized-title`, matching `circuit-breaker.ts`). Initialize `round = 1`, `skip-set = {}`.
 
-**If context was compacted mid-loop**, re-read `$SESSION_DIR/meta.json`, the highest-numbered `round-N/` files, and every `round-*/resolutions.json` (to rebuild the skip-set) before continuing.
+**If context was compacted mid-loop**, re-read `$SESSION_DIR/meta.json` (its `path` field says whether the loop, `--review-only`, or `--post` is active), the highest-numbered `round-N/` files, and every `round-*/resolutions.json` (to rebuild the skip-set, and the **skipped-blocking** set from each entry's `severity`). Then resume mid-round by inspecting which `round-<highest>/` artifacts already exist:
+
+| Present in `round-<N>/`                                       | Resume at                            |
+| ------------------------------------------------------------- | ------------------------------------ |
+| no `compiled.json`                                            | step 1 (restart the round)           |
+| `compiled.json`, no `triage.json`                             | step 6                               |
+| `triage.json`, no `fix-batch.json`                            | step 7                               |
+| `fix-batch.json`, no `Auto-fix round <N>` commit in `git log` | step 11 (re-dispatch the fixer)      |
+| `Auto-fix round <N>` commit present                           | step 12 (re-run check, then breaker) |
 
 Each round:
 
@@ -308,20 +319,22 @@ Each round:
    - If non-empty: present ONE consolidated `AskUserQuestion`. For each deferred finding offer **Fix as suggested** / **Fix with my guidance** (free text) / **Skip**. List the `auto_fix` findings in the same prompt as an FYI (no per-item action). Write `round-<round>/resolutions.json`:
      ```json
      { "round": <N>, "resolutions": [
-       { "id": "<finding id>", "file": "<file>", "title": "<title>", "action": "fix" | "fix-with-guidance" | "skip", "guidance": "<text or omitted>" }
+       { "id": "<finding id>", "file": "<file>", "title": "<title>", "severity": "<severity>", "action": "fix" | "fix-with-guidance" | "skip", "guidance": "<text or omitted>" }
      ] }
      ```
-     Add every `skip` identity to the skip-set. `approved` = entries with action `fix`/`fix-with-guidance` (carry `guidance`).
+     Add every `skip` identity to the skip-set; if a skipped finding is Critical or Important, also remember it as a **skipped-blocking** finding (its `severity` is recorded in `resolutions.json` so this survives compaction). `approved` = entries with action `fix`/`fix-with-guidance` (carry `guidance`).
    - If empty: `approved = []`, write no resolutions file.
 8. **Fix batch.** `auto_fix` = effective findings classified `auto_fix`. `fix-batch` = `auto_fix ∪ approved`. Write `round-<round>/fix-batch.json` (full finding objects; attach `userGuidance` to any with guidance).
 9. **Blocking-to-fix** = count of `fix-batch` findings with severity Critical or Important.
 10. If `fix-batch` is empty (everything this round was skipped) → **EXIT** with a "remaining findings deliberately skipped" note (list them).
 11. **Fix.** Dispatch the fixer subagent (template below) with `fix-batch.json`.
     - Status `CHECK_FAILED` → **HALT**; surface the failing `npm run check` output.
-    - Status `ESCALATED` → for each escalated finding, present it as a `needs_user` intervention now (same prompt shape as step 7) and fold the user's decision into a follow-up fixer dispatch this same round; do NOT add it to the skip-set unless the user skips it.
+    - Status `ESCALATED` → for each escalated finding, present it as a `needs_user` intervention now (same prompt shape as step 7), then re-dispatch the fixer with the user's decisions folded in. The follow-up dispatch uses this same `CHECK_FAILED`/`ESCALATED` contract; a finding the user has already decided on is no longer eligible to escalate, so it cannot ping-pong. Do NOT add an escalated finding to the skip-set unless the user skips it. After escalation handling resolves the final `fix-batch`, recompute **blocking-to-fix** (step 9) before evaluating step 14.
 12. **Verify.** Orchestrator independently runs `npm run check`. Fail → **HALT**; surface output. (Do not re-review on a broken tree.)
-13. **Circuit breaker.** Run `npx tsx .claude/skills/review-code/circuit-breaker.ts "$SESSION_DIR" 7`. Parse its JSON. If `halt: true` → **HALT**; surface `reason` + `detail` + still-open findings + the diff so far.
-14. If `blocking-to-fix == 0` → **EXIT SUCCESS** (this round had no Critical/Important to fix; any Minor/Nit are now fixed). Otherwise `round += 1` and repeat from step 1.
+13. **Circuit breaker.** Run `npx tsx .claude/skills/review-code/circuit-breaker.ts "$SESSION_DIR" 7`. Parse its JSON. If `halt: true` → **HALT**; surface `reason` + `detail` + still-open findings + the commit range (`git log <baseRef>..HEAD --oneline`). Do NOT read or `cat` the diff into the orchestrator context.
+14. If `blocking-to-fix > 0` → `round += 1` and repeat from step 1. If `blocking-to-fix == 0`:
+    - and there is **no** skipped-blocking finding → **EXIT SUCCESS** (no blocking findings remain; any Minor/Nit are now fixed).
+    - and one or more blocking findings were deliberately skipped → **EXIT — CLEAN EXCEPT FOR SKIPPED**: the tree is clean except for the skipped blocking finding(s). List them; do not report a plain SUCCESS verdict.
 
 ### Triage subagent prompt
 
@@ -476,7 +489,7 @@ Report the review URL (`html_url` from the verification call) to the user.
 These are restated in every subagent prompt and enforced again at compile time. Subagents that violate them produce findings that get dropped before the user ever sees them.
 
 1. **`file:line` citation required.** No citation → finding is dropped at compile time, before presentation. (`REVIEW.md` §Verification Rules)
-2. **Diff-scope rule.** Only `+` and `-` lines of `$SESSION_DIR/diff.txt` are in scope. Context lines (no prefix) and unchanged code in modified files are pre-existing — flagging them is the #1 source of false findings.
+2. **Diff-scope rule.** Only `+` and `-` lines of `$SESSION_DIR/round-<N>/diff.txt` are in scope. Context lines (no prefix) and unchanged code in modified files are pre-existing — flagging them is the #1 source of false findings.
 3. **Grep-before-flag.** Before flagging "missing X", search for X under variant names (e.g. `rightAriaLabel` vs `rightZoneAriaLabel`). In PR mode, grep `$SESSION_DIR/repo/`, not the main working tree.
 4. **Reachability check on Important findings.** Read the caller(s) of the affected symbol. If the only caller already guards the edge case, downgrade or drop.
 5. **Worktree-as-source-of-truth (PR mode).** All code verification reads go through `$SESSION_DIR/repo/`. The main working tree may be on a different branch with stale or missing code; using it for verification produces false findings against code that doesn't exist on the PR.
@@ -488,7 +501,7 @@ These are restated in every subagent prompt and enforced again at compile time. 
 | Mistake                                                 | Fix                                                                                                                                                                |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Flagging pre-existing code as a PR issue**            | **The #1 mistake.** Diff-scope rule: only flag `+`/`-` lines. Context lines and unchanged code are out of scope even if they violate conventions.                  |
-| Loading the full diff into main context                 | The orchestrator only ever runs `wc -l < $SESSION_DIR/diff.txt`. Subagents read the diff from disk; the orchestrator reads JSON findings.                          |
+| Loading the full diff into main context                 | The orchestrator only ever runs `wc -l < $SESSION_DIR/round-<N>/diff.txt`. Subagents read the diff from disk; the orchestrator reads JSON findings.                |
 | Finding based on assumed code state                     | Subagents must verify against `$SESSION_DIR/repo/` (PR mode) or the working tree (branch mode). No "I think this calls X" — open the file and confirm.             |
 | Marking test issues as Critical                         | Critical is reserved for production bugs, data loss, security vulns. Test anti-patterns are Important at most — `REVIEW.md` §Severity Tiers spells this out.       |
 | Severity miscalibrated to deployment context            | Weekly-eats is a single-user app. Theoretical multi-tenant attacks and "what if 10k users" scalability concerns aren't in scope.                                   |

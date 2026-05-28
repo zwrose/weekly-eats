@@ -73,7 +73,7 @@ export function checkCircuitBreaker(
     return {
       halt: true,
       reason: 'max-iterations',
-      detail: `Reached ${maxRounds} rounds with ${latestBlocking.length} blocking finding(s) still open.`,
+      detail: `Reached ${maxRounds} rounds; the latest review still showed ${latestBlocking.length} blocking finding(s) (the final round's fixes are committed but not yet re-reviewed).`,
     };
   }
 
