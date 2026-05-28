@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
     // Get request body
     const { userId, isAdmin } = await request.json();
 
-    if (!userId || typeof isAdmin !== 'boolean') {
+    if (
+      !userId ||
+      typeof userId !== 'string' ||
+      !ObjectId.isValid(userId) ||
+      typeof isAdmin !== 'boolean'
+    ) {
       return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
     }
 

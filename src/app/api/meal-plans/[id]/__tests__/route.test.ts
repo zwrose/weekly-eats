@@ -84,6 +84,30 @@ beforeEach(() => {
 });
 
 describe('api/meal-plans/[id] route', () => {
+  it('GET returns 400 for invalid ObjectId', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const res = await routes.GET(makeReq('http://localhost/api/meal-plans/bad'), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT returns 400 for invalid ObjectId', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const res = await routes.PUT(makeReq('http://localhost/api/meal-plans/bad', { name: 'X' }), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
+    expect(res.status).toBe(400);
+  });
+
+  it('DELETE returns 400 for invalid ObjectId', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const res = await routes.DELETE(makeReq('http://localhost/api/meal-plans/bad'), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
+    expect(res.status).toBe(400);
+  });
+
   it('GET returns 404 when not found', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);

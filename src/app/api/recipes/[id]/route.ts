@@ -168,10 +168,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const updateData = {
-      ...body,
-      updatedAt: new Date(),
-    };
+    // Allowlist updatable fields — never spread the raw body into $set, which
+    // would let the owner inject createdBy/createdAt/_id. isGlobal stays
+    // client-settable here: a user's own global recipe is the recipe-sharing
+    // mechanism ("shared-by-you"), unlike admin-gated global food items.
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.emoji !== undefined) updateData.emoji = body.emoji;
+    if (body.ingredients !== undefined) updateData.ingredients = body.ingredients;
+    if (body.instructions !== undefined) updateData.instructions = body.instructions;
+    if (body.isGlobal !== undefined) updateData.isGlobal = body.isGlobal;
 
     const objectId = ObjectId.createFromHexString(id);
     const result = await recipesCollection.updateOne(

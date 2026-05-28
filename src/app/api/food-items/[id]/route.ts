@@ -51,6 +51,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
     const body = await request.json();
     const { name, singularName, pluralName, unit, isGlobal } = body;
 
@@ -153,6 +156,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
 
     const client = await getMongoClient();
     const db = client.db();

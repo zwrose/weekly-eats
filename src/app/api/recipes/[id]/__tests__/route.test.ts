@@ -105,6 +105,34 @@ describe('api/recipes/[id] route', () => {
     expect(json.title).toBe('Update');
   });
 
+  it('PUT allowlists update fields — ignores createdBy/createdAt/_id injection', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1' });
+    updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
+    findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', title: 'Update' });
+    const body = {
+      title: 'Update',
+      ingredients: [
+        { title: 'G', ingredients: [{ type: 'foodItem', id: 'f1', quantity: 1, unit: 'cup' }] },
+      ],
+      // Attacker-injected fields that must never reach $set:
+      createdBy: 'someone-else',
+      createdAt: new Date('2000-01-01'),
+      _id: 'forged-id',
+    };
+    const req = { url: `http://localhost/api/recipes/${id}`, json: async () => body } as any;
+    const res = await routes.PUT(req, { params: Promise.resolve({ id }) } as any);
+    expect(res.status).toBe(200);
+
+    const setArg = updateOneMock.mock.calls[0][1].$set;
+    expect(setArg).not.toHaveProperty('createdBy');
+    expect(setArg).not.toHaveProperty('createdAt');
+    expect(setArg).not.toHaveProperty('_id');
+    expect(setArg.title).toBe('Update');
+    expect(setArg.updatedAt).toBeInstanceOf(Date);
+  });
+
   it('GET resolves ingredient names from food items and recipes', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
