@@ -179,28 +179,16 @@ PreToolUse hooks block edits to protected files:
 
 ### Skills (`.claude/skills/`)
 
-<<<<<<< HEAD
-| Skill            | Invocation   | Purpose                                                                                                |
-| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| `/check`         | User or auto | Run full lint + test + build validation                                                                |
-| `/gen-test`      | User or auto | Generate tests following project conventions                                                           |
-| `/new-api-route` | User or auto | Scaffold API route with auth/validation template                                                       |
-| `/new-component` | User or auto | Scaffold component + test file from templates                                                          |
-| `/review-code`   | User or auto | Auto-fix loop: review → triage → fix → re-review until clean. `--review-only` / `--post` for read-only |
-| `/review-plan`   | User or auto | Review a draft plan/spec before implementing                                                           |
-| `/audit-debt`    | User or auto | Periodic full-repo debt sweep with prioritized backlog                                                 |
-=======
-| Skill             | Invocation   | Purpose                                                      |
-| ----------------- | ------------ | ------------------------------------------------------------ |
-| `/check`          | User or auto | Run full lint + test + build validation                      |
-| `/gen-test`       | User or auto | Generate tests following project conventions                 |
-| `/manual-testing` | User or auto | Seed test data + post checkbox test plan to PR               |
-| `/new-api-route`  | User or auto | Scaffold API route with auth/validation template             |
-| `/new-component`  | User or auto | Scaffold component + test file from templates                |
-| `/review-code`    | User or auto | Run multi-agent review on PR or branch (replaces /review-pr) |
-| `/review-plan`    | User or auto | Review a draft plan/spec before implementing                 |
-| `/audit-debt`     | User or auto | Periodic full-repo debt sweep with prioritized backlog       |
->>>>>>> 7934c8f (docs(CLAUDE.md): add /manual-testing skill + _seed* prefix + npm run seed:demo)
+| Skill             | Invocation   | Purpose                                                                                                |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| `/check`          | User or auto | Run full lint + test + build validation                                                                |
+| `/gen-test`       | User or auto | Generate tests following project conventions                                                           |
+| `/manual-testing` | User or auto | Seed test data + post checkbox test plan to PR                                                         |
+| `/new-api-route`  | User or auto | Scaffold API route with auth/validation template                                                       |
+| `/new-component`  | User or auto | Scaffold component + test file from templates                                                          |
+| `/review-code`    | User or auto | Auto-fix loop: review → triage → fix → re-review until clean. `--review-only` / `--post` for read-only |
+| `/review-plan`    | User or auto | Review a draft plan/spec before implementing                                                           |
+| `/audit-debt`     | User or auto | Periodic full-repo debt sweep with prioritized backlog                                                 |
 
 ### Agents (`.claude/agents/`)
 
