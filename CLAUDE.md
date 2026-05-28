@@ -166,22 +166,38 @@ PreToolUse hooks block edits to protected files:
 
 ### Skills (`.claude/skills/`)
 
-| Skill            | Invocation   | Purpose                                          |
-| ---------------- | ------------ | ------------------------------------------------ |
-| `/check`         | User or auto | Run full lint + test + build validation          |
-| `/gen-test`      | User or auto | Generate tests following project conventions     |
-| `/new-api-route` | User or auto | Scaffold API route with auth/validation template |
-| `/new-component` | User or auto | Scaffold component + test file from templates    |
-| `/review-pr`     | User or auto | Orchestrate multi-agent PR review                |
+| Skill            | Invocation   | Purpose                                                      |
+| ---------------- | ------------ | ------------------------------------------------------------ |
+| `/check`         | User or auto | Run full lint + test + build validation                      |
+| `/gen-test`      | User or auto | Generate tests following project conventions                 |
+| `/new-api-route` | User or auto | Scaffold API route with auth/validation template             |
+| `/new-component` | User or auto | Scaffold component + test file from templates                |
+| `/review-code`   | User or auto | Run multi-agent review on PR or branch (replaces /review-pr) |
+| `/review-plan`   | User or auto | Review a draft plan/spec before implementing                 |
+| `/audit-debt`    | User or auto | Periodic full-repo debt sweep with prioritized backlog       |
 
 ### Agents (`.claude/agents/`)
 
-| Agent               | Focus                                                                            |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `code-reviewer`     | Project convention adherence (exports, TypeScript, error handling, API patterns) |
-| `test-reviewer`     | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
-| `security-reviewer` | Auth bypass, MongoDB injection, IDOR, input validation                           |
-| `a11y-reviewer`     | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+| Agent                   | Focus                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `code-reviewer`         | Project convention adherence (exports, TypeScript, error handling, API patterns) |
+| `test-reviewer`         | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
+| `architecture-reviewer` | Layering, abstractions, module boundaries, complexity warnings                   |
+| `security-reviewer`     | Auth bypass, MongoDB injection, IDOR, input validation                           |
+| `a11y-reviewer`         | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+
+## Review Workflow
+
+All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-flag exclusions, and verification rules.
+
+| When                                   | Skill                                   | Output                                                                 |
+| -------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Drafting a plan/spec                   | `/review-plan`                          | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER |
+| End of subagent-driven-dev (before PR) | `/review-code` (branch mode)            | Terminal report; verdict: READY FOR PR / FIX BEFORE PR / MAJOR FIXES   |
+| PR open                                | `/review-code pr <N>` or `/review-code` | Terminal report; optional inline GitHub posting via `--post`           |
+| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues           |
+
+Each skill dispatches the same 5 specialist agents (architecture, code, security, a11y, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives.
 
 ## Git Workflow
 
