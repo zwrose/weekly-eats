@@ -124,6 +124,19 @@ src/
 - Use `userEvent.setup()` for user interactions (not fireEvent)
 - Use `waitFor()` for async assertions
 
+### Manual testing
+
+Manual test data is seeded via the scenario engine in `test/manual/`. Compose
+blocks in a JSON manifest, apply with `npm run test:manual:apply <branch>`. The
+`/manual-testing` skill auto-generates a manifest from the PR diff, applies it,
+and posts a checkbox test plan to the PR.
+
+- `npm run seed:demo` — apply the canonical demo manifest (replaces the old
+  `seed-demo-data.cjs`).
+- All seeded docs are tagged with `_seedManifestId` and `_seedScenarioId` (the
+  `_seed*` prefix is reserved across the codebase).
+- See `test/manual/scenarios/CATALOG.md` for available blocks.
+
 ### Database
 
 - MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`
@@ -166,15 +179,16 @@ PreToolUse hooks block edits to protected files:
 
 ### Skills (`.claude/skills/`)
 
-| Skill            | Invocation   | Purpose                                                                                                |
-| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| `/check`         | User or auto | Run full lint + test + build validation                                                                |
-| `/gen-test`      | User or auto | Generate tests following project conventions                                                           |
-| `/new-api-route` | User or auto | Scaffold API route with auth/validation template                                                       |
-| `/new-component` | User or auto | Scaffold component + test file from templates                                                          |
-| `/review-code`   | User or auto | Auto-fix loop: review → triage → fix → re-review until clean. `--review-only` / `--post` for read-only |
-| `/review-plan`   | User or auto | Review a draft plan/spec before implementing                                                           |
-| `/audit-debt`    | User or auto | Periodic full-repo debt sweep with prioritized backlog                                                 |
+| Skill             | Invocation   | Purpose                                                                                                |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| `/check`          | User or auto | Run full lint + test + build validation                                                                |
+| `/gen-test`       | User or auto | Generate tests following project conventions                                                           |
+| `/manual-testing` | User or auto | Seed test data + post checkbox test plan to PR                                                         |
+| `/new-api-route`  | User or auto | Scaffold API route with auth/validation template                                                       |
+| `/new-component`  | User or auto | Scaffold component + test file from templates                                                          |
+| `/review-code`    | User or auto | Auto-fix loop: review → triage → fix → re-review until clean. `--review-only` / `--post` for read-only |
+| `/review-plan`    | User or auto | Review a draft plan/spec before implementing                                                           |
+| `/audit-debt`     | User or auto | Periodic full-repo debt sweep with prioritized backlog                                                 |
 
 ### Agents (`.claude/agents/`)
 

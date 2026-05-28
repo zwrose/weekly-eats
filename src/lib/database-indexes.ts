@@ -1,4 +1,13 @@
 import { getMongoClient } from './mongodb';
+import { SEEDABLE_COLLECTIONS } from './seedable-collections.js';
+
+// Re-export the single source of truth. The .js file is plain ESM (so the
+// postinstall-invoked setup-worktree.js can import it without TS tooling); its
+// JSDoc `@type {const}` cast gives it a readonly literal-tuple type, so the
+// derived SeedableCollection union below stays exact with no cast here.
+export { SEEDABLE_COLLECTIONS };
+
+export type SeedableCollection = (typeof SEEDABLE_COLLECTIONS)[number];
 
 /**
  * Database indexes for optimal query performance
@@ -104,6 +113,35 @@ export const createDatabaseIndexes = async () => {
     await usersCollection.createIndex({ email: 1 }, { name: 'users_email', unique: true });
     await usersCollection.createIndex({ isApproved: 1 }, { name: 'users_isApproved' });
 
+    // Manual-testing seed tags — speed up clean() filters
+    for (const colName of SEEDABLE_COLLECTIONS) {
+      await db
+        .collection(colName)
+        .createIndex(
+          { _seedManifestId: 1, _seedScenarioId: 1 },
+          { name: `${colName}_seedTag`, sparse: true }
+        );
+    }
+
+    // manualTestState collection
+    await db
+      .collection('manualTestState')
+      .createIndex(
+        { manifestId: 1, scenarioId: 1 },
+        { name: 'manualTestState_manifest_scenario', unique: true }
+      );
+
+    // manualTestLocks collection
+    await db
+      .collection('manualTestLocks')
+      .createIndex({ manifestId: 1 }, { name: 'manualTestLocks_manifestId', unique: true });
+    await db
+      .collection('manualTestLocks')
+      .createIndex(
+        { expireAt: 1 },
+        { name: 'manualTestLocks_expireAt_ttl', expireAfterSeconds: 0 }
+      );
+
     console.log('Database indexes created successfully');
   } catch (error) {
     console.error('Error creating database indexes:', error);
@@ -132,6 +170,8 @@ export const dropAllIndexes = async () => {
       'storeItemPositions',
       'shoppingLists',
       'purchaseHistory',
+      'manualTestState',
+      'manualTestLocks',
     ];
 
     for (const collectionName of collections) {

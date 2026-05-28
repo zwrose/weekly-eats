@@ -8,14 +8,14 @@ Vitest + React Testing Library + MSW. Tests are colocated in `__tests__/` direct
 
 **`vitest.config.ts`** sets up the entire test environment:
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| environment | `jsdom` | DOM simulation for component tests |
-| globals | `true` | No need to import `describe`, `it`, `expect` (though files still can) |
-| pool | `forks` with `singleFork: true` | Process isolation -- each test file gets a clean fork |
-| testTimeout / hookTimeout | 20 000 ms | Generous limit for debounced UI and async DB mocks |
-| coverage provider | `v8` | Fast native coverage; reporters: text, html, lcov |
-| path alias `@/` | `./src` | Mirrors `tsconfig.json` so `@/lib/errors` works in tests |
+| Setting                   | Value                           | Why                                                                   |
+| ------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| environment               | `jsdom`                         | DOM simulation for component tests                                    |
+| globals                   | `true`                          | No need to import `describe`, `it`, `expect` (though files still can) |
+| pool                      | `forks` with `singleFork: true` | Process isolation -- each test file gets a clean fork                 |
+| testTimeout / hookTimeout | 20 000 ms                       | Generous limit for debounced UI and async DB mocks                    |
+| coverage provider         | `v8`                            | Fast native coverage; reporters: text, html, lcov                     |
+| path alias `@/`           | `./src`                         | Mirrors `tsconfig.json` so `@/lib/errors` works in tests              |
 
 Coverage only includes `src/**/*.{ts,tsx}`, excluding test files, type declarations, and build artifacts. The `css: false` flag skips CSS processing.
 
@@ -36,7 +36,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
-      include: ['src/**/*.{ts,tsx}', '!src/**/*.{test,spec}.{ts,tsx}', '!src/types/**', '!src/**/*.d.ts'],
+      include: [
+        'src/**/*.{ts,tsx}',
+        '!src/**/*.{test,spec}.{ts,tsx}',
+        '!src/types/**',
+        '!src/**/*.d.ts',
+      ],
     },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
@@ -121,7 +126,9 @@ const handlers = [
       { _id: 'f2', name: 'Banana', singularName: 'banana', pluralName: 'bananas', unit: 'each' },
     ];
     const filtered = query
-      ? all.filter((i) => `${i.name} ${i.singularName} ${i.pluralName}`.toLowerCase().includes(query))
+      ? all.filter((i) =>
+          `${i.name} ${i.singularName} ${i.pluralName}`.toLowerCase().includes(query)
+        )
       : all;
     return HttpResponse.json(filtered, { status: 200 });
   }),
@@ -144,9 +151,15 @@ const handlers = [
 const server = setupServer(...handlers);
 export { server };
 
-beforeAll(() => { server.listen({ onUnhandledRequest: 'bypass' }); });
-afterEach(() => { server.resetHandlers(); });
-afterAll(() => { server.close(); });
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'bypass' });
+});
+afterEach(() => {
+  server.resetHandlers();
+});
+afterAll(() => {
+  server.close();
+});
 ```
 
 5. **jsdom base URL** -- ensures `window.location.href` is `http://localhost/` so relative `fetch('/api/...')` calls resolve correctly.
@@ -178,16 +191,22 @@ vi.mock('@/lib/mongodb', () => ({
         return {
           find: (...args: unknown[]) => {
             findMock(...args);
-            return { sort: (...sArgs: unknown[]) => {
-              sortMock(...sArgs);
-              return { skip: (...skArgs: unknown[]) => {
-                skipMock(...skArgs);
-                return { limit: (...lArgs: unknown[]) => {
-                  limitMock(...lArgs);
-                  return { toArray: toArrayMock };
-                }};
-              }};
-            }};
+            return {
+              sort: (...sArgs: unknown[]) => {
+                sortMock(...sArgs);
+                return {
+                  skip: (...skArgs: unknown[]) => {
+                    skipMock(...skArgs);
+                    return {
+                      limit: (...lArgs: unknown[]) => {
+                        limitMock(...lArgs);
+                        return { toArray: toArrayMock };
+                      },
+                    };
+                  },
+                };
+              },
+            };
           },
           countDocuments: countDocumentsMock,
           insertOne: insertOneMock,
@@ -219,7 +238,7 @@ beforeEach(() => {
 
 ```ts
 expect(sortMock).toHaveBeenCalledWith({ title: 1 });
-expect(skipMock).toHaveBeenCalledWith(10);   // page 2, limit 10 -> skip 10
+expect(skipMock).toHaveBeenCalledWith(10); // page 2, limit 10 -> skip 10
 expect(limitMock).toHaveBeenCalledWith(10);
 
 const filter = findMock.mock.calls[0][0];
@@ -237,7 +256,9 @@ vi.mock('@/lib/auth', () => ({ authOptions: {} }));
 
 // In tests:
 const { getServerSession } = await import('next-auth/next');
-(getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false, isApproved: true } });
+(getServerSession as any).mockResolvedValueOnce({
+  user: { id: 'u1', isAdmin: false, isApproved: true },
+});
 ```
 
 **Components** use `next-auth/react` (client-side `useSession`):
@@ -306,8 +327,12 @@ vi.mock('@/lib/errors', () => ({
 // 1. Declare all vi.mock() calls (hoisted automatically)
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
-vi.mock('@/lib/mongodb', () => ({ /* ... */ }));
-vi.mock('@/lib/errors', () => ({ /* ... */ }));
+vi.mock('@/lib/mongodb', () => ({
+  /* ... */
+}));
+vi.mock('@/lib/errors', () => ({
+  /* ... */
+}));
 
 // 2. Dynamic import AFTER mocks
 const { getServerSession } = await import('next-auth/next');
@@ -317,8 +342,7 @@ const routes = await import('../route');
 ### Pattern: minimal request helper
 
 ```ts
-const makeReq = (url: string, body?: unknown) =>
-  ({ url, json: async () => body }) as any;
+const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 ```
 
 This satisfies the `NextRequest` interface enough for route handlers. The `url` must be a full URL string so `new URL(request.url)` can parse query params.
@@ -328,10 +352,9 @@ This satisfies the `NextRequest` interface enough for route handlers. The `url` 
 Dynamic route handlers in Next.js 15 receive params as a `Promise`. Wrap with `Promise.resolve()`:
 
 ```ts
-const res = await routes.GET(
-  makeReq('http://localhost/api/recipes/r1'),
-  { params: Promise.resolve({ id: 'r1' }) }
-);
+const res = await routes.GET(makeReq('http://localhost/api/recipes/r1'), {
+  params: Promise.resolve({ id: 'r1' }),
+});
 ```
 
 ### Pattern: auth check first
@@ -408,12 +431,15 @@ await act(async () => {
 });
 
 // 2. Wait for the listbox to appear (debounced search)
-await waitFor(() => {
-  const listbox = screen.queryByRole('listbox');
-  expect(listbox).toBeInTheDocument();
-  const options = within(listbox!).getAllByRole('option');
-  expect(options.length).toBeGreaterThan(0);
-}, { timeout: 3000 });
+await waitFor(
+  () => {
+    const listbox = screen.queryByRole('listbox');
+    expect(listbox).toBeInTheDocument();
+    const options = within(listbox!).getAllByRole('option');
+    expect(options.length).toBeGreaterThan(0);
+  },
+  { timeout: 3000 }
+);
 
 // 3. Click an option
 const appleOption = screen.getByText(/apple/i);
@@ -435,9 +461,12 @@ expect(onIngredientChange).toHaveBeenCalledWith(
 Components with debounced search need generous timeouts in `waitFor`:
 
 ```ts
-await waitFor(() => {
-  expect(screen.getByText(/apple/i)).toBeInTheDocument();
-}, { timeout: 2000 });
+await waitFor(
+  () => {
+    expect(screen.getByText(/apple/i)).toBeInTheDocument();
+  },
+  { timeout: 2000 }
+);
 ```
 
 ### Strict Mode duplicate renders
@@ -563,3 +592,27 @@ Tests use fake environment variables (`MONGODB_URI='mongodb://localhost:27017/fa
 - **Act warnings** -- Wrap renders and interactions in `act()` or `await act(async () => { ... })`. Use `userEvent.setup()` which handles act internally.
 - **Path alias errors** -- Confirm the `@` alias exists in both `tsconfig.json` and `vitest.config.ts`.
 - **Silent 500s in API tests** -- Almost always a missing error constant group in the `@/lib/errors` mock. Check the route's imports.
+
+---
+
+## 8. Manual testing
+
+The scenario engine in `test/manual/` seeds idempotent test data for manual
+verification. See `test/manual/scenarios/CATALOG.md` for available blocks.
+
+```bash
+npm run test:manual:apply <branch>     # apply a manifest
+npm run test:manual:clean <branch>     # remove seeded data
+npm run test:manual:status <branch>    # show what's seeded
+npm run seed:demo                      # apply the canonical demo manifest
+```
+
+Engine tests live in `test/manual/__tests__/` and `test/manual/scenarios/__tests__/`.
+They run via the shared `vitest.config.ts` (jsdom + singleFork), included via the
+`test/manual/**/*.{test,spec}.ts` glob. The mocked-Db / fs / `execFile` patterns
+the tests use are unaffected by the jsdom environment; `pr-comment.test.ts` pins
+itself to Node via a `// @vitest-environment node` docblock so its
+`node:child_process` mock works.
+
+The `/manual-testing` skill drives this engine end-to-end and posts checkbox
+test plans to PRs.
