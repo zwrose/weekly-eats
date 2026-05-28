@@ -18,12 +18,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, trigger }: { token: JWT; trigger?: 'signIn' | 'signUp' | 'update' }) {
       // On sign-in or sign-up, fetch user status from the database and cache in the token
-      if (
-        trigger === 'signIn' ||
-        trigger === 'signUp' ||
-        trigger === 'update' ||
-        token.isAdmin === undefined
-      ) {
+      if (trigger === 'signIn' || trigger === 'signUp' || token.isAdmin === undefined) {
         if (token.email) {
           try {
             const client = await getMongoClient();

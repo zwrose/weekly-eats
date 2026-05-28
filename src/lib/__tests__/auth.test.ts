@@ -87,24 +87,6 @@ describe('jwt callback', () => {
     expect(result.isApproved).toBe(true);
   });
 
-  it('refreshes isApproved/isAdmin from the DB on the update trigger (mid-session approval)', async () => {
-    const findOne = vi.fn().mockResolvedValue({ isAdmin: false, isApproved: true });
-    mockGetMongoClient.mockResolvedValue({
-      db: () => ({ collection: () => ({ findOne }) }),
-    });
-    // Token already populated from sign-in (isAdmin defined, isApproved was false).
-    const token = { email: 'approved@example.com', isAdmin: false, isApproved: false } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
-      trigger: 'update',
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
-    expect(findOne).toHaveBeenCalledWith({ email: 'approved@example.com' });
-    expect(result.isApproved).toBe(true);
-    expect(result.isAdmin).toBe(false);
-  });
-
   it('coerces missing DB user fields to false (no implicit admin/approval)', async () => {
     const findOne = vi.fn().mockResolvedValue(null);
     mockGetMongoClient.mockResolvedValue({
