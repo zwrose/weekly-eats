@@ -108,6 +108,7 @@ Emit findings as a JSON array per `REVIEW.md`'s "Findings Output Format" section
 - `suggestion` may be `null` for Minor/Nit when no clean fix is obvious.
 - Severity caps from `REVIEW.md` apply: Nits capped at 5 per review; Important/Critical uncapped.
 - Test findings are rarely Critical — tests don't ship to production. Reserve Critical for "this test gives false confidence and a real bug will slip through" (e.g., a route's 401 test that doesn't actually exercise the unauthenticated path). Most findings should be **Important** or **Minor**.
+- **Tradeoff flag.** If a finding has more than one reasonable fix and choosing between them is a judgment call (not a single obviously-correct fix), set `"tradeoff": true` on it. This routes the finding to the user instead of the auto-fixer. Omit the field otherwise (treated as `false`).
 
 ## Examples of Good vs Bad Findings
 
