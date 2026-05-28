@@ -16,7 +16,14 @@
     "test": "vitest run --run --pool=forks --poolOptions.forks.singleFork=true --isolate",
     "test:watch": "vitest",
     "test:coverage": "vitest run --run --coverage --pool=forks --poolOptions.forks.singleFork=true --isolate",
-    "check": "npm run lint -- --max-warnings=0 && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run test:coverage && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run build",
+    "test:manual": "tsx test/manual/cli.ts",
+    "test:manual:apply": "tsx test/manual/cli.ts apply",
+    "test:manual:clean": "tsx test/manual/cli.ts clean",
+    "test:manual:status": "tsx test/manual/cli.ts status",
+    "test:manual:gen-catalog": "tsx test/manual/cli.ts gen-catalog",
+    "test:manual:unlock": "tsx test/manual/cli.ts unlock",
+    "seed:demo": "tsx test/manual/cli.ts apply --manifest demo",
+    "check": "npm run lint -- --max-warnings=0 && npm run test:manual:gen-catalog -- --check && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run test:coverage && cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npm run build",
     "worktree:remove": "node scripts/worktree-remove.js"
   },
   "dependencies": {
@@ -63,8 +70,10 @@
     "jsdom": "^26.1.0",
     "msw": "^2.10.4",
     "prettier": "^3.8.1",
+    "tsx": "4.19.2",
     "typescript": "^5",
     "vite": "^7.1.1",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "3.23.8"
   }
 }

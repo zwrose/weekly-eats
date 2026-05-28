@@ -124,6 +124,19 @@ src/
 - Use `userEvent.setup()` for user interactions (not fireEvent)
 - Use `waitFor()` for async assertions
 
+### Manual testing
+
+Manual test data is seeded via the scenario engine in `test/manual/`. Compose
+blocks in a JSON manifest, apply with `npm run test:manual:apply <branch>`. The
+`/manual-testing` skill auto-generates a manifest from the PR diff, applies it,
+and posts a checkbox test plan to the PR.
+
+- `npm run seed:demo` — apply the canonical demo manifest (replaces the old
+  `seed-demo-data.cjs`).
+- All seeded docs are tagged with `_seedManifestId` and `_seedScenarioId` (the
+  `_seed*` prefix is reserved across the codebase).
+- See `test/manual/scenarios/CATALOG.md` for available blocks.
+
 ### Database
 
 - MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`
@@ -166,22 +179,39 @@ PreToolUse hooks block edits to protected files:
 
 ### Skills (`.claude/skills/`)
 
-| Skill            | Invocation   | Purpose                                          |
-| ---------------- | ------------ | ------------------------------------------------ |
-| `/check`         | User or auto | Run full lint + test + build validation          |
-| `/gen-test`      | User or auto | Generate tests following project conventions     |
-| `/new-api-route` | User or auto | Scaffold API route with auth/validation template |
-| `/new-component` | User or auto | Scaffold component + test file from templates    |
-| `/review-pr`     | User or auto | Orchestrate multi-agent PR review                |
+| Skill             | Invocation   | Purpose                                                                                                |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| `/check`          | User or auto | Run full lint + test + build validation                                                                |
+| `/gen-test`       | User or auto | Generate tests following project conventions                                                           |
+| `/manual-testing` | User or auto | Seed test data + post checkbox test plan to PR                                                         |
+| `/new-api-route`  | User or auto | Scaffold API route with auth/validation template                                                       |
+| `/new-component`  | User or auto | Scaffold component + test file from templates                                                          |
+| `/review-code`    | User or auto | Auto-fix loop: review → triage → fix → re-review until clean. `--review-only` / `--post` for read-only |
+| `/review-plan`    | User or auto | Review a draft plan/spec before implementing                                                           |
+| `/audit-debt`     | User or auto | Periodic full-repo debt sweep with prioritized backlog                                                 |
 
 ### Agents (`.claude/agents/`)
 
-| Agent               | Focus                                                                            |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `code-reviewer`     | Project convention adherence (exports, TypeScript, error handling, API patterns) |
-| `test-reviewer`     | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
-| `security-reviewer` | Auth bypass, MongoDB injection, IDOR, input validation                           |
-| `a11y-reviewer`     | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+| Agent                   | Focus                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `code-reviewer`         | Project convention adherence (exports, TypeScript, error handling, API patterns) |
+| `test-reviewer`         | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
+| `architecture-reviewer` | Layering, abstractions, module boundaries, complexity warnings                   |
+| `security-reviewer`     | Auth bypass, MongoDB injection, IDOR, input validation                           |
+| `a11y-reviewer`         | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+
+## Review Workflow
+
+All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-flag exclusions, and verification rules.
+
+| When                                   | Skill                                   | Output                                                                                                              |
+| -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Drafting a plan/spec                   | `/review-plan`                          | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER                                              |
+| End of subagent-driven-dev (before PR) | `/review-code` (branch mode)            | Auto-fix loop: fixes findings + commits locally until clean. `--review-only` for a read-only terminal report.       |
+| PR open                                | `/review-code pr <N>` or `/review-code` | Auto-fix loop on the PR's branch (commits locally, never pushes). `--post` posts inline findings read-only instead. |
+| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues                                                        |
+
+Each skill dispatches the same 5 specialist agents (architecture, code, security, a11y, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives.
 
 ## Git Workflow
 

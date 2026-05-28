@@ -26,9 +26,7 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
       // Sustainable fix: Only include source files, exclude all build artifacts
-      include: [
-        'src/**/*.{ts,tsx}',
-      ],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
         'src/types/**',
@@ -47,7 +45,11 @@ export default defineConfig({
       // Ensure coverage only processes source files, not compiled output
       all: false,
     },
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      '.claude/**/*.{test,spec}.ts',
+      'test/manual/**/*.{test,spec}.ts',
+    ],
     css: false,
   },
   resolve: {
@@ -56,5 +58,3 @@ export default defineConfig({
     },
   },
 });
-
-
