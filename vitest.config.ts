@@ -45,7 +45,11 @@ export default defineConfig({
       // Ensure coverage only processes source files, not compiled output
       all: false,
     },
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '.claude/**/*.{test,spec}.ts'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      '.claude/**/*.{test,spec}.ts',
+      'test/manual/**/*.{test,spec}.ts',
+    ],
     css: false,
   },
   resolve: {

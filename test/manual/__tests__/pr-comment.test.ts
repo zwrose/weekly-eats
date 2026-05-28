@@ -1,4 +1,8 @@
 // test/manual/__tests__/pr-comment.test.ts
+// @vitest-environment node
+// Pinned to Node env so vi.mock('node:child_process', ...) intercepts the named
+// `execFile` import cleanly. Under jsdom, vitest's CJS↔ESM interop for built-in
+// node modules drops the named export when only a partial mock is provided.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const exec = vi.fn();
