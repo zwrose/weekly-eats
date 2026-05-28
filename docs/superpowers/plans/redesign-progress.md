@@ -4,7 +4,7 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 - **Spec (roadmap):** `docs/superpowers/specs/2026-05-28-design-redesign-migration-design.md`
 - **Design bundle (reference):** `docs/design/weekly-eats-redesign/`
-- **Branch:** `claude-design-redesign` · **Beta:** `https://beta.weekly-eats.zamilyfam.com` (set up in Chunk 1)
+- **Branch:** `claude-design-redesign` · **Beta:** `https://beta.weekly-eats.zamilyfam.com` (infra set up in Chunk 1 — Vercel domain bound to branch, DNS live, OAuth + env wired)
 - **Draft PR:** [#89](https://github.com/zwrose/weekly-eats/pull/89) (long-lived, opened Chunk 1)
 - **Audit backlog:** `docs/debt-audit-2026-05-28.md` _(created in Chunk 0)_
 
@@ -31,7 +31,7 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 
 **Chunk 1 — Foundation: code done + reviewed + pushed; awaiting manual-verification gate, then tag.** All implementation landed on the branch (commits `8b0425d`…`ce605de`), `npm run check` green (132 files / 1334 tests), `/review-code --base redesign-chunk-00` exited clean (READY FOR PR; 1 auto-fix commit; 1 Minor deferred → #88). Draft PR #89 open, CI running. **Remaining before `done`:** (1) manual visual verification on localhost via Claude-in-Chrome (the gate — dark theme renders, Bricolage/Outfit + tabular nums, an icon glyph shows, Settings placeholder, unapproved→/pending-approval server-side); (2) tag `redesign-chunk-01`; (3) `gh issue close 83`; (4) flip this ledger to done. **Then Chunk 2 — Nav chrome.**
 
-**Vercel beta deployment (beta.weekly-eats.zamilyfam.com) is NOT yet set up** — deferred; it's manual Vercel/DNS/OAuth config (spec §1) the human must do. CI branch trigger is in place; beta wiring is outstanding (track as a Chunk-1 carryover, do before public dogfooding).
+**Vercel beta deployment — DONE.** `beta.weekly-eats.zamilyfam.com` added to the `weekly-eats` Vercel project and bound to branch `claude-design-redesign` (gitBranch); DNS CNAME → `ec2bda90c0efdc89.vercel-dns-017.com` live in Squarespace-managed Google Cloud DNS (`misconfigured:false`); OAuth redirect URI `…/api/auth/callback/google` added to the **prd** client. Branch-scoped env on the project: `NEXTAUTH_URL=https://beta…`, and overrides so beta mirrors prod — `MONGODB_URI`→prod DB (`weekly-eats-prd`), `GOOGLE_CLIENT_ID`/`SECRET`→prd client (mtua). `ABLY_API_KEY`/`NEXTAUTH_SECRET` inherited from Preview. **Decision: beta runs on the PROD DB + PROD OAuth client** (per spec §1 — real dogfooding; honor the destructive-path discipline). Squarespace has no DNS API/CLI; OAuth Web-client URIs are Console-only — both were manual one-time human steps.
 
 Per-chunk `review-code` uses `--base <prev-tag>` (now built into the skill). Chunk 2's base = `redesign-chunk-01` once tagged.
 
