@@ -88,4 +88,55 @@ describe('api/user/settings route', () => {
     const json = await res.json();
     expect(json.success).toBe(true);
   });
+
+  it('POST allowlists settings — never writes sharing invitation arrays (mass-assignment guard)', async () => {
+    (getServerSession as any).mockResolvedValueOnce({
+      user: { email: 'x@example.com', name: 'X' },
+    });
+    getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
+    updateOneMock.mockResolvedValueOnce({ acknowledged: true });
+    const res = await routes.POST(
+      makeReq('http://localhost/api/user/settings', {
+        settings: {
+          themeMode: 'dark',
+          // Forged grants that must never be persisted via this route:
+          recipeSharing: { invitations: [{ userId: 'attacker', status: 'accepted' }] },
+          mealPlanSharing: { invitations: [{ userId: 'attacker', status: 'accepted' }] },
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+
+    const update = updateOneMock.mock.calls[0][1];
+    // Dot-notation, allowlisted keys only — no whole-object `settings` write.
+    expect(update.$set).not.toHaveProperty('settings');
+    expect(update.$set['settings.themeMode']).toBe('dark');
+    const setKeys = Object.keys(update.$set);
+    expect(setKeys.some((k) => k.includes('Sharing'))).toBe(false);
+    expect(JSON.stringify(update)).not.toContain('attacker');
+  });
+
+  it('POST writes defaultMealPlanOwner when provided, unsets it when empty', async () => {
+    (getServerSession as any).mockResolvedValueOnce({
+      user: { email: 'x@example.com', name: 'X' },
+    });
+    getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
+    updateOneMock.mockResolvedValueOnce({ acknowledged: true });
+    await routes.POST(
+      makeReq('http://localhost/api/user/settings', {
+        settings: { themeMode: 'dark', defaultMealPlanOwner: 'owner-123' },
+      })
+    );
+    expect(updateOneMock.mock.calls[0][1].$set['settings.defaultMealPlanOwner']).toBe('owner-123');
+
+    (getServerSession as any).mockResolvedValueOnce({
+      user: { email: 'x@example.com', name: 'X' },
+    });
+    getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
+    updateOneMock.mockResolvedValueOnce({ acknowledged: true });
+    await routes.POST(
+      makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'dark' } })
+    );
+    expect(updateOneMock.mock.calls[1][1].$unset).toHaveProperty('settings.defaultMealPlanOwner');
+  });
 });

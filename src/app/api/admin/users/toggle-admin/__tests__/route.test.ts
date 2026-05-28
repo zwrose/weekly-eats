@@ -242,7 +242,7 @@ describe('api/admin/users/toggle-admin route', () => {
       expect(data.error).toBeDefined();
     });
 
-    it('POST handles invalid ObjectId format', async () => {
+    it('POST rejects an invalid ObjectId format with 400', async () => {
       (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
@@ -253,7 +253,7 @@ describe('api/admin/users/toggle-admin route', () => {
         })
       );
 
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(400);
     });
   });
 });

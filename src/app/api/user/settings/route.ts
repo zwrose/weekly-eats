@@ -61,14 +61,32 @@ export async function POST(request: NextRequest) {
     const db = client.db();
     const usersCollection = db.collection('users');
 
-    // Update user settings using ObjectId
+    // Allowlist only the display/behavior preferences this route owns, written
+    // with dot-notation so we never clobber sibling settings. The sharing
+    // invitation arrays (settings.mealPlanSharing / settings.recipeSharing) are
+    // deliberately NOT writable here — they are mutated only through the
+    // dedicated invite/accept routes — so a client cannot forge accepted
+    // invitations by POSTing a crafted settings object.
+    const setOps: Record<string, unknown> = {
+      'settings.themeMode': settings.themeMode,
+      updatedAt: new Date(),
+    };
+    const unsetOps: Record<string, unknown> = {};
+    if (
+      typeof settings.defaultMealPlanOwner === 'string' &&
+      settings.defaultMealPlanOwner.length > 0
+    ) {
+      setOps['settings.defaultMealPlanOwner'] = settings.defaultMealPlanOwner;
+    } else {
+      // Empty/undefined means "default to the current user" — clear any stored value.
+      unsetOps['settings.defaultMealPlanOwner'] = '';
+    }
+
     const result = await usersCollection.updateOne(
       { _id: userId },
       {
-        $set: {
-          settings,
-          updatedAt: new Date(),
-        },
+        $set: setOps,
+        ...(Object.keys(unsetOps).length > 0 ? { $unset: unsetOps } : {}),
         $setOnInsert: {
           email: session.user.email,
           name: session.user.name,
