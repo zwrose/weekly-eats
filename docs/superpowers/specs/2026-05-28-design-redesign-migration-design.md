@@ -12,6 +12,8 @@ Migrate the Weekly Eats app to a complete dark-first visual + interaction redesi
 
 Work happens on a long-lived `claude-design-redesign` branch deployed to a beta subdomain for dogfooding, landing surface-by-surface, with a test-hardening phase first. The branch merges to `main` as a single squash at the end.
 
+The design handoff bundle is committed at **`docs/design/weekly-eats-redesign/`** — the canonical reference for tokens (`design-system.md`), locked interactions (`edit-decisions.md`), nav (`nav-chrome.jsx`), the per-surface artboards/HTML, and the original design chat transcripts. Consult it when implementing each surface.
+
 ---
 
 ## Goals
@@ -214,12 +216,15 @@ The standing "rewritten components get rewritten tests" rule (§6 0e) is not eno
 
 ---
 
-## 5. End-of-chunk loop
+## 5. Per-chunk loop
 
-One-time setup is folded into Chunk 1: open the draft PR; extend `review-code` to accept a base-ref override (it currently hardcodes `main`/PR-base) without disturbing its `--post` / `--review-only` / loop paths; establish the `redesign-chunk-NN` tag convention; add the CI branch trigger; point local `.env.local` at a dedicated local dev DB (e.g. `weekly-eats-redesign-local`) so `manual-testing` seeds there, never prod.
+This spec is the stable roadmap; each chunk gets its own **just-in-time implementation plan** written at the start of that chunk (not all upfront — later chunks depend on the primitives earlier chunks actually produce). Plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`. Cross-chunk state lives in a **progress ledger** (§9), which is the compaction resume-anchor.
+
+One-time setup is folded into Chunk 1: open the draft PR; extend `review-code` to accept a base-ref override (it currently hardcodes `main`/PR-base) without disturbing its `--post` / `--review-only` / loop paths; establish the `redesign-chunk-NN` tag convention; add the CI branch trigger; point local `.env.local` at a dedicated local dev DB (e.g. `weekly-eats-redesign-local`) so `manual-testing` seeds there, never prod; create the progress ledger.
 
 Per chunk, in order:
 
+0. **Plan** — invoke `writing-plans` to write `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md` from this spec's scope for the chunk, against the _current_ state of the code. For the three interaction-heavy chunks (**3 Meal Plans, 4 Recipes, 5 Shopping**) run `/review-plan` on the chunk plan before implementing; smaller/mechanical chunks skip it. Update the ledger: mark the chunk in-progress.
 1. **Implement** the chunk in logical commits. `npm run check` green locally.
 2. **`review-code` (auto-fix loop), scoped to this chunk** — base = previous chunk tag (`redesign-chunk-(N-1)...HEAD`; Chunk 1 = `main...HEAD`). Review → triage → fix → re-review, committing fixes locally until no Critical/Important findings remain. Judgment calls surface via the skill's intervention prompts.
 3. **`npm run check`** again after review fixes.
@@ -228,20 +233,22 @@ Per chunk, in order:
 6. **Execute the chunk-qualification plan locally** — localhost + local dev DB, via the `verify` skill / Chrome, checking off the PR checklist. **This is the gate, not beta.**
 7. **Fold fixes** found during manual testing into the chunk; if substantial, re-run `review-code` (step 2) on the new delta.
 8. **Tag** `redesign-chunk-NN` once the checklist passes — this becomes the next chunk's review base.
-9. **Merge `main` → branch** (if main moved).
-10. **Compact context** (see §9) — write a one-paragraph handoff, then compact; the next context starts clean and re-reads the spec + plan.
+9. **Update the ledger** — mark the chunk done; record the tag, the plan-doc path, the PR test-comment link, and any decisions/carryovers learned mid-chunk that affect later chunks.
+10. **Merge `main` → branch** (if main moved).
+11. **Compact context** (see §9) — write a one-paragraph handoff, then compact; the next context starts clean and re-reads the spec + ledger (+ the next chunk's plan once written).
 
 **Definition of done (per chunk):**
 
+- Chunk plan written (and `/review-plan`'d for chunks 3–5).
 - `review-code` auto-fix loop exited clean (no Critical/Important remaining, or remaining ones explicitly skipped).
 - `npm run check` green.
 - Manual-test plan posted as its own slot comment **and** executed locally with the checklist passing.
-- Chunk tagged `redesign-chunk-NN`.
+- Chunk tagged `redesign-chunk-NN`; ledger updated.
 - CI green on the draft PR.
 
 **Beta (prod DB):** updated on every push for real-world dogfooding. Not a chunk gate; issues found there feed back as fixes into the current or a later chunk.
 
-**Chunk 0 exception:** no UI to manually test → it runs the loop without step 4/6 (manual-testing), but still gets `review-code`, `npm run check`, a tag (`redesign-chunk-00`), and compaction.
+**Chunk 0 exception:** §6 _is_ Chunk 0's plan, so it skips the separate `writing-plans` step (step 0); and with no UI to manually test it skips manual-testing (steps 4/6). It still gets `review-code`, `npm run check`, a tag (`redesign-chunk-00`), a ledger entry, and compaction.
 
 **Rollback:** if a chunk breaks beta and can't be quickly fixed, roll the Vercel beta alias back to the prior deploy (one click), then push a revert commit. `main` is untouched throughout, so prod _deploys_ are never affected. **Caveat:** alias rollback reverts the running code, not data already written to the shared prod DB — the "no write-logic changes" rule (a discipline rule, not an enforced guarantee) is what keeps that blast radius near zero, so honor it strictly and lean on the destructive-path smoke tests.
 
@@ -322,13 +329,23 @@ No schema, collection, or API changes. Surface → existing model mapping (from 
 
 **Principle: no critical state lives only in conversation context.** Durable artifacts that allow any chunk to resume cold:
 
-- this spec
-- the implementation plan (written next via writing-plans)
+- **this spec** — the stable design + chunk roadmap (the "constitution"; changes rarely)
+- **the progress ledger** (`docs/superpowers/plans/redesign-progress.md`) — the resume-anchor (see below)
+- **per-chunk plans** (`docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`) — tactical steps, written just-in-time
+- **the committed design bundle** (`docs/design/weekly-eats-redesign/`) — the canonical pixel/interaction reference (`design-system.md`, `edit-decisions.md`, `nav-chrome.jsx`, artboards, per-surface HTML, chat transcripts)
 - git tags `redesign-chunk-NN` (chunk boundaries + review bases)
 - the draft PR's per-chunk manual-test comments
 - the audit backlog (`docs/debt-audit-2026-05-28.md`)
 
-Because of this, the conversation is compacted at each chunk boundary (step 10 of the loop): write a one-paragraph handoff (chunk just finished, next chunk, branch/tag state, pointers to spec + plan), then compact. The next context starts clean and re-reads the spec + plan.
+**Progress ledger** (`docs/superpowers/plans/redesign-progress.md`) — the living dashboard, kept stable-spec-free so the spec stays the constitution. It holds what tags and PR comments don't:
+
+- a **chunk status table**: chunk · status (done / in-progress / pending) · tag · plan-doc link · PR test-comment link · date
+- a **decisions & carryovers log**: dated entries for things learned mid-flight that affect later chunks but aren't worth a spec rewrite (deviations, deferrals, cross-chunk gotchas)
+- a **next-up pointer**
+
+Updated in the loop: marked in-progress at step 0, marked done + appended at step 9. Git tags stay the objective truth; the ledger is the readable narrative.
+
+Because of this, the conversation is compacted at each chunk boundary (step 11 of the loop): write a one-paragraph handoff (chunk just finished, next chunk, branch/tag state, pointers to spec + ledger), then compact. The next context starts clean and re-reads the spec + ledger (+ the next chunk's plan once written).
 
 **Mid-chunk safety:** `review-code` and `audit-debt` are compaction-resumable by design — they re-read their session-dir `meta.json` + round artifacts from disk. The boundary handoff note covers the implementation work, which lacks that built-in.
 

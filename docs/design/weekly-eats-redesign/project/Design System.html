@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; }
+  body { font-family: 'Outfit', system-ui, sans-serif; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; letter-spacing:-0.01em; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, SFMono-Regular, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="artboards-ds-tokens.jsx"></script>
+<script type="text/babel" src="artboards-ds-specimen.jsx"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const { ColorsBoard, TypeBoard, ScaleBoard, PrimitivesBoard, DomainBoard } = window;
+  const W = 420, H = 1100;
+
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection
+          id="colors"
+          title="Colors"
+          subtitle="Role-named semantic tokens. Each renders here in both themes; same names used in code.">
+          <DCArtboard id="colors-dark"  label="Dark"  width={W} height={H} style={{ background:'#0f1115' }}><ColorsBoard theme="dark" /></DCArtboard>
+          <DCArtboard id="colors-light" label="Light" width={W} height={H} style={{ background:'#fafaf7' }}><ColorsBoard theme="light" /></DCArtboard>
+          <DCArtboard id="colors-notes" label="Notes" width={460} height={H}>
+            <Notes>
+              <h3>Naming</h3>
+              <p>Semantic: <code>surface</code>, <code>text</code>, <code>border</code>, <code>accent</code>, <code>success</code>, <code>danger</code>, <code>warn</code>, <code>meal</code>.</p>
+              <h4>Maps to theme.ts</h4>
+              <ul>
+                <li><code>surface.base</code> → <code>palette.background.default</code></li>
+                <li><code>surface.raised</code> → <code>palette.background.paper</code></li>
+                <li><code>text.primary</code>, <code>text.secondary</code> → <code>palette.text.*</code></li>
+                <li><code>accent.base</code> → <code>palette.primary.main</code></li>
+                <li><code>danger.base</code> → <code>palette.error.main</code></li>
+                <li><code>success.base</code> → <code>palette.success.main</code></li>
+                <li><code>warn.base</code> → <code>palette.warning.main</code></li>
+                <li><code>meal.*</code> → app palette (custom)</li>
+              </ul>
+              <h4>Section accents</h4>
+              <p>Each top-level area of the app gets its own accent, carrying the current app's per-section convention forward. Within a section, <code>accent.base</code> resolves to the section color.</p>
+              <h4>Contrast notes</h4>
+              <ul>
+                <li>Light <code>accent.base</code> (#2a6fdb) on white clears AAA.</li>
+                <li>Light meal colors are intentionally darker than dark mode's for ~4.5:1 contrast against <code>surface.raised</code>.</li>
+                <li>Test <code>accent.muted</code> at 10% in light mode — bump to 14% if too subtle.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection
+          id="type"
+          title="Typography"
+          subtitle="Bricolage Grotesque for display. Outfit for body. Tabular-nums for qty/counts.">
+          <DCArtboard id="type-dark"  label="Dark"  width={W} height={760} style={{ background:'#0f1115' }}><TypeBoard theme="dark" /></DCArtboard>
+          <DCArtboard id="type-light" label="Light" width={W} height={760} style={{ background:'#fafaf7' }}><TypeBoard theme="light" /></DCArtboard>
+          <DCArtboard id="type-notes" label="Notes" width={460} height={760}>
+            <Notes>
+              <h3>Scale conventions</h3>
+              <ul>
+                <li><code>display.*</code> — Bricolage, used for titles, day names, dialog headers.</li>
+                <li><code>body.*</code> — Outfit, default UI text and buttons.</li>
+                <li><code>label.*</code> — uppercased, tracked. Section kickers, field labels, meal-type letters.</li>
+              </ul>
+              <h4>Map to theme.ts variants</h4>
+              <ul>
+                <li><code>display.lg</code> → <code>h1</code></li>
+                <li><code>display.md</code> → <code>h2</code></li>
+                <li><code>display.sm</code> → <code>h3</code> / dialog titles</li>
+                <li><code>body.lg</code> → <code>body1</code> + buttons</li>
+                <li><code>body.md</code> → <code>body2</code></li>
+                <li><code>label.md</code> → <code>overline</code></li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection
+          id="scale"
+          title="Spacing & radii"
+          subtitle="4-base scale. Radii standardize at 6 sizes plus pill.">
+          <DCArtboard id="scale-dark"  label="Dark"  width={W} height={620} style={{ background:'#0f1115' }}><ScaleBoard theme="dark" /></DCArtboard>
+          <DCArtboard id="scale-light" label="Light" width={W} height={620} style={{ background:'#fafaf7' }}><ScaleBoard theme="light" /></DCArtboard>
+          <DCArtboard id="scale-notes" label="Notes" width={460} height={620}>
+            <Notes>
+              <h3>Spacing</h3>
+              <p>Use these instead of arbitrary values. Names are 4-based but include a <code>base</code> of 14 (default inner padding).</p>
+              <h4>Radii usage</h4>
+              <ul>
+                <li><code>xs/sm</code> — small swatches, inline tags</li>
+                <li><code>md</code> — chips, buttons, inputs (default)</li>
+                <li><code>lg</code> — bigger buttons, ghost icon buttons</li>
+                <li><code>xl/2xl</code> — card rows, day cards</li>
+                <li><code>3xl</code> — dialogs</li>
+                <li><code>sheet</code> — bottom sheet top edge</li>
+                <li><code>pill</code> — status chips, TODAY sliver text container</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection
+          id="primitives"
+          title="Primitives"
+          subtitle="Shallow set — every primitive used in the locked surfaces.">
+          <DCArtboard id="prim-dark"  label="Dark"  width={W} height={900} style={{ background:'#0f1115' }}><PrimitivesBoard theme="dark" /></DCArtboard>
+          <DCArtboard id="prim-light" label="Light" width={W} height={900} style={{ background:'#fafaf7' }}><PrimitivesBoard theme="light" /></DCArtboard>
+          <DCArtboard id="prim-notes" label="Notes" width={460} height={900}>
+            <Notes>
+              <h3>Variants</h3>
+              <ul>
+                <li><b>Button</b> — primary / ghost / danger. Heights 36 (compact) and 40 (default).</li>
+                <li><b>IconButton</b> — square ghost, 36×36 with <code>border.subtle</code>.</li>
+                <li><b>Chip</b> — selectable text pill. Selected uses <code>accent.muted</code> bg + <code>accent.base</code> border.</li>
+                <li><b>Input / Search</b> — 38px height. On focus: <code>accent.base/55</code> border + 3px <code>accent.muted</code> ring.</li>
+                <li><b>Toggle</b> — 36×22 switch with <code>accent.base</code> track when on.</li>
+                <li><b>Status pill</b> — small uppercase, status-colored. TODAY, ACCEPTED, PENDING all use the same shape.</li>
+                <li><b>Card</b> — <code>surface.raised</code> + <code>radius.2xl</code>. Today gets <code>accent.base/55</code> border + <code>shadow.card</code> halo.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection
+          id="domain"
+          title="Domain components"
+          subtitle="Meal row, staples bar, TODAY sliver, plan row. Shallow — only what's used in 2+ places.">
+          <DCArtboard id="dom-dark"  label="Dark"  width={500} height={620} style={{ background:'#0f1115' }}><DomainBoard theme="dark" /></DCArtboard>
+          <DCArtboard id="dom-light" label="Light" width={500} height={620} style={{ background:'#fafaf7' }}><DomainBoard theme="light" /></DCArtboard>
+          <DCArtboard id="dom-notes" label="Notes" width={500} height={620}>
+            <Notes>
+              <h3>Rationale per component</h3>
+              <p>A domain component earns its place only if it's used in 2+ surfaces and standardizing it removes a real ambiguity.</p>
+              <h4>Meal row — keep</h4>
+              <p>Used in: mobile plan view, desktop hero today, desktop week strip cells, edit sheet item rows. Four+ surfaces with shared rules: B/L/D color, recipe vs. food-item visual treatment, qty/unit chip layout. High value.</p>
+              <h4>Staples bar — keep</h4>
+              <p>Used in: mobile plan view, desktop plan view, template settings. Compound layout (kicker + group summary + count + pencil + chevron) is easy to get wrong from memory. Worth a single source of truth.</p>
+              <h4>Plan row — keep</h4>
+              <p>Used in: mobile index, desktop index, mobile history, desktop history. The now-halo treatment + emoji + sub-text layout repeats in 4 places.</p>
+              <h4>TODAY sliver — dropped</h4>
+              <p>Used in exactly one place (desktop plan view). Not reusable. Removed from the system; its visual lives where it's used.</p>
+              <h4>Day card, hero today, sharing card</h4>
+              <p>Compositions of the above + primitives. Not separate tokens — they're page-level layouts, not reusable atoms.</p>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

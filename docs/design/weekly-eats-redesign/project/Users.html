@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Users + Pending Approval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f0eee9; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; user-select:none; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx"></script>
+<script type="text/babel" src="artboards-users.jsx"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const {
+    UsersMobileList, UsersMobileConfirm, UsersMobilePending,
+    UsersDesktopList, UsersDesktopConfirm, UsersDesktopPending,
+  } = window;
+  const M = { w: 390, h: 844 };
+  const D = { w: 1440, h: 1080 };
+  const N = { w: 460, h: 844 };
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="m" title="Mobile · users + pending" subtitle="Admin-only user management + the gate screen new users see while waiting.">
+          <DCArtboard id="m-list"    label="Users list"        width={M.w} height={M.h} style={{ background:'#0f1115' }}><UsersMobileList /></DCArtboard>
+          <DCArtboard id="m-confirm" label="Confirm sheet"     width={M.w} height={M.h} style={{ background:'#0f1115' }}><UsersMobileConfirm /></DCArtboard>
+          <DCArtboard id="m-pending" label="Pending approval"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><UsersMobilePending /></DCArtboard>
+          <DCArtboard id="m-notes"   label="Notes"             width={N.w} height={M.h}>
+            <Notes>
+              <h3>What's here</h3>
+              <ul>
+                <li><b>Users list</b> — admin-only. Reached from the avatar menu (Manage users) when <code>isAdmin</code>. Two sections: Pending approval (cards with Approve/Deny) and Active users (cards with Admin pill + per-row actions).</li>
+                <li><b>Confirm sheet</b> — bottom sheet that fronts the confirm dialog used for every destructive/elevating action. Shows the target user inline so the action is concrete (not "Are you sure?" without context).</li>
+                <li><b>Pending approval</b> — the gate a new signed-in user sits behind until an admin approves them. No nav chrome, no escape — just the hourglass, the explanatory copy, and a Sign out button.</li>
+              </ul>
+
+              <h4>Status pills</h4>
+              <p>Four kinds, each used to flag a user's relationship to the system:</p>
+              <ul>
+                <li><b>Admin</b> — blue (<code>section.plans</code> color)</li>
+                <li><b>User</b> — neutral outlined (default state for active users)</li>
+                <li><b>You</b> — green (you in the active-users list, prevents self-modification)</li>
+                <li><b>Pending</b> — amber/warn (used in the section labels)</li>
+              </ul>
+
+              <h4>Mapping vs main</h4>
+              <ul>
+                <li><code>user-management/page.tsx</code> structure preserved: pending section, active section, confirm dialog. Search bar across both lists.</li>
+                <li><b>Action buttons compressed</b> — main has full <code>variant="outlined" + startIcon</code> MUI buttons. Re-themed as small color-tinted chips so the rows scan faster, and so the "Active users" row doesn't blow out horizontally with 2 buttons.</li>
+                <li><b>Self-row guard</b> — main hides actions for the current user; preserved (em-dash on desktop, no buttons block on mobile).</li>
+                <li><code>pending-approval/page.tsx</code> rewritten with a warmer, personalized greeting ("Hang tight, Maya") instead of "Account Pending Approval" + boilerplate.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="d" title="Desktop · users + pending" subtitle="Same surfaces, reflowed for the wider canvas.">
+          <DCArtboard id="d-list"    label="Users list"        width={D.w} height={D.h} style={{ background:'#0f1115' }}><UsersDesktopList /></DCArtboard>
+          <DCArtboard id="d-confirm" label="Confirm dialog"    width={D.w} height={D.h} style={{ background:'#0f1115' }}><UsersDesktopConfirm /></DCArtboard>
+          <DCArtboard id="d-pending" label="Pending approval"  width={D.w} height={D.h} style={{ background:'#0f1115' }}><UsersDesktopPending /></DCArtboard>
+          <DCArtboard id="d-notes"   label="Notes"             width={N.w} height={D.h}>
+            <Notes>
+              <h3>Desktop · what changed</h3>
+              <ul>
+                <li><b>Users list</b> — two stacked tables (Pending, Active) with role pill in its own column. Avatar disc rendered next to every name so the table reads as people, not rows.</li>
+                <li><b>Confirm dialog</b> — small centered dialog. Shows the target user (avatar + name + email) inside the body so the confirm copy reads natural ("Grant admin access?") rather than restating the user's name in the title.</li>
+                <li><b>Pending approval</b> — special chrome: just AppIcon + wordmark + Sign out. No top nav since the user has no access yet. Hourglass centered, headline split across two lines so the personalized name reads first.</li>
+              </ul>
+
+              <h4>Accent</h4>
+              <p>Cool slate (<code>#9aa4b3</code>) — same utility-cluster accent as Food Items and Settings. Admin role uses the Plans blue since "admin" is a role/permission concept, not the page's accent.</p>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

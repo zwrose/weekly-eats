@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Nav redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f0eee9; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; user-select: none; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="artboards-nav.jsx?v=1779742947575"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const { NavDesktop, NavDesktopAvatar, NavMobile, NavMobileAvatar, NavUtilityExploration, NavIconCompare } = window;
+  const M = { w: 390, h: 844 };
+  const D = { w: 1440, h: 900 };
+  const N = { w: 460, h: 700 };
+
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="icon" title="App icon"
+          subtitle="SVG redraw with new section colors, compared against the manifest PNG.">
+          <DCArtboard id="icon-compare" label="PNG → SVG" width={460} height={520} style={{ background:'#191b21' }}><NavIconCompare /></DCArtboard>
+        </DCSection>
+
+        <DCSection id="desktop" title="Desktop nav"
+          subtitle="App icon · wordmark · in-line icon+text items · avatar+name button.">
+          <DCArtboard id="d-nav"        label="Top bar"            width={D.w} height={120} style={{ background:'#0f1115' }}><NavDesktop /></DCArtboard>
+          <DCArtboard id="d-nav-avatar" label="Avatar menu open"   width={D.w} height={520} style={{ background:'#0f1115' }}><NavDesktopAvatar /></DCArtboard>
+        </DCSection>
+
+        <DCSection id="mobile" title="Mobile nav"
+          subtitle="Plans / Shop / Recipes / Avatar — Pantry moved to avatar menu (matches main).">
+          <DCArtboard id="m-nav"        label="Default"            width={M.w} height={M.h} style={{ background:'#0f1115' }}><NavMobile /></DCArtboard>
+          <DCArtboard id="m-nav-avatar" label="Avatar sheet open"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><NavMobileAvatar /></DCArtboard>
+        </DCSection>
+
+        <DCSection id="utility" title="Utility-cluster accent · exploration"
+          subtitle="Color for Food Items / Settings / User Mgmt. Should sit quieter than the four section accents.">
+          <DCArtboard id="util"  label="Options"  width={560} height={600} style={{ background:'#191b21' }}><NavUtilityExploration /></DCArtboard>
+          <DCArtboard id="util-notes" label="Notes" width={N.w} height={600}>
+            <Notes>
+              <h3>What changed (answers locked in)</h3>
+              <ul>
+                <li><b>App icon</b> — SVG redraw of <code>icon0.svg</code> + the manifest PNG. Black squircle with a fork and a calendar; the four squares carry the four section colors (Plans/Shop/Recipes/Pantry) — same logic as today.</li>
+                <li><b>Wordmark</b> — "Weekly Eats" in Bricolage 18, next to the icon. Same click target as the icon.</li>
+                <li><b>Desktop nav items</b> — <code>icon + text</code> with the icon colored in the section accent. Active state is a 2.5px bottom border in that color. Order: Plans / Shop / Recipes / <b>Pantry</b> (4 items, matches code).</li>
+                <li><b>Themed icons</b> — all stroke-based SVGs in our existing icon language (1.7 stroke, round caps, same as the trash + filter). No more emoji.</li>
+                <li><b>Desktop avatar</b> — circle + name, wrapped in a pill button so it reads as a control. Matches main's <code>avatar + name</code> pattern.</li>
+                <li><b>Mobile bottom nav</b> — 4 slots: Plans / Shop / Recipes / Avatar. <b>Labels kept</b> per your call. Pantry is NOT a bottom-nav slot — it's in the avatar menu, same as main.</li>
+                <li><b>Avatar menu</b> — popover on desktop, bottom sheet on mobile. Header with avatar + name + email. Items: Pantry · Manage food items · [Manage users, admin only] · Settings · — · Sign out. Icons inherit either the section color (Pantry uses pantry-lavender) or the utility-cluster accent.</li>
+                <li><b>Breadcrumb on Food Items / Settings</b> — replaced "‹ You" with a contextual back arrow ("‹ Back") that routes to wherever the user came from. No phantom parent page.</li>
+              </ul>
+
+              <h4>Utility-cluster accent — pick one</h4>
+              <p>The avatar-menu pages (Food Items, Settings, User Mgmt) used teal — too prominent. Four candidates to the left, all muted neutrals so they read as "system chrome", not a fifth section:</p>
+              <ul>
+                <li><b>Cool slate</b> <code>#9aa4b3</code> — my pick. Neutral, quiet, distinguishable. Reads as "the management cluster".</li>
+                <li><b>Warm taupe</b> <code>#b3a89b</code> — second-best. Slightly warmer character if cool slate feels cold.</li>
+                <li><b>Dusty rose</b> <code>#c4a5a5</code> — leans personality-forward. Risk: looks like a dimmed danger color.</li>
+                <li><b>Soft clay</b> <code>#b8957a</code> — warm but distinct from amber-Recipes. Possibly too close to that section's color.</li>
+              </ul>
+              <p>Once you pick, I'll lock it in and roll the new nav + chosen accent across <i>every</i> existing artboard (Plans, Recipes, Pantry, Food Items, Settings).</p>
+
+              <h4>Open question I didn't lock</h4>
+              <p>Pantry sits a little awkwardly in main — it's a top-level <b>desktop</b> nav item but lives in the <b>mobile</b> avatar menu. We're matching that split here, but it's inconsistent. Worth promoting Pantry to a 5th mobile nav slot, or demoting it on desktop too? Optional follow-up.</p>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

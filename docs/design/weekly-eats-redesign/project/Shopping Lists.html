@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Shopping Lists</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f0eee9; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; user-select:none; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx?v=1779844722377"></script>
+<script type="text/babel" src="artboards-shopping.jsx?v=1779844722377"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const {
+    ShoppingMobileStores, ShoppingMobileList, ShoppingMobileActions,
+    ShoppingMobileEditor, ShoppingMobileEditorEdit, ShoppingMobileImport,
+    ShoppingMobileConflict, ShoppingMobilePantry, ShoppingMobileCreate, ShoppingMobileShare,
+    ShoppingDesktopStores, ShoppingDesktopList, ShoppingDesktopEditor, ShoppingDesktopEditorEdit,
+    ShoppingDesktopPantry, ShoppingDesktopCreate, ShoppingDesktopImport, ShoppingDesktopShare,
+    ShoppingDesktopConflict, ShoppingDesktopFinish,
+  } = window;
+  const M = { w: 390, h: 844 };
+  const D = { w: 1440, h: 1080 };
+  const N = { w: 460, h: 844 };
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="m" title="Mobile · shopping" subtitle="Stores list, per-store list view with real-time presence, item editor, and the import + check + finish flows.">
+          <DCArtboard id="m-stores"  label="Stores list"          width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileStores /></DCArtboard>
+          <DCArtboard id="m-list"    label="Shopping list"        width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileList /></DCArtboard>
+          <DCArtboard id="m-actions" label="Actions sheet"        width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileActions /></DCArtboard>
+          <DCArtboard id="m-add"     label="Item editor · add"    width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileEditor /></DCArtboard>
+          <DCArtboard id="m-edit"    label="Item editor · edit"   width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileEditorEdit /></DCArtboard>
+          <DCArtboard id="m-import"  label="Import from plans"    width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileImport /></DCArtboard>
+          <DCArtboard id="m-conflict" label="Unit conflict"        width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileConflict /></DCArtboard>
+          <DCArtboard id="m-pantry"  label="Pantry check"         width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobilePantry /></DCArtboard>
+          <DCArtboard id="m-create"  label="Create store"         width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileCreate /></DCArtboard>
+          <DCArtboard id="m-share"   label="Share store"          width={M.w} height={M.h} style={{ background:'#0f1115' }}><ShoppingMobileShare /></DCArtboard>
+          <DCArtboard id="m-pill"    label="Live pill · states"   width={620} height={640} style={{ background:'#191b21' }}><ShoppingPillStates /></DCArtboard>
+          <DCArtboard id="m-notes"   label="Notes"                width={N.w} height={M.h}>
+            <Notes>
+              <h3>Mobile · what's here</h3>
+              <ul>
+                <li><b>Stores list</b> — index of stores (each store = its own shopping list). Pending invitations get a warm amber banner above your stores so they're not missed. Count of items to buy + last shop date per row.</li>
+                <li><b>Shopping list</b> — the working surface. Unchecked items on top, checked items dim-grouped at the bottom. Sticky "Finish shop" CTA. Presence avatars in the header when someone else is shopping the same store.</li>
+                <li><b>Actions sheet</b> — bottom sheet of contextual actions (Import / Pantry check / History / Share / Rename / Delete). One menu replaces the scattered icon buttons in main.</li>
+                <li><b>Item editor</b> — same sheet handles add and edit; edit mode reveals a Remove from list button at the bottom.</li>
+                <li><b>Import from plans</b> — pick recent meal plans (last 3 days + future) to merge into this store. Selected cards highlight in green.</li>
+                <li><b>Unit conflict</b> — stepper (1 of N). Shows the source breakdown + a suggested auto-convert. User can override quantity/unit before moving to the next conflict.</li>
+                <li><b>Pantry check</b> — items that overlap with your pantry, check off the ones you don't need to buy. Tinted green when marked for removal.</li>
+                <li><b>Create store</b> — emoji picker (compact 12-emoji grid) + name field, no separate emoji dialog.</li>
+                <li><b>Share store</b> — invite by email, shows current shared-with + pending invitations.</li>
+              </ul>
+
+              <h4>Presence</h4>
+              <p>Avatar cluster in the header when another user is connected to the same store. SSE/Ably-backed in main; visually a stacked avatar group with optional copy ("Sara is shopping too") on desktop.</p>
+
+              <h4>Drag handle</h4>
+              <p><code>drag_indicator</code> on the right of each row. Reorder unchecked items only — checked items are auto-sorted to the bottom. List position is persisted per item (matches main's "position memory").</p>
+
+              <h4>Mapping vs main</h4>
+              <ul>
+                <li><code>ShoppingLists</code> page collapses store list + list dialog into two distinct mobile surfaces.</li>
+                <li><code>ItemEditorDialog</code> reflowed as a full-screen page.</li>
+                <li>Shop Mode is gone — the unified list <i>is</i> shopping mode, matching main's recent collapse.</li>
+                <li><code>finishShop</code> behavior preserved — Finish shop button persists checked items to purchase history + clears them.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="d" title="Desktop · shopping" subtitle="Sidebar of stores + focused list on the right; dialogs for item editor, unit conflicts, and finish-shop confirm.">
+          <DCArtboard id="d-stores"   label="Stores list"        width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopStores /></DCArtboard>
+          <DCArtboard id="d-list"     label="Shopping list"      width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopList /></DCArtboard>
+          <DCArtboard id="d-editor"   label="Item editor · add"   width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopEditor /></DCArtboard>
+          <DCArtboard id="d-editor-edit" label="Item editor · edit" width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopEditorEdit /></DCArtboard>
+          <DCArtboard id="d-pantry"   label="Pantry check"       width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopPantry /></DCArtboard>
+          <DCArtboard id="d-create"   label="Create store"       width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopCreate /></DCArtboard>
+          <DCArtboard id="d-import"   label="Import from plans"  width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopImport /></DCArtboard>
+          <DCArtboard id="d-share"    label="Share store"        width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopShare /></DCArtboard>
+          <DCArtboard id="d-conflict" label="Unit conflict"      width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopConflict /></DCArtboard>
+          <DCArtboard id="d-finish"   label="Finish shop"        width={D.w} height={D.h} style={{ background:'#0f1115' }}><ShoppingDesktopFinish /></DCArtboard>
+          <DCArtboard id="d-notes"    label="Notes"              width={N.w} height={D.h}>
+            <Notes>
+              <h3>Desktop · what changed</h3>
+              <ul>
+                <li><b>Stores list</b> — table with columns: <i>Emoji · Name · To buy · Shared with · Last shop · ›</i>. Pending invitation gets a banner at the top of the table area, not nested inside a dialog like main.</li>
+                <li><b>Shopping list</b> — two-pane: sidebar of stores (active store highlighted, count badge) + the working list on the right. Replaces the modal dialog pattern in main with a real route. Action buttons grouped in the header (Import / Pantry / More).</li>
+                <li><b>Item editor</b> — 480px centered dialog. Same fields as mobile but a single row for qty + unit.</li>
+                <li><b>Unit conflict</b> — 560px dialog with a stepper header (1 of N). Source breakdown listed with their origin (which meal plan, or "already in list"). Auto-convert pill calls out a suggested unified value.</li>
+                <li><b>Finish shop confirm</b> — small centered dialog with the green done-all icon. Reads as "save trip" not "delete" — emphasizes the positive side of the action (history is being recorded).</li>
+              </ul>
+
+              <h4>Accent</h4>
+              <p>Shopping uses green (<code>#6fcf97</code>) per <code>section.shop</code>. The page header doesn't have a kicker — title is just "Shopping" (or the store name on the list page), matching the pattern we use elsewhere.</p>
+
+              <h4>Cross-section colors</h4>
+              <ul>
+                <li><b>Meal plans</b> (blue) for import-from-plans affordances</li>
+                <li><b>Pantry</b> (lavender) for pantry-check affordance</li>
+                <li><b>Recipes</b> not directly involved here — ingredients flow through meal plans</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
