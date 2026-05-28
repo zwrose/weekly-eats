@@ -76,7 +76,7 @@ In rough order of severity impact (highest first):
 - Layering nits in test files — test setup, mocks, and fixtures can be pragmatic. Tests don't need the same separation of concerns as production code.
 - Concerns owned by `code-reviewer` (naming, exports, error constants, file naming, `@/` aliases, TypeScript `as` casts).
 - Concerns owned by `security-reviewer` (auth-bypass, ownership-scope). You _may_ flag the _architectural shape_ of an auth check ("this belongs in middleware, not duplicated across handlers"); you may NOT flag a missing auth check — that's security's job.
-- Concerns owned by `a11y-reviewer` (ARIA, keyboard nav, contrast) and `test-reviewer` (mock patterns, coverage).
+- Concerns owned by `test-reviewer` (mock patterns, coverage). Accessibility is out of scope for this app entirely (per `REVIEW.md`); there is no a11y reviewer.
 - Performance micro-optimizations without evidence the path is hot — per `REVIEW.md` global exclusions.
 - Anything else excluded by `REVIEW.md`'s global "Do NOT Flag" list.
 
