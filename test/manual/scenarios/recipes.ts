@@ -41,20 +41,31 @@ const documentation: BlockDocumentation = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const PLACEHOLDER_IDS = ['placeholder-food-1', 'placeholder-food-2', 'placeholder-food-3'];
+// Must be valid 24-char hex strings: with no foodItemsRef these land in ingredient.id, and the
+// recipe-detail route (recipes/[id]/route.ts) calls ObjectId.createFromHexString(id) without an
+// isValid guard — a non-hex value throws → HTTP 500. They won't resolve to real food items
+// (ingredient name stays as stored), but they won't crash the detail route.
+const PLACEHOLDER_IDS = [
+  '000000000000000000000001',
+  '000000000000000000000002',
+  '000000000000000000000003',
+];
 
 function buildIngredients(
   index: number,
   foodItemValues: ObjectId[]
 ): Array<{
-  ingredients: Array<{ type: 'foodItem'; id: ObjectId | string; quantity: number; unit: string }>;
+  ingredients: Array<{ type: 'foodItem'; id: string; quantity: number; unit: string }>;
 }> {
   const pool = foodItemValues.length > 0 ? foodItemValues : PLACEHOLDER_IDS;
   // Each recipe gets 1-3 ingredients, cycled from the pool
   const ingredientCount = (index % 3) + 1;
   const ingredients = Array.from({ length: ingredientCount }, (_, j) => ({
     type: 'foodItem' as const,
-    id: pool[(index + j) % pool.length],
+    // Store the ingredient id as a hex STRING (how the app persists it). ObjectId values from
+    // foodItemsRef must be coerced — the recipe-detail route does ObjectId.createFromHexString(id),
+    // which throws (→ 500) on a BSON ObjectId. Real app recipes store the id as a string.
+    id: String(pool[(index + j) % pool.length]),
     quantity: j + 1,
     unit: 'cup',
   }));
@@ -167,4 +178,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-
