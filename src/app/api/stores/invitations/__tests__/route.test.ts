@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -33,7 +34,7 @@ describe('api/stores/invitations route', () => {
     });
 
     it('returns pending invitations for the user', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       toArrayMock.mockResolvedValueOnce([
         {
           _id: { toString: () => 'store1' },
@@ -55,7 +56,7 @@ describe('api/stores/invitations route', () => {
     });
 
     it('filters out stores with no matching pending invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       toArrayMock.mockResolvedValueOnce([
         {
           _id: { toString: () => 'store2' },
@@ -69,8 +70,14 @@ describe('api/stores/invitations route', () => {
       expect(json).toHaveLength(0);
     });
 
+    it('returns 403 when the user is not approved', async () => {
+      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      const res = await routes.GET();
+      expect(res.status).toBe(403);
+    });
+
     it('returns 500 when DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       toArrayMock.mockRejectedValueOnce(new Error('db down'));
       const res = await routes.GET();
       expect(res.status).toBe(500);
