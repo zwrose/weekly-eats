@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { approvedSession, unapprovedSession } from '@/test-utils/session';
+import { approvedSession } from '@/test-utils/session';
 
 const requireApprovedSessionMock = vi.fn();
 const getUserObjectIdMock = vi.fn();
