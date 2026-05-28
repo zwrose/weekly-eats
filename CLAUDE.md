@@ -192,13 +192,12 @@ PreToolUse hooks block edits to protected files:
 
 ### Agents (`.claude/agents/`)
 
-| Agent                   | Focus                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `code-reviewer`         | Project convention adherence (exports, TypeScript, error handling, API patterns) |
-| `test-reviewer`         | Test quality (mock patterns, fetch mocking, cleanup, coverage)                   |
-| `architecture-reviewer` | Layering, abstractions, module boundaries, complexity warnings                   |
-| `security-reviewer`     | Auth bypass, MongoDB injection, IDOR, input validation                           |
-| `a11y-reviewer`         | ARIA, keyboard nav, focus management, contrast, semantic HTML                    |
+| Agent                   | Focus                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code-reviewer`         | Project convention adherence (exports, TypeScript, error handling, API patterns) + narrow self-usability (keyboard/focus/contrast that breaks the app for the user) |
+| `test-reviewer`         | Test quality (mock patterns, fetch mocking, cleanup, coverage)                                                                                                      |
+| `architecture-reviewer` | Layering, abstractions, module boundaries, complexity warnings                                                                                                      |
+| `security-reviewer`     | Auth bypass, MongoDB injection, IDOR, input validation                                                                                                              |
 
 ## Review Workflow
 
@@ -211,7 +210,7 @@ All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-
 | PR open                                | `/review-code pr <N>` or `/review-code` | Auto-fix loop on the PR's branch (commits locally, never pushes). `--post` posts inline findings read-only instead. |
 | Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues                                                        |
 
-Each skill dispatches the same 5 specialist agents (architecture, code, security, a11y, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives.
+Each skill dispatches the same 4 specialist agents (architecture, code, security, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives. When a skill presents findings for your decision, the orchestrator attaches its own POV (Fix / Skip / Defer + rationale + confidence) per `REVIEW.md`.
 
 ## Git Workflow
 
