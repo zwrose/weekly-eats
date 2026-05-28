@@ -1,11 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   formatDateForAPI,
   calculateEndDate,
   calculateEndDateAsString,
   generateMealPlanNameFromString,
   getNextDayOfWeek,
+  dayOfWeekToIndex,
+  getNextDayOfWeekAsString,
+  getTodayAsString,
 } from '../date-utils';
+import type { DayOfWeek } from '../../types/meal-plan';
 
 describe('date-utils', () => {
   it('formats date to API string yyyy-MM-dd', () => {
@@ -33,5 +37,52 @@ describe('date-utils', () => {
     expect(nextFri.getDay()).toBe(5);
     const nextSun = getNextDayOfWeek(date, 0);
     expect(nextSun.getDay()).toBe(0);
+  });
+});
+
+describe('dayOfWeekToIndex', () => {
+  it.each([
+    ['sunday', 0],
+    ['monday', 1],
+    ['tuesday', 2],
+    ['wednesday', 3],
+    ['thursday', 4],
+    ['friday', 5],
+    ['saturday', 6],
+  ] as [DayOfWeek, number][])('maps %s to index %i', (day, expected) => {
+    expect(dayOfWeekToIndex(day)).toBe(expected);
+  });
+
+  it('returns 0 for an invalid input', () => {
+    expect(dayOfWeekToIndex('not-a-day' as DayOfWeek)).toBe(0);
+  });
+});
+
+describe('getNextDayOfWeekAsString and getTodayAsString (fake timers)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('returns today when today is the target day', () => {
+    // 2024-03-01 is a Friday (getDay === 5)
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-03-01T08:00:00'));
+
+    expect(getNextDayOfWeekAsString(5)).toBe('2024-03-01');
+  });
+
+  it('wraps to next week (+7) when today is after the target day', () => {
+    // Friday 2024-03-01; target is Thursday (4), which already passed this week
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-03-01T08:00:00'));
+
+    expect(getNextDayOfWeekAsString(4)).toBe('2024-03-07');
+  });
+
+  it('getTodayAsString equals formatDateForAPI(new Date()) under a pinned clock', () => {
+    vi.useFakeTimers();
+    const now = new Date('2024-03-01T08:00:00');
+    vi.setSystemTime(now);
+
+    expect(getTodayAsString()).toBe(formatDateForAPI(new Date()));
+    expect(getTodayAsString()).toBe('2024-03-01');
   });
 });
