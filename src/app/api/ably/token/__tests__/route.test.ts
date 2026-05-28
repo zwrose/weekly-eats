@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+const requireApprovedSessionMock = vi.fn();
+vi.mock('@/lib/user-utils', () => ({
+  requireApprovedSession: (...args: any[]) => requireApprovedSessionMock(...args),
+}));
 
 // Capture the options passed to createTokenRequest so we can assert on capability scoping.
 const createTokenRequestMock = vi.fn();
@@ -22,14 +25,13 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
 const mockStores = (stores: { _id: { toString: () => string } }[]) =>
   storesFindMock.mockReturnValueOnce({ toArray: () => Promise.resolve(stores) });
 
 beforeEach(() => {
-  (getServerSession as any).mockReset();
+  requireApprovedSessionMock.mockReset();
   createTokenRequestMock.mockReset();
   storesFindMock.mockReset();
   process.env.ABLY_API_KEY = 'test-key';
@@ -41,14 +43,25 @@ beforeEach(() => {
 
 describe('api/ably/token route', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    });
     const res = await routes.GET();
     expect(res.status).toBe(401);
     expect(createTokenRequestMock).not.toHaveBeenCalled();
   });
 
+  it('returns 403 when user is not approved', async () => {
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }),
+    });
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+    expect(createTokenRequestMock).not.toHaveBeenCalled();
+  });
+
   it('scopes the token capability to only the user accessible store channels', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({ session: approvedSession({ id: 'u1' }) });
     mockStores([{ _id: { toString: () => 'storeA' } }, { _id: { toString: () => 'storeB' } }]);
 
     const res = await routes.GET();
@@ -66,7 +79,7 @@ describe('api/ably/token route', () => {
   });
 
   it('queries stores the user owns OR holds an accepted invitation to', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({ session: approvedSession({ id: 'u1' }) });
     mockStores([]);
     await routes.GET();
     const filter = storesFindMock.mock.calls[0][0];
@@ -77,7 +90,7 @@ describe('api/ably/token route', () => {
   });
 
   it('falls back to a private user-scoped channel when the user has no stores', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({ session: approvedSession({ id: 'u1' }) });
     mockStores([]);
 
     const res = await routes.GET();

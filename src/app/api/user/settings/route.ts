@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../lib/mongodb';
 import { DEFAULT_USER_SETTINGS } from '../../../../lib/user-settings';
-import { getUserObjectId } from '../../../../lib/user-utils';
-import { AUTH_ERRORS, API_ERRORS, USER_ERRORS, SETTINGS_ERRORS, logError } from '@/lib/errors';
+import { getUserObjectId, requireApprovedSession } from '../../../../lib/user-utils';
+import { API_ERRORS, USER_ERRORS, SETTINGS_ERRORS, logError } from '@/lib/errors';
 
 export async function GET() {
   try {
-    const session = await getServerSession();
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const userId = await getUserObjectId(session.user.email);
     if (!userId) {
@@ -40,11 +36,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const userId = await getUserObjectId(session.user.email);
     if (!userId) {
