@@ -11,12 +11,7 @@ const findMock = vi.fn(() => ({ toArray: toArrayMock }));
 vi.mock('@/lib/mongodb', () => ({
   getMongoClient: vi.fn(async () => ({
     db: () => ({
-      collection: (name: string) => {
-        if (name === 'users') {
-          return { findOne: findOneMock, find: findMock };
-        }
-        return { findOne: findOneMock, find: findMock };
-      },
+      collection: () => ({ findOne: findOneMock, find: findMock }),
     }),
   })),
 }));

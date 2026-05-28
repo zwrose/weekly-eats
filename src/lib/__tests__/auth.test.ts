@@ -69,4 +69,37 @@ describe('jwt callback', () => {
     expect(result.isAdmin).toBe(false);
     expect(result.isApproved).toBe(false);
   });
+
+  it('caches isAdmin/isApproved from the DB user on signIn', async () => {
+    const findOne = vi.fn().mockResolvedValue({ isAdmin: true, isApproved: true });
+    mockGetMongoClient.mockResolvedValue({
+      db: () => ({ collection: () => ({ findOne }) }),
+    });
+    const token = { email: 'admin@example.com' } as JWT;
+
+    const result = await callbacks.jwt!({
+      token,
+      trigger: 'signIn',
+    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
+
+    expect(findOne).toHaveBeenCalledWith({ email: 'admin@example.com' });
+    expect(result.isAdmin).toBe(true);
+    expect(result.isApproved).toBe(true);
+  });
+
+  it('coerces missing DB user fields to false (no implicit admin/approval)', async () => {
+    const findOne = vi.fn().mockResolvedValue(null);
+    mockGetMongoClient.mockResolvedValue({
+      db: () => ({ collection: () => ({ findOne }) }),
+    });
+    const token = { email: 'ghost@example.com' } as JWT;
+
+    const result = await callbacks.jwt!({
+      token,
+      trigger: 'signIn',
+    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
+
+    expect(result.isAdmin).toBe(false);
+    expect(result.isApproved).toBe(false);
+  });
 });
