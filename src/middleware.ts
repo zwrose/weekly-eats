@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { AUTH_ERRORS } from '@/lib/errors';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -37,7 +38,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // User is authenticated, allow access
+  // Interim server-side approval gate (beta runs against the shared prod DB).
+  // Admins are exempt; mirrors the client-side use-approval-status logic.
+  const isApproved = token.isApproved === true || token.isAdmin === true;
+  if (!isApproved) {
+    // Keep the approval poll + the pending page reachable so an approved-mid-session
+    // user can still be un-gated by the client hook.
+    if (pathname === '/pending-approval' || pathname === '/api/user/approval-status') {
+      return NextResponse.next();
+    }
+    // Don't redirect API calls to an HTML page — return a JSON 403.
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/pending-approval';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // User is authenticated and approved, allow access
   return NextResponse.next();
 }
 
