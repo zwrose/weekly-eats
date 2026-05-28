@@ -54,6 +54,24 @@ If a justification is plausible but unverifiable (e.g., "this is intentional bec
 - **Important / Critical:** no cap. These are load-bearing; cap them and you suppress signal.
 - **Minor:** uncapped, but each finding must still pass verification rules. If you find yourself reporting >10 Minors, dedupe — they're often facets of the same underlying issue.
 
+## Triage Rubric (auto-fix loop)
+
+`/review-code`'s default auto-fix loop classifies every finding as `auto_fix` or `needs_user` via a triage subagent that reads this rubric. **Bias hard toward `auto_fix`** — the user's default is "fix everything that doesn't have a good reason not to fix." A finding is `needs_user` only when the _fix_ (not merely the surface area it touches) involves judgment.
+
+A finding → **`needs_user`** when ANY of:
+
+- `tradeoff: true` is set on the finding (multiple valid fix approaches). Authoritative — always defer.
+- The fix is a **UX judgment call**: user-visible copy/wording, layout or visual change, interaction-model choice, empty/error-state design — AND more than one reasonable design exists.
+- The fix would **change established product behavior** in a way the user may have an opinion on.
+
+A finding → **`auto_fix`** when the fix is **mechanical / determinate**, e.g.:
+
+- Add a missing `userId` filter; add an `ObjectId.isValid()` guard; replace a hardcoded string with an error constant from `@/lib/errors`.
+- Add an `aria-label` to an icon button; add a `KeyboardSensor`; fix a focus-order bug with one correct answer.
+- Add a missing test; fix a clear logic bug.
+
+Decisive UX example: **"add an aria-label to this icon button"** is mechanical → `auto_fix`. **"this modal's focus trap fights the drawer — pick an interaction model"** is a judgment call → `needs_user`. Read the cited code to tell them apart.
+
 ## Findings Output Format
 
 All agents emit findings as JSON arrays at the path specified by the dispatching skill:
@@ -68,7 +86,8 @@ All agents emit findings as JSON arrays at the path specified by the dispatching
     "file": "<path relative to repo root>",
     "line": <number or null>,
     "body": "<detailed explanation with code references>",
-    "suggestion": "<what to do, or null>"
+    "suggestion": "<what to do, or null>",
+    "tradeoff": <true only if multiple valid fix approaches exist; omit otherwise>
   }
 ]
 ```
