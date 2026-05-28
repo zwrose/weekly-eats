@@ -36,8 +36,11 @@ can read it without a database query.
 1. **Enforcement layering:** Both — central middleware gate **and** a shared
    per-handler helper.
 2. **Stale-token handling:** Option 1 — refresh the token via NextAuth's
-   `session.update()` when the pending-approval page detects approval. Preserves
-   the JWT caching design; costs one DB read only at the moment of approval.
+   `session.update()` when approval is detected. The polling + `update()` +
+   redirect loop **already exists** in `src/lib/use-approval-status.ts` (mounted
+   via `AuthenticatedLayout`); the only change required is fixing the `jwt`
+   callback to honor the `update` trigger (see §3). Preserves the JWT caching
+   design; costs one DB read only at the moment of approval.
 
 ## Architecture
 
@@ -45,8 +48,12 @@ Three coordinated pieces plus tests.
 
 ### 1. Middleware gate — `src/middleware.ts` (primary, central)
 
-After the existing `if (!token)` redirect block, add an approval check using the
-JWT's `token.isApproved` (no DB query). Behavior branches by request type:
+Insert the approval check **after** the existing `if (!token)` redirect block
+**and after** the exempt short-circuit (`middleware.ts:12-21`), so `/api/auth/*`
+(sign-out, session) keeps working for pending users. The gate condition is
+`token.isApproved !== true` (not `=== false`) so a token minted before the claim
+existed fails closed. It reads the JWT's `token.isApproved` (no DB query) and
+branches by request type:
 
 - **API requests** (`pathname.startsWith('/api/')`) → `403` JSON
   `{ error: AUTH_ERRORS.FORBIDDEN }`.
@@ -61,11 +68,9 @@ they are never blocked):
   `/api/auth/*`, `/_next/*`, `/static/*`, `/manifest.json`, any path containing
   `.`).
 
-**Edge-runtime note:** confirm `@/lib/errors` is edge-safe before importing
-`AUTH_ERRORS` into middleware (it should be — plain constants and a `logError`
-function with no Node built-ins at module load). If it is not edge-safe, move the
-needed constant into an edge-safe module rather than hardcoding the string
-(project convention: never hardcode error strings).
+**Edge-runtime note:** `@/lib/errors` is confirmed edge-safe (plain constant
+objects + a `console.error`-based `logError`, no Node built-ins at module load),
+so import `AUTH_ERRORS` from `@/lib/errors` into middleware directly.
 
 ### 2. Shared API helper — `requireApprovedSession()` (defense-in-depth)
 
@@ -107,44 +112,73 @@ The helper is the second layer: even though middleware already blocks `/api/*`
 for unapproved users, the helper guarantees a correct `403` if the middleware
 matcher ever changes or a path slips through.
 
-### 3. Token refresh on approval — `src/app/pending-approval/page.tsx`
+**Placement note:** the helper returns an HTTP `NextResponse` from
+`user-utils.ts`, which today holds pure data logic. This is acceptable (the file
+already imports `getServerSession`), but the discriminated `{ session, error }`
+shape must be applied **uniformly** across every route in the set above — not
+partially — so the gating is consistent and greppable.
 
-Today the page relies on `useSession()` and the cached token, which never
-refreshes mid-session — so an approved user stays stuck until manual re-login.
-`/api/user/approval-status` exists but currently has no consumer. This wires it
-up:
+### 3. Token refresh on approval — `src/lib/auth.ts` (required fix)
 
-- Poll `/api/user/approval-status` on an interval (~10s) — a fresh DB read that
-  bypasses the stale token.
-- When it returns `isApproved: true`, call `update()` from `useSession()`. This
-  fires the `jwt` callback with `trigger === 'update'`, which `auth.ts:21`
-  already handles by re-reading `isApproved` from the DB into the token.
-- Then redirect to `/meal-plans`. Middleware now sees a fresh
-  `isApproved: true` — no bounce-back loop.
+The client side of this already exists and needs **no new code**:
+`src/lib/use-approval-status.ts` (mounted via `AuthenticatedLayout`, which the
+pending-approval page renders) already polls `/api/user/approval-status` every
+60s, calls `update({ isApproved: true })` on the approve transition, redirects to
+`/meal-plans`, and handles the reverse (approved → unapproved) demotion to
+`/pending-approval`. So the pending-approval page itself needs no polling added.
 
-`src/lib/auth.ts` needs no change if the `update` trigger already re-reads
-`isApproved` (it does — line 21 includes `trigger === 'update'` via the
-`token.isAdmin === undefined` / signIn / signUp / update guard). Verify during
-implementation; only adjust if the guard excludes the update path.
+The bug is server-side. `update()` fires the `jwt` callback with
+`trigger === 'update'`, but the callback's guard
+(`src/lib/auth.ts:21`) is `trigger === 'signIn' || trigger === 'signUp' ||
+token.isAdmin === undefined` — it has **no `update` branch**. After sign-in
+`token.isAdmin` is defined, so `update()` never re-reads `isApproved` and the
+token stays stale. Today that's invisible (nothing enforces `isApproved`
+server-side); once the middleware gate lands, the stale token bounces the
+just-approved user straight back to `/pending-approval` — the redirect loop.
 
-Stop the polling interval on unmount and once approval is detected.
+**Required change:** add `trigger === 'update'` to the `jwt` callback's re-read
+branch so the token is refreshed from the database. The re-read must query the
+DB by `token.email` (authoritative) — it must **not** merge the client-supplied
+`update({ isApproved: true })` payload into the token, or a malicious client
+could self-approve. Re-reading both `isApproved` and `isAdmin` from the DB keeps
+the value trustworthy.
+
+After the fix: poll detects approval → `update()` → `jwt` callback re-reads
+`isApproved: true` from the DB → redirect → middleware sees a fresh approved
+token. No loop.
 
 ### 4. Testing
 
-- **`src/__tests__/middleware.test.ts` (new):**
-  - unapproved token → `403` on `/api/meal-plans`
+- **`src/__tests__/middleware.test.ts` (new).** No test in the project currently
+  mocks `getToken`, and there is no `middleware.test.ts` precedent, so the harness
+  must be built: mock `getToken` from `next-auth/jwt`, construct a `NextRequest`
+  with the target URL, and assert the response (redirect = 307 + `location`
+  header for page paths; 403 JSON body for `/api/*` paths). Add a
+  `// @vitest-environment node` docblock if the default jsdom env can't construct
+  the request. Cases:
+  - unapproved token → `403` JSON on `/api/meal-plans`
   - unapproved token → redirect to `/pending-approval` on `/recipes`
-  - exempt paths (`/pending-approval`, `/api/user/approval-status`) pass through
-    for an unapproved token
+  - `isApproved: undefined` token → treated as unapproved (fail-closed)
+  - exempt passthrough for an unapproved token: `/api/user/approval-status`,
+    `/pending-approval`, **and** `/api/auth/*` (sign-out must keep working)
   - approved token → passes through
   - no token → redirect to `/` (existing behavior preserved)
+- **`jwt` callback unit test:** `trigger === 'update'` re-reads `isApproved` from
+  the DB and **ignores** the client-supplied `update()` payload (proves no
+  self-approval).
+- **`useApprovalStatus` hook test (currently untested):** poll returns
+  `isApproved: true` → `update()` called → redirect to `/meal-plans`; and the
+  reverse demotion (`true → false`) → redirect to `/pending-approval`.
 - **Helper unit tests:** `401` (no session), `403` (unapproved), pass-through
-  (approved).
-- **Representative route tests:** add an "unapproved → 403" case to a couple of
-  data routes (e.g. meal-plans, recipes) to lock in the helper wiring; update any
-  existing route tests whose session mocks omit `isApproved: true`.
-- **Pending-approval page test:** poll returns approved → `update()` called →
-  redirect to `/meal-plans`.
+  (approved); cover `isApproved` **absent vs. `false`**. Mock `@/lib/mongodb` and
+  `@/lib/mongodb-adapter` (the latter is imported transitively via `auth.ts`).
+- **Route-test migration (core work, not an afterthought).** ~18 route test files
+  mock `{ user: { id: 'u1' } }` with no `isApproved`; once the helper enforces
+  `isApproved !== true`, all their success-path tests would flip to `403`.
+  Introduce a single shared approved-session fixture (e.g. `approvedSession()`)
+  and apply it across all affected route test files, rather than editing each ad
+  hoc. Add at least one explicit "unapproved → 403" case (e.g. meal-plans,
+  recipes) to lock in the helper wiring.
 
 Follow the project's test conventions (`docs/testing.md`): mock `next-auth/next`
 and `@/lib/mongodb`; when mocking `@/lib/errors`, include all constant groups the
@@ -152,12 +186,13 @@ route uses.
 
 ## Risks & mitigations
 
-| Risk                                                                          | Mitigation                                                                                                                        |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Redirect loop (stale token bounces approved user back to `/pending-approval`) | Option 1 token refresh via `update()` before redirect; `/pending-approval` and `/api/user/approval-status` exempted in middleware |
-| `@/lib/errors` not edge-safe, breaking middleware build                       | Verify edge-safety; relocate the constant to an edge-safe module if needed (no hardcoded strings)                                 |
-| Existing route tests fail because session mocks lack `isApproved`             | Audit and update affected mocks as part of the change                                                                             |
-| Pending-approval page breaks if its layout makes API calls                    | Verified: `AuthenticatedLayout` makes no API calls and renders no avatar; page only needs `/api/auth/session` (exempt)            |
+| Risk                                                                          | Mitigation                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Redirect loop (stale token bounces approved user back to `/pending-approval`) | Fix the `jwt` callback to re-read `isApproved` on the `update` trigger (§3); `/pending-approval` and `/api/user/approval-status` exempted in middleware                                                                            |
+| Self-approval via the `update()` payload                                      | The `jwt` callback re-reads `isApproved` from the DB by `email`; it never trusts the client-supplied `update({ isApproved })` value                                                                                                |
+| `~18 route test success paths flip to 403` once the helper enforces approval  | Introduce a shared approved-session fixture and apply across all affected route tests (treated as core work in §4)                                                                                                                 |
+| Sign-out breaks for pending users if the gate is mis-ordered                  | Insert the gate after the exempt short-circuit; assert `/api/auth/*` passthrough in the middleware test                                                                                                                            |
+| Pending-approval page breaks if its layout makes API calls                    | Verified: `AuthenticatedLayout` makes no direct API calls and renders no avatar; it mounts `useApprovalStatus`, which polls only `/api/user/approval-status` (exempt). The page needs only `/api/auth/session` + that exempt poll. |
 
 ## Rollout
 
