@@ -75,6 +75,12 @@ Beta reads/writes the **production** database. Destructive paths to watch: shopp
 
 **Rule:** the redesign is visual + interaction shell only. **Do not restructure write logic.** Underlying mutations call the same APIs in the same shapes. Smoke-test destructive paths on each beta deploy.
 
+### Beta access gating (server-side approval check)
+
+Approval gating today is **client-side only**: `src/middleware.ts` only checks `if (!token)`, and data API routes check `session.user.id` but never `isApproved`. The sole barrier keeping an authenticated-but-unapproved Google account off real data is the client-side `useApprovalStatus` hook rendered from `AuthenticatedLayout.tsx` — which Chunk 2 rewrites. On a **public beta against the shared prod DB**, any Google account can sign in, and a direct API call with a valid session cookie bypasses the client gate.
+
+Mitigation (lands in Chunk 1 one-time setup, independent of the layout rewrite): add an interim **server-side check in `src/middleware.ts`** reading `token.isApproved` (already cached in the JWT) and redirecting unapproved users to `/pending-approval`. Additionally, treat the client approval-gate mount as load-bearing with a test so the Chunk 2 `AuthenticatedLayout` rewrite can't silently drop it.
+
 ---
 
 ## 2. Token + theme foundation
@@ -82,6 +88,8 @@ Beta reads/writes the **production** database. Destructive paths to watch: shopp
 ### Tokens
 
 New `src/lib/design-tokens.ts` — canonical source for the values in the bundle's `design-system.md` (surfaces, text, border, section accents, semantic states, meal domain colors, spacing, radii, shadows). Dark values only (light dropped). Importable directly for cases that don't map cleanly to MUI palette keys (per-section accents, meal colors).
+
+**Precedence rule (avoid token/palette drift):** the MUI palette is the _derived_ surface — components consume the section accent via `palette.primary` (rebound per section, below), not by importing `tokens.section.*` directly. Direct token imports are reserved for values with no palette home (meal colors, spacing/radii/shadow constants). This keeps a single resolution path for the section accent.
 
 Token groups (dark):
 
@@ -100,9 +108,13 @@ Token groups (dark):
 
 Rewrite `src/lib/theme.ts` to map tokens onto MUI's palette: `background.default` ← `surface.base`, `background.paper` ← `surface.raised`, `text.*` ← token text, `divider` ← `border.subtle`, `primary.main` ← `section.plans` (default; rebound per section), `success`/`error`/`warning` ← state tokens. Update `MuiButton` / `MuiCard` / `MuiPaper` / `MuiAppBar` overrides to consume tokens.
 
+**Preserve the `responsiveDialogStyle` export** — `theme.ts` currently exports it and it has 16 consumers. The rewrite must keep it (retokenized) so those call sites don't break; it's not just a palette change.
+
 ### Per-section accent plumbing
 
-Each top-level surface knows its section. A thin `<SectionThemeProvider section="plans">` wraps each route's layout (e.g. `src/app/meal-plans/layout.tsx`) and rebinds `palette.primary.main` to that section's accent, so MUI components using `color="primary"` resolve correctly. System pages bind `accentUtility`. Verify SSR has no hydration mismatch (emotion is already wired via `@mui/material-nextjs`).
+Each top-level surface knows its section. A thin `<SectionThemeProvider section="plans">` rebinds `palette.primary.main` to that section's accent, so MUI components using `color="primary"` resolve correctly. System pages bind `accentUtility`. Verify SSR has no hydration mismatch (emotion is already wired via `@mui/material-nextjs`).
+
+**Nesting constraint:** the per-feature `layout.tsx` files are server components that `export const metadata`. A client `ThemeProvider` cannot _be_ the layout module (client components can't export `metadata`). So `SectionThemeProvider` (a client component) wraps `{children}` **inside** each server layout — the layout stays a server component and renders `<SectionThemeProvider>{children}</SectionThemeProvider>`.
 
 ### Drop light mode (plumbing preserved)
 
@@ -111,6 +123,7 @@ Each top-level surface knows its section. A thin `<SectionThemeProvider section=
 - `User.theme` field left intact (no schema change).
 - `ThemeColorMeta` hard-codes the dark surface color.
 - Theme toggle UI removed. The **Settings route stays** (`src/app/settings/page.tsx`) rendering a placeholder ("Nothing to settle right now — light mode will return"); direct URL still works. The **avatar menu omits the Settings link** until a real setting returns.
+- Clean up the now-orphaned theme-toggle wiring (the `themeChange` event / `/api/user/settings` write path) when the toggle goes — don't leave dead event coupling behind.
 
 ### Typography
 
@@ -123,7 +136,9 @@ Load via `next/font/google` in `src/app/layout.tsx`:
 
 ### Icons
 
-Material Symbols Outlined webfont via `next/font/google`. New `src/components/ui/Icon.tsx` wraps `<span className="material-symbols-outlined">`, exposing `name`, `size`, `color`, `fill`, `weight`, and an optional `aria-label` for interactive icons. Ligature names match `@mui/icons-material` import names 1:1 (snake_case ↔ PascalCase). Migrate call-site by call-site (`<KitchenIcon />` → `<Icon name="kitchen" />`); keep `@mui/icons-material` installed until the cleanup chunk.
+Material Symbols Outlined webfont via `next/font/google`. New `src/components/ui/Icon.tsx` wraps `<span className="material-symbols-outlined">`, exposing `name`, `size`, `color`, `fill`, `weight`. Ligature names match `@mui/icons-material` import names 1:1 (snake_case ↔ PascalCase). Migrate call-site by call-site (`<KitchenIcon />` → `<Icon name="kitchen" />`); keep `@mui/icons-material` installed until the cleanup chunk.
+
+**Accessible-names rule (don't regress on the swap):** the ligature renders as text content, which screen readers would announce. So `Icon` defaults to `aria-hidden` and decorative by default; **icon-only buttons must supply their own accessible name** (`aria-label` on the button/`IconButton`, not the `Icon`). The previous `@mui/icons-material` SVGs were already `aria-hidden` with labels on the buttons, so this preserves parity rather than adding burden. `review-code`'s `a11y-reviewer` enforces accessible names on icon-only controls each chunk, catching any call-site that loses one during migration.
 
 ### TypeScript
 
@@ -141,7 +156,9 @@ Module augmentation in `src/types/mui.d.ts` for custom palette keys (`section`, 
 - `NavAvatar.tsx` — initials avatar.
 - `AvatarMenu.tsx` — menu: Pantry (mobile only), Manage food items (`/food-items`), Manage users (`/user-management`, admin-only via `session.user.isAdmin`), Sign out. **No Settings link.**
 
-**Active-section detection** via `usePathname()`: `/meal-plans/*`→plans, `/shopping-lists/*`→shop, `/recipes/*`→recipes, `/pantry/*`→pantry. System sub-pages → no active section; avatar shows active.
+**Active-section detection** via `usePathname()`: `/meal-plans/*`→plans, `/shopping-lists/*`→shop, `/recipes/*`→recipes, `/pantry/*`→pantry. System sub-pages → no active section; avatar shows active. This logic is consumed by `TopNav`, `BottomNav`, `AvatarMenu`, and `SectionThemeProvider` — collapse it into a **single shared `getSectionForPath` helper + `useActiveSection` hook** rather than re-deriving it in each (it's already duplicated twice today in `Header.tsx`/`BottomNav.tsx`).
+
+All new `nav/*` and `ui/Icon` files use **named exports** (per CLAUDE.md) — the `Header.tsx`/`BottomNav.tsx` files being replaced use `export default`; don't carry that pattern forward.
 
 `AuthenticatedLayout.tsx` rewires to render `TopNav` (desktop) / `BottomNav` (mobile) with the derived section. Old `Header.tsx` and `src/components/BottomNav.tsx` are removed; per-page headers (title + accent-colored count + back) become inline in each surface.
 
@@ -172,6 +189,8 @@ Each chunk is its own set of commits direct to the branch. Order: foundations fi
 
 **Cross-cutting (done within each surface chunk, not separately):** the section `SectionThemeProvider` (chunks 3–6), incremental icon migration, page title + accent count treatment, dialog→full-page recipe conversion (chunk 4).
 
+**Recipe dialog → full-page route (chunk 4 — the one real routing change).** Target shape: `src/app/recipes/[id]/page.tsx` (async params per Next 15) with its own `loading.tsx` + `error.tsx`. This replaces the current query-param deep-link mechanism (`usePersistentDialog('viewRecipe')`); the chunk must migrate that mechanism and handle **old `?viewRecipe=<id>` URLs** (redirect to the new path) so existing links and any beta-user bookmarks don't break.
+
 ### Locked meal-plan edit-flow decisions (B3)
 
 Full-screen editor, numpad qty, sticky combined search at bottom, flat group headers (no nesting box). Resolved decisions:
@@ -184,6 +203,14 @@ Full-screen editor, numpad qty, sticky combined search at bottom, flat group hea
 6. Empty states: "No ingredients in this group" / "No items planned" + faint Add hint.
 7. Remove-group: ✕ in group header → confirm dialog ("Remove group? N items will be removed.").
 8. Group container: flat section headers always; items are siblings; no enclosing box.
+
+### Per-chunk test lists for the rewritten flows (chunks 3–5)
+
+The standing "rewritten components get rewritten tests" rule (§6 0e) is not enough for the three interaction-heavy rewrites — enumerate the cases so coverage doesn't lean on manual testing alone:
+
+- **Chunk 3 — B3 meal-plan editor:** one test per locked edit-decision above — Done-disabled + warn borders on invalid (1), dirty-cancel confirm vs clean-cancel close (2), recipe `[× n]` chip qty (4), skip toggle clear-confirm + empty-on-untoggle (5), empty-group / empty-meal states (6), remove-group confirm (7), flat group structure (8). Plus staples bar expand/collapse and numpad qty entry.
+- **Chunk 4 — recipe full-page route:** `loading.tsx` / `error.tsx` render, async-params resolution, deep-link to `/recipes/[id]`, and the old `?viewRecipe=` redirect path.
+- **Chunk 5 — two-pane shopping:** store-pane ↔ working-list selection, KEEP/SKIP pantry-check filtering, finish-shop bar behavior. (Realtime/presence stays visual-only — no new logic tests.)
 
 ---
 
@@ -216,7 +243,7 @@ Per chunk, in order:
 
 **Chunk 0 exception:** no UI to manually test → it runs the loop without step 4/6 (manual-testing), but still gets `review-code`, `npm run check`, a tag (`redesign-chunk-00`), and compaction.
 
-**Rollback:** if a chunk breaks beta and can't be quickly fixed, roll the Vercel beta alias back to the prior deploy (one click), then push a revert commit. No DB damage by definition (no write-logic changes). `main` is untouched throughout, so prod is never affected.
+**Rollback:** if a chunk breaks beta and can't be quickly fixed, roll the Vercel beta alias back to the prior deploy (one click), then push a revert commit. `main` is untouched throughout, so prod _deploys_ are never affected. **Caveat:** alias rollback reverts the running code, not data already written to the shared prod DB — the "no write-logic changes" rule (a discipline rule, not an enforced guarantee) is what keeps that blast radius near zero, so honor it strictly and lean on the destructive-path smoke tests.
 
 ---
 
@@ -229,19 +256,22 @@ Runs before Foundation. Establishes the safety net before any pixel changes.
 - **0c — Act now (test-first, justified-only):**
   - Test-dimension findings worth acting on (weak assertions, untested data-layer files, low-coverage critical paths).
   - Data-layer hardening: backfill coverage on `lib/` utils, API routes, hooks — the behavior-preserving layer.
-  - Golden-master fixtures for pure transforms: `meal-plan-to-shopping-list`, `unit-conversion`, `shopping-list-utils` (merge/conflict), `recipe-sharing-utils`, `meal-plan-sharing-utils`.
-  - Cheap Critical security wins the audit surfaces (e.g. a missing `userId` filter).
+  - **Golden-master fixtures — only for genuinely pure transforms.** Correcting the target list:
+    - `meal-plan-to-shopping-list` and `unit-conversion` are pure but **already have ~20 and ~22 `it` blocks** — only add golden-master fixtures if they capture input/output combinations the existing assertions don't; otherwise skip.
+    - `meal-plan-utils` overlap/next-date logic (incl. the unexercised skip-advance loop) is the genuinely **under-tested pure transform** — add it, using `vi.setSystemTime` for determinism. This is the highest-value golden-master target.
+    - `shopping-list-utils`, `recipe-sharing-utils`, `meal-plan-sharing-utils` are **async `fetch` wrappers, not pure transforms** — golden-master doesn't fit. Cover them with **MSW success/error-path tests** (the pattern `shopping-list-utils.test.ts` already uses). Note the merge/conflict logic actually lives in `meal-plan-to-shopping-list.ts`, not `shopping-list-utils`.
+  - Cheap Critical security wins the audit surfaces (e.g. a missing `userId` filter — see also the server-side approval check in §1).
 - **0d — Non-goals (keep Chunk 0 from ballooning):**
   - **No new tests for UI being replaced** (`MealEditor`, shopping components, `RecipeViewDialog` interaction tests, etc.). audit-debt will flag these as untested; consciously skip — replacements get fresh tests in their chunks.
   - **Non-test debt is triaged, not fixed here** (architecture refactors, a11y on soon-replaced UI, dep bumps, doc drift) — saved to the backlog doc, optionally filed as issues, pulled from opportunistically or scheduled separately.
-- **0e — Standing rule for later chunks:** each chunk adds/updates tests for the code it changes — new flows get new tests, rewritten components get rewritten tests, the untouched data layer stays green. `review-code`'s `test-reviewer` enforces this per chunk.
+- **0e — Standing rule for later chunks:** each chunk adds/updates tests for the code it changes — new flows get new tests, rewritten components get rewritten tests, the untouched data layer stays green. `review-code`'s `test-reviewer` enforces this per chunk. **Ordering:** within a chunk, delete the old component's tests and add the replacements in the same chunk — never ship an interactive component with stale tests (asserting gone behavior) or zero tests mid-rewrite.
 - **0f — Close:** `review-code` (base `main`), `npm run check` green, tag `redesign-chunk-00`, compact.
 
 ### Test setup reference
 
 - Vitest + React Testing Library + MSW; jsdom; forks pool, single fork, isolated (`vitest.config.ts`).
 - No coverage thresholds enforced (reporting only) — but the full suite must pass for `npm run check`.
-- 100 test files at baseline; 24 components import `@mui/icons-material`; ~7 test files query by icon/testId/aria-label (so the icon swap breaks little directly).
+- 80 test files at baseline; 24 components import `@mui/icons-material`; ~7 test files query by icon/testId/aria-label (so the icon swap breaks little directly).
 - Conventions (CLAUDE.md): colocated `__tests__/`, `userEvent.setup()`, `waitFor()`, mock next-auth + mongodb, include ALL error-constant groups when mocking `@/lib/errors`, `vi.stubGlobal('fetch', …)` not module-scope assignment.
 - No DOM snapshot tests for redesigned components — behavioral assertions only.
 
@@ -249,20 +279,21 @@ Runs before Foundation. Establishes the safety net before any pixel changes.
 
 ## 7. Risks & mitigations
 
-| Risk                                        | Mitigation                                                                                       |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Shared prod DB + destructive paths          | Visual/interaction shell only; no write-logic changes; smoke-test destructive paths each deploy. |
-| OAuth breaks on first beta sign-in          | Register beta origin + callback URI and set `NEXTAUTH_URL` before first beta deploy.             |
-| Long-lived branch drift                     | Merge `main` → branch between chunks; resolve toward redesign.                                   |
-| Mixed-look interim on beta                  | Accepted; beta is for dogfooding.                                                                |
-| Icon name mismatch (no 1:1 Material Symbol) | Spot-check each migrated icon; keep `@mui/icons-material` until cleanup chunk.                   |
-| Font load / layout shift                    | `next/font/google` self-hosts + handles `font-display`; confirm weights resolve.                 |
-| Light-mode removal regressions              | Keep `theme-context`, `User.theme`, mode-shaped theme fn; force dark; hide toggle + menu link.   |
-| Per-section nested ThemeProvider (SSR)      | Thin palette overrides at route-layout level; verify no hydration mismatch.                      |
-| Recipe view dialog → full page              | Verify deep links, browser back, `loading.tsx`/`error.tsx`.                                      |
-| `review-code` base-override extension       | Surgical change; don't disturb other paths.                                                      |
-| `manual-testing` seeding wrong DB           | Local `.env.local` → dedicated `weekly-eats-redesign-local`; CLI main-DB refusal is backstop.    |
-| Tests drift from rewritten UI               | Tests rewritten within the same chunk; data-layer tests stay green untouched.                    |
+| Risk                                        | Mitigation                                                                                                                                                                                                                                        |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared prod DB + destructive paths          | Visual/interaction shell only; no write-logic changes; smoke-test destructive paths each deploy.                                                                                                                                                  |
+| Public beta + client-only approval gating   | Add interim server-side `token.isApproved` check in `middleware.ts`; test the client gate mount (see §1 "Beta access gating").                                                                                                                    |
+| OAuth breaks on first beta sign-in          | Register beta origin + callback URI and set `NEXTAUTH_URL` before first beta deploy.                                                                                                                                                              |
+| Long-lived branch drift                     | Merge `main` → branch between chunks; resolve toward redesign.                                                                                                                                                                                    |
+| Mixed-look interim on beta                  | Accepted; beta is for dogfooding.                                                                                                                                                                                                                 |
+| Icon name mismatch (no 1:1 Material Symbol) | Spot-check each migrated icon; keep `@mui/icons-material` until cleanup chunk.                                                                                                                                                                    |
+| Font load / layout shift                    | `next/font/google` self-hosts + handles `font-display`; confirm weights resolve.                                                                                                                                                                  |
+| Light-mode removal regressions              | Keep `theme-context`, `User.theme`, mode-shaped theme fn; force dark; hide toggle + menu link.                                                                                                                                                    |
+| Per-section nested ThemeProvider (SSR)      | Thin palette overrides at route-layout level; verify no hydration mismatch.                                                                                                                                                                       |
+| Recipe view dialog → full page              | Verify deep links, browser back, `loading.tsx`/`error.tsx`.                                                                                                                                                                                       |
+| `review-code` base-override extension       | Surgical change; don't disturb other paths.                                                                                                                                                                                                       |
+| `manual-testing` seeding wrong DB           | Primary safeguard is `.env.local` → dedicated `weekly-eats-redesign-local`. The CLI main-DB refusal is only a conditional backstop (keys off a remote URI or the name `weekly-eats`; a localhost prod clone could slip it) — don't over-trust it. |
+| Tests drift from rewritten UI               | Tests rewritten within the same chunk; data-layer tests stay green untouched.                                                                                                                                                                     |
 
 ---
 
