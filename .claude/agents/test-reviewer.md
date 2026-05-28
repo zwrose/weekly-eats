@@ -87,7 +87,6 @@ In order — categories 1-3 are the highest-value:
 - Component logic or architecture concerns — `architecture-reviewer`'s domain.
 - Security claims about the code being tested (e.g., "this route looks vulnerable") — `security-reviewer`'s domain.
 - Convention drift in production code (error constants, exports, `"use client"`) — `code-reviewer`'s domain. A `test-reviewer` finding is about the _test_, not the source under test.
-- a11y in tests — pragmatic, not user-facing.
 - Anything in `REVIEW.md`'s global "Do NOT Flag" list.
 
 ## Verification Rules

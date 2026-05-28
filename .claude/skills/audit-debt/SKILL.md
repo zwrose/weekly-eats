@@ -6,7 +6,7 @@ user-invocable: true
 
 # Audit Debt
 
-Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same five specialist agents `/review-code` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), compiles the results into a backlog sorted by severity × inverse-effort, and offers to save the report and/or file approved findings as GitHub issues.
+Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same four specialist agents `/review-code` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), compiles the results into a backlog sorted by severity × inverse-effort, attaches its own point of view to each Critical/Important finding, and offers to save the report and/or file approved findings as GitHub issues.
 
 This skill is **not a sibling of `/review-code`**. `/review-code` finds bugs in new code; `/audit-debt` finds bugs in old code that has rotted. The diff-scope rule does NOT apply — every line in `src/` is in scope. The trade-off is that it is **slow and thorough by design** — meant to be run occasionally (suggest monthly), not before every PR. Running it weekly will drown you in nits you have already triaged; running it never will let real debt accumulate to "rewrite this feature" levels.
 
@@ -33,7 +33,6 @@ SESSION_DIR=$(mktemp -d /tmp/audit-debt-XXXXXXXX)
 | `$SESSION_DIR/findings-architecture.json` | arch agent   | Architecture-reviewer findings array                                       |
 | `$SESSION_DIR/findings-code.json`         | code agent   | Code-reviewer findings array                                               |
 | `$SESSION_DIR/findings-security.json`     | sec agent    | Security-reviewer findings array                                           |
-| `$SESSION_DIR/findings-a11y.json`         | a11y agent   | A11y-reviewer findings array                                               |
 | `$SESSION_DIR/findings-test.json`         | test agent   | Test-reviewer findings array                                               |
 | `$SESSION_DIR/orchestrator-findings.json` | orchestrator | Deps + TODO accumulation + doc-drift findings                              |
 | `$SESSION_DIR/compiled.json`              | orchestrator | Sorted, prioritized backlog + totals + summary                             |
@@ -88,11 +87,10 @@ Enter plan mode via `EnterPlanMode`. Show the user:
 
 - **Skill:** `audit-debt`
 - **Scope:** the whole repo — `$FILE_COUNT` files under `src/`
-- **Specialists to dispatch (all five, in parallel):**
+- **Specialists to dispatch (all four, in parallel):**
   - `architecture-reviewer` → `findings-architecture.json`
   - `code-reviewer` → `findings-code.json`
   - `security-reviewer` → `findings-security.json`
-  - `a11y-reviewer` → `findings-a11y.json`
   - `test-reviewer` → `findings-test.json`
 - **Orchestrator-driven dimensions (run in parallel with specialists):** dependency staleness + vulnerabilities, TODO/FIXME accumulation, documentation drift
 - **Session directory:** `$SESSION_DIR`
@@ -102,7 +100,7 @@ Exit plan mode via `ExitPlanMode` and wait for approval before dispatching.
 
 ### 3. Dispatch Specialists in Parallel
 
-Launch all five specialists in a **single message with five `Agent` tool calls** so they run in parallel. Each gets the same sweep-mode prompt template, parameterized by agent name and findings filename:
+Launch all four specialists in a **single message with four `Agent` tool calls** so they run in parallel. Each gets the same sweep-mode prompt template, parameterized by agent name and findings filename:
 
 ```
 You are sweeping the codebase for accumulated debt, NOT reviewing a diff.
@@ -131,7 +129,10 @@ convention, not debt — consistency > novelty.
   cross-feature import smells.
 - code-reviewer: CLAUDE.md drift (docs say X, code does Y), pattern
   inconsistency (some routes use error constants, others hardcode), naming /
-  convention drift, missing `@/` aliases, dead exports.
+  convention drift, missing `@/` aliases, dead exports. Also the narrow
+  self-usability cases per REVIEW.md (a control reachable by no available
+  interaction, a focus bug that blocks a flow, text too low-contrast to read) —
+  NOT general accessibility, which is out of scope for this app.
 - security-reviewer: missing ownership filters in EXISTING routes (high-priority
   sweep — apply the IDOR methodology to every route that touches a userId-scoped
   collection), missing `ObjectId.isValid` checks, share/invite paths without
@@ -139,13 +140,10 @@ convention, not debt — consistency > novelty.
 - test-reviewer: untested files (especially API routes and `lib/` utilities —
   flag what does NOT have a matching `__tests__/<file>.test.ts`), low-coverage
   code paths, weak assertions (tests that pass without exercising behavior).
-- a11y-reviewer: missing `aria-label`s on icon buttons, focus gaps in EXISTING
-  dialogs, hardcoded `sx` colors with poor contrast, missing keyboard
-  alternatives in @dnd-kit usage.
 
 ## Effort estimate (REQUIRED on every finding)
 For each finding, estimate effort:
-- "Quick" (<30 min): rename, add aria-label, hardcoded → constant
+- "Quick" (<30 min): rename, hardcoded → constant, `npm audit fix`
 - "Medium" (30 min – 4 hours): refactor a hook, add tests for a route, fix an IDOR
 - "Big-job" (multi-session): restructure a feature, migrate a collection, replace a dependency
 
@@ -157,7 +155,7 @@ every entry. If you have nothing to flag, write `[]` — do not skip writing
 the file.
 ```
 
-Per-agent substitutions match `/review-code` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, a11y-reviewer / A11y, test-reviewer / Test).
+Per-agent substitutions match `/review-code` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, test-reviewer / Test).
 
 ### 4. Orchestrator-Driven Dimensions (main context, in parallel with §3)
 
@@ -183,12 +181,13 @@ Write all orchestrator-derived findings to `$SESSION_DIR/orchestrator-findings.j
 
 ### 5. Compile + Prioritize + Present
 
-Once all five specialist files and `orchestrator-findings.json` exist on disk, read them all. Apply:
+Once all four specialist files and `orchestrator-findings.json` exist on disk, read them all. Apply:
 
 1. **Citation check.** Drop any finding with `file == null` or `line == null` (matches `REVIEW.md` §Verification Rules — citations are required even in sweep mode). Exception: the single aggregate "Accumulated TODO/FIXME markers" finding may cite the oldest file/line.
 2. **Existence check.** For every cited file, confirm it exists. Subagents occasionally hallucinate file paths under a sweep — drop findings whose `file` does not resolve on disk.
 3. **Dedupe by `(file, line)`.** Merge bodies with a separator, keep the higher severity, list both dimensions.
 4. **Nit cap.** Keep at most 5 Nits in the presentation; replace the rest with a single summary count.
+5. **Orchestrator POV (Critical/Important only).** Per REVIEW.md "Orchestrator POV", for each Critical/Important finding that survives the above, open the cited file at the cited line and form a **Fix / Skip / Defer + one-sentence rationale + High/Low confidence** take. In a debt sweep, "Defer" is common and legitimate — a Big-job finding is usually real-but-schedule-it, not fix-now. "Skip" means the debt isn't worth paying down (consistent-by-convention, or cost > benefit in this single-user app). Attach `recommendation`, `rationale`, and `confidence` to each such finding in `compiled.json`. Skip the POV for Minor/Nit — the backlog stays lean.
 
 Then **sort by severity × inverse-effort** (high-impact + low-effort first) into these presentation buckets:
 
@@ -206,11 +205,11 @@ Write `$SESSION_DIR/compiled.json`:
 {
   "summary": "<1 paragraph: N findings across <C> categories; top concerns are X, Y, Z>",
   "totals": { "Critical": N, "Important": N, "Minor": N, "Nit": N },
-  "findings": [<sorted array, in bucket order above>]
+  "findings": [<sorted array, in bucket order above; Critical/Important entries carry recommendation, rationale, confidence>]
 }
 ```
 
-Render `$SESSION_DIR/report.md`: a markdown report grouped by category (Architecture / Code / Security / A11y / Test / Dependencies / TODOs / Docs), with the priority order above applied within each category. Print the report to the terminal.
+Render `$SESSION_DIR/report.md`: a markdown report grouped by category (Architecture / Code / Security / Test / Dependencies / TODOs / Docs), with the priority order above applied within each category. Under each Critical/Important finding, render its **POV** on its own line (e.g. `→ POV: Defer (High confidence) — real debt, but a multi-session restructure; schedule it, don't fix it now`). Print the report to the terminal.
 
 **Interactive offers at the end** (apply in order):
 
@@ -219,7 +218,7 @@ Render `$SESSION_DIR/report.md`: a markdown report grouped by category (Architec
    - **Yes, custom path** — prompt for the path, then `cp`.
    - **No** — skip.
 2. If `compiled.json` contains any Critical or Important findings, `AskUserQuestion`: _"File any Critical/Important findings as GitHub issues?"_ Options:
-   - **Yes — go through them one by one** — iterate Critical+Important findings; for each, `AskUserQuestion` _"File this as an issue?"_ with auto-drafted title and body. On Yes, run `gh issue create --title "<title>" --body "<body>"`. Title format: `"<severity>: <finding title>"`. Body: finding text + `file:line` + suggestion + effort estimate + `_Surfaced by /audit-debt on <date>_`.
+   - **Yes — go through them one by one** — iterate Critical+Important findings; for each, `AskUserQuestion` _"File this as an issue?"_ — lead with the orchestrator **POV** (recommendation + rationale + confidence) so you can decide whether it's even worth an issue, then show the auto-drafted title and body. On Yes, run `gh issue create --title "<title>" --body "<body>"`. Title format: `"<severity>: <finding title>"`. Body: finding text + `file:line` + suggestion + effort estimate + `_Surfaced by /audit-debt on <date>_`. (The POV guides your filing decision; it is not written into the issue body.)
    - **No, I'll do this manually** — skip.
 
 End of skill — no posting to PRs, no further checks.
@@ -243,7 +242,7 @@ Required on every finding. Subagents are told to emit this in §3; orchestrator-
 
 | Label       | Range                | Examples                                                                                                                                             |
 | ----------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Quick**   | <30 minutes          | Add an `aria-label` to an icon button; rename a misleading variable; replace a hardcoded string with an error constant; `npm audit fix`              |
+| **Quick**   | <30 minutes          | Rename a misleading variable; replace a hardcoded string with an error constant; swap a hardcoded color for a theme token; `npm audit fix`           |
 | **Medium**  | 30 minutes – 4 hours | Refactor a hook to remove a duplicate pattern; write tests for an existing API route; fix an IDOR with a dual-filter; close a TODO with a small impl |
 | **Big-job** | Multi-session        | Restructure a feature directory; migrate a MongoDB collection schema; replace a transitive dependency; rewrite a 900-line component                  |
 
