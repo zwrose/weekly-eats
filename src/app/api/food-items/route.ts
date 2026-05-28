@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { VALID_UNITS } from '@/lib/food-items-utils';
 import { parsePaginationParams, paginatedResponse } from '@/lib/pagination-utils';
-import { AUTH_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 function computeAccessLevel(item: Record<string, unknown>, userId: string): string {
   if (item.isGlobal && item.createdBy === userId) return 'shared-by-you';
@@ -14,10 +13,8 @@ function computeAccessLevel(item: Record<string, unknown>, userId: string): stri
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') || '';
@@ -92,10 +89,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body = await request.json();
     const { name, singularName, pluralName, unit, isGlobal } = body;

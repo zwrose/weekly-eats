@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mocks must match specifiers used in the route under test
 vi.mock('next-auth/next', () => ({
@@ -48,8 +49,17 @@ describe('api/food-items/[id] route', () => {
       expect(res.status).toBe(401);
     });
 
+    it('returns 403 when user is not approved', async () => {
+      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+      const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), {
+        params: Promise.resolve({ id }),
+      } as any);
+      expect(res.status).toBe(403);
+    });
+
     it('returns 400 for invalid ObjectId', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const id = 'not-a-valid-id';
       const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), {
         params: Promise.resolve({ id }),
@@ -58,7 +68,7 @@ describe('api/food-items/[id] route', () => {
     });
 
     it('returns 404 when food item not found', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       findOneMock.mockResolvedValueOnce(null);
       const id = '64b7f8c2a2b7c2f1a2b7c2f1';
       const res = await routes.GET(makeReq(`http://localhost/api/food-items/${id}`), {
@@ -68,7 +78,9 @@ describe('api/food-items/[id] route', () => {
     });
 
     it('returns global food item for any authenticated user', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+      (getServerSession as any).mockResolvedValueOnce(
+        approvedSession({ id: 'u2', isAdmin: false })
+      );
       const id = '64b7f8c2a2b7c2f1a2b7c2f1';
       const item = {
         _id: id,
@@ -89,7 +101,9 @@ describe('api/food-items/[id] route', () => {
     });
 
     it('returns own personal food item', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+      (getServerSession as any).mockResolvedValueOnce(
+        approvedSession({ id: 'u1', isAdmin: false })
+      );
       const id = '64b7f8c2a2b7c2f1a2b7c2f1';
       const item = {
         _id: id,
@@ -110,7 +124,9 @@ describe('api/food-items/[id] route', () => {
     });
 
     it('returns 403 for other user personal food item', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+      (getServerSession as any).mockResolvedValueOnce(
+        approvedSession({ id: 'u2', isAdmin: false })
+      );
       const id = '64b7f8c2a2b7c2f1a2b7c2f1';
       findOneMock.mockResolvedValueOnce({
         _id: id,
@@ -125,7 +141,7 @@ describe('api/food-items/[id] route', () => {
     });
 
     it('allows admin to see any personal food item', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
       const id = '64b7f8c2a2b7c2f1a2b7c2f1';
       const item = { _id: id, name: 'Private', isGlobal: false, createdBy: 'u1' };
       findOneMock.mockResolvedValueOnce(item);
@@ -148,7 +164,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 400 when name missing', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.PUT(makeReq(`http://localhost/api/food-items/${id}`, { name: '' }), {
       params: Promise.resolve({ id }),
@@ -157,7 +173,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.PUT(makeReq('http://localhost/api/food-items/bad', { name: 'A' }), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -165,7 +181,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.DELETE(makeReq('http://localhost/api/food-items/bad'), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -173,7 +189,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 404 when item not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.PUT(
@@ -184,7 +200,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 403 when user neither admin nor owner', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u2', isAdmin: false }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.PUT(
@@ -195,7 +211,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT succeeds for owner and returns updated item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
@@ -227,7 +243,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT succeeds for admin updating global item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: true });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
@@ -255,7 +271,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 403 when non-admin tries to edit global item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u2', isGlobal: true });
     const res = await routes.PUT(
@@ -266,7 +282,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 400 when trying to make global item personal', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: true });
     const res = await routes.PUT(
@@ -280,7 +296,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT 403 when non-admin tries to make item global', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
     const res = await routes.PUT(
@@ -294,7 +310,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('PUT succeeds when admin makes personal item global', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1', isGlobal: false });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
@@ -326,7 +342,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE 404 when not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
@@ -336,7 +352,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE 403 when non-admin tries to delete global item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: true });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
@@ -346,7 +362,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE succeeds for owner personal item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
@@ -359,7 +375,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE succeeds for admin deleting global item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: true });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
@@ -372,7 +388,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE succeeds for admin deleting personal item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'admin1', isAdmin: true } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'admin1', isAdmin: true }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
@@ -383,7 +399,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE 403 when non-owner tries to delete personal item', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u2', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u2', isAdmin: false }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.DELETE(makeReq(`http://localhost/api/food-items/${id}`), {
@@ -393,7 +409,7 @@ describe('api/food-items/[id] route', () => {
   });
 
   it('DELETE 404 when item not found after check', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1', isAdmin: false } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1', isAdmin: false }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', createdBy: 'u1', isGlobal: false });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 0 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
