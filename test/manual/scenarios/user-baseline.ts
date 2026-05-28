@@ -30,7 +30,7 @@ const documentation: BlockDocumentation = {
   collectionsWritten: [],
 };
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'user-baseline',
   documentation,
   validate(c) {
@@ -83,4 +83,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

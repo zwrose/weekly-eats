@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import stores from '../stores.js';
+import { block as stores } from '../stores.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

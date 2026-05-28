@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import purchaseHistory from '../purchase-history.js';
+import { block as purchaseHistory } from '../purchase-history.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

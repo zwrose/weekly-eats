@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import pantry from '../pantry.js';
+import { block as pantry } from '../pantry.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -94,7 +94,7 @@ function addDays(dateStr: string, n: number): string {
 
 // ─── Block ───────────────────────────────────────────────────────────────────
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'meal-plan',
   documentation,
 
@@ -238,4 +238,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

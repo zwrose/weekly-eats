@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
 // We import the block after the test helpers are defined
-import foodItems from '../food-items.js';
+import { block as foodItems } from '../food-items.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

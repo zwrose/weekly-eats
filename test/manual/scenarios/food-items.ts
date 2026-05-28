@@ -59,7 +59,7 @@ const documentation: BlockDocumentation = {
 
 // ─── Block ───────────────────────────────────────────────────────────────────
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'food-items',
   documentation,
 
@@ -158,4 +158,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

@@ -50,7 +50,7 @@ function randomDateWithinDays(daysBack: number): Date {
 
 // ─── Block ───────────────────────────────────────────────────────────────────
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'purchase-history',
   documentation,
 
@@ -167,4 +167,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

@@ -63,7 +63,7 @@ function buildIngredients(
 
 // ─── Block ───────────────────────────────────────────────────────────────────
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'recipes',
   documentation,
 
@@ -168,4 +168,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

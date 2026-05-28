@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import pendingApprovalUser from '../pending-approval-user.js';
+import { block as pendingApprovalUser } from '../pending-approval-user.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

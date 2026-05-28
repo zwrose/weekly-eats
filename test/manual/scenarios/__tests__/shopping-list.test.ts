@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import shoppingList from '../shopping-list.js';
+import { block as shoppingList } from '../shopping-list.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

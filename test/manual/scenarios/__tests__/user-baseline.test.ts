@@ -1,6 +1,6 @@
 // test/manual/scenarios/__tests__/user-baseline.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import userBaseline from '../user-baseline.js';
+import { block as userBaseline } from '../user-baseline.js';
 
 function mockDb(users: Array<{ _id: string; email: string; name: string; isApproved: boolean }>) {
   return {

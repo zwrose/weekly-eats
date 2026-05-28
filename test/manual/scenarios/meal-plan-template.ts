@@ -52,7 +52,7 @@ const documentation: BlockDocumentation = {
 
 // ─── Block ───────────────────────────────────────────────────────────────────
 
-const block: Block<Config, State> = {
+export const block: Block<Config, State> = {
   name: 'meal-plan-template',
   documentation,
 
@@ -131,4 +131,3 @@ const block: Block<Config, State> = {
   },
 };
 
-export default block;

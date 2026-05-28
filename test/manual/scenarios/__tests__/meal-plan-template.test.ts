@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-import mealPlanTemplate from '../meal-plan-template.js';
+import { block as mealPlanTemplate } from '../meal-plan-template.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
