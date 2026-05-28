@@ -156,6 +156,22 @@ describe('api/food-items/[id] route', () => {
     expect(res.status).toBe(400);
   });
 
+  it('PUT 400 for invalid ObjectId', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const res = await routes.PUT(makeReq('http://localhost/api/food-items/bad', { name: 'A' }), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
+    expect(res.status).toBe(400);
+  });
+
+  it('DELETE 400 for invalid ObjectId', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    const res = await routes.DELETE(makeReq('http://localhost/api/food-items/bad'), {
+      params: Promise.resolve({ id: 'bad' }),
+    } as any);
+    expect(res.status).toBe(400);
+  });
+
   it('PUT 404 when item not found', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
     findOneMock.mockResolvedValueOnce(null);

@@ -19,6 +19,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
 
     const client = await getMongoClient();
     const db = client.db();
@@ -167,6 +170,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
     const body: UpdateMealPlanRequest = await request.json();
     const { name, items } = body;
 
@@ -271,6 +277,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
+    }
 
     const client = await getMongoClient();
     const db = client.db();
