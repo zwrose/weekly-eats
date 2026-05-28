@@ -29,12 +29,14 @@ describe('middleware approval gating', () => {
     (getToken as any).mockResolvedValueOnce({ isApproved: true, isAdmin: false });
     const res = await middleware(req('/meal-plans'));
     expect(res.headers.get('location')).toBeNull();
+    expect(res.status).not.toBe(403);
   });
 
   it('lets an admin through even if not approved', async () => {
     (getToken as any).mockResolvedValueOnce({ isApproved: false, isAdmin: true });
     const res = await middleware(req('/user-management'));
     expect(res.headers.get('location')).toBeNull();
+    expect(res.status).not.toBe(403);
   });
 
   it('redirects an unapproved non-admin to /pending-approval', async () => {

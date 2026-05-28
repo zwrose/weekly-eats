@@ -1,6 +1,21 @@
 'use client';
 
 import * as React from 'react';
+import { styled } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
+
+const IconRoot = styled('span')({
+  fontWeight: 'normal',
+  fontStyle: 'normal',
+  lineHeight: 1,
+  letterSpacing: 'normal',
+  textTransform: 'none',
+  display: 'inline-flex',
+  whiteSpace: 'nowrap',
+  wordWrap: 'normal',
+  direction: 'ltr',
+  WebkitFontSmoothing: 'antialiased',
+});
 
 export interface IconProps {
   /** Material Symbols ligature name (snake_case), e.g. "kitchen", "shopping_cart". */
@@ -16,7 +31,7 @@ export interface IconProps {
   /** Provide only for standalone meaningful icons; defaults to decorative (aria-hidden). */
   'aria-label'?: string;
   className?: string;
-  sx?: React.CSSProperties;
+  sx?: SxProps<Theme>;
 }
 
 export const Icon: React.FC<IconProps> = ({
@@ -31,30 +46,20 @@ export const Icon: React.FC<IconProps> = ({
 }) => {
   const decorative = ariaLabel === undefined;
   return (
-    <span
+    <IconRoot
       className={className}
       aria-hidden={decorative ? true : undefined}
       aria-label={ariaLabel}
       role={ariaLabel ? 'img' : undefined}
       style={{
         fontFamily: 'var(--font-icons)',
-        fontWeight: 'normal',
-        fontStyle: 'normal',
         fontSize: `${size}px`,
-        lineHeight: 1,
-        letterSpacing: 'normal',
-        textTransform: 'none',
-        display: 'inline-flex',
-        whiteSpace: 'nowrap',
-        wordWrap: 'normal',
-        direction: 'ltr',
         color,
-        WebkitFontSmoothing: 'antialiased',
         fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' ${weight}, 'GRAD' 0, 'opsz' ${size}`,
-        ...sx,
       }}
+      sx={sx}
     >
       {name}
-    </span>
+    </IconRoot>
   );
 };
