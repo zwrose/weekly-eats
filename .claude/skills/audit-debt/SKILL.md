@@ -6,9 +6,9 @@ user-invocable: true
 
 # Audit Debt
 
-Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same five specialist agents `/review` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), compiles the results into a backlog sorted by severity × inverse-effort, and offers to save the report and/or file approved findings as GitHub issues.
+Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same five specialist agents `/review-code` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), compiles the results into a backlog sorted by severity × inverse-effort, and offers to save the report and/or file approved findings as GitHub issues.
 
-This skill is **not a sibling of `/review`**. `/review` finds bugs in new code; `/audit-debt` finds bugs in old code that has rotted. The diff-scope rule does NOT apply — every line in `src/` is in scope. The trade-off is that it is **slow and thorough by design** — meant to be run occasionally (suggest monthly), not before every PR. Running it weekly will drown you in nits you have already triaged; running it never will let real debt accumulate to "rewrite this feature" levels.
+This skill is **not a sibling of `/review-code`**. `/review-code` finds bugs in new code; `/audit-debt` finds bugs in old code that has rotted. The diff-scope rule does NOT apply — every line in `src/` is in scope. The trade-off is that it is **slow and thorough by design** — meant to be run occasionally (suggest monthly), not before every PR. Running it weekly will drown you in nits you have already triaged; running it never will let real debt accumulate to "rewrite this feature" levels.
 
 Read `REVIEW.md` first for the severity rubric — the tier definitions get a debt-context recalibration in §Severity Recalibration for Debt Context below.
 
@@ -157,7 +157,7 @@ every entry. If you have nothing to flag, write `[]` — do not skip writing
 the file.
 ```
 
-Per-agent substitutions match `/review` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, a11y-reviewer / A11y, test-reviewer / Test).
+Per-agent substitutions match `/review-code` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, a11y-reviewer / A11y, test-reviewer / Test).
 
 ### 4. Orchestrator-Driven Dimensions (main context, in parallel with §3)
 
@@ -254,10 +254,10 @@ The `severity × inverse-effort` sort means a `Important + Quick` finding ranks 
 | Mistake                                                            | Fix                                                                                                                                                                        |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Flagging pre-existing code as "debt" when it's working as designed | Debt = rotted, not just unfamiliar. If the pattern is intentional and consistent across the codebase, it's convention, not debt.                                           |
-| Over-counting Nits and burying the real findings                   | Nit cap (5) applies the same as in `/review`. A Nit avalanche in a debt audit is signal that the auditor is reaching — dedupe or drop.                                     |
+| Over-counting Nits and burying the real findings                   | Nit cap (5) applies the same as in `/review-code`. A Nit avalanche in a debt audit is signal that the auditor is reaching — dedupe or drop.                                |
 | Missing the difference between "could improve" and "is broken"     | `could improve` is Minor at best; only flag Important if you can name what will actually break. Critical is reserved for active security risk in shipped code.             |
 | Citing files that don't exist                                      | `§5 step 2` (existence check) drops these at compile time. Subagents under sweep dispatch sometimes hallucinate paths — the orchestrator catches it.                       |
 | Treating consistent patterns as drift                              | Consistency > novelty. If 12 of 13 routes use the same pattern, the 13th matching is **consistency**, not debt. If 6 use pattern A and 7 use pattern B, THAT is drift.     |
 | Mapping every npm-audit advisory to Critical                       | Advisory severity is a hint, not a verdict — `moderate` maps to Minor in this skill. If the vulnerable code path isn't reachable in our usage, the advisory is even lower. |
-| Running this before every PR                                       | This skill is slow and broad by design. Run it monthly. For PR review, use `/review`.                                                                                      |
+| Running this before every PR                                       | This skill is slow and broad by design. Run it monthly. For PR review, use `/review-code`.                                                                                 |
 | Treating the GitHub-issue offer as automatic                       | Every issue created is a chore for the author. The interactive offer in §5 step 2 is one-finding-at-a-time on purpose — don't bulk-create issues.                          |

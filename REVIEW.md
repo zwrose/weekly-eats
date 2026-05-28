@@ -1,6 +1,6 @@
 # REVIEW.md
 
-This file is the source of truth for code-review severity, exclusions, and verification rules. Every review skill (`/review`, `/review-plan`, `/audit-debt`) and every reviewer agent reads it first. If a review finding contradicts this file, the file wins.
+This file is the source of truth for code-review severity, exclusions, and verification rules. Every review skill (`/review-code`, `/review-plan`, `/audit-debt`) and every reviewer agent reads it first. If a review finding contradicts this file, the file wins.
 
 ## Audience and Calibration
 
@@ -45,7 +45,7 @@ Findings violating these rules MUST be dropped at compile time, before presentat
 
 ## Author-Justification Rule
 
-If a prior `/review` flagged a finding and the PR author replied with substantive explanatory text, **do not re-raise** unless the justification contains a technical error. Substantive = explanation, not "ok" or emoji. Outdated comments (where `position == null`) are still scanned for justifications — the explanation may apply even if the code anchor moved.
+If a prior `/review-code` flagged a finding and the PR author replied with substantive explanatory text, **do not re-raise** unless the justification contains a technical error. Substantive = explanation, not "ok" or emoji. Outdated comments (where `position == null`) are still scanned for justifications — the explanation may apply even if the code anchor moved.
 If a justification is plausible but unverifiable (e.g., "this is intentional because of X" where X is a system you can't inspect), default to not re-raising — the author has more context than the reviewer.
 
 ## Severity Caps
@@ -75,7 +75,7 @@ All agents emit findings as JSON arrays at the path specified by the dispatching
 
 ## Per-Skill Verdict Labels
 
-- `/review` (branch mode): `READY FOR PR` / `FIX BEFORE PR` / `MAJOR FIXES NEEDED`
+- `/review-code` (branch mode): `READY FOR PR` / `FIX BEFORE PR` / `MAJOR FIXES NEEDED`
 - `/review-plan`: `PLAN READY` / `REVISE BEFORE IMPLEMENTING` / `MAJOR GAPS — RECONSIDER DESIGN`
 - `/audit-debt`: no single verdict; prioritized backlog instead
 

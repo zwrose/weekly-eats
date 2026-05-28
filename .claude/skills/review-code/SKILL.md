@@ -1,10 +1,10 @@
 ---
-name: review
+name: review-code
 description: Run a multi-agent code review on a PR or local branch. Auto-detects mode. Optionally posts inline findings to GitHub.
 user-invocable: true
 ---
 
-# Review
+# Review Code
 
 Run a multi-dimensional code review on either an open pull request or a local branch (vs `main`). The main context is an **orchestrator** — it fetches metadata, dispatches five specialist agents in parallel, compiles their findings, runs an interactive tiered approval, and optionally posts approved findings as inline GitHub review comments. It never loads the full diff or any agent's raw output into its own conversation; subagents do all heavy reading and write structured results to disk.
 
@@ -14,13 +14,13 @@ The five specialist agents live under `.claude/agents/` and read `REVIEW.md` (se
 
 ## Invocation
 
-| Form                      | Behavior                                                                                                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/review`                 | Auto-detect mode. If the current branch has an open PR on the remote, run PR mode against it; otherwise run branch mode vs `main`. |
-| `/review pr <N>`          | Explicit PR mode against PR `<N>`.                                                                                                 |
-| `/review branch`          | Explicit branch mode (diff `main...HEAD`), even if the current branch has an open PR.                                              |
-| `/review --post`          | PR mode (auto-detected or explicit). After interactive approval, post approved findings as inline review comments to GitHub.       |
-| `/review --focus <notes>` | Pass `<notes>` to every specialist as additional focus. Combinable with the other forms (e.g. `/review pr 42 --focus a11y`).       |
+| Form                           | Behavior                                                                                                                           |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/review-code`                 | Auto-detect mode. If the current branch has an open PR on the remote, run PR mode against it; otherwise run branch mode vs `main`. |
+| `/review-code pr <N>`          | Explicit PR mode against PR `<N>`.                                                                                                 |
+| `/review-code branch`          | Explicit branch mode (diff `main...HEAD`), even if the current branch has an open PR.                                              |
+| `/review-code --post`          | PR mode (auto-detected or explicit). After interactive approval, post approved findings as inline review comments to GitHub.       |
+| `/review-code --focus <notes>` | Pass `<notes>` to every specialist as additional focus. Combinable with the other forms (e.g. `/review-code pr 42 --focus a11y`).  |
 
 **Auto-detection rule.** Run `gh pr list --head "$(git rev-parse --abbrev-ref HEAD)" --json number,headRefOid,headRefName --limit 1`. If the result is non-empty, default to PR mode. Otherwise default to branch mode. If the user passed `branch` explicitly, skip the lookup. If the user passed `pr <N>` explicitly, use `<N>` and don't auto-detect.
 
@@ -128,7 +128,7 @@ DIFF_LINES=$(wc -l < "$SESSION_DIR/diff.txt")
 
 Enter plan mode via `EnterPlanMode`. The dispatch plan shows the user:
 
-- **Skill:** `review` (so the orchestrator can reload the skill via the `Skill` tool if plan mode is re-entered)
+- **Skill:** `review-code` (so the orchestrator can reload the skill via the `Skill` tool if plan mode is re-entered)
 - **Mode:** PR or branch
 - **Target:** `PR #<N> "<title>"` (PR mode) or `<branch> vs main` (branch mode)
 - **Repo:** `<owner>/<repo>`
@@ -299,7 +299,7 @@ EOF
 Run `resolve-diff-lines.ts` to validate every comment anchor against the diff. This is non-optional — GitHub returns 422 "Line could not be resolved" for any inline comment whose `(file, line)` doesn't land on a `+` or context line inside a hunk, and the script moves out-of-hunk comments to the nearest valid line (prefixing the body with `(Re: line N)`) and drops comments for files not in the diff:
 
 ```bash
-npx tsx .claude/skills/review/resolve-diff-lines.ts \
+npx tsx .claude/skills/review-code/resolve-diff-lines.ts \
   "$SESSION_DIR/diff.txt" \
   "$SESSION_DIR/review.json" \
   --output "$SESSION_DIR/review-resolved.json"

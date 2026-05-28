@@ -6,7 +6,7 @@ user-invocable: true
 
 # Review Plan
 
-Run a multi-dimensional review on a draft plan or design spec **before any code is written**. The main context is an orchestrator: it locates the target plan, classifies what the design touches, dispatches the same five specialist agents `/review` uses (architecture, code, security, a11y, test) in parallel against the plan doc instead of a diff, compiles their findings under the `REVIEW.md` rubric, and runs an interactive tiered approval. This catches architecture pattern-fit issues, testing gaps, security implications of new data flows, and missing migration safety statements **before** they become rework.
+Run a multi-dimensional review on a draft plan or design spec **before any code is written**. The main context is an orchestrator: it locates the target plan, classifies what the design touches, dispatches the same five specialist agents `/review-code` uses (architecture, code, security, a11y, test) in parallel against the plan doc instead of a diff, compiles their findings under the `REVIEW.md` rubric, and runs an interactive tiered approval. This catches architecture pattern-fit issues, testing gaps, security implications of new data flows, and missing migration safety statements **before** they become rework.
 
 This skill is a **companion to** superpowers' `writing-plans` skill — not a replacement. `writing-plans` helps you draft a plan; `/review-plan` red-teams the draft. Read `REVIEW.md` for severity calibration and the verification rules every finding must pass; if anything below contradicts `REVIEW.md`, `REVIEW.md` wins.
 
@@ -169,7 +169,7 @@ either the plan path OR a related project file path. Set `dimension` to
 do not skip writing the file.
 ```
 
-Per-agent substitutions match `/review` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, a11y-reviewer / A11y, test-reviewer / Test).
+Per-agent substitutions match `/review-code` (architecture-reviewer / Architecture, code-reviewer / Code, security-reviewer / Security, a11y-reviewer / A11y, test-reviewer / Test).
 
 ### 4. Compile Findings (main context)
 

@@ -172,7 +172,7 @@ PreToolUse hooks block edits to protected files:
 | `/gen-test`      | User or auto | Generate tests following project conventions                 |
 | `/new-api-route` | User or auto | Scaffold API route with auth/validation template             |
 | `/new-component` | User or auto | Scaffold component + test file from templates                |
-| `/review`        | User or auto | Run multi-agent review on PR or branch (replaces /review-pr) |
+| `/review-code`   | User or auto | Run multi-agent review on PR or branch (replaces /review-pr) |
 | `/review-plan`   | User or auto | Review a draft plan/spec before implementing                 |
 | `/audit-debt`    | User or auto | Periodic full-repo debt sweep with prioritized backlog       |
 
@@ -190,12 +190,12 @@ PreToolUse hooks block edits to protected files:
 
 All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-flag exclusions, and verification rules.
 
-| When                                   | Skill                         | Output                                                                 |
-| -------------------------------------- | ----------------------------- | ---------------------------------------------------------------------- |
-| Drafting a plan/spec                   | `/review-plan`                | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER |
-| End of subagent-driven-dev (before PR) | `/review` (branch mode)       | Terminal report; verdict: READY FOR PR / FIX BEFORE PR / MAJOR FIXES   |
-| PR open                                | `/review pr <N>` or `/review` | Terminal report; optional inline GitHub posting via `--post`           |
-| Periodic (monthly)                     | `/audit-debt`                 | Prioritized backlog; optional save-to-file or file-as-issues           |
+| When                                   | Skill                                   | Output                                                                 |
+| -------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Drafting a plan/spec                   | `/review-plan`                          | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER |
+| End of subagent-driven-dev (before PR) | `/review-code` (branch mode)            | Terminal report; verdict: READY FOR PR / FIX BEFORE PR / MAJOR FIXES   |
+| PR open                                | `/review-code pr <N>` or `/review-code` | Terminal report; optional inline GitHub posting via `--post`           |
+| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues           |
 
 Each skill dispatches the same 5 specialist agents (architecture, code, security, a11y, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives.
 
