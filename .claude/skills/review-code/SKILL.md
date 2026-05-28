@@ -27,6 +27,7 @@ The five specialist agents live under `.claude/agents/` and read `REVIEW.md` (se
 | `/review-code pr <N> --post`     | One review pass, read-only, post inline findings to GitHub. Never touches the tree.                                                                                   |
 | `/review-code branch` / `pr <N>` | Force branch or PR mode; still runs the auto-fix loop unless combined with `--review-only`/`--post`.                                                                  |
 | `/review-code --focus <notes>`   | Pass focus notes to every specialist. Combinable with any form.                                                                                                       |
+| `/review-code --base <ref>`      | Override the diff base (default branch mode = `main`). Combine with any form. Redesign chunks pass the previous chunk tag, e.g. `--base redesign-chunk-00`.           |
 
 The three top-level paths: `--post` → read-only GitHub posting; `--review-only` → read-only terminal presentation; otherwise → auto-fix loop.
 
@@ -116,11 +117,15 @@ If the guard fails (detached HEAD, or you're reviewing someone else's PR), STOP 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 HEAD_SHA=$(git rev-parse HEAD)
-BASE_REF=main   # branch mode always diffs against main
+BASE_REF=main   # branch mode default
+# --base <ref> override (redesign chunk reviews pass the previous chunk tag)
+if [ -n "$BASE_OVERRIDE" ]; then BASE_REF="$BASE_OVERRIDE"; fi
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo "local")
 
 # No worktree, no prior comments — subagents verify against the current working tree
 ```
+
+If invoked with `--base <ref>`, set `BASE_OVERRIDE=<ref>` before computing `BASE_REF`; it overrides branch-mode `main` and is ignored in PR mode (PR base wins).
 
 **Per-round diff is ALWAYS local.** Do NOT use `gh pr diff` to fetch the diff. Each round computes the diff locally from `<baseRef>` (PR mode: the PR's `baseRefName`; branch mode: `main`), because rounds 2+ have local fix commits that are not on the remote — `gh pr diff` would miss them. The per-round command (run inside the loop, see `## Auto-Fix Loop`) is:
 
