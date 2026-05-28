@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -36,8 +37,14 @@ describe('api/user/recipe-sharing/owners route (GET)', () => {
     expect(json.error).toBe('Unauthorized');
   });
 
+  it('returns 403 when user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: SELF_ID }));
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+  });
+
   it('returns owners with their sharingTypes for accepted invitations', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: SELF_ID } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: { toString: () => 'owner-1' },
@@ -71,7 +78,7 @@ describe('api/user/recipe-sharing/owners route (GET)', () => {
   });
 
   it('defaults sharingTypes to an empty array when none present', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: SELF_ID } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: { toString: () => 'owner-2' },
@@ -98,7 +105,7 @@ describe('api/user/recipe-sharing/owners route (GET)', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: SELF_ID } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockRejectedValueOnce(new Error('db boom'));
     const res = await routes.GET();
     expect(res.status).toBe(500);
