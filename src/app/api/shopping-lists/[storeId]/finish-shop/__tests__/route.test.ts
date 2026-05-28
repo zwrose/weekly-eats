@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -88,10 +89,16 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
       expect(res.status).toBe(401);
     });
 
-    it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
+    it('returns 403 when user is not approved', async () => {
+      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+      const res = await routes.POST(makeRequest({ checkedItems: [] }), {
+        params: Promise.resolve({ storeId }),
       });
+      expect(res.status).toBe(403);
+    });
+
+    it('returns 400 for invalid storeId', async () => {
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       const res = await routes.POST(makeRequest({ checkedItems: [] }), {
         params: Promise.resolve({ storeId: 'invalid' }),
       });
@@ -99,9 +106,7 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
     });
 
     it('returns 404 when user has no access to store', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce(null); // store not found
 
       const res = await routes.POST(
@@ -116,9 +121,7 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
 
   describe('Validation', () => {
     it('returns 400 when checkedItems is missing or empty', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -138,9 +141,7 @@ describe('POST /api/shopping-lists/[storeId]/finish-shop', () => {
     ];
 
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       // Store found
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -71,10 +72,16 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
       expect(res.status).toBe(401);
     });
 
-    it('PATCH returns 400 when storeId is invalid', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
+    it('PATCH returns 403 when user is not approved', async () => {
+      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+      const res = await routes.PATCH(makeRequest(), {
+        params: Promise.resolve({ storeId, foodItemId }),
       });
+      expect(res.status).toBe(403);
+    });
+
+    it('PATCH returns 400 when storeId is invalid', async () => {
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       const res = await routes.PATCH(makeRequest(), {
         params: Promise.resolve({ storeId: 'invalid', foodItemId }),
       });
@@ -82,9 +89,7 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
     });
 
     it('PATCH returns 404 when user does not have access to store', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
 
       // Store not found or user has no access
       findOneMock.mockResolvedValueOnce(null);
@@ -98,9 +103,7 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Item Toggle Functionality', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
     });
 
     it('PATCH toggles item from unchecked to checked', async () => {
@@ -181,9 +184,9 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
     });
 
     it('PATCH works for shared user with accepted invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user2', email: 'user2@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(
+        approvedSession({ id: 'user2', email: 'user2@test.com' })
+      );
 
       // Store owned by user1, but user2 has accepted invitation
       findOneMock
@@ -213,9 +216,7 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Broadcasting', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
     });
 
     it('PATCH broadcasts item_checked event on successful toggle', async () => {
@@ -275,9 +276,7 @@ describe('api/shopping-lists/[storeId]/items/[foodItemId]/toggle route', () => {
 
   describe('Response Format', () => {
     it('PATCH returns success with item data', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
 
       findOneMock
         .mockResolvedValueOnce({
