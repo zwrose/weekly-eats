@@ -108,6 +108,16 @@ describe('requireApprovedSession', () => {
     expect(error).toBeUndefined();
     expect(session).toEqual(approved);
   });
+
+  it('returns the session for an unapproved ADMIN (admins bypass approval)', async () => {
+    const adminSession = { user: { id: 'a1', isApproved: false, isAdmin: true } };
+    mockGetServerSession.mockResolvedValue(adminSession as never);
+
+    const { session, error } = await requireApprovedSession();
+
+    expect(error).toBeUndefined();
+    expect(session).toEqual(adminSession);
+  });
 });
 ```
 
@@ -134,9 +144,11 @@ type RequireApprovedSessionResult =
   | { session?: never; error: NextResponse };
 
 /**
- * Server-side gate for user-data API routes. Returns the session for an
- * approved, signed-in user, or an `error` NextResponse to return directly:
- * 401 when unauthenticated, 403 when signed in but not approved.
+ * Server-side gate for user-data API routes. Returns the session for a
+ * signed-in user who is approved OR an admin (admins bypass approval, matching
+ * the client behavior in use-approval-status.ts), or an `error` NextResponse to
+ * return directly: 401 when unauthenticated, 403 when signed in but neither
+ * approved nor admin.
  *
  * Usage:
  *   const { session, error } = await requireApprovedSession();
@@ -147,7 +159,9 @@ export const requireApprovedSession = async (): Promise<RequireApprovedSessionRe
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 }) };
   }
-  if (session.user.isApproved !== true) {
+  // Admins bypass approval (isAdmin and isApproved are independent flags; an
+  // unapproved admin must still reach admin tooling to approve users).
+  if (session.user.isApproved !== true && session.user.isAdmin !== true) {
     return { error: NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 }) };
   }
   return { session };
@@ -322,7 +336,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/middleware.ts`
 - Test: `src/__tests__/middleware.test.ts` (new)
 
-Insert the gate **after** the existing exempt short-circuit and the `if (!token)` block, so `/api/auth/*` (sign-out) still works. Gate condition is `token.isApproved !== true` (fail-closed). API paths get 403 JSON; page paths redirect to `/pending-approval`. Exempt: `/pending-approval`, `/api/user/approval-status`, `/api/avatar`.
+Insert the gate **after** the existing exempt short-circuit and the `if (!token)` block, so `/api/auth/*` (sign-out) still works. Gate condition is `token.isApproved !== true && token.isAdmin !== true` (fail-closed; admins bypass approval, since `isAdmin`/`isApproved` are independent and an unapproved admin must still reach admin tooling). API paths get 403 JSON; page paths redirect to `/pending-approval`. Exempt: `/pending-approval`, `/api/user/approval-status`, `/api/avatar`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -397,6 +411,14 @@ describe('middleware approval gate', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it('passes an unapproved ADMIN token through (admins bypass approval)', async () => {
+    mockGetToken.mockResolvedValue({ isApproved: false, isAdmin: true } as JWT);
+
+    const res = await middleware(req('/api/admin/users'));
+
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
   it('redirects to / when there is no token (existing behavior)', async () => {
     mockGetToken.mockResolvedValue(null);
 
@@ -411,7 +433,7 @@ describe('middleware approval gate', () => {
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/__tests__/middleware.test.ts`
-Expected: FAIL — the unapproved cases return `x-middleware-next` (current middleware lets any authenticated token through) instead of 403/redirect.
+Expected: FAIL — the unapproved cases return `x-middleware-next` (current middleware lets any authenticated token through) instead of 403/redirect. **On this first run, confirm the `x-middleware-next === '1'` passthrough assertion actually holds for `NextResponse.next()` in this Next version** (it couldn't be verified before `node_modules` existed). If the header isn't present, switch the passthrough assertions to `expect(res.status).toBe(200)` plus `expect(res.headers.get('location')).toBeNull()`.
 
 - [ ] **Step 3: Implement the gate**
 
@@ -433,7 +455,9 @@ const isApprovalExempt =
   pathname === '/api/user/approval-status' ||
   pathname === '/api/avatar';
 
-if (token.isApproved !== true && !isApprovalExempt) {
+// Admins bypass approval (isAdmin and isApproved are independent flags; an
+// unapproved admin must still reach /user-management to approve users).
+if (token.isApproved !== true && token.isAdmin !== true && !isApprovalExempt) {
   if (pathname.startsWith('/api/')) {
     return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
   }
@@ -447,7 +471,7 @@ if (token.isApproved !== true && !isApprovalExempt) {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run src/__tests__/middleware.test.ts`
-Expected: PASS (8 passing).
+Expected: PASS (9 passing).
 
 - [ ] **Step 5: Commit**
 
@@ -499,6 +523,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// NOTE: stubbing global.fetch is safe here despite the CLAUDE.md MSW gotcha —
+// /api/user/approval-status has no MSW handler (MSW is onUnhandledRequest:'bypass')
+// and afterEach unstubs. Do NOT copy this onto a test that relies on MSW handlers.
 describe('useApprovalStatus', () => {
   it('refreshes the token and redirects to /meal-plans when newly approved', async () => {
     vi.mocked(useSession).mockReturnValue(
@@ -560,6 +587,8 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 This task repeats one mechanical transformation across all user-data routes. Do it **one group at a time** (one commit per group) so each is reviewable and the suite stays green. Within each group: edit the test first (success mocks → fixture, add an unapproved→403 case), watch the new 403 case fail, edit the handler, watch it pass, commit.
 
+**Explicitly NOT migrated** (do not touch in this task — verify the 42 `getServerSession` routes = these 37 + 5): the 4 admin routes `api/admin/users/route.ts`, `api/admin/users/approve/route.ts`, `api/admin/users/toggle-admin/route.ts`, `api/admin/users/pending/route.ts` (they gate on `isAdmin`, which the approval helper does not check — swapping in the helper would _weaken_ them); and `api/user/approval-status/route.ts` (must stay reachable for unapproved users — it drives the refresh poll and is middleware-exempt). `api/avatar` and `api/auth/*` have no helper-style auth block at all.
+
 ### The transformation (applies to every handler in every group)
 
 **Handler — before** (the exact block appears once per exported `GET`/`POST`/`PUT`/`PATCH`/`DELETE`):
@@ -583,7 +612,7 @@ Then:
 - Add `import { requireApprovedSession } from '@/lib/user-utils';`.
 - Remove now-unused imports: `getServerSession` from `next-auth/next` and `authOptions` from `@/lib/auth` — **only if** no other code in the file still references them. (`AUTH_ERRORS` usually stays; other handlers in the file use it.)
 - Everything downstream that reads `session.user.id` / `session.user.email` is unchanged.
-- **Email-gated variant** (`src/app/api/user/settings/route.ts` only): its blocks read `const session = await getServerSession();` then `if (!session?.user?.email)`. Replace with the same `requireApprovedSession()` two-liner; downstream `session.user.email` still works (the helper guarantees a full approved session).
+- **Email-gated variant** (`src/app/api/user/settings/route.ts` only): its blocks read `const session = await getServerSession();` (note: **no `authOptions`**) then `if (!session?.user?.email)`. Replace with the same `requireApprovedSession()` two-liner; downstream `session.user.email` still works (the helper guarantees a full session). **This is a deliberate behavioral tightening, not a no-op:** settings now requires approval (or admin) and is standardized onto `getServerSession(authOptions)`. Its tests seed `{ user: { email: 'x@example.com' } }` with **no `id`/`isApproved`** (route.test.ts:46,63,72); because the helper requires `session.user.id`, these must become `approvedSession({ email: 'x@example.com' })` — the fixture supplies the default `id` and `isApproved: true`. Do **not** preserve the email-only literal, or every settings success test will 401.
 
 **Test — before** (per success case, the literal shape varies per file — usually uniform within a file):
 
@@ -648,13 +677,13 @@ import { approvedSession, unapprovedSession } from '@/test-utils/session';
 it('returns 403 when the user is not approved (GET)', async () => {
   (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
 
-  const res = await GET(new NextRequest('https://app.test/api/meal-plans'));
+  const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
 
   expect(res.status).toBe(403);
 });
 ```
 
-(Use the same `GET`/`NextRequest` construction the sibling GET tests in this file already use.)
+(This file imports handlers as `const routes = await import('../route')` and builds requests with the local `makeReq` helper — `route.test.ts:111,113` — so call `routes.GET(makeReq(...))`, matching the sibling GET tests. Other route-test files may import handlers differently; always mirror the file's existing call style.)
 
 - [ ] **Step 2: Run** — `npx vitest run src/app/api/meal-plans/__tests__/route.test.ts`. Expected: the 403 case FAILS (handler not yet gated); other cases PASS.
 

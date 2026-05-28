@@ -51,9 +51,13 @@ Three coordinated pieces plus tests.
 Insert the approval check **after** the existing `if (!token)` redirect block
 **and after** the exempt short-circuit (`middleware.ts:12-21`), so `/api/auth/*`
 (sign-out, session) keeps working for pending users. The gate condition is
-`token.isApproved !== true` (not `=== false`) so a token minted before the claim
-existed fails closed. It reads the JWT's `token.isApproved` (no DB query) and
-branches by request type:
+`token.isApproved !== true && token.isAdmin !== true` (not `=== false`) so a
+token minted before the claim existed fails closed. **Admins bypass approval:**
+`isAdmin` and `isApproved` are independent flags (granting admin never sets
+approval, and nothing auto-approves admins), and the client already exempts
+admins from approval gating (`use-approval-status.ts`); an unapproved admin must
+still reach `/user-management` to approve users. It reads the JWT's claims (no DB
+query) and branches by request type:
 
 - **API requests** (`pathname.startsWith('/api/')`) → `403` JSON
   `{ error: AUTH_ERRORS.FORBIDDEN }`.
@@ -91,7 +95,9 @@ if (error) return error;
 ```
 
 - No session / no `user.id` → `401` with `AUTH_ERRORS.UNAUTHORIZED`.
-- `session.user.isApproved !== true` → `403` with `AUTH_ERRORS.FORBIDDEN`.
+- `session.user.isApproved !== true && session.user.isAdmin !== true` → `403`
+  with `AUTH_ERRORS.FORBIDDEN` (admins bypass approval, matching the middleware
+  gate and the client's `use-approval-status` exemption).
 
 This **replaces** the existing `if (!session?.user?.id) return 401` blocks in all
 user-data routes:
