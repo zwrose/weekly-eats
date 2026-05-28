@@ -279,10 +279,9 @@ describe('mealPlan.apply — with recipesRef', () => {
 
     const doc = mealPlansInsertOne.mock.calls[0][0] as Record<string, unknown>;
     const items = doc.items as Array<Record<string, unknown>>;
-    if (items.length > 0) {
-      const firstItemInSlot = (items[0].items as Array<Record<string, unknown>>)[0];
-      expect(firstItemInSlot.type).toBe('recipe');
-    }
+    expect(items.length).toBeGreaterThan(0);
+    const firstItemInSlot = (items[0].items as Array<Record<string, unknown>>)[0];
+    expect(firstItemInSlot.type).toBe('recipe');
   });
 });
 
@@ -309,11 +308,10 @@ describe('mealPlan.apply — without recipesRef', () => {
 
     const doc = mealPlansInsertOne.mock.calls[0][0] as Record<string, unknown>;
     const items = doc.items as Array<Record<string, unknown>>;
-    if (items.length > 0) {
-      const slotItems = items[0].items as Array<Record<string, unknown>>;
-      expect(slotItems[0].type).toBe('recipe');
-      expect(slotItems[0].id).toMatch(/placeholder/);
-    }
+    expect(items.length).toBeGreaterThan(0);
+    const slotItems = items[0].items as Array<Record<string, unknown>>;
+    expect(slotItems[0].type).toBe('recipe');
+    expect(slotItems[0].id).toMatch(/placeholder/);
   });
 });
 

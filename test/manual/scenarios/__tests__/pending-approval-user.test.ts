@@ -51,11 +51,24 @@ describe('pendingApprovalUser.validate', () => {
     expect(cfg).toMatchObject({ name: 'Foo Bar' });
   });
 
-  it('rejects unknown extra fields with strict schema', () => {
-    // Zod .strict() or passthrough — either is fine, but email must NOT be accepted
-    // The key constraint: config has no email field
+  it('config schema has no `email` field by default', () => {
+    // The block hard-codes the @manual-test.invalid email domain (see apply
+    // tests below). The config schema must NOT surface an email knob.
     const cfg = pendingApprovalUser.validate({});
     expect(cfg).not.toHaveProperty('email');
+  });
+
+  it('strips unknown fields like `email` at validate time', () => {
+    // Zod's default (no .strict()) is to silently strip unknown keys. This
+    // test pins that behavior so a user-supplied email cannot leak through
+    // into apply(). If we ever want hard rejection, switch the schema to
+    // .strict() and change this assertion to .toThrow().
+    const cfg = pendingApprovalUser.validate({
+      name: 'Foo',
+      email: 'attacker@example.com',
+    } as unknown);
+    expect(cfg).not.toHaveProperty('email');
+    expect(cfg).toMatchObject({ name: 'Foo' });
   });
 });
 

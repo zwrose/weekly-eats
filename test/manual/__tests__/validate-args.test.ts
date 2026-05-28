@@ -28,9 +28,13 @@ describe('validateBranch', () => {
     expect(() => validateBranch('feat>out')).toThrow();
   });
 
-  it('rejects HTML marker fragments', () => {
-    expect(() => validateBranch('feat-->evil')).toThrow();
-    expect(() => validateBranch('feat<!--')).toThrow();
+  it('rejects HTML marker fragments via the charset regex', () => {
+    // BRANCH_RE = [a-zA-Z0-9._/-], which excludes <, >, !.
+    // So inputs containing `-->` or `<!--` hit the "disallowed characters"
+    // error BEFORE the explicit marker-fragment check. The marker check is
+    // defense in depth — kept for the case where the regex is ever loosened.
+    expect(() => validateBranch('feat-->evil')).toThrow(/disallowed characters/i);
+    expect(() => validateBranch('feat<!--')).toThrow(/disallowed characters/i);
   });
 
   it('rejects over-long names (>200 chars)', () => {
@@ -49,9 +53,11 @@ describe('validateSlot', () => {
     expect(() => validateSlot('a/b')).toThrow();
   });
 
-  it('rejects shell metachars and HTML markers', () => {
-    expect(() => validateSlot('a;b')).toThrow();
-    expect(() => validateSlot('a-->b')).toThrow();
+  it('rejects shell metachars and HTML markers via the charset regex', () => {
+    // SLOT_RE = [a-zA-Z0-9._-], which excludes ;, <, >, !.
+    // The marker-fragment check (in source) is defense in depth.
+    expect(() => validateSlot('a;b')).toThrow(/disallowed characters/i);
+    expect(() => validateSlot('a-->b')).toThrow(/disallowed characters/i);
   });
 
   it('rejects over-long (>64 chars)', () => {
