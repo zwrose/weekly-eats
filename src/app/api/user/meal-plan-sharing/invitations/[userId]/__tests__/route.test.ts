@@ -138,7 +138,12 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(updateOneMock).toHaveBeenCalled();
+    // Owner removal targets the owner's own doc and pulls only the target user's invitation.
+    expect(updateOneMock.mock.calls[0][0]).toEqual({ email: 'owner@example.com' });
+    expect(updateOneMock.mock.calls[0][1].$pull).toEqual({
+      'settings.mealPlanSharing.invitations': { userId: 'target' },
+    });
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
 
   it('user leaving (self) pulls invitations via updateMany', async () => {
@@ -152,7 +157,14 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
       params: Promise.resolve({ userId: 'u1' }), // self
     } as any);
     expect(res.status).toBe(200);
-    expect(updateManyMock).toHaveBeenCalled();
+    // Self-leave scans all docs holding the user's invitation and pulls it everywhere.
+    expect(updateManyMock.mock.calls[0][0]).toEqual({
+      'settings.mealPlanSharing.invitations.userId': 'u1',
+    });
+    expect(updateManyMock.mock.calls[0][1].$pull).toEqual({
+      'settings.mealPlanSharing.invitations': { userId: 'u1' },
+    });
+    expect(updateOneMock).not.toHaveBeenCalled();
   });
 
   it('returns 500 when the DB throws', async () => {
