@@ -4,8 +4,9 @@ import { tokens } from './design-tokens';
 const display = 'var(--font-display), "Bricolage Grotesque", system-ui, sans-serif';
 const body = 'var(--font-body), "Outfit", system-ui, sans-serif';
 
-// Shape preserved (single dark theme for now). Re-adding light later is a tokens-only change.
-const createThemeOptions = (_mode: 'dark'): ThemeOptions => ({
+// Single dark theme for now. Re-adding light later means reintroducing a mode param here and
+// branching the token references — the builder shape is intentionally kept as one focused factory.
+const createThemeOptions = (): ThemeOptions => ({
   palette: {
     mode: 'dark',
     primary: { main: tokens.section.plans, contrastText: tokens.surface.base },
@@ -137,7 +138,7 @@ const createThemeOptions = (_mode: 'dark'): ThemeOptions => ({
   },
 });
 
-export const darkTheme = createTheme(createThemeOptions('dark'));
+export const darkTheme = createTheme(createThemeOptions());
 
 // Reusable responsive dialog styling for full-screen mobile experience.
 // PRESERVED — 16 consumers import this from theme.ts; do not remove.
