@@ -163,22 +163,34 @@ token. No loop.
     `/pending-approval`, **and** `/api/auth/*` (sign-out must keep working)
   - approved token → passes through
   - no token → redirect to `/` (existing behavior preserved)
-- **`jwt` callback unit test:** `trigger === 'update'` re-reads `isApproved` from
-  the DB and **ignores** the client-supplied `update()` payload (proves no
-  self-approval).
+- **`jwt` callback test — extend the existing file.**
+  `src/lib/__tests__/auth.test.ts` already exists (added in #87) with a working
+  jwt-callback harness (mocks `getMongoClient`, `@/lib/mongodb-adapter`,
+  `@/lib/errors`) covering the `signIn` trigger. Add a case there: `trigger ===
+'update'` re-reads `isApproved` from the DB and **ignores** the client-supplied
+  `update()` payload (proves no self-approval). Reuse the file's existing mock
+  setup rather than building a new harness.
 - **`useApprovalStatus` hook test (currently untested):** poll returns
   `isApproved: true` → `update()` called → redirect to `/meal-plans`; and the
   reverse demotion (`true → false`) → redirect to `/pending-approval`.
 - **Helper unit tests:** `401` (no session), `403` (unapproved), pass-through
   (approved); cover `isApproved` **absent vs. `false`**. Mock `@/lib/mongodb` and
-  `@/lib/mongodb-adapter` (the latter is imported transitively via `auth.ts`).
-- **Route-test migration (core work, not an afterthought).** ~18 route test files
-  mock `{ user: { id: 'u1' } }` with no `isApproved`; once the helper enforces
-  `isApproved !== true`, all their success-path tests would flip to `403`.
-  Introduce a single shared approved-session fixture (e.g. `approvedSession()`)
-  and apply it across all affected route test files, rather than editing each ad
-  hoc. Add at least one explicit "unapproved → 403" case (e.g. meal-plans,
-  recipes) to lock in the helper wiring.
+  `@/lib/mongodb-adapter` (the latter is imported transitively via `auth.ts`); see
+  `src/lib/__tests__/auth.test.ts` for the established adapter-mock pattern
+  (`vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }))`).
+- **Route-test migration (core work, not an afterthought).** As of the #87 merge,
+  **34 user-data route test files** mock the session (~270 session-mock literals,
+  shapes like `{ user: { id: 'u1' } }` / `{ user: { email: ... } }`) and
+  essentially **none** set `isApproved`. Once the helper enforces
+  `isApproved !== true`, every one of those success-path tests would flip to
+  `403`. Introduce a single shared approved-session fixture (e.g.
+  `approvedSession()`) and apply it across all 34 files, rather than editing ~270
+  literals ad hoc — note the varied shapes (`id`-based, `email`-based, some with
+  `isAdmin`) mean a naive find-replace won't work. The 4 `api/admin/*` route test
+  files are **excluded** (they gate on `isAdmin`, not the helper). The
+  `ably/token` route test (added in #87) is part of the 34. Add at least one
+  explicit "unapproved → 403" case (e.g. meal-plans, recipes) to lock in the
+  helper wiring.
 
 Follow the project's test conventions (`docs/testing.md`): mock `next-auth/next`
 and `@/lib/mongodb`; when mocking `@/lib/errors`, include all constant groups the
@@ -186,13 +198,13 @@ route uses.
 
 ## Risks & mitigations
 
-| Risk                                                                          | Mitigation                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Redirect loop (stale token bounces approved user back to `/pending-approval`) | Fix the `jwt` callback to re-read `isApproved` on the `update` trigger (§3); `/pending-approval` and `/api/user/approval-status` exempted in middleware                                                                            |
-| Self-approval via the `update()` payload                                      | The `jwt` callback re-reads `isApproved` from the DB by `email`; it never trusts the client-supplied `update({ isApproved })` value                                                                                                |
-| `~18 route test success paths flip to 403` once the helper enforces approval  | Introduce a shared approved-session fixture and apply across all affected route tests (treated as core work in §4)                                                                                                                 |
-| Sign-out breaks for pending users if the gate is mis-ordered                  | Insert the gate after the exempt short-circuit; assert `/api/auth/*` passthrough in the middleware test                                                                                                                            |
-| Pending-approval page breaks if its layout makes API calls                    | Verified: `AuthenticatedLayout` makes no direct API calls and renders no avatar; it mounts `useApprovalStatus`, which polls only `/api/user/approval-status` (exempt). The page needs only `/api/auth/session` + that exempt poll. |
+| Risk                                                                                           | Mitigation                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Redirect loop (stale token bounces approved user back to `/pending-approval`)                  | Fix the `jwt` callback to re-read `isApproved` on the `update` trigger (§3); `/pending-approval` and `/api/user/approval-status` exempted in middleware                                                                            |
+| Self-approval via the `update()` payload                                                       | The `jwt` callback re-reads `isApproved` from the DB by `email`; it never trusts the client-supplied `update({ isApproved })` value                                                                                                |
+| 34 route-test success paths (~270 session mocks) flip to 403 once the helper enforces approval | Introduce a shared approved-session fixture and apply across all 34 affected route tests; the 4 `api/admin/*` route tests are excluded (treated as core work in §4)                                                                |
+| Sign-out breaks for pending users if the gate is mis-ordered                                   | Insert the gate after the exempt short-circuit; assert `/api/auth/*` passthrough in the middleware test                                                                                                                            |
+| Pending-approval page breaks if its layout makes API calls                                     | Verified: `AuthenticatedLayout` makes no direct API calls and renders no avatar; it mounts `useApprovalStatus`, which polls only `/api/user/approval-status` (exempt). The page needs only `/api/auth/session` + that exempt poll. |
 
 ## Rollout
 
