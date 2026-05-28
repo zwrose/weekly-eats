@@ -1,3 +1,7 @@
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export type Severity = 'Critical' | 'Important' | 'Minor' | 'Nit';
 
 export interface Finding {
@@ -104,4 +108,76 @@ export function checkCircuitBreaker(
   }
 
   return { halt: false, reason: null, detail: 'progressing' };
+}
+
+interface CompiledFile {
+  findings: Finding[];
+}
+
+interface Resolution {
+  id: string;
+  file?: string | null;
+  title?: string;
+  action: 'fix' | 'fix-with-guidance' | 'skip';
+  guidance?: string;
+}
+
+interface ResolutionsFile {
+  resolutions: Resolution[];
+}
+
+/**
+ * Read `<sessionDir>/round-N/compiled.json` for every round, in numeric order.
+ * Finding identities that were deliberately skipped in ANY round's
+ * `resolutions.json` are removed from every round, so the circuit breaker never
+ * counts a finding the user chose to leave alone.
+ */
+export function loadRounds(sessionDir: string): {
+  rounds: RoundFindings[];
+  skipped: Set<string>;
+} {
+  const dirs = readdirSync(sessionDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && /^round-\d+$/.test(e.name))
+    .map((e) => ({ name: e.name, num: Number(e.name.slice('round-'.length)) }))
+    .sort((a, b) => a.num - b.num);
+
+  const skipped = new Set<string>();
+  for (const { name } of dirs) {
+    const rp = join(sessionDir, name, 'resolutions.json');
+    if (!existsSync(rp)) continue;
+    const res = JSON.parse(readFileSync(rp, 'utf8')) as ResolutionsFile;
+    for (const r of res.resolutions) {
+      if (r.action === 'skip') {
+        skipped.add(findingIdentity({ file: r.file ?? '', title: r.title ?? '' }));
+      }
+    }
+  }
+
+  const rounds: RoundFindings[] = [];
+  for (const { name, num } of dirs) {
+    const cp = join(sessionDir, name, 'compiled.json');
+    if (!existsSync(cp)) continue;
+    const compiled = JSON.parse(readFileSync(cp, 'utf8')) as CompiledFile;
+    rounds.push({
+      round: num,
+      findings: compiled.findings.filter((f) => !skipped.has(findingIdentity(f))),
+    });
+  }
+  return { rounds, skipped };
+}
+
+function main(): void {
+  const [sessionDir, maxRoundsArg] = process.argv.slice(2);
+  if (!sessionDir) {
+    console.error('Usage: circuit-breaker.ts <session-dir> [max-rounds=7]');
+    process.exit(2);
+  }
+  const maxRounds = Number(maxRoundsArg ?? '7');
+  const { rounds } = loadRounds(sessionDir);
+  const result = checkCircuitBreaker(rounds, maxRounds);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
 }
