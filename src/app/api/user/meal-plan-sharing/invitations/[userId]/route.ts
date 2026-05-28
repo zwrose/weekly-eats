@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS, MEAL_PLAN_SHARING_ERRORS, logError } from '@/lib/errors';
+import { API_ERRORS, MEAL_PLAN_SHARING_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 type RouteParams = {
   params: Promise<{ userId: string }>;
@@ -11,10 +10,8 @@ type RouteParams = {
 // Accept or reject invitation
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { userId } = await params;
     const body = await request.json();
@@ -74,10 +71,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // Remove user from sharing (owner removes user OR user leaves)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { userId } = await params;
 
