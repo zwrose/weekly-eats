@@ -96,6 +96,7 @@ Emit findings as a JSON array per `REVIEW.md`'s "Findings Output Format" section
 - `suggestion` may be `null` for Minor/Nit when no clean fix is obvious.
 - Severity caps from `REVIEW.md` apply: Nits capped at 5 per review; Important/Critical uncapped.
 - Most a11y findings should be **Important** or **Minor**. A11y is rarely Critical in this single-user app — reserve Critical for issues that make a primary flow completely unusable (e.g., the only way to submit a form is a non-keyboard-reachable button).
+- **Tradeoff flag.** If a finding has more than one reasonable fix and choosing between them is a judgment call (not a single obviously-correct fix), set `"tradeoff": true` on it. This routes the finding to the user instead of the auto-fixer. Omit the field otherwise (treated as `false`).
 
 ## Examples of Good vs Bad Findings
 

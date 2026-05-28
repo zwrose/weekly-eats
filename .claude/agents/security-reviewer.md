@@ -137,6 +137,7 @@ Emit findings as a JSON array per `REVIEW.md`'s "Findings Output Format" section
 - `suggestion` may be `null` for Minor/Nit when no clean fix is obvious.
 - Severity caps from `REVIEW.md` apply: Nits capped at 5 per review; Important/Critical uncapped (auth/IDOR findings are load-bearing).
 - Critical/Important findings should reference the canonical pattern in an existing route when proposing the fix — point the author at a working example, not a description.
+- **Tradeoff flag.** If a finding has more than one reasonable fix and choosing between them is a judgment call (not a single obviously-correct fix), set `"tradeoff": true` on it. This routes the finding to the user instead of the auto-fixer. Omit the field otherwise (treated as `false`).
 
 ## Examples of Good vs Bad Findings
 
