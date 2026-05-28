@@ -192,23 +192,11 @@ function cloneDatabase(mainWorktreePath, dbName) {
  * worktree DB so it starts clean from a manual-testing perspective.
  */
 async function stripSeedTags(targetUri) {
-  const seededCollections = [
-    'mealPlans',
-    'mealPlanTemplates',
-    'foodItems',
-    'recipes',
-    'recipeUserData',
-    'pantry',
-    'stores',
-    'storeItemPositions',
-    'shoppingLists',
-    'purchaseHistory',
-    'users',
-  ];
+  const { SEEDABLE_COLLECTIONS } = await import('../src/lib/seedable-collections.js');
   const tmpClient = await MongoClient.connect(targetUri);
   try {
     const db = tmpClient.db();
-    for (const col of seededCollections) {
+    for (const col of SEEDABLE_COLLECTIONS) {
       await db
         .collection(col)
         .updateMany(

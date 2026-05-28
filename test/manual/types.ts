@@ -1,23 +1,13 @@
 // test/manual/types.ts
 import type { Db, ObjectId } from 'mongodb';
+import { SEEDABLE_COLLECTIONS, type SeedableCollection } from '../../src/lib/database-indexes.js';
 
 // ─── Canonical collection names ─────────────────────────────────────────
-// Used by registry tests to validate blocks only write to known collections.
-export const KNOWN_COLLECTIONS = [
-  'mealPlans',
-  'mealPlanTemplates',
-  'foodItems',
-  'recipes',
-  'recipeUserData',
-  'pantry',
-  'stores',
-  'storeItemPositions',
-  'shoppingLists',
-  'purchaseHistory',
-  'users',
-] as const;
-
-export type KnownCollection = (typeof KNOWN_COLLECTIONS)[number];
+// Re-export from src/lib/database-indexes.ts (single source of truth).
+// Used by registry tests to validate blocks only write to known collections,
+// and by `cli.ts clean --all` to iterate every seedable collection.
+export const KNOWN_COLLECTIONS = SEEDABLE_COLLECTIONS;
+export type KnownCollection = SeedableCollection;
 
 // ─── Manifest ───────────────────────────────────────────────────────────
 export interface ManifestScenario {

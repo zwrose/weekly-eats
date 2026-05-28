@@ -1,4 +1,26 @@
 import { getMongoClient } from './mongodb';
+import { SEEDABLE_COLLECTIONS as SEEDABLE_COLLECTIONS_RAW } from './seedable-collections.js';
+
+/**
+ * Re-export of SEEDABLE_COLLECTIONS from `./seedable-collections.js` with a
+ * TypeScript-friendly literal-tuple type. The .js file is the single source of
+ * truth so plain-Node scripts (setup-worktree.js) can import without TS tooling.
+ */
+export const SEEDABLE_COLLECTIONS = SEEDABLE_COLLECTIONS_RAW as readonly [
+  'mealPlans',
+  'mealPlanTemplates',
+  'foodItems',
+  'recipes',
+  'recipeUserData',
+  'pantry',
+  'stores',
+  'storeItemPositions',
+  'shoppingLists',
+  'purchaseHistory',
+  'users',
+];
+
+export type SeedableCollection = (typeof SEEDABLE_COLLECTIONS)[number];
 
 /**
  * Database indexes for optimal query performance
@@ -105,20 +127,7 @@ export const createDatabaseIndexes = async () => {
     await usersCollection.createIndex({ isApproved: 1 }, { name: 'users_isApproved' });
 
     // Manual-testing seed tags — speed up clean() filters
-    const seededCollections = [
-      'mealPlans',
-      'mealPlanTemplates',
-      'foodItems',
-      'recipes',
-      'recipeUserData',
-      'pantry',
-      'stores',
-      'storeItemPositions',
-      'shoppingLists',
-      'purchaseHistory',
-      'users',
-    ];
-    for (const colName of seededCollections) {
+    for (const colName of SEEDABLE_COLLECTIONS) {
       await db
         .collection(colName)
         .createIndex(
