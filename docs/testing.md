@@ -608,8 +608,11 @@ npm run seed:demo                      # apply the canonical demo manifest
 ```
 
 Engine tests live in `test/manual/__tests__/` and `test/manual/scenarios/__tests__/`.
-They run under a separate vitest workspace (`vitest.manual.config.ts`, Node
-environment) to avoid jsdom/MUI pollution.
+They run via the shared `vitest.config.ts` (jsdom + singleFork), included via the
+`test/manual/**/*.{test,spec}.ts` glob. The mocked-Db / fs / `execFile` patterns
+the tests use are unaffected by the jsdom environment; `pr-comment.test.ts` pins
+itself to Node via a `// @vitest-environment node` docblock so its
+`node:child_process` mock works.
 
 The `/manual-testing` skill drives this engine end-to-end and posts checkbox
 test plans to PRs.
