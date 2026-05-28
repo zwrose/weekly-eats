@@ -644,9 +644,11 @@ it('returns 403 when the user is not approved', async () => {
 
 **Files that already set `isApproved`** (reconcile, do not blind-overwrite): grep each test file for `isApproved` before editing; if a case already provides it, convert it to the fixture preserving its intent rather than dropping a duplicate.
 
+**Routes with no colocated test file** (3 of the 37 — verified): `recipes/tags/route.ts`, `recipes/[id]/user-data/route.ts`, and `shopping-lists/[storeId]/route.ts` have **no** `__tests__/route.test.ts`. For these, Step A means **scaffolding** a new minimal `route.test.ts` rather than editing one: cover at least the `unapproved → 403` case plus one approved-path passthrough, following the project's colocated-test conventions and the meal-plans test's mock setup (`vi.mock('next-auth/next', ...)`, `vi.mock('@/lib/auth', ...)`, `vi.mock('@/lib/mongodb', ...)`, `const routes = await import('../route')`, the `approvedSession`/`unapprovedSession` fixtures). Do not leave these handlers gated with zero coverage of the unapproved path.
+
 ### Per-group steps (repeat for each group)
 
-- [ ] **Step A: Edit the group's test files** — swap success session literals to `approvedSession({...})`, add the unapproved→403 case to each.
+- [ ] **Step A: Edit the group's test files** — swap success session literals to `approvedSession({...})`, add the unapproved→403 case to each. For the 3 routes with no test file (see the note above), scaffold a minimal `route.test.ts` instead.
 - [ ] **Step B: Run the group's tests** — `npx vitest run <group test paths>`. Expected: the new 403 cases FAIL; success cases PASS.
 - [ ] **Step C: Edit the group's handlers** — apply the handler transformation to every exported method.
 - [ ] **Step D: Run the group's tests** — Expected: PASS.
