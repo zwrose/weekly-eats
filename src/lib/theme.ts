@@ -91,7 +91,14 @@ const createThemeOptions = (): ThemeOptions => ({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
-        body: { backgroundColor: tokens.surface.base, color: tokens.text.primary },
+        // tabular-nums app-wide so counts/quantities align (design-system.md). The custom
+        // display*/label* variants also set it, but components still use standard MUI variants
+        // until the per-surface chunks migrate them — applying it on body makes it effective now.
+        body: {
+          backgroundColor: tokens.surface.base,
+          color: tokens.text.primary,
+          fontVariantNumeric: 'tabular-nums',
+        },
       },
     },
     MuiButton: {

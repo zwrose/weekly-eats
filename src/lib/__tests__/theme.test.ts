@@ -31,6 +31,13 @@ describe('darkTheme', () => {
     expect(darkTheme.typography.displayLg.fontSize).toBe('30px');
   });
 
+  it('applies tabular-nums app-wide via the CssBaseline body override', () => {
+    const body = darkTheme.components?.MuiCssBaseline?.styleOverrides?.body as
+      | { fontVariantNumeric?: string }
+      | undefined;
+    expect(body?.fontVariantNumeric).toBe('tabular-nums');
+  });
+
   it('still exports responsiveDialogStyle (16 consumers depend on it)', () => {
     expect(responsiveDialogStyle['& .MuiDialog-paper']).toBeDefined();
   });
