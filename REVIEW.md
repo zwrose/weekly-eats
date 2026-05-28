@@ -121,7 +121,7 @@ This is the **coordinator's own judgment, not a re-review** — it does not disp
 - **Rationale** — one sentence saying why.
 - **Confidence** — **High** (orchestrator is sure) or **Low** (genuinely unsure — scrutinize this one). Low confidence is a feature, not a hedge: it tells the user where to look hardest.
 
-**Grounding rule.** Before emitting a POV on an **individually-presented** finding (Critical / Important), open the cited file at the cited line and read enough to judge — this is a small targeted read, not the full diff. For **batched Minor / Nit** findings, derive the POV from the finding text; open the file only when the text is insufficient to judge. This keeps the POV grounded without re-reading the whole change.
+**Grounding rule.** Before emitting a POV on an **individually-presented** finding (Critical / Important), open the cited file at the cited line and read enough to judge — this is a small targeted read, not the full diff. For **batched Minor / Nit** findings, derive the POV from the finding text; open the file only when the text is insufficient to judge. This keeps the POV grounded without re-reading the whole change. (Exception: `/audit-debt` intentionally omits the Minor/Nit POV entirely — a full-repo sweep surfaces far more Minor/Nit than a diff review, and only its Critical/Important findings are filed as issues, so a POV on every Nit would bloat the backlog without informing a decision.)
 
 Each skill says exactly where this POV surfaces (`/review-code` folds it into the triage subagent for the loop's `needs_user` prompt, and forms it inline on the read-only paths; `/review-plan` and `/audit-debt` form it inline at presentation).
 
