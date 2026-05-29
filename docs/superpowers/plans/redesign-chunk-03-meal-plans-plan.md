@@ -126,10 +126,11 @@ export interface EditableMeal {
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   getEnabledMeals,
   mealItemCount,
+  computeTodayDow,
   MEAL_ORDER,
   MEAL_LABEL,
   MEAL_LETTER,
@@ -185,6 +186,30 @@ describe('constants', () => {
     expect(MEAL_LETTER.breakfast).toBe('B');
   });
 });
+
+describe('computeTodayDow', () => {
+  afterEach(() => vi.useRealTimers());
+  const plan = { startDate: '2026-05-11', endDate: '2026-05-17' }; // Mon–Sun
+
+  it('returns the weekday when today is inside the range', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-13T12:00:00')); // Wednesday
+    expect(computeTodayDow(plan)).toBe('wednesday');
+  });
+  it('returns null when today is before the range', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-01T12:00:00'));
+    expect(computeTodayDow(plan)).toBeNull();
+  });
+  it('returns null when today is after the range', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-01T12:00:00'));
+    expect(computeTodayDow(plan)).toBeNull();
+  });
+  it('returns null for a null plan', () => {
+    expect(computeTodayDow(null)).toBeNull();
+  });
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -198,6 +223,7 @@ Expected: FAIL — "Failed to resolve import '../meal-display-utils'".
 // src/components/meal-plans/meal-display-utils.ts
 import type { DayOfWeek, MealItem, MealPlanItem, MealType } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
+import { formatDateForAPI, parseLocalDate } from '@/lib/date-utils';
 
 /** Shared contract for the read-mode plan views (desktop + mobile). */
 export interface PlanViewProps {
@@ -244,6 +270,26 @@ export function mealColorToken(mealType: string): string {
   if (mealType === 'lunch') return tokens.meal.lunch;
   if (mealType === 'dinner') return tokens.meal.dinner;
   return tokens.meal.staples;
+}
+
+/** The DayOfWeek for "today" if today falls within the plan's date range, else null.
+ *  (Time-dependent: tests pin the clock with vi.setSystemTime.) */
+export function computeTodayDow(
+  plan: { startDate: string; endDate: string } | null
+): DayOfWeek | null {
+  if (!plan) return null;
+  const today = formatDateForAPI(new Date());
+  if (today < plan.startDate || today > plan.endDate) return null;
+  const days: DayOfWeek[] = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
+  return days[parseLocalDate(today).getDay()];
 }
 ```
 
@@ -1586,12 +1632,14 @@ export function ConfirmDialog({
       open={open}
       onClose={onCancel}
       maxWidth="xs"
-      PaperProps={{
-        sx: {
-          bgcolor: tokens.surface.sheet,
-          borderRadius: `${tokens.radius.xxl}px`,
-          border: `1px solid ${tokens.border.strong}`,
-          p: 0.5,
+      slotProps={{
+        paper: {
+          sx: {
+            bgcolor: tokens.surface.sheet,
+            borderRadius: `${tokens.radius.xxl}px`,
+            border: `1px solid ${tokens.border.strong}`,
+            p: 0.5,
+          },
         },
       }}
     >
@@ -2160,6 +2208,19 @@ describe('QtyEditor', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  it('decimal key produces a fractional value; a second "." is a no-op', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    render(<QtyEditor open anchorEl={null} value={1} onCommit={onCommit} onClose={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'backspace' })); // clear "1"
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '.' }));
+    await user.click(screen.getByRole('button', { name: '.' })); // guarded — ignored
+    await user.click(screen.getByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onCommit).toHaveBeenCalledWith(1.5);
+  });
+
   // jsdom's matchMedia is undefined → useMediaQuery defaults to false (Drawer/mobile).
   // Force the desktop Popover branch so it isn't shipped untested.
   it('desktop branch: renders the numpad in a Popover and commits', async () => {
@@ -2181,6 +2242,7 @@ describe('QtyEditor', () => {
     await user.click(screen.getByRole('button', { name: '½' }));
     await user.click(screen.getByRole('button', { name: 'Done' }));
     expect(onCommit).toHaveBeenCalledWith(0.5);
+    anchor.remove();
   });
 });
 ```
@@ -2328,11 +2390,13 @@ export function QtyEditor({ open, anchorEl, value, onCommit, onClose }: QtyEdito
         anchorEl={anchorEl}
         onClose={onClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        PaperProps={{
-          sx: {
-            bgcolor: tokens.surface.sheet,
-            borderRadius: `${tokens.radius.xl}px`,
-            border: `1px solid ${tokens.border.subtle}`,
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.sheet,
+              borderRadius: `${tokens.radius.xl}px`,
+              border: `1px solid ${tokens.border.subtle}`,
+            },
           },
         }}
       >
@@ -2345,11 +2409,13 @@ export function QtyEditor({ open, anchorEl, value, onCommit, onClose }: QtyEdito
       anchor="bottom"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          bgcolor: tokens.surface.sheet,
-          borderTopLeftRadius: tokens.radius.sheet,
-          borderTopRightRadius: tokens.radius.sheet,
+      slotProps={{
+        paper: {
+          sx: {
+            bgcolor: tokens.surface.sheet,
+            borderTopLeftRadius: tokens.radius.sheet,
+            borderTopRightRadius: tokens.radius.sheet,
+          },
         },
       }}
     >
@@ -2473,6 +2539,7 @@ describe('UnitEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: /^pint/i }));
     expect(onCommit).toHaveBeenCalledWith('pint');
+    anchor.remove();
   });
 });
 ```
@@ -2625,11 +2692,13 @@ export function UnitEditor({
         anchorEl={anchorEl}
         onClose={onClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        PaperProps={{
-          sx: {
-            bgcolor: tokens.surface.sheet,
-            borderRadius: `${tokens.radius.xl}px`,
-            border: `1px solid ${tokens.border.subtle}`,
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.sheet,
+              borderRadius: `${tokens.radius.xl}px`,
+              border: `1px solid ${tokens.border.subtle}`,
+            },
           },
         }}
       >
@@ -2642,11 +2711,13 @@ export function UnitEditor({
       anchor="bottom"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          bgcolor: tokens.surface.sheet,
-          borderTopLeftRadius: tokens.radius.sheet,
-          borderTopRightRadius: tokens.radius.sheet,
+      slotProps={{
+        paper: {
+          sx: {
+            bgcolor: tokens.surface.sheet,
+            borderTopLeftRadius: tokens.radius.sheet,
+            borderTopRightRadius: tokens.radius.sheet,
+          },
         },
       }}
     >
@@ -3032,14 +3103,16 @@ Assembles everything: header (Cancel / title+subtitle / Done), skip bar (decisio
 
 ```tsx
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../../vitest.setup';
 import { MealEditorDialog, type EditableMeal } from '../MealEditorDialog';
 import type { MealItem } from '@/types/meal-plan';
 
 // MSW is globally active (vitest.setup.ts) — the inner CombinedSearch auto-loads
-// /api/food-items + /api/recipes on mount; the global handlers serve those. Do
-// NOT stub global.fetch (CLAUDE.md fetch-mocking gotcha).
+// /api/food-items + /api/recipes on mount; the global handlers serve those, and
+// per-test server.use(...) overrides them. Do NOT stub global.fetch.
 afterEach(cleanup);
 
 function base(meal: Partial<EditableMeal> = {}) {
@@ -3172,6 +3245,51 @@ describe('MealEditorDialog', () => {
     render(<MealEditorDialog {...base()} isStaples title="Weekly staples" />);
     expect(screen.queryByRole('checkbox', { name: /skip this meal/i })).not.toBeInTheDocument();
   });
+
+  it('skip reason text flows into the onSave payload', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <MealEditorDialog {...base({ items: [], skipped: true, skipReason: '' })} onSave={onSave} />
+    );
+    await user.type(screen.getByPlaceholderText(/reason/i), 'out for work lunch');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onSave).toHaveBeenCalledWith({
+      items: [],
+      skipped: true,
+      skipReason: 'out for work lunch',
+    });
+  });
+
+  it('search-target: selecting a group routes the next added item INTO that group (and the chip clears it)', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/recipes', () => HttpResponse.json([])),
+      http.get('/api/food-items', () =>
+        HttpResponse.json([
+          {
+            _id: 'f1',
+            name: 'romaine',
+            singularName: 'romaine',
+            pluralName: 'romaine',
+            unit: 'head',
+          },
+        ])
+      )
+    );
+    render(<MealEditorDialog {...base({ items: [group('Sides', [])] })} />);
+    // click the empty group to target it
+    await user.click(screen.getByText(/no items in this group/i));
+    expect(screen.getByText(/adding to:\s*sides/i)).toBeInTheDocument();
+    // add a food item via the sticky search → should land inside "Sides", not loose
+    await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'rom');
+    await waitFor(() => expect(screen.getByText('romaine')).toBeInTheDocument(), { timeout: 2000 });
+    await user.click(screen.getByText('romaine'));
+    // romaine now renders as a row under the group; clearing the chip resets to loose
+    expect(screen.getByText('romaine')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /add to meal instead/i }));
+    expect(screen.queryByText(/adding to:/i)).not.toBeInTheDocument();
+  });
 });
 ```
 
@@ -3297,36 +3415,22 @@ export function MealEditorDialog({
   const setItems = (items: MealItem[]) => setDraft((d) => ({ ...d, items }));
 
   const addLooseFood = (item: FoodItem) => {
-    const newItem: MealItem = {
+    const next: MealItem = {
       type: 'foodItem',
       id: item._id,
       name: item.singularName || item.name,
       quantity: 1,
       unit: item.unit || 'cup',
     };
-    routeAdd(newItem, {
-      type: 'foodItem',
-      id: item._id,
-      name: item.singularName || item.name,
-      quantity: 1,
-      unit: item.unit || 'cup',
-    });
+    routeAdd(next);
   };
   const addLooseRecipe = (r: { _id: string; title: string; emoji?: string }) => {
-    const newItem: MealItem = { type: 'recipe', id: r._id, name: r.title, quantity: 1 };
-    routeAdd(newItem, { type: 'recipe', id: r._id, name: r.title, quantity: 1 });
+    routeAdd({ type: 'recipe', id: r._id, name: r.title, quantity: 1 });
   };
-  // route an add into the search target group, or loose
-  const routeAdd = (
-    looseItem: MealItem,
-    ingredient: {
-      type: 'foodItem' | 'recipe';
-      id: string;
-      name: string;
-      quantity: number;
-      unit?: string;
-    }
-  ) => {
+  // Route an add into the search-target group, or loose. `next` is a foodItem/recipe
+  // MealItem; its {type,id,name,quantity,unit} fields are also a valid RecipeIngredient,
+  // so the same object works whether pushed loose or into a group's ingredients[].
+  const routeAdd = (next: MealItem) => {
     // Read the target from the ref (kept in sync below), NOT the closure, so it
     // reflects the committed value inside the updater (same guard as addGroup).
     const target = searchTargetRef.current;
@@ -3337,12 +3441,26 @@ export function MealEditorDialog({
           const grp = it.ingredients?.[0] ?? { title: it.name, ingredients: [] };
           return {
             ...it,
-            ingredients: [{ ...grp, ingredients: [...grp.ingredients, ingredient] }],
+            ingredients: [
+              {
+                ...grp,
+                ingredients: [
+                  ...grp.ingredients,
+                  {
+                    type: next.type,
+                    id: next.id,
+                    name: next.name,
+                    quantity: next.quantity ?? 1,
+                    unit: next.unit,
+                  },
+                ],
+              },
+            ],
           };
         });
         return { ...d, items };
       }
-      return { ...d, items: [...d.items, looseItem] };
+      return { ...d, items: [...d.items, next] };
     });
   };
   const addGroup = (groupTitle: string) => {
@@ -3470,7 +3588,7 @@ export function MealEditorDialog({
       sx={responsiveDialogStyle}
       maxWidth="md"
       fullWidth
-      PaperProps={{ sx: { bgcolor: tokens.surface.sheet } }}
+      slotProps={{ paper: { sx: { bgcolor: tokens.surface.sheet } } }}
     >
       {/* Header */}
       <Box
@@ -3949,7 +4067,7 @@ describe('PlanDetail (route surface)', () => {
 Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/meal-plans/__tests__/PlanDetail.test.tsx`
 Expected: FAIL — cannot resolve `../PlanDetail`.
 
-- [ ] **Step 3: Implement** `PlanDetail.tsx` per the interface + behavior above, plus the route `page.tsx`/`loading.tsx`/`error.tsx` + their tests. `PlanDetail` is `'use client'`, named export. It imports `fetchMealPlan`, `updateMealPlan`, `updateMealPlanTemplate`, `deleteMealPlan` from `@/lib/meal-plan-utils` (all existing). **Move the two helpers explicitly:** `export function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[]` and `export function getDateForDay(startDate: string, dow: DayOfWeek, startDay: DayOfWeek): string` are **added to `meal-display-utils.ts`** (moved verbatim from `page.tsx:660-679`, adapted to take `startDay`/`startDate` as args instead of closing over `selectedMealPlan`); `PlanDetail` then does `import { getDaysInOrder, getDateForDay, getEnabledMeals } from './meal-display-utils'`. Delete `MealPlanViewDialog.tsx` + its recipe-view test.
+- [ ] **Step 3: Implement** `PlanDetail.tsx` per the interface + behavior above, plus the route `page.tsx`/`loading.tsx`/`error.tsx` + their tests. `PlanDetail` is `'use client'`, named export. It imports `fetchMealPlan`, `updateMealPlan`, `updateMealPlanTemplate`, `deleteMealPlan` from `@/lib/meal-plan-utils` (all existing). **Move the two helpers explicitly:** `export function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[]` and `export function getDateForDay(startDate: string, dow: DayOfWeek, startDay: DayOfWeek): string` are **added to `meal-display-utils.ts`** (moved from `page.tsx:660-679`, adapted to take `startDay`/`startDate` as args instead of closing over `selectedMealPlan`). **One intentional change while moving `getDateForDay`:** switch its `toLocaleDateString` option from `weekday: 'long'` to `weekday: 'short'` so it renders "Mon, May 11" (the artboard format) instead of "Monday, May 11"; add a `meal-display-utils.test.ts` case asserting the short label for a known input. `computeTodayDow` already lives in `meal-display-utils.ts` (Task 1). `PlanDetail` imports `{ getDaysInOrder, getDateForDay, getEnabledMeals, computeTodayDow }` from `./meal-display-utils`. Delete `MealPlanViewDialog.tsx` + its recipe-view test.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -4005,7 +4123,7 @@ useEffect(() => {
 
    > Add the past-plans fetch to the existing `loadData` `Promise.all` (Task 14 keeps `loadData`'s shape) so it loads alongside the others — don't add a second mount effect.
 
-- [ ] **Step (test):** Rewrite `page.test.tsx` for the index-only surface. **Delete** the old "Delete Functionality" + "View Mode Quantity Display" blocks entirely — those behaviors moved to `PlanDetail.test.tsx` (Task 13). New index assertions: (a) clicking a plan row calls `router.push('/meal-plans/<id>')` (mock `next/navigation`); (b) **"Past · last 6 weeks"** — MSW returns a past plan for the date-range query (`server.use(http.get('/api/meal-plans', …))` keyed on the `startDate`/`endDate` params), assert the section header + that past plan's name render; (c) the legacy `?viewMealPlan=…&viewMealPlan_mealPlanId=p1` URL triggers `router.replace('/meal-plans/p1')`. Keep the share-dialog auto-focus test. **The rewritten file must add `import { cleanup } from '@testing-library/react'` + `afterEach(cleanup)`** (the pre-existing `page.test.tsx` lacks it — fix that here; no RTL auto-cleanup) and mock `next/navigation` (`useRouter`→`{ push, replace }`, `useSearchParams`). Run:
+- [ ] **Step (test):** Rewrite `page.test.tsx` for the index-only surface. **Delete** the old "Delete Functionality" + "View Mode Quantity Display" blocks entirely — those behaviors moved to `PlanDetail.test.tsx` (Task 13). New index assertions: (a) clicking a plan row calls `router.push('/meal-plans/<id>')` (mock `next/navigation`); (b) **"Past · last 6 weeks"** — MSW returns a past plan for the date-range query (`server.use(http.get('/api/meal-plans', …))` keyed on the `startDate`/`endDate` params), assert the section header + that past plan's name render; (c) the legacy `?viewMealPlan=…&viewMealPlan_mealPlanId=p1` URL triggers `router.replace('/meal-plans/p1')`; (d) **"View older →"** is collapsed by default (`MealPlanBrowser`'s UI not in the DOM) and clicking it reveals `MealPlanBrowser` (assert a characteristic element appears — e.g. a year row from its `/api/meal-plans/summary` MSW response). Keep the share-dialog auto-focus test. **The rewritten file must add `import { cleanup } from '@testing-library/react'` + `afterEach(cleanup)`** (the pre-existing `page.test.tsx` lacks it — fix that here; no RTL auto-cleanup) and mock `next/navigation` (`useRouter`→`{ push, replace }`, `useSearchParams`). Run:
 
 `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/app/meal-plans/__tests__/page.test.tsx`
 Expected: PASS after the rewrite.
