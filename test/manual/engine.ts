@@ -494,6 +494,18 @@ export class Engine {
       : [];
   }
 
+  /** Summarize what `clean --all` would wipe across the shared DB. */
+  async previewAll(): Promise<{ branches: string[]; total: number }> {
+    const ids = new Set<string>();
+    let total = 0;
+    for (const col of KNOWN_COLLECTIONS) {
+      const colIds = (await this.db.collection(col).distinct('_seedManifestId')) as string[];
+      for (const id of colIds) if (id) ids.add(id);
+      total += await this.db.collection(col).countDocuments({ _seedManifestId: { $exists: true } });
+    }
+    return { branches: [...new Set([...ids].map((id) => id.split('::')[0]))].sort(), total };
+  }
+
   /**
    * File-independent targeted clean: remove all docs + state for a branch (every slot).
    * No regex — enumerate exact _seedManifestId values and delete by $in, so a branch

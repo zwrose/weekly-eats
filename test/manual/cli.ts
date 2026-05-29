@@ -9,6 +9,7 @@ import { validateBranch, validateSlot } from './validate-args.js';
 import { loadManifest, manifestPath } from './manifest-io.js';
 import { Engine } from './engine.js';
 import { acquireLock, releaseLock, forceUnlock, readLock } from './lock.js';
+import { KNOWN_COLLECTIONS } from './types.js';
 import type { CliResult, Block, StatusAllResult } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -225,6 +226,25 @@ async function main(): Promise<number> {
       return 0;
     }
 
+    if (parsed.command === 'clean' && parsed.flags.all) {
+      if (!parsed.flags.yes) {
+        throw new Error('clean --all requires --yes (destructive)');
+      }
+      const engine = new Engine(db, await loadBlocks());
+      const preview = await engine.previewAll();
+      process.stdout.write(
+        `clean --all: ${preview.total} doc(s) across ${preview.branches.length} branch(es): ${preview.branches.join(', ')}\n`
+      );
+      let totalDeleted = 0;
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await db.collection(col).deleteMany({ _seedManifestId: { $exists: true } });
+        totalDeleted += r.deletedCount ?? 0;
+      }
+      await db.collection('manualTestState').deleteMany({});
+      process.stdout.write(`cleaned ${totalDeleted} docs across all manifests\n`);
+      return 0;
+    }
+
     if (parsed.command === 'clean' && parsed.flags['manifest-id']) {
       const branch = String(parsed.flags['manifest-id']);
       validateBranch(branch); // rejects '::*' and disallowed chars
@@ -324,21 +344,6 @@ async function main(): Promise<number> {
     }
 
     if (parsed.command === 'clean') {
-      if (parsed.flags.all) {
-        if (!parsed.flags.yes) {
-          throw new Error('clean --all requires --yes (destructive)');
-        }
-        // ─── Clean across all manifests ────────────────────────────
-        const { KNOWN_COLLECTIONS } = await import('./types.js');
-        let totalDeleted = 0;
-        for (const col of KNOWN_COLLECTIONS) {
-          const r = await db.collection(col).deleteMany({ _seedManifestId: { $exists: true } });
-          totalDeleted += r.deletedCount ?? 0;
-        }
-        await db.collection('manualTestState').deleteMany({});
-        process.stdout.write(`cleaned ${totalDeleted} docs across all manifests\n`);
-        return 0;
-      }
       const result = await engine.clean(manifest);
       output(result, parsed);
       return result.exitCode;

@@ -588,6 +588,23 @@ describe('Engine.status', () => {
   });
 });
 
+// ─── Engine.previewAll ───
+describe('Engine.previewAll', () => {
+  it('returns distinct branches and total doc count', async () => {
+    const ids = ['a::default', 'a::admin', 'b::default'];
+    const db = {
+      collection: vi.fn(() => ({
+        distinct: vi.fn(async () => ids),
+        countDocuments: vi.fn(async () => 4),
+      })),
+    } as unknown as Db;
+    const engine = new Engine(db, new Map());
+    const p = await engine.previewAll();
+    expect(p.branches.sort()).toEqual(['a', 'b']);
+    expect(p.total).toBeGreaterThan(0);
+  });
+});
+
 // ─── Engine.cleanByBranch ───
 describe('Engine.cleanByBranch', () => {
   it('deletes docs + state across multiple slots; does NOT over-match a .-adjacent sibling', async () => {
