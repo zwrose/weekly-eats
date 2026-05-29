@@ -195,4 +195,14 @@ describe('MealEditorDialog', () => {
     await user.click(screen.getByRole('button', { name: /stop adding to group/i }));
     expect(screen.queryByText(/adding to:/i)).not.toBeInTheDocument();
   });
+
+  it('clicking away in the body clears the group search target', async () => {
+    const user = userEvent.setup();
+    render(<MealEditorDialog {...base({ items: [group('Sides', [])] })} />);
+    await user.click(screen.getByText(/add items to this group/i));
+    expect(screen.getByText(/adding to:\s*sides/i)).toBeInTheDocument();
+    // Click the "Items" label — in the body but outside the group → clears the target.
+    await user.click(screen.getByText('Items'));
+    expect(screen.queryByText(/adding to:/i)).not.toBeInTheDocument();
+  });
 });

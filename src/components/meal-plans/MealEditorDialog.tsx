@@ -369,6 +369,9 @@ export function MealEditorDialog({
 
       {/* Body */}
       <Box
+        // Clicking away from a targeted group (anywhere in the body that isn't inside a
+        // group — groups stopPropagation) clears the search target.
+        onClick={() => searchTarget != null && setSearchTarget(null)}
         sx={{
           flex: 1,
           overflowY: 'auto',

@@ -39,6 +39,9 @@ export function EditorGroupSection({
 
   return (
     <Box
+      // Clicks within a group shouldn't count as "clicking away" — keep the target
+      // while the user works inside it (the parent clears it on outside clicks).
+      onClick={(e) => e.stopPropagation()}
       sx={{
         mt: 1.75,
         borderRadius: `${tokens.radius.lg}px`,
@@ -94,15 +97,16 @@ export function EditorGroupSection({
       )}
       <Box sx={{ borderTop: `1px solid ${tokens.border.subtle}` }}>
         {ings.length === 0 ? (
-          // Empty group: the empty state IS the affordance — tap to add into the group.
+          // Empty group: the empty state IS the affordance — styled like the non-empty
+          // "+ Add to group" row so the two read consistently.
           <ButtonBase
             onClick={onAddToGroup}
             sx={{
-              my: 1.25,
+              mt: 0.5,
               width: '100%',
-              py: 1.5,
-              border: `1px dashed ${isTarget ? `${tokens.section.plans}88` : tokens.border.strong}`,
-              borderRadius: `${tokens.radius.md}px`,
+              justifyContent: 'flex-start',
+              px: 1.5,
+              py: 1,
               color: tokens.section.plans,
               fontSize: 13,
               fontWeight: 600,

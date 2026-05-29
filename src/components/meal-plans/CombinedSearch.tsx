@@ -260,7 +260,7 @@ export function CombinedSearch({
             {createRow(createFoodIdx, 'food', <>Add &quot;{q}&quot; as new food item</>, () =>
               creator.openDialog(q)
             )}
-            {createRow(newGroupIdx, 'group', <>Create empty group &quot;{q}&quot;</>, newGroup)}
+            {createRow(newGroupIdx, 'group', <>Create new group &quot;{q}&quot;</>, newGroup)}
           </Box>
         )}
         <Box

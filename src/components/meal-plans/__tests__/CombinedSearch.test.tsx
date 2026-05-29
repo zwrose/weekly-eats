@@ -50,13 +50,10 @@ describe('CombinedSearch', () => {
     const onAddGroup = vi.fn();
     render(<CombinedSearch {...props({ onAddGroup })} />);
     await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'Sides');
-    await waitFor(
-      () => expect(screen.getByText(/create empty group "Sides"/i)).toBeInTheDocument(),
-      {
-        timeout: 2000,
-      }
-    );
-    await user.click(screen.getByText(/create empty group "Sides"/i));
+    await waitFor(() => expect(screen.getByText(/create new group "Sides"/i)).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    await user.click(screen.getByText(/create new group "Sides"/i));
     expect(onAddGroup).toHaveBeenCalledWith('Sides');
   });
 
@@ -89,12 +86,9 @@ describe('CombinedSearch', () => {
     const onAddGroup = vi.fn();
     render(<CombinedSearch {...props({ onAddGroup })} />);
     await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'Sides');
-    await waitFor(
-      () => expect(screen.getByText(/create empty group "Sides"/i)).toBeInTheDocument(),
-      {
-        timeout: 2000,
-      }
-    );
+    await waitFor(() => expect(screen.getByText(/create new group "Sides"/i)).toBeInTheDocument(), {
+      timeout: 2000,
+    });
     await user.keyboard('{ArrowUp}{Enter}'); // bottom row is the New group action
     expect(onAddGroup).toHaveBeenCalledWith('Sides');
   });
