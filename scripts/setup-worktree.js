@@ -4,33 +4,21 @@
  * Worktree-aware postinstall script.
  *
  * When run in the main repo: delegates to setup-database.js (existing behavior).
- * When run in a worktree: generates .env.local (deterministic port + unique DB),
- * clones the main DB, then runs setup-database.js.
+ * When run in a worktree: generates .env.local (deterministic port, shared DB),
+ * then runs setup-database.js.
  *
  * Usage: node scripts/setup-worktree.js
  */
 
-import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { MongoClient } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..');
-
-// Skip in CI/test environments
-if (
-  process.env.CI === 'true' ||
-  process.env.NODE_ENV === 'test' ||
-  process.env.SKIP_DB_SETUP === 'true'
-) {
-  console.log('Skipping worktree setup (CI/test/disabled).');
-  process.exit(0);
-}
 
 /**
  * Detect whether we're in a worktree or the main repo.
@@ -78,13 +66,15 @@ function portFromBranchName(branchName) {
 }
 
 /**
- * Sanitize branch name for use as a database name suffix.
+ * Pure env-rewrite: keep MONGODB_URI verbatim (shared DB), rewrite only the
+ * NEXTAUTH_URL port and PORT. Exported for unit testing.
  */
-function sanitizeBranchName(branchName) {
-  return branchName
-    .replace(/[^a-zA-Z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+export function rewriteWorktreeEnv(content, { port }) {
+  let env = content;
+  env = env.replace(/NEXTAUTH_URL=http:\/\/localhost:\d+/, 'NEXTAUTH_URL=http://localhost:' + port);
+  env = env.replace(/^PORT=.*\n?/m, '');
+  env = env.trimEnd() + '\nPORT=' + port + '\n';
+  return env;
 }
 
 /**
@@ -97,125 +87,13 @@ function generateEnvLocal(mainWorktreePath, branchName) {
     console.error('The main repo must have a .env.local for worktree setup.');
     process.exit(1);
   }
-
   const port = portFromBranchName(branchName);
-  const safeName = sanitizeBranchName(branchName);
-  const dbName = 'weekly-eats-' + safeName;
-
-  let envContent = readFileSync(mainEnvPath, 'utf8');
-
-  // Replace MONGODB_URI database name
-  envContent = envContent.replace(
-    /MONGODB_URI=mongodb:\/\/localhost:27017\/[^\s]*/,
-    'MONGODB_URI=mongodb://localhost:27017/' + dbName
-  );
-
-  // Replace NEXTAUTH_URL port
-  envContent = envContent.replace(
-    /NEXTAUTH_URL=http:\/\/localhost:\d+/,
-    'NEXTAUTH_URL=http://localhost:' + port
-  );
-
-  // Remove any existing PORT= line, then add ours
-  envContent = envContent.replace(/^PORT=.*\n?/m, '');
-  envContent = envContent.trimEnd() + '\nPORT=' + port + '\n';
-
+  const envContent = rewriteWorktreeEnv(readFileSync(mainEnvPath, 'utf8'), { port });
   writeFileSync(resolve(projectRoot, '.env.local'), envContent);
-
-  console.log('Generated .env.local: port=' + port + ', database=' + dbName);
-  return { port, dbName };
-}
-
-/**
- * Clone the main database to the worktree database using mongodump/mongorestore.
- */
-function cloneDatabase(mainWorktreePath, dbName) {
-  const whichCmd = process.platform === 'win32' ? 'where' : 'which';
-  const hasMongodump =
-    spawnSync(whichCmd, ['mongodump'], { encoding: 'utf8', shell: true }).status === 0;
-  const hasMongorestore =
-    spawnSync(whichCmd, ['mongorestore'], { encoding: 'utf8', shell: true }).status === 0;
-
-  if (!hasMongodump || !hasMongorestore) {
-    console.warn('Warning: mongodump/mongorestore not found. Skipping database clone.');
-    console.warn('Install mongodb-database-tools to enable automatic database cloning.');
-    return;
-  }
-
-  const mainEnvPath = resolve(mainWorktreePath, '.env.local');
-  const mainEnv = readFileSync(mainEnvPath, 'utf8');
-  const mainDbMatch = mainEnv.match(/MONGODB_URI=mongodb:\/\/localhost:27017\/([^\s]+)/);
-  const mainDbName = mainDbMatch ? mainDbMatch[1] : 'weekly-eats-dev';
-
-  console.log("Cloning database '" + mainDbName + "' -> '" + dbName + "'...");
-
-  const tmpDir = mkdtempSync(join(tmpdir(), 'weekly-eats-'));
-
-  try {
-    const dumpResult = spawnSync('mongodump', ['--db', mainDbName, '--out', tmpDir, '--quiet'], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-      shell: true,
-    });
-
-    if (dumpResult.status !== 0) {
-      console.warn('Warning: mongodump failed (is MongoDB running?). Database will be empty.');
-      return;
-    }
-
-    const restoreResult = spawnSync(
-      'mongorestore',
-      ['--db', dbName, join(tmpDir, mainDbName), '--quiet', '--drop'],
-      {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        shell: true,
-      }
-    );
-
-    if (restoreResult.status !== 0) {
-      console.warn('Warning: mongorestore failed. Database may be empty.');
-    } else {
-      console.log('Database cloned successfully.');
-    }
-  } finally {
-    try {
-      rmSync(tmpDir, { recursive: true, force: true });
-    } catch {
-      /* ignore cleanup errors */
-    }
-  }
-}
-
-/**
- * Strip _seed* tags and drop manual-testing state collections from the cloned
- * worktree DB so it starts clean from a manual-testing perspective.
- */
-async function stripSeedTags(targetUri) {
-  const { SEEDABLE_COLLECTIONS } = await import('../src/lib/seedable-collections.js');
-  const tmpClient = await MongoClient.connect(targetUri);
-  try {
-    const db = tmpClient.db();
-    for (const col of SEEDABLE_COLLECTIONS) {
-      await db
-        .collection(col)
-        .updateMany(
-          { _seedManifestId: { $exists: true } },
-          { $unset: { _seedManifestId: '', _seedScenarioId: '' } }
-        );
-    }
-    await db
-      .collection('manualTestState')
-      .drop()
-      .catch(() => undefined);
-    await db
-      .collection('manualTestLocks')
-      .drop()
-      .catch(() => undefined);
-    console.log('Stripped _seed* fields and cleared manual-testing state.');
-  } finally {
-    await tmpClient.close();
-  }
+  console.log(
+    'Generated .env.local: port=' + port + ' (shared DB — MONGODB_URI inherited from main)'
+  );
+  return { port };
 }
 
 /**
@@ -231,32 +109,28 @@ function runSetupDb() {
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// Main — only runs when executed directly (not when imported in tests)
 // ---------------------------------------------------------------------------
 
-const context = detectWorktreeContext();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  // Skip in CI/test environments
+  if (
+    process.env.CI === 'true' ||
+    process.env.NODE_ENV === 'test' ||
+    process.env.SKIP_DB_SETUP === 'true'
+  ) {
+    console.log('Skipping worktree setup (CI/test/disabled).');
+    process.exit(0);
+  }
 
-if (!context.isWorktree) {
-  runSetupDb();
-} else {
-  // Wrap in async IIFE so stripSeedTags() finishes before runSetupDb() runs.
-  // Otherwise execSync inside runSetupDb blocks the event loop while
-  // stripSeedTags' Mongo I/O is pending, and the strip resumes AFTER
-  // setup-database.js indexes the same collections it then drops.
-  await (async () => {
-    console.log("Worktree detected: branch '" + context.branchName + "'");
-    const { dbName } = generateEnvLocal(context.mainWorktreePath, context.branchName);
-    cloneDatabase(context.mainWorktreePath, dbName);
-    const worktreeEnv = readFileSync(resolve(projectRoot, '.env.local'), 'utf8');
-    const uriMatch = worktreeEnv.match(/^MONGODB_URI=(.+)$/m);
-    if (uriMatch) {
-      try {
-        await stripSeedTags(uriMatch[1].trim());
-      } catch (err) {
-        console.warn('Warning: could not strip _seed* fields from cloned DB:', err.message);
-      }
-    }
+  const context = detectWorktreeContext();
+
+  if (!context.isWorktree) {
     runSetupDb();
-    console.log('Worktree setup complete.');
-  })();
+  } else {
+    console.log("Worktree detected: branch '" + context.branchName + "'");
+    generateEnvLocal(context.mainWorktreePath, context.branchName);
+    runSetupDb();
+    console.log('Worktree setup complete (shared DB).');
+  }
 }
