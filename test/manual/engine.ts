@@ -12,6 +12,7 @@ import type {
 } from './types.js';
 import { KNOWN_COLLECTIONS } from './types.js';
 import { stableHash } from './hash.js';
+import { SEED_TITLE_PREFIX } from './seedTag.js';
 
 const STATE_COLLECTION = 'manualTestState';
 
@@ -468,21 +469,28 @@ export class Engine {
     };
   }
 
-  /** Detect orphan/untagged seed-shaped docs for a warning on plain clean/status. */
-  private async orphanWarnings(): Promise<string[]> {
-    const { SEED_TITLE_PREFIX } = await import('./seedTag.js');
-    let legacy = 0;
+  /** Count untagged seed-shaped docs (SEED_TITLE_PREFIX title/name, no _seedManifestId) per collection. */
+  private async legacyOrphanCounts(): Promise<Array<{ collection: string; count: number }>> {
+    const results: Array<{ collection: string; count: number }> = [];
     for (const col of KNOWN_COLLECTIONS) {
-      legacy += await this.db.collection(col).countDocuments({
+      const count = await this.db.collection(col).countDocuments({
         _seedManifestId: { $exists: false },
         $or: [
           { title: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
           { name: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
         ],
       });
+      if (count > 0) results.push({ collection: col, count });
     }
-    return legacy > 0
-      ? [`${legacy} untagged seed-shaped doc(s) detected — run \`clean --orphans\` to review`]
+    return results;
+  }
+
+  /** Detect orphan/untagged seed-shaped docs for a warning on plain clean/status. */
+  private async orphanWarnings(): Promise<string[]> {
+    const legacy = await this.legacyOrphanCounts();
+    const total = legacy.reduce((n, l) => n + l.count, 0);
+    return total > 0
+      ? [`${total} untagged seed-shaped doc(s) detected — run \`clean --orphans\` to review`]
       : [];
   }
 
@@ -503,8 +511,6 @@ export class Engine {
     deleted: number;
     warnings: string[];
   }> {
-    const { SEED_TITLE_PREFIX } = await import('./seedTag.js');
-
     // 1. Distinct manifestIds present on docs + tracked manifestIds from state.
     const docIds = new Set<string>();
     for (const col of KNOWN_COLLECTIONS) {
@@ -535,23 +541,13 @@ export class Engine {
     }
 
     // 4. Legacy untagged (report only).
-    const legacy: Array<{ collection: string; count: number }> = [];
-    for (const col of KNOWN_COLLECTIONS) {
-      const count = await this.db.collection(col).countDocuments({
-        _seedManifestId: { $exists: false },
-        $or: [
-          { title: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
-          { name: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
-        ],
-      });
-      if (count > 0) legacy.push({ collection: col, count });
-    }
+    const legacy = await this.legacyOrphanCounts();
 
     // 5. Backstop.
     const warnings: string[] = [];
     if (branchesOnDocs.size > 0 && goneBranches.size > branchesOnDocs.size / 2) {
       warnings.push(
-        `orphan sweep flagged ${goneBranches.size}/${branchesOnDocs.size} branches as gone — re-confirm before deleting`
+        `orphan sweep: ${goneBranches.size}/${branchesOnDocs.size} branches flagged gone — verify this is expected`
       );
     }
 

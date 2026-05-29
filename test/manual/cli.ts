@@ -229,13 +229,13 @@ async function main(): Promise<number> {
       const engine = new Engine(db, await loadBlocks());
       const dryRun = !parsed.flags.yes; // default dry-run; --yes deletes
       const r = await engine.cleanOrphans({ branchExists: makeBranchExists(), dryRun });
+      for (const w of r.warnings) process.stdout.write(`  warning: ${w}\n`);
       process.stdout.write(
         `clean --orphans${dryRun ? ' (dry-run)' : ''}: ` +
           `${r.untracked.length} untracked, ${r.staleBranch.length} stale-branch, ` +
           `${r.legacy.reduce((n, l) => n + l.count, 0)} legacy-untagged (report only); ` +
           `${dryRun ? 'would delete' : 'deleted'} ${dryRun ? r.untracked.length + r.staleBranch.length : r.deleted}\n`
       );
-      for (const w of r.warnings) process.stdout.write(`  warning: ${w}\n`);
       return 0;
     }
 
