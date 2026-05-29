@@ -63,4 +63,46 @@ describe('useApprovalStatus', () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith({ isApproved: false }));
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/pending-approval'));
   });
+
+  it('does NOT update or redirect when polled status matches session (isApproved:false steady state)', async () => {
+    vi.mocked(useSession).mockReturnValue(
+      sessionValue({ email: 'u@x.com', isApproved: false, isAdmin: false })
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ isApproved: false, isAdmin: false }),
+      })
+    );
+
+    renderHook(() => useApprovalStatus());
+
+    // Wait well past the 100ms setTimeout so any spurious redirect would have fired
+    await new Promise((r) => setTimeout(r, 200));
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does NOT update or redirect when polled status matches session (isApproved:true steady state)', async () => {
+    vi.mocked(useSession).mockReturnValue(
+      sessionValue({ email: 'u@x.com', isApproved: true, isAdmin: false })
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ isApproved: true, isAdmin: false }),
+      })
+    );
+
+    renderHook(() => useApprovalStatus());
+
+    // Wait well past the 100ms setTimeout so any spurious redirect would have fired
+    await new Promise((r) => setTimeout(r, 200));
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
