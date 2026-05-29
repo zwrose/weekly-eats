@@ -66,9 +66,10 @@
 
 ### New — plan-detail route `src/app/meal-plans/[id]/`
 
-- `page.tsx` — server component: `const { id } = await params` (Next 15 async params), renders `<PlanDetail planId={id} />`.
-- `loading.tsx` — dark skeleton (back button + header + a hero/strip skeleton), wrapped in `AuthenticatedLayout`.
-- `error.tsx` — `'use client'` error boundary with `reset()`; dark tokens.
+- `page.tsx` — server component: `const { id } = await params` (Next 15 async params), renders `<AuthenticatedLayout><PlanDetail planId={id} /></AuthenticatedLayout>`.
+- `loading.tsx` — dark skeleton (back button + header + a hero/strip skeleton), **wrapped in `AuthenticatedLayout`** (matches the existing `src/app/meal-plans/loading.tsx`).
+- `error.tsx` — `'use client'` error boundary with `reset()`; dark tokens. **Does NOT wrap `AuthenticatedLayout`** — mirror the existing `src/app/meal-plans/error.tsx` exactly (wrapping it would call `useSession`/router hooks during an error render). Just an `Alert` + "Try Again" → `reset()`.
+- `__tests__/loading.test.tsx` + `__tests__/error.test.tsx` — mirror the existing `src/app/meal-plans/__tests__/{loading,error}.test.tsx` (loading: renders skeleton without crashing; error: shows the message + "Try Again" calls `reset()`). Convention: every route has these.
 
 ### Rewritten in place (kept at `src/components/` — imported by `page.tsx`)
 
@@ -1163,7 +1164,7 @@ import { Box, ButtonBase } from '@mui/material';
 import type { DayOfWeek, MealType, MealPlanItem } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
 import { MealItemLine } from './MealItemLine';
-import { MEAL_LABEL, mealColorToken } from './meal-display-utils';
+import { MEAL_LABEL, MEAL_LETTER, mealColorToken } from './meal-display-utils';
 import type { PlanViewProps } from './meal-display-utils';
 
 function Hero({
@@ -1342,7 +1343,7 @@ function StripCell({
                 mr: 0.5,
               }}
             >
-              {MEAL_LETTER_LOCAL[mt]}
+              {MEAL_LETTER[mt]}
             </Box>
             {m!.skipped ? (
               <Box component="span" sx={{ color: mute, fontStyle: 'italic' }}>
@@ -1363,8 +1364,6 @@ function StripCell({
     </Box>
   );
 }
-
-const MEAL_LETTER_LOCAL: Record<string, string> = { breakfast: 'B', lunch: 'L', dinner: 'D' };
 
 function TodayPill() {
   return (
@@ -1478,7 +1477,7 @@ export function PlanViewDesktop({
 }
 ```
 
-> Note: the unused-import lint will flag nothing here, but double-check `MEAL_LETTER` vs the local map — the hero uses `MEAL_LABEL`; the strip uses `MEAL_LETTER_LOCAL`. Keep both or import `MEAL_LETTER` from `meal-display-utils` and delete the local — pick one in implementation and run the lint hook.
+> Note: the hero uses `MEAL_LABEL` (full word); the strip uses `MEAL_LETTER` (B/L/D) — both imported from `meal-display-utils`. No local letter map.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -2122,7 +2121,12 @@ import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QtyEditor } from '../QtyEditor';
 
-afterEach(cleanup);
+// unstub in afterEach (not inline) so a failed assertion mid-test can't leak the
+// matchMedia stub into later tests (CLAUDE.md stub→beforeEach / unstub→afterEach).
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('QtyEditor', () => {
   it('digit entry then Done commits the parsed number', async () => {
@@ -2177,7 +2181,6 @@ describe('QtyEditor', () => {
     await user.click(screen.getByRole('button', { name: '½' }));
     await user.click(screen.getByRole('button', { name: 'Done' }));
     expect(onCommit).toHaveBeenCalledWith(0.5);
-    vi.unstubAllGlobals();
   });
 });
 ```
@@ -2400,7 +2403,11 @@ import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UnitEditor } from '../UnitEditor';
 
-afterEach(cleanup);
+// unstub in afterEach (not inline) so a failed assertion can't leak the matchMedia stub.
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('UnitEditor', () => {
   it('lists units and commits the selected one', async () => {
@@ -2466,7 +2473,6 @@ describe('UnitEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: /^pint/i }));
     expect(onCommit).toHaveBeenCalledWith('pint');
-    vi.unstubAllGlobals();
   });
 });
 ```
@@ -3238,6 +3244,9 @@ export function MealEditorDialog({
   const [initial, setInitial] = useState<EditableMeal>(clone(meal));
   const [searchTarget, setSearchTarget] = useState<number | null>(null);
   const pendingTargetRef = useRef<number | null>(null);
+  // Mirror searchTarget into a ref so setDraft updaters read the committed value.
+  const searchTargetRef = useRef<number | null>(null);
+  searchTargetRef.current = searchTarget;
   const [qtyState, setQtyState] = useState<{
     anchor: HTMLElement | null;
     target: ChipTarget;
@@ -3318,10 +3327,13 @@ export function MealEditorDialog({
       unit?: string;
     }
   ) => {
+    // Read the target from the ref (kept in sync below), NOT the closure, so it
+    // reflects the committed value inside the updater (same guard as addGroup).
+    const target = searchTargetRef.current;
     setDraft((d) => {
-      if (searchTarget != null && d.items[searchTarget]?.type === 'ingredientGroup') {
+      if (target != null && d.items[target]?.type === 'ingredientGroup') {
         const items = d.items.map((it, i) => {
-          if (i !== searchTarget) return it;
+          if (i !== target) return it;
           const grp = it.ingredients?.[0] ?? { title: it.name, ingredients: [] };
           return {
             ...it,
@@ -3737,6 +3749,7 @@ The plan detail is now a real route `/meal-plans/[id]` with a `‹ Plans` back b
 **Files:**
 
 - Create: `src/app/meal-plans/[id]/page.tsx`, `src/app/meal-plans/[id]/loading.tsx`, `src/app/meal-plans/[id]/error.tsx`
+- Create tests: `src/app/meal-plans/[id]/__tests__/loading.test.tsx`, `src/app/meal-plans/[id]/__tests__/error.test.tsx` (mirror the existing index-route tests)
 - Create: `src/components/meal-plans/PlanDetail.tsx`
 - Create test: `src/components/meal-plans/__tests__/PlanDetail.test.tsx`
 - Delete: `src/components/MealPlanViewDialog.tsx` + `src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx`
@@ -3760,7 +3773,7 @@ export default async function MealPlanDetailPage({ params }: { params: Promise<{
 }
 ```
 
-`loading.tsx` (dark skeleton inside `AuthenticatedLayout`) and `error.tsx` (`'use client'`, `reset()` button, dark tokens) mirror the existing `src/app/meal-plans/loading.tsx`/`error.tsx`.
+`loading.tsx` (dark skeleton **inside `AuthenticatedLayout`**) and `error.tsx` (`'use client'`, `reset()` button, dark tokens, **NOT inside `AuthenticatedLayout`** — see File Structure note) mirror the existing `src/app/meal-plans/loading.tsx`/`error.tsx`.
 
 **`PlanDetail` interface + behavior:**
 
@@ -3920,7 +3933,7 @@ describe('PlanDetail (route surface)', () => {
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(putBody).not.toBeNull());
     expect(putBody).toHaveProperty('items'); // same payload shape as today
-    expect(Object.keys(putBody)).toEqual(['items']);
+    expect(Object.keys(putBody)).toHaveLength(1); // items is the ONLY key — no write-logic drift
   });
 
   it('renders a not-found state when the plan 404s', async () => {
@@ -3936,7 +3949,7 @@ describe('PlanDetail (route surface)', () => {
 Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/meal-plans/__tests__/PlanDetail.test.tsx`
 Expected: FAIL — cannot resolve `../PlanDetail`.
 
-- [ ] **Step 3: Implement** `PlanDetail.tsx` per the interface + behavior above, plus the route `page.tsx`/`loading.tsx`/`error.tsx`, and move the two helpers into `meal-display-utils.ts`. `PlanDetail` is `'use client'`, named export. It imports `fetchMealPlan`, `updateMealPlan`, `updateMealPlanTemplate`, `deleteMealPlan` from `@/lib/meal-plan-utils` (all existing). Delete `MealPlanViewDialog.tsx` + its recipe-view test.
+- [ ] **Step 3: Implement** `PlanDetail.tsx` per the interface + behavior above, plus the route `page.tsx`/`loading.tsx`/`error.tsx` + their tests. `PlanDetail` is `'use client'`, named export. It imports `fetchMealPlan`, `updateMealPlan`, `updateMealPlanTemplate`, `deleteMealPlan` from `@/lib/meal-plan-utils` (all existing). **Move the two helpers explicitly:** `export function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[]` and `export function getDateForDay(startDate: string, dow: DayOfWeek, startDay: DayOfWeek): string` are **added to `meal-display-utils.ts`** (moved verbatim from `page.tsx:660-679`, adapted to take `startDay`/`startDate` as args instead of closing over `selectedMealPlan`); `PlanDetail` then does `import { getDaysInOrder, getDateForDay, getEnabledMeals } from './meal-display-utils'`. Delete `MealPlanViewDialog.tsx` + its recipe-view test.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -3948,6 +3961,7 @@ Expected: PASS.
 ```bash
 git rm src/components/MealPlanViewDialog.tsx src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx
 git add src/app/meal-plans/\[id\]/ src/components/meal-plans/PlanDetail.tsx src/components/meal-plans/__tests__/PlanDetail.test.tsx src/components/meal-plans/meal-display-utils.ts
+# includes src/app/meal-plans/[id]/__tests__/{loading,error}.test.tsx
 git commit -m "feat(meal-plans): plan-detail route + PlanDetail (back button, per-meal B3 editor over page) (chunk 3)"
 ```
 
@@ -3991,7 +4005,7 @@ useEffect(() => {
 
    > Add the past-plans fetch to the existing `loadData` `Promise.all` (Task 14 keeps `loadData`'s shape) so it loads alongside the others — don't add a second mount effect.
 
-- [ ] **Step (test):** Rewrite `page.test.tsx` for the index-only surface. **Delete** the old "Delete Functionality" + "View Mode Quantity Display" blocks entirely — those behaviors moved to `PlanDetail.test.tsx` (Task 13). New index assertions: (a) clicking a plan row calls `router.push('/meal-plans/<id>')` (mock `next/navigation`); (b) **"Past · last 6 weeks"** — MSW returns a past plan for the date-range query (`server.use(http.get('/api/meal-plans', …))` keyed on the `startDate`/`endDate` params), assert the section header + that past plan's name render; (c) the legacy `?viewMealPlan=…&viewMealPlan_mealPlanId=p1` URL triggers `router.replace('/meal-plans/p1')`. Keep the share-dialog auto-focus test. Run:
+- [ ] **Step (test):** Rewrite `page.test.tsx` for the index-only surface. **Delete** the old "Delete Functionality" + "View Mode Quantity Display" blocks entirely — those behaviors moved to `PlanDetail.test.tsx` (Task 13). New index assertions: (a) clicking a plan row calls `router.push('/meal-plans/<id>')` (mock `next/navigation`); (b) **"Past · last 6 weeks"** — MSW returns a past plan for the date-range query (`server.use(http.get('/api/meal-plans', …))` keyed on the `startDate`/`endDate` params), assert the section header + that past plan's name render; (c) the legacy `?viewMealPlan=…&viewMealPlan_mealPlanId=p1` URL triggers `router.replace('/meal-plans/p1')`. Keep the share-dialog auto-focus test. **The rewritten file must add `import { cleanup } from '@testing-library/react'` + `afterEach(cleanup)`** (the pre-existing `page.test.tsx` lacks it — fix that here; no RTL auto-cleanup) and mock `next/navigation` (`useRouter`→`{ push, replace }`, `useSearchParams`). Run:
 
 `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/app/meal-plans/__tests__/page.test.tsx`
 Expected: PASS after the rewrite.
