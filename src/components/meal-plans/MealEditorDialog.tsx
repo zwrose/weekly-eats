@@ -413,22 +413,23 @@ export function MealEditorDialog({
             </Box>
             {draft.items.map((it, i) =>
               it.type === 'ingredientGroup' ? (
-                <Box key={i} onClick={() => setSearchTarget(i)}>
-                  <EditorGroupSection
-                    group={it}
-                    titleInvalid={invalidGroupTitleIdxs.includes(i)}
-                    onTitleChange={(t) => setGroupTitle(i, t)}
-                    onRemoveGroup={() => setRemoveGroupIdx(i)}
-                    invalidIngredientIndexes={groupInvalidIngredients(i)}
-                    onRemoveIngredient={(j) => removeIngredient(i, j)}
-                    onQtyClick={(j, anchor) =>
-                      setQtyState({ anchor, target: { groupIdx: i, ingIdx: j } })
-                    }
-                    onUnitClick={(j, anchor) =>
-                      setUnitState({ anchor, target: { groupIdx: i, ingIdx: j } })
-                    }
-                  />
-                </Box>
+                <EditorGroupSection
+                  key={i}
+                  group={it}
+                  titleInvalid={invalidGroupTitleIdxs.includes(i)}
+                  isTarget={searchTarget === i}
+                  onAddToGroup={() => setSearchTarget(i)}
+                  onTitleChange={(t) => setGroupTitle(i, t)}
+                  onRemoveGroup={() => setRemoveGroupIdx(i)}
+                  invalidIngredientIndexes={groupInvalidIngredients(i)}
+                  onRemoveIngredient={(j) => removeIngredient(i, j)}
+                  onQtyClick={(j, anchor) =>
+                    setQtyState({ anchor, target: { groupIdx: i, ingIdx: j } })
+                  }
+                  onUnitClick={(j, anchor) =>
+                    setUnitState({ anchor, target: { groupIdx: i, ingIdx: j } })
+                  }
+                />
               ) : (
                 <EditorItemRow
                   key={i}
@@ -468,7 +469,7 @@ export function MealEditorDialog({
                 draft.items[searchTarget]?.ingredients?.[0]?.title}
               <IconButton
                 size="small"
-                aria-label="Add to meal instead"
+                aria-label="Stop adding to group"
                 onClick={() => setSearchTarget(null)}
               >
                 <Icon name="close" size={16} />

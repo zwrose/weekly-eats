@@ -1,7 +1,7 @@
 // src/components/meal-plans/EditorGroupSection.tsx
 'use client';
 
-import { Box, InputBase, IconButton } from '@mui/material';
+import { Box, InputBase, IconButton, ButtonBase } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
 import type { MealItem } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
@@ -16,6 +16,10 @@ export interface EditorGroupSectionProps {
   onUnitClick: (ingredientIndex: number, anchor: HTMLElement) => void;
   onRemoveIngredient: (ingredientIndex: number) => void;
   invalidIngredientIndexes: number[];
+  /** Make this group the target of the search below (items get added into it). */
+  onAddToGroup: () => void;
+  /** True when the search below is currently adding into this group. */
+  isTarget?: boolean;
 }
 
 export function EditorGroupSection({
@@ -27,12 +31,25 @@ export function EditorGroupSection({
   onUnitClick,
   onRemoveIngredient,
   invalidIngredientIndexes,
+  onAddToGroup,
+  isTarget,
 }: EditorGroupSectionProps) {
   const ings = group.ingredients?.[0]?.ingredients ?? [];
   const title = group.name ?? group.ingredients?.[0]?.title ?? '';
 
   return (
-    <Box sx={{ mt: 1.75 }}>
+    <Box
+      sx={{
+        mt: 1.75,
+        borderRadius: `${tokens.radius.lg}px`,
+        // Highlight while this group is the search target so it's obvious where
+        // newly-searched items will land.
+        border: `1px solid ${isTarget ? `${tokens.section.plans}88` : 'transparent'}`,
+        bgcolor: isTarget ? tokens.accent.muted : 'transparent',
+        p: isTarget ? 0.75 : 0,
+        transition: 'border-color 120ms, background-color 120ms',
+      }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, mb: 0.5 }}>
         <Box
           component="span"
@@ -77,28 +94,57 @@ export function EditorGroupSection({
       )}
       <Box sx={{ borderTop: `1px solid ${tokens.border.subtle}` }}>
         {ings.length === 0 ? (
-          <Box sx={{ py: 1.75, textAlign: 'center' }}>
-            <Box sx={{ fontSize: 13, color: tokens.text.muted, mb: 0.75 }}>
-              No items in this group
-            </Box>
-          </Box>
+          // Empty group: the empty state IS the affordance — tap to add into the group.
+          <ButtonBase
+            onClick={onAddToGroup}
+            sx={{
+              my: 1.25,
+              width: '100%',
+              py: 1.5,
+              border: `1px dashed ${isTarget ? `${tokens.section.plans}88` : tokens.border.strong}`,
+              borderRadius: `${tokens.radius.md}px`,
+              color: tokens.section.plans,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            + Add items to this group
+          </ButtonBase>
         ) : (
-          ings.map((ing, i) => (
-            <EditorItemRow
-              key={i}
-              item={{
-                type: ing.type,
-                id: ing.id,
-                name: ing.name ?? '',
-                quantity: ing.quantity,
-                unit: ing.unit,
+          <>
+            {ings.map((ing, i) => (
+              <EditorItemRow
+                key={i}
+                item={{
+                  type: ing.type,
+                  id: ing.id,
+                  name: ing.name ?? '',
+                  quantity: ing.quantity,
+                  unit: ing.unit,
+                }}
+                invalid={invalidIngredientIndexes.includes(i)}
+                onQtyClick={(anchor) => onQtyClick(i, anchor)}
+                onUnitClick={(anchor) => onUnitClick(i, anchor)}
+                onRemove={() => onRemoveIngredient(i)}
+              />
+            ))}
+            {/* Persistent affordance so adding to a non-empty group is also obvious. */}
+            <ButtonBase
+              onClick={onAddToGroup}
+              sx={{
+                mt: 0.5,
+                width: '100%',
+                justifyContent: 'flex-start',
+                px: 1.5,
+                py: 1,
+                color: tokens.section.plans,
+                fontSize: 13,
+                fontWeight: 600,
               }}
-              invalid={invalidIngredientIndexes.includes(i)}
-              onQtyClick={(anchor) => onQtyClick(i, anchor)}
-              onUnitClick={(anchor) => onUnitClick(i, anchor)}
-              onRemove={() => onRemoveIngredient(i)}
-            />
-          ))
+            >
+              + Add to group
+            </ButtonBase>
+          </>
         )}
       </Box>
     </Box>

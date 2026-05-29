@@ -3,10 +3,11 @@ import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorGroupSection } from '../EditorGroupSection';
 import type { MealItem } from '@/types/meal-plan';
+import type { RecipeIngredient } from '@/types/recipe';
 
 afterEach(cleanup);
 
-function group(title: string, ings: any[] = []): MealItem {
+function group(title: string, ings: RecipeIngredient[] = []): MealItem {
   return {
     type: 'ingredientGroup',
     id: '',
@@ -21,6 +22,7 @@ const noop = {
   onQtyClick: vi.fn(),
   onUnitClick: vi.fn(),
   onRemoveIngredient: vi.fn(),
+  onAddToGroup: vi.fn(),
   invalidIngredientIndexes: [] as number[],
 };
 
@@ -44,9 +46,30 @@ describe('EditorGroupSection', () => {
     expect(screen.getByText(/group title is required/i)).toBeInTheDocument();
   });
 
-  it('shows empty state when the group has no ingredients', () => {
-    render(<EditorGroupSection group={group('Sides', [])} {...noop} />);
-    expect(screen.getByText(/no items in this group/i)).toBeInTheDocument();
+  it('empty group shows a tappable "Add items to this group" affordance', async () => {
+    const user = userEvent.setup();
+    const onAddToGroup = vi.fn();
+    render(<EditorGroupSection group={group('Sides', [])} {...noop} onAddToGroup={onAddToGroup} />);
+    const add = screen.getByText(/add items to this group/i);
+    expect(add).toBeInTheDocument();
+    await user.click(add);
+    expect(onAddToGroup).toHaveBeenCalledTimes(1);
+  });
+
+  it('a non-empty group still shows a tappable "Add to group" affordance', async () => {
+    const user = userEvent.setup();
+    const onAddToGroup = vi.fn();
+    render(
+      <EditorGroupSection
+        group={group('Side salad', [
+          { type: 'foodItem', id: 'a', name: 'romaine', quantity: 1, unit: 'head' },
+        ])}
+        {...noop}
+        onAddToGroup={onAddToGroup}
+      />
+    );
+    await user.click(screen.getByText(/^\+ add to group$/i));
+    expect(onAddToGroup).toHaveBeenCalledTimes(1);
   });
 
   it('remove-group button fires onRemoveGroup', async () => {
