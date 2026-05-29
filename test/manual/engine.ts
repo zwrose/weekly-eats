@@ -495,6 +495,31 @@ export class Engine {
   }
 
   /**
+   * File-independent targeted clean: remove all docs + state for a branch (every slot).
+   * No regex — enumerate exact _seedManifestId values and delete by $in, so a branch
+   * containing '.' cannot over-match a sibling (e.g. release/1.2 vs release/1X2).
+   */
+  async cleanByBranch(branch: string): Promise<{ matched: string[]; deleted: number }> {
+    const prefix = `${branch}::`;
+    const ids = new Set<string>();
+    for (const col of [...KNOWN_COLLECTIONS, STATE_COLLECTION]) {
+      const field = col === STATE_COLLECTION ? 'manifestId' : '_seedManifestId';
+      const colIds = (await this.db.collection(col).distinct(field)) as string[];
+      for (const id of colIds) if (id && id.startsWith(prefix)) ids.add(id);
+    }
+    const matched = [...ids];
+    let deleted = 0;
+    if (matched.length > 0) {
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await this.db.collection(col).deleteMany({ _seedManifestId: { $in: matched } });
+        deleted += r.deletedCount ?? 0;
+      }
+      await this.db.collection(STATE_COLLECTION).deleteMany({ manifestId: { $in: matched } });
+    }
+    return { matched, deleted };
+  }
+
+  /**
    * Sweep orphaned seed data on the shared DB. Cross-branch-safe: keys off the
    * shared manualTestState collection + injected branchExists, never on-disk manifests.
    * Targets: (1) untracked = tagged but no state row; (2) stale-branch = branch gone

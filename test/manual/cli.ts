@@ -225,6 +225,17 @@ async function main(): Promise<number> {
       return 0;
     }
 
+    if (parsed.command === 'clean' && parsed.flags['manifest-id']) {
+      const branch = String(parsed.flags['manifest-id']);
+      validateBranch(branch); // rejects '::*' and disallowed chars
+      const engine = new Engine(db, await loadBlocks());
+      const r = await engine.cleanByBranch(branch);
+      process.stdout.write(
+        `clean --manifest-id ${branch}: deleted ${r.deleted} docs across ${r.matched.length} manifest id(s)\n`
+      );
+      return 0;
+    }
+
     if (parsed.command === 'clean' && parsed.flags.orphans) {
       const engine = new Engine(db, await loadBlocks());
       const dryRun = !parsed.flags.yes; // default dry-run; --yes deletes

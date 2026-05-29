@@ -40,6 +40,10 @@ describe('validateBranch', () => {
   it('rejects over-long names (>200 chars)', () => {
     expect(() => validateBranch('a'.repeat(201))).toThrow();
   });
+
+  it('rejects a manifest-id wildcard / colon form', () => {
+    expect(() => validateBranch('feat::*')).toThrow();
+  });
 });
 
 describe('validateSlot', () => {

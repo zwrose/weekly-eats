@@ -588,6 +588,35 @@ describe('Engine.status', () => {
   });
 });
 
+// ─── Engine.cleanByBranch ───
+describe('Engine.cleanByBranch', () => {
+  it('deletes docs + state across multiple slots; does NOT over-match a .-adjacent sibling', async () => {
+    const present = ['release/1.2::default', 'release/1.2::admin', 'release/1X2::default'];
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 2 }));
+    const stateDelete = vi.fn(async () => ({ deletedCount: 2 }));
+    const db = {
+      collection: vi.fn((name: string) => {
+        if (name === 'manualTestState') {
+          return { distinct: vi.fn(async () => present), deleteMany: stateDelete };
+        }
+        return { distinct: vi.fn(async () => present), deleteMany: recipesDelete };
+      }),
+    } as unknown as Db;
+
+    const engine = new Engine(db, new Map());
+    const r = await engine.cleanByBranch('release/1.2');
+
+    expect(r.matched.sort()).toEqual(['release/1.2::admin', 'release/1.2::default']);
+    expect(stateDelete).toHaveBeenCalled();
+    // recipesDelete called with an $in that excludes release/1X2::default:
+    const calls = recipesDelete.mock.calls;
+    const inArg = calls[0]?.[0]?._seedManifestId?.$in ?? [];
+    expect(inArg).not.toContain('release/1X2::default');
+    expect(inArg).toContain('release/1.2::default');
+    expect(inArg).toContain('release/1.2::admin');
+  });
+});
+
 // ─── Orphan warning on plain clean / status ───
 describe('Engine orphan warnings on clean and status', () => {
   /** Build a db where countDocuments returns legacyCount for non-state collections. */
