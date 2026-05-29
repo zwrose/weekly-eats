@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Remove a git worktree and its associated MongoDB database.
+ * Remove a git worktree and purge its seeded data from the shared dev DB.
  *
  * Usage: node scripts/worktree-remove.js <branch-name>
  *
  * What it does:
- * 1. Derives the DB name from the branch name
- * 2. Drops the MongoDB database (if mongosh is available)
- * 3. Runs `git worktree remove .worktrees/<safe-name>`
- * 4. Runs `git worktree prune`
+ * 1. Best-effort purge of this branch's seeded data from the shared dev DB
+ *    (deletes only docs tagged with `_seedManifestId` starting `branch::`)
+ *    Never drops a database.
+ * 2. Runs `git worktree remove .worktrees/<safe-name>`
+ * 3. Runs `git worktree prune`
  */
 
 import { execSync, spawnSync } from 'node:child_process';
@@ -26,17 +27,21 @@ const branchName = process.argv[2];
 if (!branchName) {
   console.error('Usage: node scripts/worktree-remove.js <branch-name>');
   console.error('');
-  console.error('Removes the worktree at .worktrees/<branch> and drops its database.');
+  console.error(
+    'Removes the worktree at .worktrees/<branch> and purges its seeded data from the shared dev DB.'
+  );
   process.exit(1);
 }
 
 function sanitizeBranchName(name) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return name
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 const safeName = sanitizeBranchName(branchName);
 const worktreePath = resolve(projectRoot, '.worktrees', safeName);
-const dbName = 'weekly-eats-' + safeName;
 
 if (!existsSync(worktreePath)) {
   console.error('Error: No worktree found at ' + worktreePath);
@@ -45,7 +50,9 @@ if (!existsSync(worktreePath)) {
     const list = execSync('git worktree list', { encoding: 'utf8', cwd: projectRoot });
     console.error('Current worktrees:');
     console.error(list);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   process.exit(1);
 }
 
@@ -54,30 +61,29 @@ if (resolve(worktreePath) === resolve(projectRoot)) {
   process.exit(1);
 }
 
-// Drop MongoDB database
-const whichCmd = process.platform === 'win32' ? 'where' : 'which';
-const hasMongosh = spawnSync(whichCmd, ['mongosh'], { encoding: 'utf8', shell: true }).status === 0;
-if (hasMongosh) {
-  console.log("Dropping database '" + dbName + "'...");
-  const dropResult = spawnSync('mongosh', ['--quiet', '--eval', "db.getSiblingDB('" + dbName + "').dropDatabase()"], {
-    encoding: 'utf8',
-    stdio: 'pipe',
-    shell: true
-  });
-  if (dropResult.status !== 0) {
-    console.warn("Warning: Could not drop database. You may need to drop '" + dbName + "' manually.");
-  } else {
-    console.log('Database dropped.');
-  }
-} else {
-  console.warn("Warning: mongosh not found. Database '" + dbName + "' was NOT dropped.");
-  console.warn("To drop it manually: mongosh --eval \"db.getSiblingDB('" + dbName + "').dropDatabase()\"");
+// Best-effort: purge this branch's seeded data from the SHARED dev DB before
+// removing the worktree. Never drops a database. Safe if it fails (the orphan
+// sweep is the backstop). Runs from the worktree dir so .env.local resolves.
+console.log("Purging seeded data for branch '" + branchName + "' (shared DB)...");
+const purge = spawnSync(
+  'npx',
+  ['tsx', 'test/manual/cli.ts', 'clean', '--manifest-id', branchName],
+  { cwd: worktreePath, encoding: 'utf8', stdio: 'inherit', shell: process.platform === 'win32' }
+);
+if (purge.status !== 0) {
+  console.warn("Warning: could not purge seeded data for '" + branchName + "'.");
+  console.warn(
+    'Seeded data is shared — run `npm run test:manual:clean -- --orphans` later to sweep.'
+  );
 }
 
 // Remove worktree
 console.log('Removing worktree at ' + worktreePath + '...');
 try {
-  execSync('git worktree remove ' + JSON.stringify(worktreePath) + ' --force', { cwd: projectRoot, stdio: 'inherit' });
+  execSync('git worktree remove ' + JSON.stringify(worktreePath) + ' --force', {
+    cwd: projectRoot,
+    stdio: 'inherit',
+  });
 } catch {
   console.warn('Warning: git worktree remove failed. Cleaning up manually...');
   rmSync(worktreePath, { recursive: true, force: true });
