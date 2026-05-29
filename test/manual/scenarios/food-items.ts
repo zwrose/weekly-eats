@@ -118,16 +118,16 @@ export const block: Block<Config, State> = {
     // ── globalCount generated items ──
     const globalCount = config.globalCount ?? 0;
     for (let i = 1; i <= globalCount; i++) {
-      const singularName = `${SEED_TITLE_PREFIX}Food [${ctx.label}] ${i}`;
-      const pluralName = `${SEED_TITLE_PREFIX}Food [${ctx.label}] ${i}`;
+      const singularName = `${SEED_TITLE_PREFIX}Food Global [${ctx.label}] ${i}`;
+      const pluralName = `${SEED_TITLE_PREFIX}Food Global [${ctx.label}] ${i}`;
       await upsertItem(singularName, pluralName, 'each', true);
     }
 
     // ── userCount generated items ──
     const userCount = config.userCount ?? 0;
     for (let i = 1; i <= userCount; i++) {
-      const singularName = `${SEED_TITLE_PREFIX}Food [${ctx.label}] ${i}`;
-      const pluralName = `${SEED_TITLE_PREFIX}Food [${ctx.label}] ${i}`;
+      const singularName = `${SEED_TITLE_PREFIX}Food User [${ctx.label}] ${i}`;
+      const pluralName = `${SEED_TITLE_PREFIX}Food User [${ctx.label}] ${i}`;
       await upsertItem(singularName, pluralName, 'each', false);
     }
 
