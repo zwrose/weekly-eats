@@ -105,6 +105,31 @@ function getCurrentGitBranch(): string {
   return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Build a branch-existence check for the orphan sweep. Injected into the engine
+ * so engine.ts stays OS-free. With `--quiet`: exit 0 = exists, exit 1 = ref
+ * absent (gone). Exit 128 (not a repo) or ENOENT (git missing) means the
+ * environment is broken — THROW so the sweep aborts instead of nuking everything.
+ *
+ * Accepts an optional `_exec` override for testing (defaults to `execFileSync`).
+ */
+export function makeBranchExists(
+  _exec: typeof execFileSync = execFileSync
+): (branch: string) => boolean {
+  return (branch: string): boolean => {
+    try {
+      _exec('git', ['rev-parse', '--verify', '--quiet', branch], { stdio: 'pipe' });
+      return true;
+    } catch (e: unknown) {
+      const err = e as { status?: number; code?: string };
+      if (err.status === 1) return false; // ref absent
+      throw new Error(
+        `branchExists: git rev-parse failed for "${branch}" (status=${err.status}, code=${err.code}) — aborting orphan sweep`
+      );
+    }
+  };
+}
+
 function readMongoUri(): string {
   if (process.env.MONGODB_URI) return process.env.MONGODB_URI;
   // Read from .env.local — same pattern as the old seed scripts
