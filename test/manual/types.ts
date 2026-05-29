@@ -38,6 +38,8 @@ export interface BlockContext {
   db: Db;
   manifestId: string;
   scenarioId: string;
+  /** Short human stamp for display names: branch.slice(0,8) [+ "·"+slot]. */
+  label: string;
   resolve: <T = unknown>(id: string) => T;
 }
 

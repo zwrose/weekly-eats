@@ -13,6 +13,12 @@ import { stableHash } from './hash.js';
 
 const STATE_COLLECTION = 'manualTestState';
 
+/** Visible branch stamp for seeded display names. branch.slice(0,8) [+ "·"+slot]. */
+export function deriveLabel(branch: string, slot: string): string {
+  const base = branch.slice(0, 8);
+  return slot && slot !== 'default' ? `${base}·${slot}` : base;
+}
+
 export function topoSort(scenarios: ManifestScenario[]): string[] {
   const ids = scenarios.map((s) => s.id).sort();
   const deps = new Map<string, Set<string>>();
@@ -102,6 +108,7 @@ export class Engine {
   async apply(manifest: Manifest, options: { force?: string[] } = {}): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     const command = 'apply';
 
     // 1. Resolve order
@@ -128,6 +135,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: () => {
           throw new Error('resolve unavailable in status');
         },
@@ -151,6 +159,7 @@ export class Engine {
           db: this.db,
           manifestId,
           scenarioId: id,
+          label,
           resolve: () => {
             throw new Error('resolve unavailable in clean');
           },
@@ -203,6 +212,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: <T>(depId: string): T => {
           if (!declaredDeps.has(depId)) {
             throw new Error(
@@ -283,6 +293,7 @@ export class Engine {
   async clean(manifest: Manifest): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     let order: string[];
     try {
       order = topoSort(manifest.scenarios);
@@ -317,6 +328,7 @@ export class Engine {
           db: this.db,
           manifestId,
           scenarioId: id,
+          label,
           resolve: () => {
             throw new Error('resolve unavailable in clean');
           },
@@ -361,6 +373,7 @@ export class Engine {
   async status(manifest: Manifest): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     const order = topoSort(manifest.scenarios);
     const scenById = new Map(manifest.scenarios.map((s) => [s.id, s]));
     const scenarios: CliScenarioResult[] = [];
@@ -387,6 +400,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: () => {
           throw new Error('resolve unavailable in status');
         },

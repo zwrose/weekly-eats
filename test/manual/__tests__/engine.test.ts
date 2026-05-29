@@ -1,6 +1,6 @@
 // test/manual/__tests__/engine.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { topoSort, computeDirty, Engine } from '../engine.js';
+import { topoSort, computeDirty, Engine, deriveLabel } from '../engine.js';
 import type { Block, BlockContext, Manifest } from '../types.js';
 import type { Db } from 'mongodb';
 
@@ -366,6 +366,21 @@ describe('Engine.clean', () => {
     const uResult = result.scenarios.find((s) => s.id === 'u');
     expect(uResult?.status).toBe('failed');
     expect(uResult?.error).toMatch(/clean boom/);
+  });
+});
+
+// ─── deriveLabel ───
+describe('deriveLabel', () => {
+  it('is the first 8 chars of the branch when slot is default', () => {
+    expect(deriveLabel('fix/93-shared-dev-db', 'default')).toBe('fix/93-s');
+  });
+
+  it('appends ·slot when slot is not default', () => {
+    expect(deriveLabel('fix/93-shared-dev-db', 'admin')).toBe('fix/93-s·admin');
+  });
+
+  it('two branches sharing an 8-char prefix collide (cosmetic, accepted)', () => {
+    expect(deriveLabel('feature/foo', 'default')).toBe(deriveLabel('feature/bar', 'default'));
   });
 });
 
