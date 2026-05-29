@@ -73,8 +73,10 @@ export function CombinedSearch({
   const q = selector.inputValue.trim();
   const showResults = focused && (selector.options.length > 0 || q.length > 0);
 
+  // The sticky footer bg matches the editor dialog's surface (surface.sheet) so it
+  // blends seamlessly instead of showing a darker band against the dialog body.
   return (
-    <Box sx={{ position: 'sticky', bottom: 0, pt: 1.25, pb: 2, bgcolor: 'background.default' }}>
+    <Box sx={{ position: 'sticky', bottom: 0, pt: 1.25, pb: 2, bgcolor: tokens.surface.sheet }}>
       {showResults && (
         <Box
           sx={{
