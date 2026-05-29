@@ -212,7 +212,8 @@ async function main(): Promise<number> {
   }
 
   const uri = readMongoUri();
-  resolveDbSafety(uri, parsed.flags);
+  const { dbName } = resolveDbSafety(uri, parsed.flags);
+  process.stderr.write(`▶ manual-test DB: ${dbName}\n`);
   const client = await MongoClient.connect(uri);
   try {
     const db = client.db();
