@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MongoClient } from 'mongodb';
 import { validateBranch, validateSlot } from './validate-args.js';
 import { loadManifest, manifestPath } from './manifest-io.js';
@@ -396,7 +396,7 @@ function output(result: CliResult, parsed: ParsedArgs): void {
 }
 
 // Run when invoked directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().then(
     (code) => process.exit(code),
     (e) => {

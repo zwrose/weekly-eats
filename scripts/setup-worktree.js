@@ -13,7 +13,7 @@
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -112,7 +112,7 @@ function runSetupDb() {
 // Main — only runs when executed directly (not when imported in tests)
 // ---------------------------------------------------------------------------
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   // Skip in CI/test environments
   if (
     process.env.CI === 'true' ||
