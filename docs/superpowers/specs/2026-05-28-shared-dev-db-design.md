@@ -2,7 +2,7 @@
 
 **Issues:** #93 (shared dev DB) + #92 (manual-test clean hygiene). #91 is out of scope (separate PR).
 **Date:** 2026-05-28
-**Status:** Approved design — revised after `/review-plan` (12 findings folded in) — ready for implementation plan.
+**Status:** Approved design — revised after two `/review-plan` rounds (12 + 9 findings folded in; round 2 fixed two verified defects in the round-1 revisions) — ready for implementation plan.
 
 ## Problem
 
@@ -63,6 +63,13 @@ and is the source of all three footguns.
   the shared-DB goal. (Finding M4.) Keep main's `MONGODB_URI` line **verbatim**; only the
   `NEXTAUTH_URL` port and `PORT` rewrites remain. → every worktree points at the same DB
   as main (`weekly-eats-dev`).
+- **Extract a pure, exported helper for testability (Finding R5).** Today
+  `setup-worktree.js` runs side-effects and `process.exit` at import with no exports, so
+  the "URI preserved verbatim" test (§5) isn't writable. Extract the env-rewrite logic
+  into an exported pure function — `rewriteWorktreeEnv(content: string, { port }): string`
+  — that the `main()` side-effect path calls and the unit test imports directly. Guard the
+  side-effect path behind the standard `import.meta.url === ...` entrypoint check (same
+  pattern as `cli.ts:317`) so importing the module in a test runs nothing.
 - Still run `setup-database.js` (idempotent index creation against the shared DB).
 
 ### `scripts/worktree-remove.js`
@@ -111,7 +118,9 @@ the full `branch::slot` stays in `_seedManifestId`, so logical isolation, `clean
 
 ### Blocks fold the label into their display field
 
-Each block with a human-facing name appends `[${ctx.label}]`:
+Each block with a human-facing name builds it as `${SEED_TITLE_PREFIX}<Kind> [${ctx.label}] <n>`,
+where `SEED_TITLE_PREFIX = 'Manual Test '` is the shared constant the legacy-orphan
+heuristic also keys on (§3, Finding m3):
 
 - `recipes` → `Manual Test Recipe [fix/93-s] 1` (stamp = `"fix/93-shared-dev-db".slice(0, 8)`)
 - `food-items`, `stores`, `shopping-list`, `meal-plan-template`, `meal-plan` → same on
@@ -143,14 +152,19 @@ interface StatusAllResult {
 }
 ```
 
-`output()` in `cli.ts` dispatches on the result's `command` (discriminated union).
+**Output dispatch (Finding m1 — verified).** `CliResult.command` is typed `string`
+(`types.ts:110`), not a literal, so a `CliResult | StatusAllResult` discriminated union
+would **not** narrow and would tempt an `as` cast (against the no-`as` convention). Give
+`status --all` its **own** output path — a dedicated `outputStatusAll(result, parsed)` —
+invoked directly from its early-return dispatch branch, not via a shared union.
 
-**Dispatch point (Finding I4).** `status --all` and `clean --manifest-id` are
-**file-independent** — they must short-circuit in `main()` **before** the
-`resolveTarget` + manifest-file-existence check (`cli.ts:212-229`, which throws
-`manifest not found` when no file is on disk). Handle them as early-return branches
+**Dispatch point (Findings I4 + m2).** `status --all`, `clean --manifest-id`, **and
+`clean --orphans`** are all **file-independent** — they must short-circuit in `main()`
+**before** the `resolveTarget` + manifest-file-existence check (`cli.ts:212-229`, which
+throws `manifest not found` when no file is on disk). Handle them as early-return branches
 keyed on `parsed.command` + their flags, right after the DB connection is opened and
-before target resolution.
+before target resolution. (`clean --all` already runs flag-gated; confirm it too reaches
+its branch without requiring a manifest file.)
 
 ---
 
@@ -174,10 +188,13 @@ Three targets:
 2. **Stale-branch docs** — `_seedManifestId` whose branch **no longer exists in git**.
    Delete the docs **and** their `manualTestState` rows. This is the "loupe removed the
    worktree, branch is gone" case.
-3. **Legacy untagged seed-shaped docs** — naming-heuristic scan (titles matching known
-   seed patterns) → **report only**, never auto-deleted (even under `--yes`). Removing
-   the clone stops new untagged docs; this just surfaces what is already in the shared DB
-   for human confirmation.
+3. **Legacy untagged seed-shaped docs** — naming-heuristic scan → **report only**, never
+   auto-deleted (even under `--yes`). Removing the clone stops new untagged docs; this
+   just surfaces what is already in the shared DB for human confirmation. **(Finding m3)**
+   The heuristic must not guess scattered title literals: pin a single exported
+   `SEED_TITLE_PREFIX` constant (`'Manual Test '`) in `test/manual/` that **both** the
+   display-name stamps (§2) **and** this heuristic reference, so there is one owner for
+   the recognizable shape.
 
 `clean` and `status` also gain a **warning** when orphan/untagged seed-shaped docs are
 detected — fixes the silent `docCount: 0` from #92.
@@ -195,28 +212,49 @@ same injection pattern as `getCurrentGitBranch` (`cli.ts:104`) and the `getCurre
 callback already threaded through `resolveTarget`. `execFileSync` with an args array (no
 shell) is required: the branch comes from `_seedManifestId`, i.e. DB content.
 
-#### Git failure modes (Finding I2)
+#### Git failure modes (Findings I2 + R1 — exit codes verified)
 
-`branchExists` must distinguish the two non-zero outcomes:
+**Verified against git:** `git rev-parse --verify --quiet <missing-ref>` → **exit 1, no
+stderr**; the same command _without_ `--quiet` → **exit 128** + `fatal: Needed a single
+revision`. `--quiet` cleanly separates "ref absent" (1) from "environment broken" (128).
+So `branchExists` keeps `--quiet` and classifies on the result:
 
-- **branch genuinely gone** — `git rev-parse` exit 128 / `unknown revision` → return
-  `false` (doc is a stale orphan, eligible for deletion).
-- **command failure** — `ENOENT` (no git), not-a-repo, Windows spawn error, any other
-  exit → **throw**. The orphan sweep must **abort with a clear error**, never treat
+- **exit 0** → `true` (branch exists).
+- **exit 1** → `false` — branch genuinely gone; doc is a stale orphan, eligible for
+  deletion. _(This is the case the earlier draft mislabeled as exit 128.)_
+- **exit 128** (not-a-git-repo) **or `ENOENT`/spawn error** (git missing, Windows spawn
+  failure) → **throw**. The orphan sweep **aborts with a clear error**, never treats
   branches as gone.
+
+Implementation note: `execFileSync` throws on non-zero exit; read `err.status` (1 vs 128)
+and `err.code` (`ENOENT`) to classify. Do **not** branch on stderr text.
 
 Rationale: a swallowed git error would flag _every_ branch as gone and `deleteMany` would
 wipe every parallel agent's in-flight seed data — the exact collision this work prevents.
-Safety backstop: if a single sweep would flag a large fraction of known manifests as gone
-(e.g. >50%), print a warning and require explicit re-confirmation before deleting.
+Safety backstop: if a single sweep would flag a large fraction of **all distinct
+`_seedManifestId` branches** (the denominator — not the candidate set) as gone (e.g.
+
+> 50%), print a warning and require explicit re-confirmation before deleting.
 
 ### `clean --manifest-id <branch>` (branch-prefix; Finding M2)
 
 File-independent targeted clean, **without** needing the manifest file. Takes a **branch**
 (not `branch::slot`, and no `::*` wildcard — `*` is invalid per `SLOT_RE`,
-`validate-args.ts:3`). Validates the branch via `validateBranch`, then deletes every slot
-for it via a prefix match — `deleteMany({ _seedManifestId: { $regex: '^<branch>::' } })`
-across seedable collections + the matching `manualTestState` rows. This is what
+`validate-args.ts:3`). Validates the branch via `validateBranch`.
+
+**No regex (Finding R2 — verified).** `BRANCH_RE` (`validate-args.ts:2`) allows `.`, a
+regex metacharacter, so a naive `{ _seedManifestId: { $regex: '^<branch>::' } }` would let
+`release/1.2` over-match and delete `release/1X2::…` on the shared DB. Instead, enumerate
+exact ids and delete by equality:
+
+1. `ids = await collection.distinct('_seedManifestId')` (union across seedable collections,
+   or read from `manualTestState`).
+2. `matched = ids.filter((id) => id.startsWith(`${branch}::`))` — plain JS prefix match,
+   no regex.
+3. `deleteMany({ _seedManifestId: { $in: matched } })` across seedable collections + the
+   matching `manualTestState` rows.
+
+This sidesteps escaping and index-shape questions entirely. This is what
 `worktree-remove.js` and loupe call to purge a branch's data pre-removal. (A future
 `--slot` flag can narrow to one slot if needed; not required now.)
 
@@ -258,29 +296,46 @@ Named cases (not "we'll add tests"):
 - **`clean --orphans` git failure (Finding I2):** when `branchExists` **throws**
   (command failure, not branch-not-found), the sweep aborts with an error and deletes
   nothing.
-- **`clean --manifest-id <branch>` (Finding M2):** branch-prefix delete removes docs +
-  state across **multiple slots** for the branch; invalid/`::*` input is rejected.
+- **`branchExists` default git wrapper (Finding R3):** unit-test the `cli.ts` wrapper's
+  exit classification by mocking `execFileSync` — exit 0 → `true`, exit 1 → `false`,
+  `status: 128` → throws, `err.code: 'ENOENT'` → throws. (This is where R1's bug lived;
+  the engine-side tests only stub the callback.)
+- **Plain `clean` / `status` orphan WARNING (Finding R4 — the #92 headline):** with
+  orphan/untagged seed-shaped docs present, a plain `clean`/`status` (no `--orphans`)
+  surfaces the warning (assert `CliResult.warnings`), instead of silently reporting
+  `docCount: 0`.
+- **`clean --manifest-id <branch>` (Findings M2 + R2):** removes docs + state across
+  **multiple slots** for the branch via the distinct→`startsWith`→`$in` path; a sibling
+  branch sharing a `.`-adjacent prefix (e.g. `release/1.2` vs `release/1X2`) is **NOT**
+  matched; invalid/`::*` input is rejected.
+- **`clean --all` preview (Finding m4):** prints distinct-branch + total-doc counts before
+  deleting; deletion still gated on `--yes`.
 - **`seedTag`:** throws when `manifestId` or `scenarioId` is empty.
-- **Blocks:** update title/name assertions for the `[label]` stamp.
-- **`setup-worktree.js`:** no clone path; the `MONGODB_URI` rewrite regex is gone;
-  `.env.local` preserves main's `MONGODB_URI` verbatim and rewrites only `PORT` /
-  `NEXTAUTH_URL`.
+- **Blocks:** update title/name assertions for the `[label]` stamp; assert the shared
+  `SEED_TITLE_PREFIX` is used (Finding m3).
+- **`setup-worktree.js` (Finding R5):** test the extracted pure `rewriteWorktreeEnv` —
+  the `MONGODB_URI` line is preserved **verbatim** (no DB-name rewrite); only `PORT` /
+  `NEXTAUTH_URL` change. Importing the module runs no side-effects.
 - **`resolveDbSafety`:** unchanged — existing tests (`cli.test.ts:32-47`) stay green;
   `weekly-eats-dev` passes, bare `weekly-eats` still refused. No new test needed.
 - Final `npm run check` (lint + test:coverage + build).
 
 ## Affected files (inventory)
 
-- `scripts/setup-worktree.js` — remove clone/strip + the URI-rewrite regex; share URI.
+- `scripts/setup-worktree.js` — remove clone/strip + the URI-rewrite regex; share URI;
+  extract exported pure `rewriteWorktreeEnv(content, {port})` + entrypoint guard (R5).
 - `scripts/worktree-remove.js` — remove DB drop; call `clean --manifest-id <branch>`.
 - `scripts/dev-server.js` — log DB name.
-- `test/manual/cli.ts` — log DB name; `status --all`; `clean --orphans` (+ default
-  `branchExists` git wrapper via `execFileSync`); `clean --manifest-id`; early-return
-  dispatch for file-independent commands; `clean --all` preview.
+- `test/manual/cli.ts` — log DB name; `status --all` (+ dedicated `outputStatusAll`);
+  `clean --orphans` (+ default `branchExists` git wrapper via `execFileSync`, exit
+  0/1/128/ENOENT classification); `clean --manifest-id` (distinct→`startsWith`→`$in`, no
+  regex); early-return dispatch for all file-independent commands; `clean --all` preview.
 - `test/manual/engine.ts` — `ctx.label`; `branchExists` injection seam; orphan/stale
   detection (pure-logic, no OS calls).
-- `test/manual/types.ts` — `BlockContext.label`; `StatusAllResult`.
-- `test/manual/seedTag.ts` (new) — tag helper + non-empty assertion.
+- `test/manual/types.ts` — `BlockContext.label`; `StatusAllResult` (own output path, not
+  a `command`-discriminated union).
+- `test/manual/seedTag.ts` (new) — tag helper + non-empty assertion; export
+  `SEED_TITLE_PREFIX` shared by block stamps + the legacy-orphan heuristic (m3).
 - `test/manual/scenarios/*.ts` — adopt `seedTag`; stamp display names (~6 blocks).
 - `test/manual/scenarios/__tests__/*`, `test/manual/__tests__/*` — assertion + new-case
   updates.
