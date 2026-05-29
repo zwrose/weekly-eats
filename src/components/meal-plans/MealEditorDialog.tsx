@@ -265,13 +265,13 @@ export function MealEditorDialog({
     else onClose();
   };
 
-  // qty/unit current value helpers
-  const targetItem = (t: ChipTarget): MealItem | undefined =>
+  // qty/unit current value helpers — callers only read quantity/unit, which exist
+  // on both MealItem (loose) and RecipeIngredient (in-group), so a structural
+  // return type avoids casting across the two shapes.
+  const targetItem = (t: ChipTarget): { quantity?: number; unit?: string } | undefined =>
     t.groupIdx == null
       ? draft.items[t.ingIdx]
-      : (draft.items[t.groupIdx]?.ingredients?.[0]?.ingredients[t.ingIdx] as unknown as
-          | MealItem
-          | undefined);
+      : draft.items[t.groupIdx]?.ingredients?.[0]?.ingredients[t.ingIdx];
 
   const excludeIds = useMemo(() => {
     const ids: string[] = [];
