@@ -1,7 +1,8 @@
 // src/components/meal-plans/meal-display-utils.ts
 import type { DayOfWeek, MealItem, MealPlanItem, MealType } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
-import { formatDateForAPI, parseLocalDate } from '@/lib/date-utils';
+import { formatDateForAPI, parseLocalDate, dayOfWeekToIndex } from '@/lib/date-utils';
+import { addDays } from 'date-fns';
 
 /** Shared contract for the read-mode plan views (desktop + mobile). */
 export interface PlanViewProps {
@@ -68,4 +69,42 @@ export function computeTodayDow(
     'saturday',
   ];
   return days[parseLocalDate(today).getDay()];
+}
+
+/** The week (7 DayOfWeek values) rotated to begin at `startDay`.
+ *  Moved verbatim from meal-plans/page.tsx; takes startDay as an arg
+ *  instead of closing over the selected plan. */
+export function getDaysInOrder(startDay: DayOfWeek): DayOfWeek[] {
+  const days: DayOfWeek[] = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
+  const startIndex = days.indexOf(startDay);
+  return [...days.slice(startIndex), ...days.slice(0, startIndex)];
+}
+
+/** A short, human date label ("Mon, May 11") for `dow` within a plan whose
+ *  week begins on `startDay` at `startDate`. Moved from meal-plans/page.tsx
+ *  with one intentional change: weekday: 'short' (was 'long') to match the
+ *  redesign artboards. */
+export function getDateForDay(startDate: string, dow: DayOfWeek, startDay: DayOfWeek): string {
+  const start = parseLocalDate(startDate);
+  const targetDayIndex = dayOfWeekToIndex(dow);
+  const startDayIndex = dayOfWeekToIndex(startDay);
+
+  let daysToAdd = targetDayIndex - startDayIndex;
+  if (daysToAdd < 0) daysToAdd += 7;
+
+  const targetDate = addDays(start, daysToAdd);
+
+  return targetDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }

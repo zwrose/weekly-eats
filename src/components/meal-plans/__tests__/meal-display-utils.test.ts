@@ -3,6 +3,8 @@ import {
   getEnabledMeals,
   mealItemCount,
   computeTodayDow,
+  getDaysInOrder,
+  getDateForDay,
   MEAL_ORDER,
   MEAL_LABEL,
   MEAL_LETTER,
@@ -80,5 +82,37 @@ describe('computeTodayDow', () => {
   });
   it('returns null for a null plan', () => {
     expect(computeTodayDow(null)).toBeNull();
+  });
+});
+
+describe('getDaysInOrder', () => {
+  it('rotates the week to begin at startDay', () => {
+    expect(getDaysInOrder('monday')).toEqual([
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ]);
+    expect(getDaysInOrder('saturday')).toEqual([
+      'saturday',
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+    ]);
+  });
+});
+
+describe('getDateForDay', () => {
+  it('renders the short weekday label ("Mon, May 11") for a known input', () => {
+    expect(getDateForDay('2026-05-11', 'monday', 'monday')).toBe('Mon, May 11');
+  });
+  it('offsets to the correct date for a later day in the week', () => {
+    expect(getDateForDay('2026-05-11', 'wednesday', 'monday')).toBe('Wed, May 13');
   });
 });
