@@ -203,6 +203,20 @@ describe('MealPlansPage - Past (last 6 weeks)', () => {
     });
     expect(screen.queryByText(/Past · last 6 weeks/i)).not.toBeInTheDocument();
   });
+
+  it('does not list a plan in both Current and Past (the past-window read overlaps current plans)', async () => {
+    // The server's past-window query returns plans that merely *started* in the last
+    // 6 weeks — including a still-current plan. It must not appear in both sections.
+    setFetchMealPlansDispatch({ current: [currentPlan], past: [currentPlan] });
+    render(<MealPlansPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Week of Jan 6, 2024')).toBeInTheDocument();
+    });
+    // Shown once (Current only), and the Past section is omitted entirely.
+    expect(screen.getAllByText('Week of Jan 6, 2024')).toHaveLength(1);
+    expect(screen.queryByText(/Past · last 6 weeks/i)).not.toBeInTheDocument();
+  });
 });
 
 describe('MealPlansPage - legacy deep-link redirect', () => {

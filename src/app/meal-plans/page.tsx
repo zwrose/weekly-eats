@@ -263,11 +263,14 @@ function MealPlansPageContent() {
           fetch('/api/user/settings').then((res) => res.json()),
         ]);
       setMealPlans(plans);
-      // Most-recent-first.
+      // The past-window query (overlaps [42d ago, yesterday]) also returns plans that
+      // merely *started* in that window but end today/later — those are current, not past.
+      // Exclude anything already in the current set so a plan never appears in both sections.
+      const currentIds = new Set(plans.map((p) => p._id));
       setPastPlans(
-        [...past].sort((a, b) =>
-          a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0
-        )
+        [...past]
+          .filter((p) => !currentIds.has(p._id))
+          .sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0))
       );
       setTemplate(userTemplate);
       setPendingMealPlanInvitations(pendingInvites);
