@@ -190,6 +190,7 @@ describe('mealPlan.apply — fresh insert', () => {
     const doc = mealPlansInsertOne.mock.calls[0][0] as Record<string, unknown>;
     expect(doc._seedManifestId).toBe('feat/test::default');
     expect(doc._seedScenarioId).toBe('mp');
+    expect(doc.name as string).toMatch(/^Manual Test Meal Plan \[.+\]$/);
   });
 
   it('inserts userId and templateId from resolved state', async () => {

@@ -125,6 +125,7 @@ describe('stores.apply — basic', () => {
     expect(doc._seedScenarioId).toBe('s');
     expect(doc.userId).toBe('u1');
     expect(typeof doc.name).toBe('string');
+    expect(doc.name as string).toMatch(/^Manual Test Store \[.+\] \d+$/);
   });
 
   it('returns storeIds in state', async () => {

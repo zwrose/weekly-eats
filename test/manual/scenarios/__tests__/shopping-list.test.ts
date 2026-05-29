@@ -145,7 +145,7 @@ describe('shoppingList.apply — state=partial', () => {
     await shoppingList.apply(cfg, ctx);
 
     const doc = slInsertOne.mock.calls[0][0] as Record<string, unknown>;
-    const items = doc.items as Array<{ checked: boolean }>;
+    const items = doc.items as Array<{ checked: boolean; name: string }>;
     expect(items).toHaveLength(4);
     // first half (2) checked=true
     expect(items[0].checked).toBe(true);
@@ -153,6 +153,8 @@ describe('shoppingList.apply — state=partial', () => {
     // rest checked=false
     expect(items[2].checked).toBe(false);
     expect(items[3].checked).toBe(false);
+    // [label] stamp format
+    expect(items[0].name).toMatch(/^Manual Test Item \[.+\] \d+$/);
   });
 
   it('handles itemCount=0 with state=partial gracefully (0 items)', async () => {
