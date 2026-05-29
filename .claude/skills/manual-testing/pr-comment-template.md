@@ -3,6 +3,10 @@
 
 ## Manual Test Plan — `{{slot}}`
 
+**Branch:** `{{branch}}` | **Manifest ID:** `{{branch}}{{slotSuffix}}`
+
+> Seeded docs live in the shared dev DB and are name-stamped `[{{branchPrefix}}]` — look for that prefix to identify rows belonging to this branch.
+
 **Setup applied via** `npm run test:manual:apply {{branch}}{{slotSuffix}}`:
 
 {{#each scenarios}}
