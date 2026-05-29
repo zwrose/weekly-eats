@@ -114,11 +114,11 @@ function getCurrentGitBranch(): string {
  * Accepts an optional `_exec` override for testing (defaults to `execFileSync`).
  */
 export function makeBranchExists(
-  _exec: typeof execFileSync = execFileSync
+  exec: typeof execFileSync = execFileSync
 ): (branch: string) => boolean {
   return (branch: string): boolean => {
     try {
-      _exec('git', ['rev-parse', '--verify', '--quiet', branch], { stdio: 'pipe' });
+      exec('git', ['rev-parse', '--verify', '--quiet', branch], { stdio: 'pipe' });
       return true;
     } catch (e: unknown) {
       const err = e as { status?: number; code?: string };

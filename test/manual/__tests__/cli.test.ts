@@ -1,10 +1,5 @@
 // test/manual/__tests__/cli.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-vi.mock('node:child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:child_process')>();
-  return { ...actual, execFileSync: vi.fn() };
-});
-import { execFileSync } from 'node:child_process';
 import { parseArgs, resolveDbSafety, resolveTarget, makeBranchExists } from '../cli.js';
 
 describe('parseArgs', () => {
@@ -108,36 +103,37 @@ describe('resolveTarget', () => {
 });
 
 describe('makeBranchExists', () => {
+  let mockExec: ReturnType<typeof vi.fn>;
   let branchExists: (branch: string) => boolean;
 
   beforeEach(() => {
-    vi.mocked(execFileSync).mockReset();
-    // Pass the mocked execFileSync explicitly so the injectable parameter
-    // receives the vi.fn() rather than cli.ts's statically-bound import.
-    branchExists = makeBranchExists(vi.mocked(execFileSync) as typeof execFileSync);
+    mockExec = vi.fn();
+    branchExists = makeBranchExists(
+      mockExec as unknown as typeof import('node:child_process').execFileSync
+    );
   });
 
   it('returns true on exit 0 (branch exists)', () => {
-    vi.mocked(execFileSync).mockReturnValueOnce(Buffer.from('sha\n'));
+    mockExec.mockReturnValueOnce(Buffer.from('sha\n'));
     expect(branchExists('feat/x')).toBe(true);
   });
 
   it('returns false on exit 1 (--quiet, ref absent)', () => {
-    vi.mocked(execFileSync).mockImplementationOnce(() => {
+    mockExec.mockImplementationOnce(() => {
       throw Object.assign(new Error('exit 1'), { status: 1 });
     });
     expect(branchExists('gone/branch')).toBe(false);
   });
 
   it('throws on exit 128 (not a git repo)', () => {
-    vi.mocked(execFileSync).mockImplementationOnce(() => {
+    mockExec.mockImplementationOnce(() => {
       throw Object.assign(new Error('fatal'), { status: 128 });
     });
     expect(() => branchExists('feat/x')).toThrow();
   });
 
   it('throws on ENOENT (git missing)', () => {
-    vi.mocked(execFileSync).mockImplementationOnce(() => {
+    mockExec.mockImplementationOnce(() => {
       throw Object.assign(new Error('spawn'), { code: 'ENOENT' });
     });
     expect(() => branchExists('feat/x')).toThrow();
