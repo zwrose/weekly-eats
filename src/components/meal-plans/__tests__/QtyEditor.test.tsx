@@ -55,6 +55,26 @@ describe('QtyEditor', () => {
     expect(onCommit).toHaveBeenCalledWith(1.5);
   });
 
+  it('an empty/invalid quantity disables Done, warns, and cannot commit', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    render(<QtyEditor open anchorEl={null} value={1} onCommit={onCommit} onClose={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'backspace' })); // clear "1" → empty
+    expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/greater than 0/i);
+    // Done is disabled (pointer-events: none), so it cannot be clicked or commit.
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it('zero is invalid (Done disabled)', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    render(<QtyEditor open anchorEl={null} value={1} onCommit={onCommit} onClose={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'backspace' })); // clear "1"
+    await user.click(screen.getByRole('button', { name: '0' }));
+    expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+  });
+
   // jsdom's matchMedia is undefined → useMediaQuery defaults to false (Drawer/mobile).
   // Force the desktop Popover branch so it isn't shipped untested.
   it('desktop branch: renders the numpad in a Popover and commits', async () => {

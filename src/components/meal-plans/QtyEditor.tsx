@@ -40,14 +40,15 @@ function NumpadBody({
     else if (k === '.') setDraft((d) => (d.includes('.') ? d : d + '.'));
     else setDraft((d) => (d === '0' ? k : d + k));
   };
+  const parsed = parseFloat(draft);
+  const valid = !isNaN(parsed) && parsed > 0;
   const commit = () => {
-    const n = parseFloat(draft);
-    if (!isNaN(n) && n > 0) onCommit(n);
+    if (valid) onCommit(parsed);
   };
 
   return (
     <Box sx={{ p: 2, minWidth: 280 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
         <Button onClick={onClose} sx={{ color: tokens.text.secondary }}>
           Cancel
         </Button>
@@ -56,15 +57,36 @@ function NumpadBody({
             fontFamily: 'var(--font-display)',
             fontSize: 28,
             fontWeight: 700,
-            color: tokens.text.primary,
+            color: valid ? tokens.text.primary : tokens.state.warn,
             fontVariantNumeric: 'tabular-nums',
           }}
         >
           {draft || '0'}
         </Box>
-        <Button onClick={commit} sx={{ color: tokens.section.plans, fontWeight: 600 }}>
+        <Button
+          onClick={commit}
+          disabled={!valid}
+          sx={{
+            color: tokens.section.plans,
+            fontWeight: 600,
+            '&.Mui-disabled': { color: tokens.text.muted },
+          }}
+        >
           Done
         </Button>
+      </Box>
+      <Box
+        role={valid ? undefined : 'alert'}
+        sx={{
+          height: 16,
+          mb: 1,
+          textAlign: 'center',
+          fontSize: 11,
+          color: tokens.state.warn,
+          visibility: valid ? 'hidden' : 'visible',
+        }}
+      >
+        Enter a quantity greater than 0
       </Box>
       <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
         {PRESETS.map(([label, n]) => (
