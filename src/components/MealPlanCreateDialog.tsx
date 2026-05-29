@@ -194,6 +194,7 @@ const MealPlanCreateDialog: React.FC<MealPlanCreateDialogProps> = ({
 
           {validationError && (
             <Box
+              role="alert"
               sx={{
                 mb: 3,
                 px: 2,
