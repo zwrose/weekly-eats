@@ -151,6 +151,9 @@ export function QtyEditor({ open, anchorEl, value, onCommit, onClose }: QtyEdito
       anchor="bottom"
       open={open}
       onClose={onClose}
+      // The editor dialog is full-screen on mobile at zIndex.modal; a temporary Drawer
+      // defaults to the lower zIndex.drawer and would open behind it. Lift it above.
+      sx={{ zIndex: (t) => t.zIndex.modal + 2 }}
       slotProps={{
         paper: {
           sx: {
