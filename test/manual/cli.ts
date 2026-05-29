@@ -9,7 +9,7 @@ import { validateBranch, validateSlot } from './validate-args.js';
 import { loadManifest, manifestPath } from './manifest-io.js';
 import { Engine } from './engine.js';
 import { acquireLock, releaseLock, forceUnlock, readLock } from './lock.js';
-import type { CliResult, Block } from './types.js';
+import type { CliResult, Block, StatusAllResult } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(__filename));
@@ -191,6 +191,15 @@ async function main(): Promise<number> {
   try {
     const db = client.db();
 
+    // ── File-independent commands (no manifest file needed) ──
+    if (parsed.command === 'status' && parsed.flags.all) {
+      const blocks = await loadBlocks();
+      const engine = new Engine(db, blocks);
+      const result = await engine.statusAll();
+      outputStatusAll(result, parsed);
+      return 0;
+    }
+
     if (parsed.command === 'unlock') {
       const target = resolveTarget(parsed, getCurrentGitBranch);
       if (target.kind !== 'branch') throw new Error('unlock requires a branch target');
@@ -294,6 +303,23 @@ async function main(): Promise<number> {
     throw new Error(`unknown command: ${parsed.command}`);
   } finally {
     await client.close();
+  }
+}
+
+function outputStatusAll(result: StatusAllResult, parsed: ParsedArgs): void {
+  if (parsed.flags.json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    return;
+  }
+  if (result.manifests.length === 0) {
+    process.stdout.write('status --all: no seeded data found\n');
+    return;
+  }
+  for (const m of result.manifests) {
+    const cols = Object.entries(m.collections)
+      .map(([c, n]) => `${c}:${n}`)
+      .join(', ');
+    process.stdout.write(`${m.manifestId}${m.hasOrphans ? ' (orphans)' : ''}: ${cols}\n`);
   }
 }
 

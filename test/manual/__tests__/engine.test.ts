@@ -384,6 +384,40 @@ describe('deriveLabel', () => {
   });
 });
 
+// ─── Engine.statusAll ───
+describe('Engine.statusAll', () => {
+  it('groups doc counts by distinct _seedManifestId across collections', async () => {
+    const distinctByCol: Record<string, string[]> = {
+      recipes: ['a::default', 'b::default'],
+      stores: ['a::default'],
+    };
+    const countByColAndId: Record<string, number> = {
+      'recipes|a::default': 2,
+      'recipes|b::default': 1,
+      'stores|a::default': 1,
+    };
+    const db = {
+      collection: vi.fn((name: string) => ({
+        distinct: vi.fn(async () => distinctByCol[name] ?? []),
+        countDocuments: vi.fn(
+          async (q: { _seedManifestId: string }) =>
+            countByColAndId[`${name}|${q._seedManifestId}`] ?? 0
+        ),
+      })),
+    } as unknown as Db;
+
+    const engine = new Engine(db, new Map());
+    const result = await engine.statusAll();
+
+    expect(result.command).toBe('status-all');
+    const a = result.manifests.find((m) => m.manifestId === 'a::default');
+    const b = result.manifests.find((m) => m.manifestId === 'b::default');
+    expect(a?.collections.recipes).toBe(2);
+    expect(a?.collections.stores).toBe(1);
+    expect(b?.collections.recipes).toBe(1);
+  });
+});
+
 // ─── Engine.status ───
 describe('Engine.status', () => {
   it('reports applied/pending/failed correctly based on prior state and current docs', async () => {

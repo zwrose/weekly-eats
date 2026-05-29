@@ -25,6 +25,12 @@ describe('parseArgs', () => {
     expect(parseArgs(['--help']).flags.help).toBe(true);
     expect(parseArgs(['apply', '--help']).flags.help).toBe(true);
   });
+
+  it('parses status --all', () => {
+    const p = parseArgs(['status', '--all']);
+    expect(p.command).toBe('status');
+    expect(p.flags.all).toBe(true);
+  });
 });
 
 describe('resolveDbSafety', () => {

@@ -116,3 +116,15 @@ export interface CliResult {
   lock: { acquiredAt: string; releasedAt: string } | null;
   warnings: string[];
 }
+
+// ─── status --all result ─────────────────────────────────────────────────
+export interface StatusAllManifest {
+  manifestId: string;
+  collections: Record<string, number>;
+  hasOrphans: boolean;
+}
+
+export interface StatusAllResult {
+  command: 'status-all';
+  manifests: StatusAllManifest[];
+}

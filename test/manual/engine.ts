@@ -8,7 +8,9 @@ import type {
   Manifest,
   ManifestScenario,
   ManualTestStateDoc,
+  StatusAllResult,
 } from './types.js';
+import { KNOWN_COLLECTIONS } from './types.js';
 import { stableHash } from './hash.js';
 
 const STATE_COLLECTION = 'manualTestState';
@@ -432,6 +434,28 @@ export class Engine {
       scenarios,
       lock: null,
       warnings: [],
+    };
+  }
+
+  /** Cross-manifest landscape of the shared DB: per-collection counts grouped by _seedManifestId. */
+  async statusAll(): Promise<StatusAllResult> {
+    const byId = new Map<string, Record<string, number>>();
+    for (const col of KNOWN_COLLECTIONS) {
+      const ids = (await this.db.collection(col).distinct('_seedManifestId')) as string[];
+      for (const id of ids) {
+        if (!id) continue;
+        const count = await this.db.collection(col).countDocuments({ _seedManifestId: id });
+        if (count === 0) continue;
+        const entry = byId.get(id) ?? {};
+        entry[col] = count;
+        byId.set(id, entry);
+      }
+    }
+    return {
+      command: 'status-all',
+      manifests: [...byId.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([manifestId, collections]) => ({ manifestId, collections, hasOrphans: false })),
     };
   }
 }
