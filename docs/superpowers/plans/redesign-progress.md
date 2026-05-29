@@ -10,20 +10,20 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status  | Tag               | Plan doc                             | PR test comment | Done       |
-| --- | ---------------------------- | ------- | ----------------- | ------------------------------------ | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done    | redesign-chunk-00 | §6 of spec                           | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | done    | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md | PR #89 comment  | 2026-05-28 |
-| 2   | Nav chrome                   | done    | redesign-chunk-02 | redesign-chunk-02-nav-plan.md        | PR #89 comment  | 2026-05-28 |
-| 3   | Meal Plans                   | pending | —                 | — _(review-plan)_                    | —               | —          |
-| 4   | Recipes                      | pending | —                 | — _(review-plan)_                    | —               | —          |
-| 5   | Shopping Lists               | pending | —                 | — _(review-plan)_                    | —               | —          |
-| 6   | Pantry                       | pending | —                 | —                                    | —               | —          |
-| 7   | Food Items                   | pending | —                 | —                                    | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending | —                 | —                                    | —               | —          |
-| 9   | Settings (placeholder)       | pending | —                 | —                                    | —               | —          |
-| 10  | Marketing / home             | pending | —                 | —                                    | —               | —          |
-| 11  | Cleanup                      | pending | —                 | —                                    | —               | —          |
+| #   | Chunk                        | Status      | Tag               | Plan doc                                               | PR test comment | Done       |
+| --- | ---------------------------- | ----------- | ----------------- | ------------------------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                             | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                   | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                          | PR #89 comment  | 2026-05-28 |
+| 3   | Meal Plans                   | in-progress | —                 | redesign-chunk-03-meal-plans-plan.md _(review-plan ✓)_ | —               | —          |
+| 4   | Recipes                      | pending     | —                 | — _(review-plan)_                                      | —               | —          |
+| 5   | Shopping Lists               | pending     | —                 | — _(review-plan)_                                      | —               | —          |
+| 6   | Pantry                       | pending     | —                 | —                                                      | —               | —          |
+| 7   | Food Items                   | pending     | —                 | —                                                      | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                      | —               | —          |
+| 9   | Settings (placeholder)       | pending     | —                 | —                                                      | —               | —          |
+| 10  | Marketing / home             | pending     | —                 | —                                                      | —               | —          |
+| 11  | Cleanup                      | pending     | —                 | —                                                      | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
