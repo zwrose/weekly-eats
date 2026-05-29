@@ -56,4 +56,56 @@ describe('CombinedSearch', () => {
     await user.click(screen.getByText(/new group with "Sides"/i));
     expect(onAddGroup).toHaveBeenCalledWith('Sides');
   });
+
+  it('ArrowUp browses up into the results and Enter selects the highlighted row', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/recipes', () => HttpResponse.json([{ _id: 'r1', title: 'Parmesan pasta' }])),
+      http.get('/api/food-items', () => HttpResponse.json([]))
+    );
+    const onAddRecipe = vi.fn();
+    render(<CombinedSearch {...props({ onAddRecipe })} />);
+    await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'parm');
+    await waitFor(() => expect(screen.getByText('Parmesan pasta')).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    // rows top→bottom: [recipe, create-food, new-group]. ArrowUp from the input enters
+    // at the bottom row and walks up; 3 presses reach the recipe.
+    await user.keyboard('{ArrowUp}{ArrowUp}{ArrowUp}{Enter}');
+    expect(onAddRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: 'r1', title: 'Parmesan pasta' })
+    );
+  });
+
+  it('ArrowUp once highlights the bottom (New group) action; Enter triggers it', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/recipes', () => HttpResponse.json([{ _id: 'r1', title: 'Parmesan pasta' }])),
+      http.get('/api/food-items', () => HttpResponse.json([]))
+    );
+    const onAddGroup = vi.fn();
+    render(<CombinedSearch {...props({ onAddGroup })} />);
+    await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'Sides');
+    await waitFor(() => expect(screen.getByText(/new group with "Sides"/i)).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    await user.keyboard('{ArrowUp}{Enter}'); // bottom row is the New group action
+    expect(onAddGroup).toHaveBeenCalledWith('Sides');
+  });
+
+  it('with no matching results, Enter starts the new-food-item flow (no arrowing)', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/recipes', () => HttpResponse.json([])),
+      http.get('/api/food-items', () => HttpResponse.json([]))
+    );
+    render(<CombinedSearch {...props()} />);
+    await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'Zucchini');
+    await waitFor(() => expect(screen.getByText(/no matches found/i)).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    await user.keyboard('{Enter}');
+    // The AddFoodItemDialog (a MUI Dialog) opens, prefilled with the query.
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument(), { timeout: 2000 });
+  });
 });
