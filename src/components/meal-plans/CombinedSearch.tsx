@@ -70,13 +70,13 @@ export function CombinedSearch({
   const foods = selector.options.filter((o) => o.type === 'foodItem');
   const q = selector.inputValue.trim();
   const hasResults = recipes.length + foods.length > 0;
-  const showResults = focused && (hasResults || q.length > 0);
+  const hasCreate = q.length > 0;
+  const open = focused && (hasResults || hasCreate);
 
   // Flat, keyboard-navigable rows in visual (top→bottom) order: results first
-  // (recipes, then food items), then the pinned Create actions at the bottom.
+  // (recipes, then food items), then the Create actions attached to the search box.
   const optionRows: SearchOption[] = [...recipes, ...foods];
-  const hasCreate = q.length > 0;
-  const createFoodIdx = optionRows.length; // index when create actions are present
+  const createFoodIdx = optionRows.length;
   const newGroupIdx = optionRows.length + 1;
   const rowCount = optionRows.length + (hasCreate ? 2 : 0);
 
@@ -85,8 +85,8 @@ export function CombinedSearch({
     setActiveIndex(-1);
   }, [selector.inputValue, selector.options]);
 
-  // Keep the keyboard-highlighted result scrolled into view (create actions are
-  // pinned and always visible, so only the scrollable result rows need this).
+  // Keep the keyboard-highlighted result scrolled into view (the Create actions
+  // live in the search box and are always visible, so only result rows need this).
   useEffect(() => {
     const el = listRef.current?.querySelector('[data-active="true"]') as HTMLElement | null;
     // scrollIntoView is unimplemented in jsdom — guard so tests (and any non-DOM env) don't throw.
@@ -146,145 +146,150 @@ export function CombinedSearch({
     ...base,
   });
 
+  // A Create action row that reads as part of the search box (accent, leading +).
+  const createRow = (idx: number, dataKey: string, label: React.ReactNode, onPick: () => void) => (
+    <Box
+      data-create={dataKey}
+      onMouseEnter={() => setActiveIndex(idx)}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onPick();
+      }}
+      sx={rowSx(idx, {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        fontSize: 14,
+        color: tokens.section.plans,
+        fontWeight: 600,
+      })}
+    >
+      <Box component="span" sx={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: 'center' }}>
+        +
+      </Box>
+      {label}
+    </Box>
+  );
+
   return (
     // The sticky footer bg matches the editor dialog's surface (surface.sheet) so it
     // blends seamlessly instead of showing a darker band against the dialog body.
     <Box sx={{ position: 'sticky', bottom: 0, pt: 1.25, pb: 2, bgcolor: tokens.surface.sheet }}>
-      {showResults && (
+      {/* Results — a separate floating list (the scrolling section), distinct from the box. */}
+      {open && hasResults && (
         <Box
+          ref={listRef}
           sx={{
             mb: 1,
             bgcolor: 'background.paper',
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: `${tokens.radius.xl}px`,
             overflow: 'hidden',
+            maxHeight: 240,
+            overflowY: 'auto',
           }}
         >
-          {/* Scrollable results (capped) — recipes then food items. */}
-          {hasResults && (
-            <Box ref={listRef} sx={{ maxHeight: 240, overflowY: 'auto' }}>
-              {recipes.length > 0 && <SectionLabel>Recipes</SectionLabel>}
-              {recipes.map((o, i) => (
-                <Box
-                  key={o._id}
-                  data-active={i === activeIndex ? 'true' : undefined}
-                  onMouseEnter={() => setActiveIndex(i)}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    addOption(o);
-                  }}
-                  sx={rowSx(i, {
-                    display: 'flex',
-                    gap: 1.25,
-                    alignItems: 'center',
-                    opacity: o.isExcluded ? 0.4 : 1,
-                  })}
-                >
-                  <Box
-                    component="span"
-                    sx={{ color: tokens.section.plans, fontSize: 14, fontWeight: 600 }}
-                  >
-                    {o.type === 'recipe' ? o.title : ''}
-                  </Box>
-                </Box>
-              ))}
-              {foods.length > 0 && <SectionLabel>Food items</SectionLabel>}
-              {foods.map((o, j) => {
-                const idx = recipes.length + j;
-                return (
-                  <Box
-                    key={o._id}
-                    data-active={idx === activeIndex ? 'true' : undefined}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      addOption(o);
-                    }}
-                    sx={rowSx(idx, {
-                      fontSize: 14,
-                      color: tokens.text.primary,
-                      opacity: o.isExcluded ? 0.4 : 1,
-                    })}
-                  >
-                    {o.type === 'foodItem' ? o.name : ''}
-                  </Box>
-                );
+          {recipes.length > 0 && <SectionLabel>Recipes</SectionLabel>}
+          {recipes.map((o, i) => (
+            <Box
+              key={o._id}
+              data-active={i === activeIndex ? 'true' : undefined}
+              onMouseEnter={() => setActiveIndex(i)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addOption(o);
+              }}
+              sx={rowSx(i, {
+                display: 'flex',
+                gap: 1.25,
+                alignItems: 'center',
+                opacity: o.isExcluded ? 0.4 : 1,
               })}
-            </Box>
-          )}
-
-          {/* Pinned Create actions — always visible regardless of result count. */}
-          {hasCreate && (
-            <Box sx={{ borderTop: hasResults ? `1px solid ${tokens.border.subtle}` : 'none' }}>
-              {!hasResults && (
-                <Box sx={{ px: 1.5, pt: 1.25, pb: 0.5, fontSize: 12, color: tokens.text.muted }}>
-                  No matches found
-                </Box>
-              )}
-              <SectionLabel>Create</SectionLabel>
+            >
               <Box
-                data-create="food"
-                onMouseEnter={() => setActiveIndex(createFoodIdx)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  creator.openDialog(q);
-                }}
-                sx={rowSx(createFoodIdx, {
-                  fontSize: 14,
-                  color: tokens.section.plans,
-                  fontWeight: 600,
-                })}
+                component="span"
+                sx={{ color: tokens.section.plans, fontSize: 14, fontWeight: 600 }}
               >
-                + Add &quot;{q}&quot; as new food item
-              </Box>
-              <Box
-                data-create="group"
-                onMouseEnter={() => setActiveIndex(newGroupIdx)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  newGroup();
-                }}
-                sx={rowSx(newGroupIdx, {
-                  fontSize: 14,
-                  color: tokens.section.plans,
-                  fontWeight: 600,
-                })}
-              >
-                New group with &quot;{q}&quot;
+                {o.type === 'recipe' ? o.title : ''}
               </Box>
             </Box>
-          )}
+          ))}
+          {foods.length > 0 && <SectionLabel>Food items</SectionLabel>}
+          {foods.map((o, j) => {
+            const idx = recipes.length + j;
+            return (
+              <Box
+                key={o._id}
+                data-active={idx === activeIndex ? 'true' : undefined}
+                onMouseEnter={() => setActiveIndex(idx)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  addOption(o);
+                }}
+                sx={rowSx(idx, {
+                  fontSize: 14,
+                  color: tokens.text.primary,
+                  opacity: o.isExcluded ? 0.4 : 1,
+                })}
+              >
+                {o.type === 'foodItem' ? o.name : ''}
+              </Box>
+            );
+          })}
         </Box>
       )}
+
+      {/* The search box: its Create actions + the input share one surface + focus ring,
+          so the actions read as belonging to the box, not the results list. */}
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          px: 1.5,
-          py: 1.25,
           bgcolor: tokens.surface.elevated,
           border: `1px solid ${focused ? `${tokens.section.plans}55` : tokens.border.strong}`,
           boxShadow: focused ? tokens.shadow.card : 'none',
           borderRadius: `${tokens.radius.xl}px`,
+          overflow: 'hidden',
         }}
       >
-        <Icon name="search" size={18} color={tokens.text.secondary} />
-        <InputBase
-          inputRef={selector.autocompleteRef}
-          value={selector.inputValue}
-          onChange={(e) => selector.handleInputChange(e.target.value, 'input')}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Add item, recipe, or new group"
+        {open && hasCreate && (
+          <Box sx={{ pt: 0.5 }}>
+            {!hasResults && (
+              <Box sx={{ px: 1.5, pt: 0.5, pb: 0.25, fontSize: 12, color: tokens.text.muted }}>
+                No matches found
+              </Box>
+            )}
+            {createRow(createFoodIdx, 'food', <>Add &quot;{q}&quot; as new food item</>, () =>
+              creator.openDialog(q)
+            )}
+            {createRow(newGroupIdx, 'group', <>New group with &quot;{q}&quot;</>, newGroup)}
+          </Box>
+        )}
+        <Box
           sx={{
-            flex: 1,
-            fontSize: 14,
-            color: tokens.text.primary,
-            '& input::placeholder': { color: tokens.text.muted, opacity: 1 },
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 1.5,
+            py: 1.25,
+            borderTop: open && hasCreate ? `1px solid ${tokens.border.subtle}` : 'none',
           }}
-        />
+        >
+          <Icon name="search" size={18} color={tokens.text.secondary} />
+          <InputBase
+            inputRef={selector.autocompleteRef}
+            value={selector.inputValue}
+            onChange={(e) => selector.handleInputChange(e.target.value, 'input')}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 150)}
+            placeholder="Add item, recipe, or new group"
+            sx={{
+              flex: 1,
+              fontSize: 14,
+              color: tokens.text.primary,
+              '& input::placeholder': { color: tokens.text.muted, opacity: 1 },
+            }}
+          />
+        </Box>
       </Box>
 
       <AddFoodItemDialog
