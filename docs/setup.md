@@ -67,7 +67,7 @@ After the script finishes, edit `.env.local` and fill in your Google OAuth crede
 npm install
 ```
 
-The `postinstall` hook runs `scripts/setup-worktree.js`, which auto-detects whether you're in a worktree or the main repo. In the main repo it creates database indexes. In a worktree it also generates `.env.local` and clones the main database. If MongoDB is not running at install time, the script warns and exits gracefully -- the dev server will still start, and you can run `npm run setup-db` later once MongoDB is available.
+The `postinstall` hook runs `scripts/setup-worktree.js`, which auto-detects whether you're in a worktree or the main repo. In the main repo it creates database indexes. In a worktree it also generates `.env.local` (pointing at the shared dev DB `weekly-eats-dev`, the same database as main) and creates database indexes. If MongoDB is not running at install time, the script warns and exits gracefully -- the dev server will still start, and you can run `npm run setup-db` later once MongoDB is available.
 
 ## Database
 
