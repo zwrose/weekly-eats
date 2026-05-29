@@ -50,7 +50,7 @@ const base: PlanViewProps = {
 describe('PlanViewDesktop', () => {
   it('renders the today hero with TODAY and the meal-label columns', () => {
     render(<PlanViewDesktop {...base} />);
-    expect(screen.getAllByText('TODAY').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('TODAY')).toHaveLength(2); // hero badge + vertical sliver
     expect(screen.getByText('Breakfast')).toBeInTheDocument();
     expect(screen.getByText('Dinner')).toBeInTheDocument();
     expect(screen.getByText('Thai coconut curry')).toBeInTheDocument();
