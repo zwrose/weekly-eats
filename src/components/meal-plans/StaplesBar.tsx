@@ -135,7 +135,9 @@ export function StaplesBar({ staples, onEdit }: StaplesBarProps) {
                       }}
                     >
                       {it.quantity}
-                      {it.unit && it.unit !== 'each' ? ` ${getUnitForm(it.unit, it.quantity)}` : ''}
+                      {it.unit && it.unit !== 'each'
+                        ? ` ${getUnitForm(it.unit, it.quantity ?? 1)}`
+                        : ''}
                     </Box>
                   </Box>
                 ))}
@@ -174,7 +176,9 @@ export function StaplesBar({ staples, onEdit }: StaplesBarProps) {
                       }}
                     >
                       {it.quantity}
-                      {it.unit && it.unit !== 'each' ? ` ${getUnitForm(it.unit, it.quantity)}` : ''}
+                      {it.unit && it.unit !== 'each'
+                        ? ` ${getUnitForm(it.unit, it.quantity ?? 1)}`
+                        : ''}
                     </Box>
                   </Box>
                 ))}
