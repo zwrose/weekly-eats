@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Canonical food name lookup ──────────────────────────────────────────────
 // Keys are lowercase input names; values are the canonical singular/plural/unit.
@@ -102,8 +103,7 @@ export const block: Block<Config, State> = {
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
-        _seedManifestId: ctx.manifestId,
-        _seedScenarioId: ctx.scenarioId,
+        ...seedTag(ctx),
       });
       foodItemIds[pluralName] = result.insertedId as ObjectId;
       docCount += 1;
@@ -118,16 +118,16 @@ export const block: Block<Config, State> = {
     // ── globalCount generated items ──
     const globalCount = config.globalCount ?? 0;
     for (let i = 1; i <= globalCount; i++) {
-      const singularName = `Manual Test Food ${i}`;
-      const pluralName = `Manual Test Food ${i}`;
+      const singularName = `${SEED_TITLE_PREFIX}Food Global [${ctx.label}] ${i}`;
+      const pluralName = `${SEED_TITLE_PREFIX}Food Global [${ctx.label}] ${i}`;
       await upsertItem(singularName, pluralName, 'each', true);
     }
 
     // ── userCount generated items ──
     const userCount = config.userCount ?? 0;
     for (let i = 1; i <= userCount; i++) {
-      const singularName = `Manual Test User Food ${i}`;
-      const pluralName = `Manual Test User Food ${i}`;
+      const singularName = `${SEED_TITLE_PREFIX}Food User [${ctx.label}] ${i}`;
+      const pluralName = `${SEED_TITLE_PREFIX}Food User [${ctx.label}] ${i}`;
       await upsertItem(singularName, pluralName, 'each', false);
     }
 
@@ -157,4 +157,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-

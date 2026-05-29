@@ -8,10 +8,19 @@ import type {
   Manifest,
   ManifestScenario,
   ManualTestStateDoc,
+  StatusAllResult,
 } from './types.js';
+import { KNOWN_COLLECTIONS } from './types.js';
 import { stableHash } from './hash.js';
+import { SEED_TITLE_PREFIX } from './seedTag.js';
 
 const STATE_COLLECTION = 'manualTestState';
+
+/** Visible branch stamp for seeded display names. branch.slice(0,8) [+ "·"+slot]. */
+export function deriveLabel(branch: string, slot: string): string {
+  const base = branch.slice(0, 8);
+  return slot && slot !== 'default' ? `${base}·${slot}` : base;
+}
 
 export function topoSort(scenarios: ManifestScenario[]): string[] {
   const ids = scenarios.map((s) => s.id).sort();
@@ -102,6 +111,7 @@ export class Engine {
   async apply(manifest: Manifest, options: { force?: string[] } = {}): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     const command = 'apply';
 
     // 1. Resolve order
@@ -128,6 +138,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: () => {
           throw new Error('resolve unavailable in status');
         },
@@ -151,6 +162,7 @@ export class Engine {
           db: this.db,
           manifestId,
           scenarioId: id,
+          label,
           resolve: () => {
             throw new Error('resolve unavailable in clean');
           },
@@ -203,6 +215,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: <T>(depId: string): T => {
           if (!declaredDeps.has(depId)) {
             throw new Error(
@@ -283,6 +296,7 @@ export class Engine {
   async clean(manifest: Manifest): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     let order: string[];
     try {
       order = topoSort(manifest.scenarios);
@@ -317,6 +331,7 @@ export class Engine {
           db: this.db,
           manifestId,
           scenarioId: id,
+          label,
           resolve: () => {
             throw new Error('resolve unavailable in clean');
           },
@@ -346,6 +361,7 @@ export class Engine {
         });
       }
     }
+    const warnings = await this.orphanWarnings();
     return {
       schemaVersion: 1,
       ok: !hadFailure,
@@ -354,13 +370,14 @@ export class Engine {
       exitCode: hadFailure ? 2 : 0,
       scenarios,
       lock: null,
-      warnings: [],
+      warnings,
     };
   }
 
   async status(manifest: Manifest): Promise<CliResult> {
     await this.ensureStateIndex();
     const manifestId = `${manifest.branch}::${manifest.slot}`;
+    const label = deriveLabel(manifest.branch, manifest.slot);
     const order = topoSort(manifest.scenarios);
     const scenById = new Map(manifest.scenarios.map((s) => [s.id, s]));
     const scenarios: CliScenarioResult[] = [];
@@ -387,6 +404,7 @@ export class Engine {
         db: this.db,
         manifestId,
         scenarioId: id,
+        label,
         resolve: () => {
           throw new Error('resolve unavailable in status');
         },
@@ -409,6 +427,7 @@ export class Engine {
         error: prior?.lastApplyError ?? null,
       });
     }
+    const warnings = await this.orphanWarnings();
     return {
       schemaVersion: 1,
       ok: true,
@@ -417,9 +436,175 @@ export class Engine {
       exitCode: 0,
       scenarios,
       lock: null,
-      warnings: [],
+      warnings,
     };
   }
+
+  /** Cross-manifest landscape of the shared DB: per-collection counts grouped by _seedManifestId. */
+  async statusAll(): Promise<StatusAllResult> {
+    const byId = new Map<string, Record<string, number>>();
+    for (const col of KNOWN_COLLECTIONS) {
+      const ids = (await this.db.collection(col).distinct('_seedManifestId')) as string[];
+      for (const id of ids) {
+        if (!id) continue;
+        const count = await this.db.collection(col).countDocuments({ _seedManifestId: id });
+        if (count === 0) continue;
+        const entry = byId.get(id) ?? {};
+        entry[col] = count;
+        byId.set(id, entry);
+      }
+    }
+    const tracked = new Set(
+      (await this.db.collection(STATE_COLLECTION).distinct('manifestId')) as string[]
+    );
+    return {
+      command: 'status-all',
+      manifests: [...byId.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([manifestId, collections]) => ({
+          manifestId,
+          collections,
+          hasOrphans: !tracked.has(manifestId),
+        })),
+    };
+  }
+
+  /** Count untagged seed-shaped docs (SEED_TITLE_PREFIX title/name, no _seedManifestId) per collection. */
+  private async legacyOrphanCounts(): Promise<Array<{ collection: string; count: number }>> {
+    const results: Array<{ collection: string; count: number }> = [];
+    for (const col of KNOWN_COLLECTIONS) {
+      const count = await this.db.collection(col).countDocuments({
+        _seedManifestId: { $exists: false },
+        $or: [
+          { title: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+          { name: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+        ],
+      });
+      if (count > 0) results.push({ collection: col, count });
+    }
+    return results;
+  }
+
+  /** Detect orphan/untagged seed-shaped docs for a warning on plain clean/status. */
+  private async orphanWarnings(): Promise<string[]> {
+    const legacy = await this.legacyOrphanCounts();
+    const total = legacy.reduce((n, l) => n + l.count, 0);
+    return total > 0
+      ? [`${total} untagged seed-shaped doc(s) detected — run \`clean --orphans\` to review`]
+      : [];
+  }
+
+  /** Summarize what `clean --all` would wipe across the shared DB. */
+  async previewAll(): Promise<{ branches: string[]; total: number }> {
+    const ids = new Set<string>();
+    let total = 0;
+    for (const col of KNOWN_COLLECTIONS) {
+      const colIds = (await this.db.collection(col).distinct('_seedManifestId')) as string[];
+      for (const id of colIds) if (id) ids.add(id);
+      total += await this.db.collection(col).countDocuments({ _seedManifestId: { $exists: true } });
+    }
+    return { branches: [...new Set([...ids].map((id) => id.split('::')[0]))].sort(), total };
+  }
+
+  /**
+   * File-independent targeted clean: remove all docs + state for a branch (every slot).
+   * No regex — enumerate exact _seedManifestId values and delete by $in, so a branch
+   * containing '.' cannot over-match a sibling (e.g. release/1.2 vs release/1X2).
+   */
+  async cleanByBranch(branch: string): Promise<{ matched: string[]; deleted: number }> {
+    const prefix = `${branch}::`;
+    const ids = new Set<string>();
+    for (const col of [...KNOWN_COLLECTIONS, STATE_COLLECTION]) {
+      const field = col === STATE_COLLECTION ? 'manifestId' : '_seedManifestId';
+      const colIds = (await this.db.collection(col).distinct(field)) as string[];
+      for (const id of colIds) if (id && id.startsWith(prefix)) ids.add(id);
+    }
+    const matched = [...ids];
+    let deleted = 0;
+    if (matched.length > 0) {
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await this.db.collection(col).deleteMany({ _seedManifestId: { $in: matched } });
+        deleted += r.deletedCount ?? 0;
+      }
+      await this.db.collection(STATE_COLLECTION).deleteMany({ manifestId: { $in: matched } });
+    }
+    return { matched, deleted };
+  }
+
+  /**
+   * Sweep orphaned seed data on the shared DB. Cross-branch-safe: keys off the
+   * shared manualTestState collection + injected branchExists, never on-disk manifests.
+   * Targets: (1) untracked = tagged but no state row; (2) stale-branch = branch gone
+   * from git (deletes docs + state rows); (3) legacy-untagged = SEED_TITLE_PREFIX docs
+   * with no tag (report only). Throws (aborts) if branchExists throws — never mass-deletes.
+   */
+  async cleanOrphans(opts: {
+    branchExists: (branch: string) => boolean;
+    dryRun: boolean;
+  }): Promise<{
+    untracked: string[];
+    staleBranch: string[];
+    legacy: Array<{ collection: string; count: number }>;
+    deleted: number;
+    warnings: string[];
+  }> {
+    // 1. Distinct manifestIds present on docs + tracked manifestIds from state.
+    const docIds = new Set<string>();
+    for (const col of KNOWN_COLLECTIONS) {
+      for (const id of (await this.db.collection(col).distinct('_seedManifestId')) as string[]) {
+        if (id) docIds.add(id);
+      }
+    }
+    const stateRows = await this.db
+      .collection<ManualTestStateDoc>(STATE_COLLECTION)
+      .find({}, { projection: { manifestId: 1, scenarioId: 1 } })
+      .toArray();
+    const trackedManifestIds = new Set(stateRows.map((s) => s.manifestId));
+
+    // 2. Classify branches FIRST — a throw here aborts before any delete.
+    const branchesOnDocs = new Set([...docIds].map((id) => id.split('::')[0]));
+    const goneBranches = new Set<string>();
+    for (const branch of branchesOnDocs) {
+      if (!opts.branchExists(branch)) goneBranches.add(branch);
+    }
+
+    // 3. Partition.
+    const untracked: string[] = [];
+    const staleBranch: string[] = [];
+    for (const id of docIds) {
+      const branch = id.split('::')[0];
+      if (goneBranches.has(branch)) staleBranch.push(id);
+      else if (!trackedManifestIds.has(id)) untracked.push(id);
+    }
+
+    // 4. Legacy untagged (report only).
+    const legacy = await this.legacyOrphanCounts();
+
+    // 5. Backstop.
+    const warnings: string[] = [];
+    if (branchesOnDocs.size > 0 && goneBranches.size > branchesOnDocs.size / 2) {
+      warnings.push(
+        `orphan sweep: ${goneBranches.size}/${branchesOnDocs.size} branches flagged gone — verify this is expected`
+      );
+    }
+
+    // 6. Delete (unless dry-run).
+    let deleted = 0;
+    const toDelete = [...untracked, ...staleBranch];
+    if (!opts.dryRun && toDelete.length > 0) {
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await this.db.collection(col).deleteMany({ _seedManifestId: { $in: toDelete } });
+        deleted += r.deletedCount ?? 0;
+      }
+      await this.db.collection(STATE_COLLECTION).deleteMany({ manifestId: { $in: staleBranch } });
+    }
+
+    return { untracked, staleBranch, legacy, deleted, warnings };
+  }
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function failResult(

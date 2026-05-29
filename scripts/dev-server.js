@@ -31,8 +31,9 @@ if (!skipSetup) {
   }
 }
 
-// Read PORT from .env.local
+// Read PORT and MONGODB_URI from .env.local
 let port = 3000;
+let dbName = 'unknown';
 const envPath = resolve(projectRoot, '.env.local');
 if (existsSync(envPath)) {
   const envContent = readFileSync(envPath, 'utf8');
@@ -40,15 +41,27 @@ if (existsSync(envPath)) {
   if (portMatch) {
     port = parseInt(portMatch[1], 10);
   }
+  const uriMatch = envContent.match(/^MONGODB_URI=.*\/([^/\s?]+)(\?|$)/m);
+  if (uriMatch) dbName = uriMatch[1];
 }
 
-console.log('Starting dev server on port ' + port + '...');
+console.log('Starting dev server on port ' + port + ' (DB: ' + dbName + ')...');
 
-const child = spawn(process.execPath, [resolve(projectRoot, 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '--turbopack', '--port', String(port)], {
-  cwd: projectRoot,
-  stdio: 'inherit',
-  env: { ...process.env }
-});
+const child = spawn(
+  process.execPath,
+  [
+    resolve(projectRoot, 'node_modules', 'next', 'dist', 'bin', 'next'),
+    'dev',
+    '--turbopack',
+    '--port',
+    String(port),
+  ],
+  {
+    cwd: projectRoot,
+    stdio: 'inherit',
+    env: { ...process.env },
+  }
+);
 
 child.on('exit', (code) => {
   process.exit(code ?? 0);

@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -58,10 +59,7 @@ export const block: Block<Config, State> = {
     const storesState = ctx.resolve<{ storeIds: ObjectId[] }>(config.storeRef);
     const storeId = storesState.storeIds[0].toString();
 
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const slCol = ctx.db.collection('shoppingLists');
 
@@ -114,7 +112,7 @@ export const block: Block<Config, State> = {
 
       items = Array.from({ length: count }, (_, i) => ({
         foodItemId: foodItemIds[i]?.toString() ?? `placeholder-${i}`,
-        name: `Manual Test Item ${i + 1}`,
+        name: `${SEED_TITLE_PREFIX}Item [${ctx.label}] ${i + 1}`,
         quantity: 1,
         unit: 'each',
         checked: i < checkedCount,
@@ -157,4 +155,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-

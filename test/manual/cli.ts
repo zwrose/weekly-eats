@@ -3,13 +3,14 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MongoClient } from 'mongodb';
 import { validateBranch, validateSlot } from './validate-args.js';
 import { loadManifest, manifestPath } from './manifest-io.js';
 import { Engine } from './engine.js';
 import { acquireLock, releaseLock, forceUnlock, readLock } from './lock.js';
-import type { CliResult, Block } from './types.js';
+import { KNOWN_COLLECTIONS } from './types.js';
+import type { CliResult, Block, StatusAllResult } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(__filename));
@@ -105,6 +106,31 @@ function getCurrentGitBranch(): string {
   return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Build a branch-existence check for the orphan sweep. Injected into the engine
+ * so engine.ts stays OS-free. With `--quiet`: exit 0 = exists, exit 1 = ref
+ * absent (gone). Exit 128 (not a repo) or ENOENT (git missing) means the
+ * environment is broken — THROW so the sweep aborts instead of nuking everything.
+ *
+ * Accepts an optional `_exec` override for testing (defaults to `execFileSync`).
+ */
+export function makeBranchExists(
+  exec: typeof execFileSync = execFileSync
+): (branch: string) => boolean {
+  return (branch: string): boolean => {
+    try {
+      exec('git', ['rev-parse', '--verify', '--quiet', branch], { stdio: 'pipe' });
+      return true;
+    } catch (e: unknown) {
+      const err = e as { status?: number; code?: string };
+      if (err.status === 1) return false; // ref absent
+      throw new Error(
+        `branchExists: git rev-parse failed for "${branch}" (status=${err.status}, code=${err.code}) — aborting orphan sweep`
+      );
+    }
+  };
+}
+
 function readMongoUri(): string {
   if (process.env.MONGODB_URI) return process.env.MONGODB_URI;
   // Read from .env.local — same pattern as the old seed scripts
@@ -186,10 +212,63 @@ async function main(): Promise<number> {
   }
 
   const uri = readMongoUri();
-  resolveDbSafety(uri, parsed.flags);
+  const { dbName } = resolveDbSafety(uri, parsed.flags);
+  process.stderr.write(`▶ manual-test DB: ${dbName}\n`);
   const client = await MongoClient.connect(uri);
   try {
     const db = client.db();
+
+    // ── File-independent commands (no manifest file needed) ──
+    if (parsed.command === 'status' && parsed.flags.all) {
+      const engine = new Engine(db, new Map());
+      const result = await engine.statusAll();
+      outputStatusAll(result, parsed);
+      return 0;
+    }
+
+    if (parsed.command === 'clean' && parsed.flags.all) {
+      if (!parsed.flags.yes) {
+        throw new Error('clean --all requires --yes (destructive)');
+      }
+      const engine = new Engine(db, new Map());
+      const preview = await engine.previewAll();
+      process.stdout.write(
+        `clean --all: ${preview.total} doc(s) across ${preview.branches.length} branch(es): ${preview.branches.join(', ')}\n`
+      );
+      let totalDeleted = 0;
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await db.collection(col).deleteMany({ _seedManifestId: { $exists: true } });
+        totalDeleted += r.deletedCount ?? 0;
+      }
+      await db.collection('manualTestState').deleteMany({});
+      process.stdout.write(`cleaned ${totalDeleted} docs across all manifests\n`);
+      return 0;
+    }
+
+    if (parsed.command === 'clean' && parsed.flags['manifest-id']) {
+      const branch = String(parsed.flags['manifest-id']);
+      validateBranch(branch); // rejects '::*' and disallowed chars
+      const engine = new Engine(db, new Map());
+      const r = await engine.cleanByBranch(branch);
+      process.stdout.write(
+        `clean --manifest-id ${branch}: deleted ${r.deleted} docs across ${r.matched.length} manifest id(s)\n`
+      );
+      return 0;
+    }
+
+    if (parsed.command === 'clean' && parsed.flags.orphans) {
+      const engine = new Engine(db, new Map());
+      const dryRun = !parsed.flags.yes; // default dry-run; --yes deletes
+      const r = await engine.cleanOrphans({ branchExists: makeBranchExists(), dryRun });
+      for (const w of r.warnings) process.stdout.write(`  warning: ${w}\n`);
+      process.stdout.write(
+        `clean --orphans${dryRun ? ' (dry-run)' : ''}: ` +
+          `${r.untracked.length} untracked, ${r.staleBranch.length} stale-branch, ` +
+          `${r.legacy.reduce((n, l) => n + l.count, 0)} legacy-untagged (report only); ` +
+          `${dryRun ? 'would delete' : 'deleted'} ${dryRun ? r.untracked.length + r.staleBranch.length : r.deleted}\n`
+      );
+      return 0;
+    }
 
     if (parsed.command === 'unlock') {
       const target = resolveTarget(parsed, getCurrentGitBranch);
@@ -265,21 +344,6 @@ async function main(): Promise<number> {
     }
 
     if (parsed.command === 'clean') {
-      if (parsed.flags.all) {
-        if (!parsed.flags.yes) {
-          throw new Error('clean --all requires --yes (destructive)');
-        }
-        // ─── Clean across all manifests ────────────────────────────
-        const { KNOWN_COLLECTIONS } = await import('./types.js');
-        let totalDeleted = 0;
-        for (const col of KNOWN_COLLECTIONS) {
-          const r = await db.collection(col).deleteMany({ _seedManifestId: { $exists: true } });
-          totalDeleted += r.deletedCount ?? 0;
-        }
-        await db.collection('manualTestState').deleteMany({});
-        process.stdout.write(`cleaned ${totalDeleted} docs across all manifests\n`);
-        return 0;
-      }
       const result = await engine.clean(manifest);
       output(result, parsed);
       return result.exitCode;
@@ -294,6 +358,23 @@ async function main(): Promise<number> {
     throw new Error(`unknown command: ${parsed.command}`);
   } finally {
     await client.close();
+  }
+}
+
+function outputStatusAll(result: StatusAllResult, parsed: ParsedArgs): void {
+  if (parsed.flags.json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    return;
+  }
+  if (result.manifests.length === 0) {
+    process.stdout.write('status --all: no seeded data found\n');
+    return;
+  }
+  for (const m of result.manifests) {
+    const cols = Object.entries(m.collections)
+      .map(([c, n]) => `${c}:${n}`)
+      .join(', ');
+    process.stdout.write(`${m.manifestId}${m.hasOrphans ? ' (orphans)' : ''}: ${cols}\n`);
   }
 }
 
@@ -314,7 +395,7 @@ function output(result: CliResult, parsed: ParsedArgs): void {
 }
 
 // Run when invoked directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().then(
     (code) => process.exit(code),
     (e) => {

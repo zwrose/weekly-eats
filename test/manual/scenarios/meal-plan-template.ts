@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -63,10 +64,7 @@ export const block: Block<Config, State> = {
   async apply(config, ctx) {
     const { userId, email } = ctx.resolve<{ userId: string; email: string }>('u');
 
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const col = ctx.db.collection('mealPlanTemplates');
 
@@ -130,4 +128,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-

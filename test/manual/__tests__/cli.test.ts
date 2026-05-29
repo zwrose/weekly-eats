@@ -1,6 +1,6 @@
 // test/manual/__tests__/cli.test.ts
-import { describe, it, expect } from 'vitest';
-import { parseArgs, resolveDbSafety, resolveTarget } from '../cli.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { parseArgs, resolveDbSafety, resolveTarget, makeBranchExists } from '../cli.js';
 
 describe('parseArgs', () => {
   it('parses subcommand + positional', () => {
@@ -24,6 +24,12 @@ describe('parseArgs', () => {
   it('--help', () => {
     expect(parseArgs(['--help']).flags.help).toBe(true);
     expect(parseArgs(['apply', '--help']).flags.help).toBe(true);
+  });
+
+  it('parses status --all', () => {
+    const p = parseArgs(['status', '--all']);
+    expect(p.command).toBe('status');
+    expect(p.flags.all).toBe(true);
   });
 });
 
@@ -93,5 +99,43 @@ describe('resolveTarget', () => {
       name: 'feat/current',
       slot: 'default',
     });
+  });
+});
+
+describe('makeBranchExists', () => {
+  let mockExec: ReturnType<typeof vi.fn>;
+  let branchExists: (branch: string) => boolean;
+
+  beforeEach(() => {
+    mockExec = vi.fn();
+    branchExists = makeBranchExists(
+      mockExec as unknown as typeof import('node:child_process').execFileSync
+    );
+  });
+
+  it('returns true on exit 0 (branch exists)', () => {
+    mockExec.mockReturnValueOnce(Buffer.from('sha\n'));
+    expect(branchExists('feat/x')).toBe(true);
+  });
+
+  it('returns false on exit 1 (--quiet, ref absent)', () => {
+    mockExec.mockImplementationOnce(() => {
+      throw Object.assign(new Error('exit 1'), { status: 1 });
+    });
+    expect(branchExists('gone/branch')).toBe(false);
+  });
+
+  it('throws on exit 128 (not a git repo)', () => {
+    mockExec.mockImplementationOnce(() => {
+      throw Object.assign(new Error('fatal'), { status: 128 });
+    });
+    expect(() => branchExists('feat/x')).toThrow();
+  });
+
+  it('throws on ENOENT (git missing)', () => {
+    mockExec.mockImplementationOnce(() => {
+      throw Object.assign(new Error('spawn'), { code: 'ENOENT' });
+    });
+    expect(() => branchExists('feat/x')).toThrow();
   });
 });

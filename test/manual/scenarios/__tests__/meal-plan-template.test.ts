@@ -70,6 +70,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'mpt') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'feat/te',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'test@example.com', name: 'Test User' };
       throw new Error(`unexpected resolve id: ${id}`);
