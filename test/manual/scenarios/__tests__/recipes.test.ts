@@ -58,6 +58,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'r') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'fix/93-s',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'a@b.c', name: 'A' };
       if (id === 'fi') return { foodItemIds: { Apples: foodItemId1, Bread: foodItemId2 } };
@@ -121,7 +122,7 @@ describe('recipes.apply — basic', () => {
     const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
     expect(doc._seedManifestId).toBe('feat/test::default');
     expect(doc._seedScenarioId).toBe('r');
-    expect(doc.title).toMatch(/Manual Test Recipe/);
+    expect(doc.title).toMatch(/^Manual Test Recipe \[.+\] \d+$/);
     expect(doc.isGlobal).toBe(false);
     expect(doc.createdBy).toBe('u1');
   });

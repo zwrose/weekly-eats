@@ -54,6 +54,7 @@ function mockCtx(
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'fix/93-s',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'a@b.c', name: 'A' };
       if (id === 'st') return { storeIds: resolvedStoreIds };
