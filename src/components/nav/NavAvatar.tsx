@@ -1,7 +1,7 @@
 // src/components/nav/NavAvatar.tsx
 'use client';
 
-import { Box } from '@mui/material';
+import { CachedAvatar } from '../CachedAvatar';
 
 /** Up to two initials from a display name; '?' when empty. */
 export function initialsFromName(name?: string | null): string {
@@ -13,29 +13,30 @@ export function initialsFromName(name?: string | null): string {
 
 export interface NavAvatarProps {
   name?: string | null;
+  /** Profile image URL (e.g. session.user.image). Initials are the fallback when absent or it fails to load. */
+  image?: string | null;
   size?: number;
 }
 
-export function NavAvatar({ name, size = 28 }: NavAvatarProps) {
+/**
+ * Profile-image avatar with an initials-gradient fallback. Uses CachedAvatar so Google
+ * profile images go through the caching proxy and fall back gracefully (the gradient +
+ * initials show when there's no image or the image errors).
+ */
+export function NavAvatar({ name, image, size = 28 }: NavAvatarProps) {
   return (
-    <Box
-      aria-hidden="true"
+    <CachedAvatar
+      src={image}
+      alt={name ?? 'Account'}
+      fallbackIcon={initialsFromName(name)}
       sx={{
         width: size,
         height: size,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #5b6d8c, #3d4a64)',
-        color: 'text.primary',
         fontSize: size * 0.4,
         fontWeight: 600,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        userSelect: 'none',
+        background: 'linear-gradient(135deg, #5b6d8c, #3d4a64)',
+        color: 'text.primary',
       }}
-    >
-      {initialsFromName(name)}
-    </Box>
+    />
   );
 }

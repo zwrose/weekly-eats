@@ -110,7 +110,7 @@ export function TopNav() {
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <NavAvatar name={name} size={28} />
+        <NavAvatar name={name} image={user?.image} size={28} />
         {name}
       </Button>
 

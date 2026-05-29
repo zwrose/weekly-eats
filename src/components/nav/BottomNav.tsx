@@ -78,7 +78,7 @@ export function BottomNav() {
           aria-haspopup="true"
           sx={slotSx(tokens.text.secondary)}
         >
-          <NavAvatar name={user?.name} size={22} />
+          <NavAvatar name={user?.name} image={user?.image} size={22} />
           Account
         </ButtonBase>
       </Box>

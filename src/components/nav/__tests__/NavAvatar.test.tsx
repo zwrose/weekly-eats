@@ -17,13 +17,18 @@ describe('initialsFromName', () => {
 });
 
 describe('NavAvatar', () => {
-  it('renders the initials', () => {
-    const { getByText } = render(<NavAvatar name="Zach Rose" />);
+  it('falls back to initials when no image is provided', () => {
+    const { getByText, container } = render(<NavAvatar name="Zach Rose" />);
     expect(getByText('ZR')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
   });
 
-  it('is decorative (aria-hidden)', () => {
-    const { container } = render(<NavAvatar name="Zach Rose" />);
-    expect(container.firstChild).toHaveAttribute('aria-hidden', 'true');
+  it('renders the profile image (via the caching proxy) when one is provided', () => {
+    const { container } = render(
+      <NavAvatar name="Zach Rose" image="https://lh3.googleusercontent.com/abc123" />
+    );
+    const img = container.querySelector('img');
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toContain('/api/avatar');
   });
 });
