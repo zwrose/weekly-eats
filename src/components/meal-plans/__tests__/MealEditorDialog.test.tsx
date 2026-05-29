@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../../vitest.setup';
 import { MealEditorDialog, type EditableMeal } from '../MealEditorDialog';
 import type { MealItem } from '@/types/meal-plan';
+import type { RecipeIngredient } from '@/types/recipe';
 
 // MSW is globally active (vitest.setup.ts) — the inner CombinedSearch auto-loads
 // /api/food-items + /api/recipes on mount; the global handlers serve those, and
@@ -23,7 +24,7 @@ function base(meal: Partial<EditableMeal> = {}) {
   };
 }
 const recipe: MealItem = { type: 'recipe', id: 'r1', name: 'Lemon ricotta pasta', quantity: 1 };
-const group = (title: string, ings: any[] = []): MealItem => ({
+const group = (title: string, ings: RecipeIngredient[] = []): MealItem => ({
   type: 'ingredientGroup',
   id: '',
   name: title,
