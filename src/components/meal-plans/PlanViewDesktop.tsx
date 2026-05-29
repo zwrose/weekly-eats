@@ -135,9 +135,14 @@ function StripCell({
 }) {
   const ink = past ? tokens.text.past : tokens.text.primary;
   const mute = past ? tokens.text.muted : tokens.text.secondary;
-  const rows = enabledMeals
-    .map((mt) => ({ mt, m: dayMeals[mt] }))
-    .filter(({ m }) => m && (m.skipped || (m.items && m.items.length > 0)));
+  // Render EVERY enabled meal — empty ones included — so each is tappable to edit.
+  // (An enabled-but-empty meal is "nominally planned": show it with an Add affordance,
+  // distinct from meals the template doesn't include at all, which aren't in enabledMeals.)
+  const rows = enabledMeals.map((mt) => {
+    const m = dayMeals[mt];
+    const has = Boolean(m && (m.skipped || (m.items && m.items.length > 0)));
+    return { mt, m, has };
+  });
   return (
     <Box
       sx={{
@@ -160,10 +165,11 @@ function StripCell({
         {dateLabel}
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.375 }}>
-        {rows.map(({ mt, m }) => (
+        {rows.map(({ mt, m, has }) => (
           <ButtonBase
             key={mt}
             onClick={() => onEditMeal(dow, mt)}
+            aria-label={has ? undefined : `Add ${MEAL_LABEL[mt].toLowerCase()} for ${dateLabel}`}
             sx={{
               display: 'block',
               textAlign: 'left',
@@ -186,14 +192,18 @@ function StripCell({
             >
               {MEAL_LETTER[mt]}
             </Box>
-            {m!.skipped ? (
+            {!has ? (
+              <Box component="span" sx={{ color: mute, fontStyle: 'italic' }}>
+                + Add
+              </Box>
+            ) : m!.skipped ? (
               <Box component="span" sx={{ color: mute, fontStyle: 'italic' }}>
                 Skipped
               </Box>
             ) : (
               m!.items[0]?.name
             )}
-            {!m!.skipped && m!.items.length > 1 && (
+            {has && !m!.skipped && m!.items.length > 1 && (
               <Box component="span" sx={{ color: mute }}>
                 {' '}
                 +{m!.items.length - 1}

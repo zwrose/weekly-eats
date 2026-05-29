@@ -75,4 +75,22 @@ describe('PlanViewDesktop', () => {
     expect(screen.queryByText('TODAY')).not.toBeInTheDocument();
     expect(screen.getByText('Lemon ricotta pasta')).toBeInTheDocument();
   });
+
+  it('empty meals in the strip are tappable (+ Add) and call onEditMeal', async () => {
+    const user = userEvent.setup();
+    const onEditMeal = vi.fn();
+    render(<PlanViewDesktop {...base} onEditMeal={onEditMeal} />);
+    // Tuesday has no meals at all → each enabled meal renders a tappable "+ Add".
+    await user.click(screen.getByRole('button', { name: 'Add breakfast for tue' }));
+    expect(onEditMeal).toHaveBeenCalledWith('tuesday', 'breakfast');
+  });
+
+  it('non-current plan: empty strip meals are still tappable (+ Add)', async () => {
+    const user = userEvent.setup();
+    const onEditMeal = vi.fn();
+    render(<PlanViewDesktop {...base} todayDow={null} onEditMeal={onEditMeal} />);
+    // monday has only dinner → its empty breakfast is a tappable "+ Add".
+    await user.click(screen.getByRole('button', { name: 'Add breakfast for mon' }));
+    expect(onEditMeal).toHaveBeenCalledWith('monday', 'breakfast');
+  });
 });
