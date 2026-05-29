@@ -116,7 +116,21 @@ export function PlanDetail({ planId }: PlanDetailProps) {
       idx >= 0 ? existing.map((it, i) => (i === idx ? merged : it)) : [...existing, merged];
     const sanitized = items.map((mi) => ({
       ...mi,
-      items: mi.items.map((x) => (x.type === 'recipe' ? { ...x, unit: undefined } : x)),
+      items: mi.items.map((x) => {
+        if (x.type === 'recipe') return { ...x, unit: undefined };
+        if (x.type === 'ingredientGroup' && x.ingredients) {
+          return {
+            ...x,
+            ingredients: x.ingredients.map((group) => ({
+              ...group,
+              ingredients: group.ingredients.map((ing) =>
+                ing.type === 'recipe' ? { ...ing, unit: undefined } : ing
+              ),
+            })),
+          };
+        }
+        return x;
+      }),
     }));
     await updateMealPlan(plan._id, { items: sanitized });
     setPlan(await fetchMealPlan(plan._id));

@@ -45,7 +45,7 @@ const plan = {
 
 afterEach(() => {
   cleanup();
-  push.mockReset();
+  push.mockClear();
 });
 
 describe('PlanDetail (route surface)', () => {

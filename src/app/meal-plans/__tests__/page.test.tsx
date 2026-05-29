@@ -165,7 +165,7 @@ describe('MealPlansPage - index navigation', () => {
     });
 
     await user.click(screen.getByText('Week of Jan 6, 2024'));
-    expect(push).toHaveBeenCalledWith('/meal-plans/p1');
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/meal-plans/p1'));
   });
 
   it('renders the "Your plans" header', async () => {

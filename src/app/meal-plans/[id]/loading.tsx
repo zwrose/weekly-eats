@@ -7,7 +7,7 @@ export default function MealPlanDetailLoading() {
     <AuthenticatedLayout>
       <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 1.5, md: 3 } }}>
         {/* Back */}
-        <Skeleton variant="text" width={80} height={32} sx={{ mb: 1.5 }} />
+        <Skeleton variant="text" width={80} height={32} sx={{ mb: 1.5 }} data-testid="skeleton" />
 
         {/* Header */}
         <Box

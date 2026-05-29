@@ -1,11 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
 import MealPlanDetailLoading from '../loading';
 
 // Mock AuthenticatedLayout to isolate the skeleton content
 vi.mock('@/components/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+
+afterEach(cleanup);
 
 describe('MealPlanDetailLoading', () => {
   it('renders without crashing', () => {
@@ -14,8 +16,9 @@ describe('MealPlanDetailLoading', () => {
   });
 
   it('renders skeleton elements for page structure', () => {
-    const { container } = render(<MealPlanDetailLoading />);
-    const skeletons = container.querySelectorAll('.MuiSkeleton-root');
-    expect(skeletons.length).toBeGreaterThan(0);
+    render(<MealPlanDetailLoading />);
+    // MUI v7 Skeleton does not expose role="progressbar"; use a data-testid on at least
+    // one skeleton as a stable structural anchor (the back-button skeleton).
+    expect(screen.getByTestId('skeleton')).toBeInTheDocument();
   });
 });
