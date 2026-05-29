@@ -32,7 +32,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'pau') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
-    label: 'fix/93-s',
+    label: 'feat/te',
     resolve: vi.fn((_id: string) => {
       throw new Error('pending-approval-user should not call resolve');
     }),

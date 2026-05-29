@@ -64,17 +64,27 @@ if (resolve(worktreePath) === resolve(projectRoot)) {
 // Best-effort: purge this branch's seeded data from the SHARED dev DB before
 // removing the worktree. Never drops a database. Safe if it fails (the orphan
 // sweep is the backstop). Runs from the worktree dir so .env.local resolves.
-console.log("Purging seeded data for branch '" + branchName + "' (shared DB)...");
-const purge = spawnSync(
-  'npx',
-  ['tsx', 'test/manual/cli.ts', 'clean', '--manifest-id', branchName],
-  { cwd: worktreePath, encoding: 'utf8', stdio: 'inherit', shell: process.platform === 'win32' }
-);
-if (purge.status !== 0) {
-  console.warn("Warning: could not purge seeded data for '" + branchName + "'.");
+const SAFE_BRANCH_RE = /^[a-zA-Z0-9._/-]+$/;
+if (!SAFE_BRANCH_RE.test(branchName)) {
+  console.warn(
+    "Warning: branch name '" + branchName + "' contains unexpected characters — skipping purge."
+  );
   console.warn(
     'Seeded data is shared — run `npm run test:manual:clean -- --orphans` later to sweep.'
   );
+} else {
+  console.log("Purging seeded data for branch '" + branchName + "' (shared DB)...");
+  const purge = spawnSync(
+    'npx',
+    ['tsx', 'test/manual/cli.ts', 'clean', '--manifest-id', branchName],
+    { cwd: worktreePath, encoding: 'utf8', stdio: 'inherit', shell: process.platform === 'win32' }
+  );
+  if (purge.status !== 0) {
+    console.warn("Warning: could not purge seeded data for '" + branchName + "'.");
+    console.warn(
+      'Seeded data is shared — run `npm run test:manual:clean -- --orphans` later to sweep.'
+    );
+  }
 }
 
 // Remove worktree

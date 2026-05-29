@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { topoSort, computeDirty, Engine, deriveLabel } from '../engine.js';
 import type { Block, BlockContext, Manifest } from '../types.js';
+import { KNOWN_COLLECTIONS } from '../types.js';
 import type { Db } from 'mongodb';
 
 // ─── topoSort ───
@@ -439,7 +440,10 @@ describe('Engine.cleanOrphans', () => {
     tagsByCol: Record<string, Array<{ _seedManifestId: string; _seedScenarioId: string }>>;
     stateRows: Array<{ manifestId: string; scenarioId: string }>;
     deletes: Record<string, ReturnType<typeof vi.fn>>;
+    /** Optional: make countDocuments return >0 for the legacy filter on specific collections. */
+    legacyCounts?: Record<string, number>;
   }) {
+    const legacyCounts = opts.legacyCounts ?? {};
     return {
       collection: vi.fn((name: string) => {
         if (name === 'manualTestState') {
@@ -451,7 +455,7 @@ describe('Engine.cleanOrphans', () => {
         const docs = opts.tagsByCol[name] ?? [];
         return {
           distinct: vi.fn(async () => [...new Set(docs.map((d) => d._seedManifestId))]),
-          countDocuments: vi.fn(async () => 0),
+          countDocuments: vi.fn(async (_filter?: any) => legacyCounts[name] ?? 0),
           deleteMany: opts.deletes[name] ?? vi.fn(async () => ({ deletedCount: docs.length })),
         };
       }),
@@ -513,6 +517,30 @@ describe('Engine.cleanOrphans', () => {
         dryRun: false,
       })
     ).rejects.toThrow(/git broken/);
+    expect(recipesDelete).not.toHaveBeenCalled();
+  });
+
+  it('legacy-untagged docs appear in result.legacy but deleteMany is never called (dryRun:false)', async () => {
+    // Headline #92 guarantee: legacy presence alone never triggers a delete.
+    // No tagged docs → no untracked/staleBranch ids → toDelete is empty.
+    // legacyCounts drives countDocuments for the legacy filter on 'recipes'.
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 0 }));
+    const db = orphanDb({
+      tagsByCol: {}, // no tagged docs at all
+      stateRows: [],
+      deletes: { recipes: recipesDelete },
+      legacyCounts: { recipes: 5 }, // 5 untagged seed-shaped docs
+    });
+    const engine = new Engine(db, new Map());
+    const result = await engine.cleanOrphans({ branchExists: () => true, dryRun: false });
+    // legacy should be reported
+    expect(result.legacy.length).toBeGreaterThan(0);
+    const recipesLegacy = result.legacy.find((l) => l.collection === 'recipes');
+    expect(recipesLegacy?.count).toBe(5);
+    // no tagged docs → nothing deleted
+    expect(result.untracked).toHaveLength(0);
+    expect(result.staleBranch).toHaveLength(0);
+    // deleteMany must NOT have been called (legacy never deletes)
     expect(recipesDelete).not.toHaveBeenCalled();
   });
 });
@@ -601,7 +629,8 @@ describe('Engine.previewAll', () => {
     const engine = new Engine(db, new Map());
     const p = await engine.previewAll();
     expect(p.branches.sort()).toEqual(['a', 'b']);
-    expect(p.total).toBeGreaterThan(0);
+    // mock returns 4 per collection; expected total = 4 * KNOWN_COLLECTIONS.length
+    expect(p.total).toBe(4 * KNOWN_COLLECTIONS.length);
   });
 });
 
@@ -631,6 +660,8 @@ describe('Engine.cleanByBranch', () => {
     expect(inArg).not.toContain('release/1X2::default');
     expect(inArg).toContain('release/1.2::default');
     expect(inArg).toContain('release/1.2::admin');
+    // deleteMany ran for each KNOWN_COLLECTION (all called with the same $in)
+    expect(recipesDelete).toHaveBeenCalledTimes(KNOWN_COLLECTIONS.length);
   });
 });
 
@@ -710,6 +741,23 @@ describe('Engine orphan warnings on clean and status', () => {
     const m = mockDb();
     const engine = new Engine(m.db, blocks);
     const result = await engine.clean(manifest);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('status has empty warnings when no untagged seed-shaped docs exist', async () => {
+    const u = makeBlock('user-baseline');
+    const blocks = new Map<string, Block>([['user-baseline', u]]);
+    const manifest: Manifest = {
+      schemaVersion: 1,
+      branch: 'feat/x',
+      slot: 'default',
+      createdAt: '',
+      updatedAt: '',
+      scenarios: [{ id: 'u', block: 'user-baseline' }],
+    };
+    const m = mockDb();
+    const engine = new Engine(m.db, blocks);
+    const result = await engine.status(manifest);
     expect(result.warnings).toEqual([]);
   });
 });

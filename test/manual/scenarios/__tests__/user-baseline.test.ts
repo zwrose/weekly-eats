@@ -26,7 +26,7 @@ const ctx = (db: any) => ({
   db,
   manifestId: 'feat/x::default',
   scenarioId: 'u',
-  label: 'fix/93-s',
+  label: 'feat/te',
   resolve: () => {
     throw new Error('no');
   },

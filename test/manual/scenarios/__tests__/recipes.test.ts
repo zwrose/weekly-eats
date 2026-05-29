@@ -58,7 +58,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'r') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
-    label: 'fix/93-s',
+    label: 'feat/te',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'a@b.c', name: 'A' };
       if (id === 'fi') return { foodItemIds: { Apples: foodItemId1, Bread: foodItemId2 } };

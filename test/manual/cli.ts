@@ -231,7 +231,7 @@ async function main(): Promise<number> {
       if (!parsed.flags.yes) {
         throw new Error('clean --all requires --yes (destructive)');
       }
-      const engine = new Engine(db, await loadBlocks());
+      const engine = new Engine(db, new Map());
       const preview = await engine.previewAll();
       process.stdout.write(
         `clean --all: ${preview.total} doc(s) across ${preview.branches.length} branch(es): ${preview.branches.join(', ')}\n`
@@ -249,7 +249,7 @@ async function main(): Promise<number> {
     if (parsed.command === 'clean' && parsed.flags['manifest-id']) {
       const branch = String(parsed.flags['manifest-id']);
       validateBranch(branch); // rejects '::*' and disallowed chars
-      const engine = new Engine(db, await loadBlocks());
+      const engine = new Engine(db, new Map());
       const r = await engine.cleanByBranch(branch);
       process.stdout.write(
         `clean --manifest-id ${branch}: deleted ${r.deleted} docs across ${r.matched.length} manifest id(s)\n`
@@ -258,7 +258,7 @@ async function main(): Promise<number> {
     }
 
     if (parsed.command === 'clean' && parsed.flags.orphans) {
-      const engine = new Engine(db, await loadBlocks());
+      const engine = new Engine(db, new Map());
       const dryRun = !parsed.flags.yes; // default dry-run; --yes deletes
       const r = await engine.cleanOrphans({ branchExists: makeBranchExists(), dryRun });
       for (const w of r.warnings) process.stdout.write(`  warning: ${w}\n`);

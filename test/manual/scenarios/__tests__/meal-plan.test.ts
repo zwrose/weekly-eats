@@ -90,7 +90,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'mp') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
-    label: 'fix/93-s',
+    label: 'feat/te',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'test@example.com', name: 'Test User' };
       if (id === 'mpt') return { templateId: TEMPLATE_ID };
