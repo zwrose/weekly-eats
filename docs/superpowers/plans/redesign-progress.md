@@ -29,7 +29,7 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 
 ## Next up
 
-**Chunk 3 — Meal Plans: PLAN DONE + reviewed (3 rounds), READY TO IMPLEMENT.** Plan: `docs/superpowers/plans/redesign-chunk-03-meal-plans-plan.md` (16 TDD tasks). Review annotations: `docs/superpowers/plans/redesign-chunk-03-meal-plans-plan-review.md` (3 `/review-plan` loops — 9 + 7 + 8 findings, 0 Critical, all fixed; security clean all 3; converged). **Next action = IMPLEMENT autonomously to chunk end** (user went to bed, wants full-autonomous; only stop if genuinely blocked).
+**Chunk 3 — Meal Plans: PLAN DONE + reviewed (3 rounds), READY TO IMPLEMENT.** Plan: `docs/superpowers/plans/redesign-chunk-03-meal-plans-plan.md` (16 TDD tasks). Review annotations: `docs/superpowers/plans/redesign-chunk-03-meal-plans-plan-review.md` (3 `/review-plan` loops — 9 + 7 + 8 findings, 0 Critical, all fixed; security clean all 3; converged). **Next action = IMPLEMENT autonomously THROUGH the Chrome-verification gate, then HARD STOP for the user's morning review** (user went to bed; run full-autonomous up to verification, but do NOT tag `redesign-chunk-03` or mark the chunk done — they want to look everything over first; see steps 7–8). Only stop earlier if genuinely blocked.
 
 **How to resume (cold-start checklist):**
 
@@ -39,7 +39,8 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 4. **`npm run check`** (only when no dev server is running — Turbopack/build collision clobbers `.next`; the plan's Task 16 step 3 notes this).
 5. **`/manual-testing chunk-03-meal-plans`** → seeds local dev DB, posts checklist to PR #89.
 6. **Push** → CI + beta deploy. Then **execute the manual checklist locally via Chrome** (the gate). Fold fixes.
-7. **Tag `redesign-chunk-03`**, update this ledger (mark done, record tag/PR-comment/date + any mid-impl carryovers), back-merge `main` if it moved, compact.
+7. **HARD STOP — DO NOT TAG OR MARK DONE YET.** The user explicitly wants to review everything in the morning before chunk 3 is called done. After the Chrome verification passes, **stop and present a summary** (what was built, test/check results, manual-checklist results, any deviations/carryovers, the diff range to review). Leave the chunk **in-progress**. Do NOT create the `redesign-chunk-03` tag and do NOT flip the ledger row to `done`.
+8. **Only after the user approves in the morning:** tag `redesign-chunk-03`, update this ledger (mark done, record tag/PR-comment/date + any mid-impl carryovers), back-merge `main` if it moved, compact.
 
 **Key plan-shape facts (so you don't re-derive):** plan detail is a **real route** `src/app/meal-plans/[id]/` + `PlanDetail` (back button), NOT a dialog — `MealPlanViewDialog` is DELETED; index navigates + redirects old `?viewMealPlan=`. B3 editor primitives are **self-contained in `src/components/meal-plans/`** and do NOT reuse `IngredientInput`/`IngredientGroup` (recipes/chunk 4 keep those); old `MealEditor.tsx` is DELETED. **No write-logic change** — same `updateMealPlan({items})` / `updateMealPlanTemplate({weeklyStaples})` payloads. Section accent already comes from the central `SectionThemeProvider` (consume `palette.primary` / `tokens.section.plans`). 4 plan/review doc commits are LOCAL (ahead of origin) — they'll push with the implementation at step 6. When `fix/83` merges to main, the eventual `main → branch` back-merge is clean.
 
