@@ -360,6 +360,7 @@ export class Engine {
         });
       }
     }
+    const warnings = await this.orphanWarnings();
     return {
       schemaVersion: 1,
       ok: !hadFailure,
@@ -368,7 +369,7 @@ export class Engine {
       exitCode: hadFailure ? 2 : 0,
       scenarios,
       lock: null,
-      warnings: [],
+      warnings,
     };
   }
 
@@ -425,6 +426,7 @@ export class Engine {
         error: prior?.lastApplyError ?? null,
       });
     }
+    const warnings = await this.orphanWarnings();
     return {
       schemaVersion: 1,
       ok: true,
@@ -433,7 +435,7 @@ export class Engine {
       exitCode: 0,
       scenarios,
       lock: null,
-      warnings: [],
+      warnings,
     };
   }
 
@@ -451,13 +453,125 @@ export class Engine {
         byId.set(id, entry);
       }
     }
+    const tracked = new Set(
+      (await this.db.collection(STATE_COLLECTION).distinct('manifestId')) as string[]
+    );
     return {
       command: 'status-all',
       manifests: [...byId.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([manifestId, collections]) => ({ manifestId, collections, hasOrphans: false })),
+        .map(([manifestId, collections]) => ({
+          manifestId,
+          collections,
+          hasOrphans: !tracked.has(manifestId),
+        })),
     };
   }
+
+  /** Detect orphan/untagged seed-shaped docs for a warning on plain clean/status. */
+  private async orphanWarnings(): Promise<string[]> {
+    const { SEED_TITLE_PREFIX } = await import('./seedTag.js');
+    let legacy = 0;
+    for (const col of KNOWN_COLLECTIONS) {
+      legacy += await this.db.collection(col).countDocuments({
+        _seedManifestId: { $exists: false },
+        $or: [
+          { title: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+          { name: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+        ],
+      });
+    }
+    return legacy > 0
+      ? [`${legacy} untagged seed-shaped doc(s) detected — run \`clean --orphans\` to review`]
+      : [];
+  }
+
+  /**
+   * Sweep orphaned seed data on the shared DB. Cross-branch-safe: keys off the
+   * shared manualTestState collection + injected branchExists, never on-disk manifests.
+   * Targets: (1) untracked = tagged but no state row; (2) stale-branch = branch gone
+   * from git (deletes docs + state rows); (3) legacy-untagged = SEED_TITLE_PREFIX docs
+   * with no tag (report only). Throws (aborts) if branchExists throws — never mass-deletes.
+   */
+  async cleanOrphans(opts: {
+    branchExists: (branch: string) => boolean;
+    dryRun: boolean;
+  }): Promise<{
+    untracked: string[];
+    staleBranch: string[];
+    legacy: Array<{ collection: string; count: number }>;
+    deleted: number;
+    warnings: string[];
+  }> {
+    const { SEED_TITLE_PREFIX } = await import('./seedTag.js');
+
+    // 1. Distinct manifestIds present on docs + tracked manifestIds from state.
+    const docIds = new Set<string>();
+    for (const col of KNOWN_COLLECTIONS) {
+      for (const id of (await this.db.collection(col).distinct('_seedManifestId')) as string[]) {
+        if (id) docIds.add(id);
+      }
+    }
+    const stateRows = await this.db
+      .collection<ManualTestStateDoc>(STATE_COLLECTION)
+      .find({}, { projection: { manifestId: 1, scenarioId: 1 } })
+      .toArray();
+    const trackedManifestIds = new Set(stateRows.map((s) => s.manifestId));
+
+    // 2. Classify branches FIRST — a throw here aborts before any delete.
+    const branchesOnDocs = new Set([...docIds].map((id) => id.split('::')[0]));
+    const goneBranches = new Set<string>();
+    for (const branch of branchesOnDocs) {
+      if (!opts.branchExists(branch)) goneBranches.add(branch);
+    }
+
+    // 3. Partition.
+    const untracked: string[] = [];
+    const staleBranch: string[] = [];
+    for (const id of docIds) {
+      const branch = id.split('::')[0];
+      if (goneBranches.has(branch)) staleBranch.push(id);
+      else if (!trackedManifestIds.has(id)) untracked.push(id);
+    }
+
+    // 4. Legacy untagged (report only).
+    const legacy: Array<{ collection: string; count: number }> = [];
+    for (const col of KNOWN_COLLECTIONS) {
+      const count = await this.db.collection(col).countDocuments({
+        _seedManifestId: { $exists: false },
+        $or: [
+          { title: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+          { name: { $regex: `^${escapeRegExp(SEED_TITLE_PREFIX)}` } },
+        ],
+      });
+      if (count > 0) legacy.push({ collection: col, count });
+    }
+
+    // 5. Backstop.
+    const warnings: string[] = [];
+    if (branchesOnDocs.size > 0 && goneBranches.size > branchesOnDocs.size / 2) {
+      warnings.push(
+        `orphan sweep flagged ${goneBranches.size}/${branchesOnDocs.size} branches as gone — re-confirm before deleting`
+      );
+    }
+
+    // 6. Delete (unless dry-run).
+    let deleted = 0;
+    const toDelete = [...untracked, ...staleBranch];
+    if (!opts.dryRun && toDelete.length > 0) {
+      for (const col of KNOWN_COLLECTIONS) {
+        const r = await this.db.collection(col).deleteMany({ _seedManifestId: { $in: toDelete } });
+        deleted += r.deletedCount ?? 0;
+      }
+      await this.db.collection(STATE_COLLECTION).deleteMany({ manifestId: { $in: staleBranch } });
+    }
+
+    return { untracked, staleBranch, legacy, deleted, warnings };
+  }
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function failResult(

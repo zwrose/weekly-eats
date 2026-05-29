@@ -129,7 +129,11 @@ function mockDb() {
             createIndex: vi.fn(),
           };
         }
-        return { insertOne: vi.fn(), deleteMany: vi.fn(async () => ({ deletedCount: 0 })) };
+        return {
+          insertOne: vi.fn(),
+          deleteMany: vi.fn(async () => ({ deletedCount: 0 })),
+          countDocuments: vi.fn(async () => 0),
+        };
       }),
     } as unknown as Db,
     states,
@@ -397,13 +401,21 @@ describe('Engine.statusAll', () => {
       'stores|a::default': 1,
     };
     const db = {
-      collection: vi.fn((name: string) => ({
-        distinct: vi.fn(async () => distinctByCol[name] ?? []),
-        countDocuments: vi.fn(
-          async (q: { _seedManifestId: string }) =>
-            countByColAndId[`${name}|${q._seedManifestId}`] ?? 0
-        ),
-      })),
+      collection: vi.fn((name: string) => {
+        if (name === 'manualTestState') {
+          return {
+            // a::default is tracked, b::default is not
+            distinct: vi.fn(async () => ['a::default']),
+          };
+        }
+        return {
+          distinct: vi.fn(async () => distinctByCol[name] ?? []),
+          countDocuments: vi.fn(
+            async (q: { _seedManifestId: string }) =>
+              countByColAndId[`${name}|${q._seedManifestId}`] ?? 0
+          ),
+        };
+      }),
     } as unknown as Db;
 
     const engine = new Engine(db, new Map());
@@ -415,6 +427,93 @@ describe('Engine.statusAll', () => {
     expect(a?.collections.recipes).toBe(2);
     expect(a?.collections.stores).toBe(1);
     expect(b?.collections.recipes).toBe(1);
+    // hasOrphans: a::default is tracked → false; b::default is not tracked → true
+    expect(a?.hasOrphans).toBe(false);
+    expect(b?.hasOrphans).toBe(true);
+  });
+});
+
+// ─── Engine.cleanOrphans ───
+describe('Engine.cleanOrphans', () => {
+  function orphanDb(opts: {
+    tagsByCol: Record<string, Array<{ _seedManifestId: string; _seedScenarioId: string }>>;
+    stateRows: Array<{ manifestId: string; scenarioId: string }>;
+    deletes: Record<string, ReturnType<typeof vi.fn>>;
+  }) {
+    return {
+      collection: vi.fn((name: string) => {
+        if (name === 'manualTestState') {
+          return {
+            find: vi.fn(() => ({ toArray: vi.fn(async () => opts.stateRows) })),
+            deleteMany: opts.deletes['manualTestState'] ?? vi.fn(async () => ({ deletedCount: 0 })),
+          };
+        }
+        const docs = opts.tagsByCol[name] ?? [];
+        return {
+          distinct: vi.fn(async () => [...new Set(docs.map((d) => d._seedManifestId))]),
+          countDocuments: vi.fn(async () => 0),
+          deleteMany: opts.deletes[name] ?? vi.fn(async () => ({ deletedCount: docs.length })),
+        };
+      }),
+    } as unknown as Db;
+  }
+
+  it('--yes deletes untracked docs (tagged, no manualTestState row)', async () => {
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 1 }));
+    const db = orphanDb({
+      tagsByCol: { recipes: [{ _seedManifestId: 'a::default', _seedScenarioId: 'r' }] },
+      stateRows: [],
+      deletes: { recipes: recipesDelete },
+    });
+    const engine = new Engine(db, new Map());
+    await engine.cleanOrphans({ branchExists: () => true, dryRun: false });
+    expect(recipesDelete).toHaveBeenCalled();
+  });
+
+  it('--yes deletes stale-branch docs AND their manualTestState rows', async () => {
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 1 }));
+    const stateDelete = vi.fn(async () => ({ deletedCount: 1 }));
+    const db = orphanDb({
+      tagsByCol: { recipes: [{ _seedManifestId: 'gone::default', _seedScenarioId: 'r' }] },
+      stateRows: [{ manifestId: 'gone::default', scenarioId: 'r' }],
+      deletes: { recipes: recipesDelete, manualTestState: stateDelete },
+    });
+    const engine = new Engine(db, new Map());
+    await engine.cleanOrphans({ branchExists: () => false, dryRun: false });
+    expect(recipesDelete).toHaveBeenCalled();
+    expect(stateDelete).toHaveBeenCalled();
+  });
+
+  it('--dry-run deletes nothing', async () => {
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 0 }));
+    const db = orphanDb({
+      tagsByCol: { recipes: [{ _seedManifestId: 'a::default', _seedScenarioId: 'r' }] },
+      stateRows: [],
+      deletes: { recipes: recipesDelete },
+    });
+    const engine = new Engine(db, new Map());
+    const r = await engine.cleanOrphans({ branchExists: () => true, dryRun: true });
+    expect(recipesDelete).not.toHaveBeenCalled();
+    expect(r.untracked.length).toBeGreaterThan(0);
+  });
+
+  it('aborts (throws) when branchExists throws — never deletes', async () => {
+    const recipesDelete = vi.fn(async () => ({ deletedCount: 0 }));
+    const db = orphanDb({
+      tagsByCol: { recipes: [{ _seedManifestId: 'a::default', _seedScenarioId: 'r' }] },
+      stateRows: [{ manifestId: 'a::default', scenarioId: 'r' }],
+      deletes: { recipes: recipesDelete },
+    });
+    const engine = new Engine(db, new Map());
+    await expect(
+      engine.cleanOrphans({
+        branchExists: () => {
+          throw new Error('git broken');
+        },
+        dryRun: false,
+      })
+    ).rejects.toThrow(/git broken/);
+    expect(recipesDelete).not.toHaveBeenCalled();
   });
 });
 
@@ -486,5 +585,85 @@ describe('Engine.status', () => {
     const result = await engine.status(manifest);
     expect(result.scenarios[0].status).toBe('failed');
     expect(result.scenarios[0].error).toMatch(/previous boom/);
+  });
+});
+
+// ─── Orphan warning on plain clean / status ───
+describe('Engine orphan warnings on clean and status', () => {
+  /** Build a db where countDocuments returns legacyCount for non-state collections. */
+  function mockDbWithLegacy(legacyCount: number) {
+    const states = new Map<string, any>();
+    return {
+      collection: vi.fn((name: string) => {
+        if (name === 'manualTestState') {
+          return {
+            findOne: vi.fn(async () => null),
+            updateOne: vi.fn(async () => ({ upsertedId: null })),
+            deleteOne: vi.fn(async () => {}),
+            deleteMany: vi.fn(async () => ({ deletedCount: 0 })),
+            createIndex: vi.fn(),
+          };
+        }
+        return {
+          insertOne: vi.fn(),
+          deleteMany: vi.fn(async () => ({ deletedCount: 0 })),
+          countDocuments: vi.fn(async () => legacyCount),
+        };
+      }),
+      _states: states,
+    } as unknown as Db;
+  }
+
+  it('clean surfaces orphan warning when untagged seed-shaped docs exist', async () => {
+    const u = makeBlock('user-baseline');
+    const blocks = new Map<string, Block>([['user-baseline', u]]);
+    const manifest: Manifest = {
+      schemaVersion: 1,
+      branch: 'feat/x',
+      slot: 'default',
+      createdAt: '',
+      updatedAt: '',
+      scenarios: [{ id: 'u', block: 'user-baseline' }],
+    };
+    const db = mockDbWithLegacy(3);
+    const engine = new Engine(db, blocks);
+    const result = await engine.clean(manifest);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]).toMatch(/untagged seed-shaped doc/);
+  });
+
+  it('status surfaces orphan warning when untagged seed-shaped docs exist', async () => {
+    const u = makeBlock('user-baseline');
+    const blocks = new Map<string, Block>([['user-baseline', u]]);
+    const manifest: Manifest = {
+      schemaVersion: 1,
+      branch: 'feat/x',
+      slot: 'default',
+      createdAt: '',
+      updatedAt: '',
+      scenarios: [{ id: 'u', block: 'user-baseline' }],
+    };
+    const db = mockDbWithLegacy(2);
+    const engine = new Engine(db, blocks);
+    const result = await engine.status(manifest);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]).toMatch(/untagged seed-shaped doc/);
+  });
+
+  it('clean has empty warnings when no untagged seed-shaped docs exist', async () => {
+    const u = makeBlock('user-baseline');
+    const blocks = new Map<string, Block>([['user-baseline', u]]);
+    const manifest: Manifest = {
+      schemaVersion: 1,
+      branch: 'feat/x',
+      slot: 'default',
+      createdAt: '',
+      updatedAt: '',
+      scenarios: [{ id: 'u', block: 'user-baseline' }],
+    };
+    const m = mockDb();
+    const engine = new Engine(m.db, blocks);
+    const result = await engine.clean(manifest);
+    expect(result.warnings).toEqual([]);
   });
 });

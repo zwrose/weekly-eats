@@ -225,6 +225,20 @@ async function main(): Promise<number> {
       return 0;
     }
 
+    if (parsed.command === 'clean' && parsed.flags.orphans) {
+      const engine = new Engine(db, await loadBlocks());
+      const dryRun = !parsed.flags.yes; // default dry-run; --yes deletes
+      const r = await engine.cleanOrphans({ branchExists: makeBranchExists(), dryRun });
+      process.stdout.write(
+        `clean --orphans${dryRun ? ' (dry-run)' : ''}: ` +
+          `${r.untracked.length} untracked, ${r.staleBranch.length} stale-branch, ` +
+          `${r.legacy.reduce((n, l) => n + l.count, 0)} legacy-untagged (report only); ` +
+          `${dryRun ? 'would delete' : 'deleted'} ${dryRun ? r.untracked.length + r.staleBranch.length : r.deleted}\n`
+      );
+      for (const w of r.warnings) process.stdout.write(`  warning: ${w}\n`);
+      return 0;
+    }
+
     if (parsed.command === 'unlock') {
       const target = resolveTarget(parsed, getCurrentGitBranch);
       if (target.kind !== 'branch') throw new Error('unlock requires a branch target');
