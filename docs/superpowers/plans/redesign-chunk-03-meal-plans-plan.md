@@ -4,7 +4,7 @@
 
 **Goal:** Migrate the Meal Plans surface to the dark-first redesign — a view-only plan detail (desktop today-hero + week strip with TODAY sliver; mobile day-card stack; expandable staples bar) plus the locked **B3 per-meal editor** (full-screen on mobile / modal on desktop) with qty numpad, unit picker, sticky combined search, flat group sections, and the 8 locked edit-decisions.
 
-**Architecture:** The plan _detail_ stays a dialog (`MealPlanViewDialog`) — there is **no new route** (recipes is "the one real routing change", chunk 4). The dialog's whole-plan "edit mode" is **removed**; the dialog is now **view-only** and tapping any meal opens a dedicated **`MealEditorDialog`** (the B3 editor) for that one meal. The B3 editor is **self-contained** under `src/components/meal-plans/` and does **NOT** reuse `IngredientInput`/`IngredientGroup` (those stay untouched for recipes/chunk 4). Search and food-item-creation _logic_ is reused verbatim via the existing `useFoodItemSelector` / `useFoodItemCreator` hooks (honoring "no write-logic changes"). `useQuantityInput` is **intentionally not used** — the numpad's digit-accumulation model differs from that hook's text-field model (Task 9). The save payload is unchanged: `updateMealPlan(id, { items: MealPlanItem[] })`.
+**Architecture:** The plan _detail_ is a **real route** — `src/app/meal-plans/[id]/page.tsx` (with its own `loading.tsx` + `error.tsx`) — with a **`‹ Plans` back button**, NOT a dialog. (This **deviates from spec §4**, which named recipes as "the one real routing change"; the product owner chose the route here too, to avoid stacking a meal editor dialog on top of a plan-detail dialog and to match the recipes detail pattern. Recorded as a chunk-3 deviation.) The index (`/meal-plans`) navigates to `/meal-plans/<id>`; the old `?viewMealPlan=` query-param deep-links redirect to the new path. Tapping any meal on the detail page opens the **`MealEditorDialog`** (B3 editor) — a dialog **over the page** (no dialog-on-dialog). The B3 editor is **self-contained** under `src/components/meal-plans/` and does **NOT** reuse `IngredientInput`/`IngredientGroup` (those stay untouched for recipes/chunk 4). Search and food-item-creation _logic_ is reused verbatim via the existing `useFoodItemSelector` / `useFoodItemCreator` hooks (honoring "no write-logic changes"). `useQuantityInput` is **intentionally not used** — the numpad's digit-accumulation model differs from that hook's text-field model (Task 9). The save payload is unchanged: `updateMealPlan(id, { items: MealPlanItem[] })`.
 
 **Tech Stack:** Next.js 15 App Router, React 19, MUI v7 (`sx` + `tokens` from `@/lib/design-tokens`), `Icon` (Material Symbols) from `@/components/ui/Icon`, Vitest + RTL + MSW. Section accent = `palette.primary` (already rebound to plans-blue `#7aa7ff` centrally by `SectionThemeProvider` in `AuthenticatedLayout` — **do NOT re-wire it**; just consume `color="primary"` / `theme.palette.primary.main`, or `tokens.section.plans` for non-palette spots).
 
@@ -38,7 +38,7 @@
 ## Deliberate fidelity compromises (document, don't gold-plate)
 
 - **Unit picker is a flat searchable list** (from `getUnitOptions()`), not the mockup's Volume/Weight/Countable category headers — the data model has no unit categories (spec non-goal: no category grouping). Style as B3 radio rows.
-- **Index "Past · last 6 weeks" + dedicated History page are NOT built as new fetches/routes.** Index renders **Current** + **Shared with you** from existing `fetchMealPlans({ minEndDate })` + owners data; the existing **`MealPlanBrowser`** (year/month accordion, restyled) stays below as the "all past plans" browser. No new endpoint, no new route.
+- **Index sections are built as designed (Current / Shared with you / Past · last 6 weeks), but the dedicated History _route_ is not.** All three sections use the **existing** `GET /api/meal-plans` endpoint: Current/Shared from `fetchMealPlans({ minEndDate })` + owners data, and "Past · last 6 weeks" from `fetchMealPlans({ startDate: <42d ago>, endDate: <yesterday> })` (same endpoint, different params — a plain read, no write-logic change). The design's **"View older →"** points at the existing (restyled) **`MealPlanBrowser`** accordion rather than a new `/meal-plans/history` route — that full standalone History page/route is the only piece deliberately not built (the accordion already covers browsing all past plans).
 - **Create dialog keeps the MUI `DatePicker`** (read-only, picker-only) rather than the mockup's date chips — chips would require a new "next N start dates" computation; the existing `findNextAvailableMealPlanStartDate` already drives the default. Restyle only.
 - **Plan-view nav arrows (‹ ›)** from `n1-final` are **dropped** (prev/next-week navigation is new logic). Keep the `⋯` menu (Delete / Share / Template).
 
@@ -48,37 +48,43 @@
 
 ### New files — `src/components/meal-plans/` (the redesigned surface)
 
-| File                     | Responsibility                                                                                                                                                                         | Export                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| `meal-display-utils.ts`  | Pure helpers: `getEnabledMeals(template)`, `mealItemCount(items)`, `MEAL_ORDER`, `MEAL_LABEL`, `MEAL_LETTER`, `mealColorToken(mealType)`                                               | named                      |
-| `MealItemLine.tsx`       | Read-mode render of one `MealItem` (recipe `× n` / food `qty unit` / ingredientGroup title+count or expanded)                                                                          | named `MealItemLine`       |
-| `StaplesBar.tsx`         | Collapsible accent-tinted staples row (summary → expand groups/items, `✎` Edit)                                                                                                        | named `StaplesBar`         |
-| `PlanViewDesktop.tsx`    | Today-hero (B/L/D columns) + "This week" strip + vertical TODAY sliver (md+)                                                                                                           | named `PlanViewDesktop`    |
-| `PlanViewMobile.tsx`     | Day-card stack + per-card missing-meal `+Add` (xs)                                                                                                                                     | named `PlanViewMobile`     |
-| `EditorItemRow.tsx`      | B3 editor row: food (name + qty chip + unit chip + remove) / recipe (emoji + name + `Recipe` tag + `× n` chip + remove)                                                                | named `EditorItemRow`      |
-| `EditorGroupSection.tsx` | B3 flat group: `GROUP` label + title field + `✕` + rows + empty state                                                                                                                  | named `EditorGroupSection` |
-| `QtyEditor.tsx`          | Quantity numpad — bottom-sheet (xs) / popover (md+): preset pills + digit grid + Done                                                                                                  | named `QtyEditor`          |
-| `UnitEditor.tsx`         | Unit picker — sheet (xs) / popover (md+): searchable flat list from `getUnitOptions()`                                                                                                 | named `UnitEditor`         |
-| `CombinedSearch.tsx`     | Sticky bottom combined search (recipes + food items + "create new" + "new group"); wraps `useFoodItemSelector` + `useFoodItemCreator`                                                  | named `CombinedSearch`     |
-| `MealEditorDialog.tsx`   | B3 editor shell: header (Cancel/title/Done-disabled), skip bar, item list, confirms (discard/remove-group/skip-clear), assembles the above, emits `onSave({items,skipped,skipReason})` | named `MealEditorDialog`   |
-| `ConfirmDialog.tsx`      | Small reusable confirm (title/body/primary label+color/onConfirm/onCancel) used by editor + view dialog                                                                                | named `ConfirmDialog`      |
+| File                     | Responsibility                                                                                                                                                                                                                                                                                            | Export                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `meal-display-utils.ts`  | Pure helpers: `getEnabledMeals(template)`, `mealItemCount(items)`, `MEAL_ORDER`, `MEAL_LABEL`, `MEAL_LETTER`, `mealColorToken(mealType)`                                                                                                                                                                  | named                      |
+| `MealItemLine.tsx`       | Read-mode render of one `MealItem` (recipe `× n` / food `qty unit` / ingredientGroup title+count or expanded)                                                                                                                                                                                             | named `MealItemLine`       |
+| `StaplesBar.tsx`         | Collapsible accent-tinted staples row (summary → expand groups/items, `✎` Edit)                                                                                                                                                                                                                           | named `StaplesBar`         |
+| `PlanViewDesktop.tsx`    | Today-hero (B/L/D columns) + "This week" strip + vertical TODAY sliver (md+)                                                                                                                                                                                                                              | named `PlanViewDesktop`    |
+| `PlanViewMobile.tsx`     | Day-card stack + per-card missing-meal `+Add` (xs)                                                                                                                                                                                                                                                        | named `PlanViewMobile`     |
+| `EditorItemRow.tsx`      | B3 editor row: food (name + qty chip + unit chip + remove) / recipe (emoji + name + `Recipe` tag + `× n` chip + remove)                                                                                                                                                                                   | named `EditorItemRow`      |
+| `EditorGroupSection.tsx` | B3 flat group: `GROUP` label + title field + `✕` + rows + empty state                                                                                                                                                                                                                                     | named `EditorGroupSection` |
+| `QtyEditor.tsx`          | Quantity numpad — bottom-sheet (xs) / popover (md+): preset pills + digit grid + Done                                                                                                                                                                                                                     | named `QtyEditor`          |
+| `UnitEditor.tsx`         | Unit picker — sheet (xs) / popover (md+): searchable flat list from `getUnitOptions()`                                                                                                                                                                                                                    | named `UnitEditor`         |
+| `CombinedSearch.tsx`     | Sticky bottom combined search (recipes + food items + "create new" + "new group"); wraps `useFoodItemSelector` + `useFoodItemCreator`                                                                                                                                                                     | named `CombinedSearch`     |
+| `MealEditorDialog.tsx`   | B3 editor shell: header (Cancel/title/Done-disabled), skip bar, item list, confirms (discard/remove-group/skip-clear), assembles the above, emits `onSave({items,skipped,skipReason})`                                                                                                                    | named `MealEditorDialog`   |
+| `ConfirmDialog.tsx`      | Small reusable confirm (title/body/primary label+color/onConfirm/onCancel) used by the editor + the plan-detail page                                                                                                                                                                                      | named `ConfirmDialog`      |
+| `PlanDetail.tsx`         | The plan-detail surface (client): back button + header + `⋯` Delete menu + `StaplesBar` + responsive `PlanViewDesktop`/`PlanViewMobile`; fetches the plan by id; owns the per-meal `MealEditorDialog`, the staples editor, and the delete-confirm; persists via `updateMealPlan`/`updateMealPlanTemplate` | named `PlanDetail`         |
 
-### Rewritten in place (kept at `src/components/` — imported/dynamic-imported by `page.tsx`)
+### New — plan-detail route `src/app/meal-plans/[id]/`
 
-- `MealPlanViewDialog.tsx` — view-only plan detail; header + `StaplesBar` + responsive `PlanViewDesktop`/`PlanViewMobile`; opens `MealEditorDialog` per meal; `⋯` menu.
+- `page.tsx` — server component: `const { id } = await params` (Next 15 async params), renders `<PlanDetail planId={id} />`.
+- `loading.tsx` — dark skeleton (back button + header + a hero/strip skeleton), wrapped in `AuthenticatedLayout`.
+- `error.tsx` — `'use client'` error boundary with `reset()`; dark tokens.
+
+### Rewritten in place (kept at `src/components/` — imported by `page.tsx`)
+
 - `MealPlanCreateDialog.tsx` — restyle to dark tokens (keep `DatePicker` + owner select + overlap helper).
-- `MealPlanBrowser.tsx` — restyle year/month accordion + plan rows to dark tokens; named export added (keep default for back-comat).
+- `MealPlanBrowser.tsx` — restyle year/month accordion + plan rows to dark tokens; named export added (keep default for back-compat).
 
 ### Rewritten — `src/app/meal-plans/`
 
-- `page.tsx` — index redesign (header, Current / Shared-with-you sections, restyled `MealPlanBrowser`, restyled template + sharing dialogs); **remove whole-plan `editMode` plumbing** (`viewMealPlan_editMode` param, `validateMealPlan` whole-plan pass, `mealPlanValidationErrors`); add per-meal save via `MealEditorDialog` (state lives in `MealPlanViewDialog`, page just persists).
+- `page.tsx` — index redesign (header, Current / Shared-with-you / Past-6-weeks sections, "View older →" → restyled `MealPlanBrowser`, restyled template + sharing dialogs). Rows **navigate** to `/meal-plans/<id>` (`router.push`). **Remove the whole view-dialog plumbing** (`usePersistentDialog('viewMealPlan')`, `selectedMealPlan`, `editMode`, `validateMealPlan` whole-plan pass, `mealPlanValidationErrors`, the rendered view dialog). **Redirect old `?viewMealPlan=…&viewMealPlan_mealPlanId=<id>` deep-links** → `router.replace('/meal-plans/<id>')`. Per-meal/staples persistence + delete move to `PlanDetail`.
 - `loading.tsx` — dark skeleton matching the new index.
 - `error.tsx` — fix `Container maxWidth` to `xl` to match page; dark tokens.
 
 ### Deleted (orphaned after this chunk; recipes does NOT use them)
 
+- `src/components/MealPlanViewDialog.tsx` (+ test `MealPlanViewDialog-recipe-view.test.tsx`) — the dialog is replaced by the `[id]` route + `PlanDetail`.
 - `src/components/MealEditor.tsx` (+ tests `MealEditor.test.tsx`, `MealEditor-name-display.test.tsx`)
-- `src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx` (asserts the removed inline view/edit behavior — replaced by new view tests)
 
 > **DO NOT TOUCH** `IngredientInput.tsx`, `IngredientGroup.tsx`, `RecipeIngredients.tsx` or their tests — recipes (chunk 4) still depends on them.
 
@@ -3724,75 +3730,124 @@ git commit -m "feat(meal-plans): B3 MealEditorDialog shell + locked edit-decisio
 
 ---
 
-## Task 13: Rewrite `MealPlanViewDialog` — view-only + per-meal editing
+## Task 13: Plan-detail **route** + `PlanDetail` component
 
-The dialog becomes **view-only** (no whole-plan edit mode). It renders the redesigned header + `StaplesBar` + responsive `PlanViewDesktop`/`PlanViewMobile`, owns the per-meal editor open state, and persists changes meal-by-meal through callbacks. Staples editing opens the same `MealEditorDialog` with `isStaples`.
+The plan detail is now a real route `/meal-plans/[id]` with a `‹ Plans` back button. The route `page.tsx` (server) wraps a client `PlanDetail` in `AuthenticatedLayout` — keeping `PlanDetail` itself free of the auth shell so it unit-tests cleanly. `PlanDetail` fetches the plan by id, renders header + `StaplesBar` + responsive `PlanViewDesktop`/`PlanViewMobile`, owns the per-meal `MealEditorDialog` (a dialog **over the page**), the staples editor, and the delete-confirm, and persists via the existing `updateMealPlan` / `updateMealPlanTemplate`.
 
 **Files:**
 
-- Rewrite: `src/components/MealPlanViewDialog.tsx`
-- Replace test: delete `src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx`; create `src/components/__tests__/MealPlanViewDialog.test.tsx`
+- Create: `src/app/meal-plans/[id]/page.tsx`, `src/app/meal-plans/[id]/loading.tsx`, `src/app/meal-plans/[id]/error.tsx`
+- Create: `src/components/meal-plans/PlanDetail.tsx`
+- Create test: `src/components/meal-plans/__tests__/PlanDetail.test.tsx`
+- Delete: `src/components/MealPlanViewDialog.tsx` + `src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx`
+- Move (Task 14 removes them from `page.tsx`): the existing `getDaysInOrder` / `getDateForDay` closures (`page.tsx:660-679`) become pure helpers in `meal-display-utils.ts` — **move, don't rewrite** (honors "no logic change"):
+  - `getDaysInOrder(startDay: DayOfWeek): DayOfWeek[]` — the week rotated to start at `startDay`.
+  - `getDateForDay(startDate: string, dow: DayOfWeek, startDay: DayOfWeek): string` — "Mon, May 11" via the existing `parseLocalDate` + `addDays(startDate, indexInOrder)` logic.
 
-**New props (replaces the old edit-mode-heavy interface):**
+**Route page (`src/app/meal-plans/[id]/page.tsx`)** — server component, Next 15 async params:
 
-```ts
-export interface MealPlanViewDialogProps {
-  open: boolean;
-  onClose: () => void;
-  plan: MealPlanWithTemplate | null;
-  todayDow: DayOfWeek | null; // page computes (today within [startDate,endDate])
-  getDaysInOrder: () => DayOfWeek[];
-  getDateForDay: (dow: DayOfWeek) => string; // "Mon, May 11"
-  /** Persist one meal slot. Page calls updateMealPlan(plan._id, { items }). */
-  onSaveMeal: (dayOfWeek: DayOfWeek, mealType: MealType, next: EditableMeal) => void;
-  /** Persist staples to the template. Page calls updateMealPlanTemplate({ weeklyStaples }). */
-  onSaveStaples: (items: MealItem[]) => void;
-  onDelete: () => void;
-  onShare: () => void;
-  onFoodItemAdded: (item: FoodItem) => Promise<void>;
+```tsx
+import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import { PlanDetail } from '@/components/meal-plans/PlanDetail';
+
+export default async function MealPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return (
+    <AuthenticatedLayout>
+      <PlanDetail planId={id} />
+    </AuthenticatedLayout>
+  );
 }
 ```
 
-**Derivations inside the component:**
+`loading.tsx` (dark skeleton inside `AuthenticatedLayout`) and `error.tsx` (`'use client'`, `reset()` button, dark tokens) mirror the existing `src/app/meal-plans/loading.tsx`/`error.tsx`.
+
+**`PlanDetail` interface + behavior:**
 
 ```ts
-// mealsByDay: Record<dow, Partial<Record<mealType, MealPlanItem>>>
-const mealsByDay = useMemo(() => {
-  const map: Record<string, Partial<Record<MealType, MealPlanItem>>> = {};
-  (plan?.items ?? []).forEach((mpi) => {
-    (map[mpi.dayOfWeek] ??= {})[mpi.mealType] = mpi;
-  });
-  return map;
-}, [plan]);
-
-const enabledMeals = getEnabledMeals(plan?.template?.meals ?? plan?.templateSnapshot?.meals ?? {});
-const staples = plan?.template?.weeklyStaples ?? [];
+export interface PlanDetailProps {
+  planId: string;
+}
 ```
 
-**Editor open state:** `const [editing, setEditing] = useState<{ dow: DayOfWeek; mealType: MealType } | null>(null);` and `const [editingStaples, setEditingStaples] = useState(false);`
+- **Fetch:** `useEffect` → `fetchMealPlan(planId)` (existing `GET /api/meal-plans/:id`) into `plan/loading/error` state. On fetch error or 404, render a "Plan not found" state with a `‹ Plans` link. Re-fetch after any save.
+- **Derivations** (same as the old dialog):
+  ```ts
+  const mealsByDay = useMemo(() => {
+    const map: Record<string, Partial<Record<MealType, MealPlanItem>>> = {};
+    (plan?.items ?? []).forEach((mpi) => {
+      (map[mpi.dayOfWeek] ??= {})[mpi.mealType] = mpi;
+    });
+    return map;
+  }, [plan]);
+  const enabledMeals = getEnabledMeals(
+    plan?.template?.meals ?? plan?.templateSnapshot?.meals ?? {}
+  );
+  const staples = plan?.template?.weeklyStaples ?? [];
+  const startDay = plan?.template?.startDay ?? plan?.templateSnapshot?.startDay ?? 'monday';
+  const daysInOrder = plan ? getDaysInOrder(startDay) : [];
+  const todayDow = computeTodayDow(plan); // helper: today within [startDate,endDate] → DayOfWeek | null
+  ```
+- **Header:** `‹ Plans` back button → `router.push('/meal-plans')`; kicker "MEAL PLAN" (accent) + `plan.name` (display font) + date range + "Shared with …" text when applicable; a `⋯` `IconButton` → `Menu` with **Delete plan** (danger). (Sharing/template stay account-level on the index — the back button returns there.)
+- **Body:** `StaplesBar` (onEdit → open staples editor) + `PlanViewDesktop` (`display: { xs: 'none', md: 'block' }`) + `PlanViewMobile` (`display: { xs: 'block', md: 'none' }`), both fed `mealsByDay/daysInOrder/dateLabelForDay/enabledMeals/todayDow/onEditMeal`. `dateLabelForDay = (dow) => getDateForDay(plan.startDate, dow, startDay)`.
+- **Per-meal editor:** `const [editing, setEditing] = useState<{ dow; mealType } | null>(null)`. `onEditMeal` sets it; render `<MealEditorDialog open={!!editing} … />` with `meal` from `mealsByDay`, `title = \`${cap(dow)} ${mealType}\``, `subtitle = dateLabelForDay(dow)`. `onSave(next)`→`handleSaveMeal(dow, mealType, next)`then`setEditing(null)`.
+- **Staples editor:** `const [editingStaples, setEditingStaples] = useState(false)`; `<MealEditorDialog isStaples open={editingStaples} title="Weekly staples" meal={{ items: staples, skipped:false, skipReason:'' }} onSave={(n)=>{ handleSaveStaples(n.items); setEditingStaples(false); }} … />`.
+- **Persistence (unchanged payloads — the "no write-logic change" guarantee):**
 
-- `onEditMeal(dow, mealType)` → `setEditing({ dow, mealType })`.
-- The editor's `meal` prop = `{ items: mealsByDay[dow]?.[mealType]?.items ?? [], skipped: …?.skipped ?? false, skipReason: …?.skipReason ?? '' }`.
-- Editor `title` = `${capitalize(dow)} ${mealType}` (use existing `getMealTypeName` if present, else simple capitalize); `subtitle` = `getDateForDay(dow)`.
-- Editor `onSave(next)` → `onSaveMeal(editing.dow, editing.mealType, next); setEditing(null);`
-- Staples: `StaplesBar onEdit` → `setEditingStaples(true)`; editor `isStaples title="Weekly staples"` `meal={{ items: staples, skipped:false, skipReason:'' }}`; `onSave(next)` → `onSaveStaples(next.items); setEditingStaples(false)`.
+  ```ts
+  const handleSaveMeal = async (dow, mealType, next) => {
+    const existing = plan!.items;
+    const idx = existing.findIndex((it) => it.dayOfWeek === dow && it.mealType === mealType);
+    const merged =
+      idx >= 0
+        ? {
+            ...existing[idx],
+            items: next.items,
+            skipped: next.skipped,
+            skipReason: next.skipReason,
+          }
+        : {
+            _id: '',
+            mealPlanId: plan!._id,
+            dayOfWeek: dow,
+            mealType,
+            items: next.items,
+            skipped: next.skipped,
+            skipReason: next.skipReason,
+          };
+    const items =
+      idx >= 0 ? existing.map((it, i) => (i === idx ? merged : it)) : [...existing, merged];
+    const sanitized = items.map((mi) => ({
+      ...mi,
+      items: mi.items.map((x) => (x.type === 'recipe' ? { ...x, unit: undefined } : x)),
+    }));
+    await updateMealPlan(plan!._id, { items: sanitized }); // existing PUT, scoped to userId server-side
+    setPlan(await fetchMealPlan(plan!._id));
+  };
+  const handleSaveStaples = async (items) => {
+    await updateMealPlanTemplate({ weeklyStaples: items }); // existing PUT
+    setPlan(await fetchMealPlan(plan!._id));
+  };
+  const handleDelete = async () => {
+    await deleteMealPlan(plan!._id);
+    router.push('/meal-plans');
+  };
+  ```
 
-**Header:** kicker "MEAL PLAN" (accent) + `plan.name` (display font) + date range + "Shared with …" if applicable; a `⋯` `IconButton` opening a small `Menu` with **Share** (`onShare`) and **Delete plan** (`onDelete`, danger color). Use `Icon name="more_horiz"`.
-
-> The page already owns the delete-confirm and share dialogs — `onDelete`/`onShare` just trigger them (unchanged logic). The per-meal `onSaveMeal` must **preserve the existing payload shape**: page maps `next` onto the matching `MealPlanItem` (or creates one for an enabled-but-absent slot with `{ dayOfWeek, mealType, items, skipped, skipReason }`) and calls `updateMealPlan(plan._id, { items: allItems })` exactly as today.
-
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test** (`PlanDetail.test.tsx`)
 
 ```tsx
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import MealPlanViewDialog from '../MealPlanViewDialog';
-import type { MealPlanWithTemplate } from '@/types/meal-plan';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../../vitest.setup';
+import { PlanDetail } from '../PlanDetail';
 
-// MSW is globally active (vitest.setup.ts); the editor's CombinedSearch auto-loads
-// /api/* on mount via the global handlers. Do NOT stub global.fetch.
-afterEach(cleanup);
+const push = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }),
+}));
 
 const plan = {
   _id: 'p1',
@@ -3811,8 +3866,8 @@ const plan = {
     startDay: 'monday',
     meals: { breakfast: true, lunch: true, dinner: true, staples: true },
     weeklyStaples: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
   },
   items: [
     {
@@ -3823,87 +3878,84 @@ const plan = {
       items: [{ type: 'recipe', id: 'r1', name: 'Lemon ricotta pasta', quantity: 1 }],
     },
   ],
-  createdAt: new Date(),
-  updatedAt: new Date(),
-} as unknown as MealPlanWithTemplate;
+  createdAt: '2026-01-01',
+  updatedAt: '2026-01-01',
+};
 
-function props(over = {}) {
-  return {
-    open: true,
-    onClose: vi.fn(),
-    plan,
-    todayDow: 'monday' as const,
-    getDaysInOrder: () =>
-      ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const,
-    getDateForDay: (d: string) => (({ monday: 'Mon, May 11' }) as Record<string, string>)[d] || d,
-    onSaveMeal: vi.fn(),
-    onSaveStaples: vi.fn(),
-    onDelete: vi.fn(),
-    onShare: vi.fn(),
-    onFoodItemAdded: vi.fn(),
-    ...over,
-  };
-}
+afterEach(() => {
+  cleanup();
+  push.mockReset();
+});
 
-describe('MealPlanViewDialog (view-only)', () => {
-  it('renders the plan title and a meal', () => {
-    render(<MealPlanViewDialog {...props()} />);
-    expect(screen.getByText('Week of May 11')).toBeInTheDocument();
+describe('PlanDetail (route surface)', () => {
+  it('fetches and renders the plan title + a meal', async () => {
+    server.use(http.get('/api/meal-plans/p1', () => HttpResponse.json(plan)));
+    render(<PlanDetail planId="p1" />);
+    await waitFor(() => expect(screen.getByText('Week of May 11')).toBeInTheDocument());
     expect(screen.getAllByText('Lemon ricotta pasta').length).toBeGreaterThan(0);
   });
 
-  it('tapping a meal opens the B3 editor', async () => {
+  it('the back button navigates to the index', async () => {
     const user = userEvent.setup();
-    render(<MealPlanViewDialog {...props()} />);
-    await user.click(screen.getAllByText('Lemon ricotta pasta')[0]);
-    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+    server.use(http.get('/api/meal-plans/p1', () => HttpResponse.json(plan)));
+    render(<PlanDetail planId="p1" />);
+    await waitFor(() => screen.getByText('Week of May 11'));
+    await user.click(screen.getByRole('button', { name: /plans/i })); // "‹ Plans"
+    expect(push).toHaveBeenCalledWith('/meal-plans');
   });
 
-  it('saving the editor calls onSaveMeal with the slot + payload', async () => {
+  it('tapping a meal opens the B3 editor; Done persists with the unchanged { items } payload', async () => {
     const user = userEvent.setup();
-    const onSaveMeal = vi.fn();
-    render(<MealPlanViewDialog {...props({ onSaveMeal })} />);
+    let putBody: any = null;
+    server.use(
+      http.get('/api/meal-plans/p1', () => HttpResponse.json(plan)),
+      http.put('/api/meal-plans/p1', async ({ request }) => {
+        putBody = await request.json();
+        return HttpResponse.json({ ...plan, ...putBody });
+      })
+    );
+    render(<PlanDetail planId="p1" />);
+    await waitFor(() => screen.getByText('Week of May 11'));
     await user.click(screen.getAllByText('Lemon ricotta pasta')[0]);
     await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(onSaveMeal).toHaveBeenCalledWith(
-      'monday',
-      'dinner',
-      expect.objectContaining({ items: expect.any(Array), skipped: false })
-    );
+    await waitFor(() => expect(putBody).not.toBeNull());
+    expect(putBody).toHaveProperty('items'); // same payload shape as today
+    expect(Object.keys(putBody)).toEqual(['items']);
   });
 
-  it('there is no whole-plan Edit toggle (view-only)', () => {
-    render(<MealPlanViewDialog {...props()} />);
-    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+  it('renders a not-found state when the plan 404s', async () => {
+    server.use(http.get('/api/meal-plans/p1', () => new HttpResponse(null, { status: 404 })));
+    render(<PlanDetail planId="p1" />);
+    await waitFor(() => expect(screen.getByText(/not found/i)).toBeInTheDocument());
   });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/__tests__/MealPlanViewDialog.test.tsx`
-Expected: FAIL — old default export shape / new behavior absent.
+Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/meal-plans/__tests__/PlanDetail.test.tsx`
+Expected: FAIL — cannot resolve `../PlanDetail`.
 
-- [ ] **Step 3: Implement** — rewrite `MealPlanViewDialog.tsx` per the interface + derivations above. Keep `export default React.memo(MealPlanViewDialog)` (page dynamic-imports the default). Use a full-screen-on-mobile `Dialog` (`responsiveDialogStyle`). Render `PlanViewDesktop` in a `Box` with `display: { xs: 'none', md: 'block' }` and `PlanViewMobile` with `display: { xs: 'block', md: 'none' }`. Delete the old recipe-view test file.
+- [ ] **Step 3: Implement** `PlanDetail.tsx` per the interface + behavior above, plus the route `page.tsx`/`loading.tsx`/`error.tsx`, and move the two helpers into `meal-display-utils.ts`. `PlanDetail` is `'use client'`, named export. It imports `fetchMealPlan`, `updateMealPlan`, `updateMealPlanTemplate`, `deleteMealPlan` from `@/lib/meal-plan-utils` (all existing). Delete `MealPlanViewDialog.tsx` + its recipe-view test.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/__tests__/MealPlanViewDialog.test.tsx`
+Run: `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/components/meal-plans/__tests__/PlanDetail.test.tsx`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git rm src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx
-git add src/components/MealPlanViewDialog.tsx src/components/__tests__/MealPlanViewDialog.test.tsx
-git commit -m "feat(meal-plans): view-only MealPlanViewDialog + per-meal B3 editing (chunk 3)"
+git rm src/components/MealPlanViewDialog.tsx src/components/__tests__/MealPlanViewDialog-recipe-view.test.tsx
+git add src/app/meal-plans/\[id\]/ src/components/meal-plans/PlanDetail.tsx src/components/meal-plans/__tests__/PlanDetail.test.tsx src/components/meal-plans/meal-display-utils.ts
+git commit -m "feat(meal-plans): plan-detail route + PlanDetail (back button, per-meal B3 editor over page) (chunk 3)"
 ```
 
 ---
 
-## Task 14: Wire `page.tsx` — persistence + remove old edit-mode plumbing
+## Task 14: Wire `page.tsx` — index navigates to the route; drop the view dialog
 
-Adapt `src/app/meal-plans/page.tsx` to the new view dialog. **No new endpoints.** Same `updateMealPlan` / `updateMealPlanTemplate` calls.
+Adapt `src/app/meal-plans/page.tsx` to the new `[id]` route. The index no longer renders a plan-detail dialog — rows **navigate** to `/meal-plans/<id>`. Per-meal/staples persistence, `todayDow`, and delete all live in `PlanDetail` (Task 13) now. **No new endpoints.**
 
 **Files:**
 
@@ -3912,105 +3964,43 @@ Adapt `src/app/meal-plans/page.tsx` to the new view dialog. **No new endpoints.*
 
 **Changes:**
 
-1. **Delete whole-plan edit plumbing:** remove `editMode` state, the `viewMealPlan_editMode` persistent-dialog param, `mealPlanValidationErrors`, `showValidationErrors`, `validateMealPlan` (the whole-plan version), `handleUpdateMealPlan`'s reliance on a single big edit. Keep `usePersistentDialog('viewMealPlan')` (just the plan id, no editMode).
+1. **Delete the whole view-dialog + edit plumbing:** remove `usePersistentDialog('viewMealPlan')`, `selectedMealPlan`, `editMode`, the `viewMealPlan_*` params + the restore `useEffect`, `mealPlanValidationErrors`, `showValidationErrors`, `validateMealPlan` (whole-plan), `handleUpdateMealPlan`, `handleEditMealPlan`, and the rendered `<MealPlanViewDialog>` (the component is deleted in Task 13). Also remove `getDaysInOrder`/`getDateForDay` (moved to `meal-display-utils.ts` in Task 13). Keep `deleteConfirmDialog`? **No** — delete moves to `PlanDetail`; remove the index delete-confirm + `handleDeleteMealPlan` too. Keep the create / template / sharing / leave-sharing flows.
 
-2. **Add `todayDow` computation** (today within the plan's date range → which `DayOfWeek`):
+2. **Navigate to the detail route.** Plan rows in every section call `router.push(\`/meal-plans/${plan.\_id}\`)` (`useRouter`from`next/navigation`). `MealPlanBrowser`'s `onPlanSelect` likewise pushes the route.
 
-```ts
-function computeTodayDow(plan: MealPlanWithTemplate | null): DayOfWeek | null {
-  if (!plan) return null;
-  const today = formatDateForAPI(new Date()); // 'YYYY-MM-DD' (existing util)
-  if (today < plan.startDate || today > plan.endDate) return null;
-  const days: DayOfWeek[] = [
-    'sunday',
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-    'saturday',
-  ];
-  return days[parseLocalDate(today).getDay()]; // parseLocalDate from date-utils
-}
-```
-
-3. **`onSaveMeal(dow, mealType, next)`** — merge into the plan's items, then persist:
+3. **Redirect old deep-links.** A `useEffect` over `useSearchParams()`: if `?viewMealPlan` is present, read the legacy `viewMealPlan_mealPlanId`, and `router.replace(\`/meal-plans/${id}\`)`(or`/meal-plans`if the id is missing). Keeps existing beta bookmarks / shared`?viewMealPlan=` links working.
 
 ```ts
-const handleSaveMeal = async (dow: DayOfWeek, mealType: MealType, next: EditableMeal) => {
-  if (!selectedMealPlan) return;
-  const existing = selectedMealPlan.items;
-  const idx = existing.findIndex((it) => it.dayOfWeek === dow && it.mealType === mealType);
-  const merged: MealPlanItem =
-    idx >= 0
-      ? { ...existing[idx], items: next.items, skipped: next.skipped, skipReason: next.skipReason }
-      : {
-          _id: '',
-          mealPlanId: selectedMealPlan._id,
-          dayOfWeek: dow,
-          mealType,
-          items: next.items,
-          skipped: next.skipped,
-          skipReason: next.skipReason,
-        };
-  const items =
-    idx >= 0 ? existing.map((it, i) => (i === idx ? merged : it)) : [...existing, merged];
-  // sanitize: recipes carry no unit (existing handleUpdateMealPlan rule)
-  const sanitized = items.map((mi) => ({
-    ...mi,
-    items: mi.items.map((x) => (x.type === 'recipe' ? { ...x, unit: undefined } : x)),
-  }));
-  await updateMealPlan(selectedMealPlan._id, { items: sanitized });
-  const fresh = await fetchMealPlan(selectedMealPlan._id);
-  setSelectedMealPlan(fresh);
-};
+const params = useSearchParams();
+useEffect(() => {
+  if (params.get('viewMealPlan')) {
+    const id = params.get('viewMealPlan_mealPlanId');
+    router.replace(id ? `/meal-plans/${id}` : '/meal-plans');
+  }
+}, [params, router]);
 ```
 
-4. **`onSaveStaples(items)`** — persist to the template (reuse the existing `updateMealPlanTemplate`):
+4. **Template Settings dialog (staples editing stays index-level).** The inline staples `MealEditor` (deleted) is replaced: in the ⚙ template dialog, show a read summary + an "Edit staples" button that opens `MealEditorDialog` (`isStaples`) seeded from `templateForm.weeklyStaples`, committing back into `templateForm` (saved by the existing `handleUpdateTemplate`). This is the only `MealEditorDialog` usage left on the index.
 
-```ts
-const handleSaveStaples = async (items: MealItem[]) => {
-  await updateMealPlanTemplate({ weeklyStaples: items });
-  await loadData();
-  if (selectedMealPlan) setSelectedMealPlan(await fetchMealPlan(selectedMealPlan._id));
-};
-```
+5. **Index redesign:** restyle the header (display-font "Your plans", `⚙` template, share icon w/ dot badge when invites pending, `+ New plan` primary). Three sections, each a `SectionLabel` + rows:
+   - **Current** — plans where `today ≤ endDate` and you own them, from the existing `fetchMealPlans({ minEndDate: today })` load.
+   - **Shared with you** — from `mealPlanOwners` (existing sharing data).
+   - **Past · last 6 weeks** — add ONE read on the index using the existing endpoint: `fetchMealPlans({ startDate: formatDateForAPI(addDays(new Date(), -42)), endDate: formatDateForAPI(addDays(new Date(), -1)) })`, stored in a new `pastPlans` state, sorted most-recent-first. (`fetchMealPlans` + `formatDateForAPI` + `addDays` are all already imported/used in `page.tsx`. No new endpoint.) Render the rows like Current; empty → omit the section.
 
-5. **Render the new dialog** (replace the old `<MealPlanViewDialog .../>` props block):
+   Below the three sections, a **"View older →"** affordance reveals the restyled `MealPlanBrowser` (Task 15) accordion for all-history browsing (e.g. a `useState` toggle that mounts `MealPlanBrowser`, or render it collapsed-by-default). **No new `/meal-plans/history` route.** Pull colors from tokens; counts accented with `color="primary"`.
 
-```tsx
-<MealPlanViewDialog
-  open={viewDialog.open}
-  onClose={() => {
-    viewDialog.closeDialog();
-    setSelectedMealPlan(null);
-  }}
-  plan={selectedMealPlan}
-  todayDow={computeTodayDow(selectedMealPlan)}
-  getDaysInOrder={getDaysInOrder}
-  getDateForDay={getDateForDay} // existing formatter, already in scope (page.tsx:660)
-  onSaveMeal={handleSaveMeal}
-  onSaveStaples={handleSaveStaples}
-  onDelete={() => deleteConfirmDialog.openDialog()}
-  onShare={() => shareDialog.openDialog()}
-  onFoodItemAdded={handleFoodItemAdded}
-/>
-```
+   > Add the past-plans fetch to the existing `loadData` `Promise.all` (Task 14 keeps `loadData`'s shape) so it loads alongside the others — don't add a second mount effect.
 
-6. **Template Settings dialog:** the inline staples `MealEditor` (now deleted) is replaced — staples are edited via the view dialog's `StaplesBar → MealEditorDialog`. In the **template settings dialog** (the ⚙ on the index), replace the embedded `MealEditor` with a read summary + an "Edit staples" button that opens `MealEditorDialog` (`isStaples`) seeded from `templateForm.weeklyStaples`, committing back into `templateForm` (saved by the existing `handleUpdateTemplate`).
-
-7. **Index redesign:** restyle the header (display-font "Your plans", `⚙` template, share icon w/ dot badge when invites pending, `+ New plan` primary). Sections: **Current** (plans where `today ≤ endDate` and you own) and **Shared with you** (from `mealPlanOwners`). Below, keep the restyled `MealPlanBrowser` (Task 15) for all/past plans. Pull colors from tokens; counts accented with `color="primary"`.
-
-- [ ] **Step 1–4 (test):** Update `page.test.tsx`: the "Delete Functionality" + "View Mode Quantity Display" tests that asserted the old inline edit/view now assert the new flow — opening the view dialog renders the plan; the `⋯` menu exposes Delete; clicking Delete opens the confirm and confirming calls `deleteMealPlan`. Remove assertions about the removed whole-plan edit mode / `MealEditor` staples block / recipe-as-link view. Keep the share-dialog auto-focus test. Run:
+- [ ] **Step (test):** Rewrite `page.test.tsx` for the index-only surface. **Delete** the old "Delete Functionality" + "View Mode Quantity Display" blocks entirely — those behaviors moved to `PlanDetail.test.tsx` (Task 13). New index assertions: (a) clicking a plan row calls `router.push('/meal-plans/<id>')` (mock `next/navigation`); (b) **"Past · last 6 weeks"** — MSW returns a past plan for the date-range query (`server.use(http.get('/api/meal-plans', …))` keyed on the `startDate`/`endDate` params), assert the section header + that past plan's name render; (c) the legacy `?viewMealPlan=…&viewMealPlan_mealPlanId=p1` URL triggers `router.replace('/meal-plans/p1')`. Keep the share-dialog auto-focus test. Run:
 
 `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run src/app/meal-plans/__tests__/page.test.tsx`
 Expected: PASS after the rewrite.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step (commit):**
 
 ```bash
 git add src/app/meal-plans/page.tsx src/app/meal-plans/__tests__/page.test.tsx
-git commit -m "feat(meal-plans): wire per-meal + staples persistence, drop whole-plan edit mode (chunk 3)"
+git commit -m "feat(meal-plans): index navigates to /meal-plans/[id], drop view dialog + old-URL redirect (chunk 3)"
 ```
 
 ---
@@ -4087,27 +4077,28 @@ git commit -m "chore(meal-plans): restyle loading/error, remove orphaned MealEdi
 
 **Spec coverage (§4 chunk 3 + edit-decisions):**
 
-| Spec item                                                | Task                                                    |
-| -------------------------------------------------------- | ------------------------------------------------------- |
-| B3 full-screen/modal editor                              | 12                                                      |
-| Numpad qty                                               | 9                                                       |
-| Unit picker                                              | 10                                                      |
-| Sticky combined search                                   | 11                                                      |
-| Flat group headers (dec. 8)                              | 8, 12                                                   |
-| Validation Done-disabled + warn borders (dec. 1)         | 7, 8, 12                                                |
-| Dirty-cancel confirm vs clean close (dec. 2)             | 12                                                      |
-| Per-meal notes dropped (dec. 3)                          | 12 (no notes UI)                                        |
-| Recipe `× n` chip, no unit (dec. 4)                      | 7, 12                                                   |
-| Skip clear-confirm + empty-on-untoggle (dec. 5)          | 12                                                      |
-| Empty group / empty meal states (dec. 6)                 | 8, 12                                                   |
-| Remove-group confirm (dec. 7)                            | 6, 12                                                   |
-| Desktop today-hero + week strip + TODAY sliver           | 5                                                       |
-| Mobile day-card stack                                    | 4                                                       |
-| Staples bar expand/collapse                              | 3                                                       |
-| Staples editing                                          | 12 (isStaples), 13, 14                                  |
-| `src/app/meal-plans/*` + Create + Browser + View dialogs | 13, 14, 15, 16                                          |
-| Section accent via `palette.primary` (no re-wire)        | all (consume primary / `tokens.section.plans`)          |
-| No new route / no write-logic change                     | 13, 14 (same `updateMealPlan`/`updateMealPlanTemplate`) |
+| Spec item                                                        | Task                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------- |
+| B3 full-screen/modal editor                                      | 12                                                      |
+| Numpad qty                                                       | 9                                                       |
+| Unit picker                                                      | 10                                                      |
+| Sticky combined search                                           | 11                                                      |
+| Flat group headers (dec. 8)                                      | 8, 12                                                   |
+| Validation Done-disabled + warn borders (dec. 1)                 | 7, 8, 12                                                |
+| Dirty-cancel confirm vs clean close (dec. 2)                     | 12                                                      |
+| Per-meal notes dropped (dec. 3)                                  | 12 (no notes UI)                                        |
+| Recipe `× n` chip, no unit (dec. 4)                              | 7, 12                                                   |
+| Skip clear-confirm + empty-on-untoggle (dec. 5)                  | 12                                                      |
+| Empty group / empty meal states (dec. 6)                         | 8, 12                                                   |
+| Remove-group confirm (dec. 7)                                    | 6, 12                                                   |
+| Desktop today-hero + week strip + TODAY sliver                   | 5                                                       |
+| Mobile day-card stack                                            | 4                                                       |
+| Staples bar expand/collapse                                      | 3                                                       |
+| Staples editing                                                  | 12 (isStaples), 13 (detail), 14 (template dialog)       |
+| `src/app/meal-plans/*` (index + `[id]` route) + Create + Browser | 13, 14, 15, 16                                          |
+| Section accent via `palette.primary` (no re-wire)                | all (consume primary / `tokens.section.plans`)          |
+| Plan detail = real route w/ back button (deviation from §4)      | 13                                                      |
+| No write-logic change (same payloads)                            | 13, 14 (same `updateMealPlan`/`updateMealPlanTemplate`) |
 
 **Type consistency:** `EditableMeal` defined in Task 12, imported by 13/14. `PlanViewProps` defined in Task 1 (`meal-display-utils.ts`), imported by 4 and 5. `MealItem`/`MealPlanItem`/`MealPlanWithTemplate`/`DayOfWeek`/`MealType` all from `@/types/meal-plan`. `FoodItem` from `@/lib/hooks/use-food-item-selector`. Chip-target shape `{ groupIdx, ingIdx }` consistent in Task 12.
 
