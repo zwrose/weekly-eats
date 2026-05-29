@@ -8,6 +8,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Native form elements don't inherit font-family. MUI Button/InputBase set their
+   own, but a bare ButtonBase (used heavily in the meal-plan views — strip rows,
+   staples summary, editor chips, "+ Add") renders a <button> that otherwise falls
+   back to the UA default (Arial). Element-level selector, so any MUI component that
+   sets its own font still wins; this only catches the unstyled controls. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 /* Hide native number input spinners (up/down arrows) globally */
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
