@@ -7,7 +7,7 @@ import { block as recipes } from '../recipes.js';
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function makeExistingRecipe(overrides: Record<string, unknown> = {}) {
-  return { _id: new ObjectId(), title: 'Manual Test Recipe 1', ...overrides };
+  return { _id: new ObjectId(), title: 'Manual Test Recipe [feat/te] 1', ...overrides };
 }
 
 /**

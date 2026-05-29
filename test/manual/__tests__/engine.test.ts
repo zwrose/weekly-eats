@@ -455,7 +455,12 @@ describe('Engine.cleanOrphans', () => {
         const docs = opts.tagsByCol[name] ?? [];
         return {
           distinct: vi.fn(async () => [...new Set(docs.map((d) => d._seedManifestId))]),
-          countDocuments: vi.fn(async (_filter?: any) => legacyCounts[name] ?? 0),
+          countDocuments: vi.fn(async (query?: any) => {
+            // Return legacy count only when the query is the legacy filter shape
+            // (i.e. { _seedManifestId: { $exists: false }, $or: [...] })
+            const isLegacyFilter = query?._seedManifestId?.$exists === false;
+            return isLegacyFilter ? (legacyCounts[name] ?? 0) : 0;
+          }),
           deleteMany: opts.deletes[name] ?? vi.fn(async () => ({ deletedCount: docs.length })),
         };
       }),

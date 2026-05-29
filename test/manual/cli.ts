@@ -220,8 +220,7 @@ async function main(): Promise<number> {
 
     // ── File-independent commands (no manifest file needed) ──
     if (parsed.command === 'status' && parsed.flags.all) {
-      const blocks = await loadBlocks();
-      const engine = new Engine(db, blocks);
+      const engine = new Engine(db, new Map());
       const result = await engine.statusAll();
       outputStatusAll(result, parsed);
       return 0;
