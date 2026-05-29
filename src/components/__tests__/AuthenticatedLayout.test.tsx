@@ -83,4 +83,18 @@ describe('AuthenticatedLayout', () => {
     );
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it('does not redirect an admin user even when isApproved is false (admin bypass)', () => {
+    useSessionMock.mockReturnValue({
+      data: { user: { name: 'Admin', isApproved: false, isAdmin: true } },
+    });
+    usePathnameMock.mockReturnValue('/meal-plans');
+    const { getByTestId } = render(
+      <AuthenticatedLayout>
+        <span>content</span>
+      </AuthenticatedLayout>
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(getByTestId('topnav')).toBeInTheDocument();
+  });
 });
