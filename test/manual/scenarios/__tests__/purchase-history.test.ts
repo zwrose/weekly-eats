@@ -219,6 +219,19 @@ describe('purchaseHistory.apply — insertions', () => {
     expect(doc._seedScenarioId).toBe('ph');
   });
 
+  it('stamps inserted name with SEED_TITLE_PREFIX and branch label', async () => {
+    const storeIds = [makeId()];
+    const foodIds = [makeId()];
+    const { db, phInsertOne } = mockDb();
+    const ctx = mockCtx(db, 'ph', storeIds, foodIds);
+    const cfg = purchaseHistory.validate({ count: 1, storeRef: 'st', foodItemsRef: 'fi' });
+
+    await purchaseHistory.apply(cfg, ctx);
+
+    const doc = phInsertOne.mock.calls[0][0] as Record<string, unknown>;
+    expect(doc.name).toMatch(/^Manual Test Purchase \[.+\] \d+$/);
+  });
+
   it('returns purchaseIds array in state', async () => {
     const storeIds = [makeId(), makeId()];
     const foodIds = [makeId(), makeId()];

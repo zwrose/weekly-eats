@@ -151,7 +151,7 @@ Test files (`**/__tests__/**/*.{ts,tsx}`, `**/*.{test,spec}.{ts,tsx}`) have rela
 
 ## Worktree Workflow
 
-Git worktrees allow running multiple development branches simultaneously with fully isolated ports, databases, and `node_modules`. Worktrees live inside the project at `.worktrees/`, which keeps them within the Claude Code sandbox and avoids permission/consent issues.
+Git worktrees allow running multiple development branches simultaneously with fully isolated ports and `node_modules`, sharing the dev database. Worktrees live inside the project at `.worktrees/`, which keeps them within the Claude Code sandbox and avoids permission/consent issues.
 
 ### Creating a Worktree
 

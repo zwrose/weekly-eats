@@ -2,7 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
-import { seedTag } from '../seedTag.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ export const block: Block<Config, State> = {
         userId,
         storeId,
         foodItemId,
-        name: `Manual Test Purchase ${i + 1}`,
+        name: `${SEED_TITLE_PREFIX}Purchase [${ctx.label}] ${i + 1}`,
         quantity: 1,
         unit: 'each',
         lastPurchasedAt: randomDateWithinDays(daysBack),

@@ -135,6 +135,9 @@ and posts a checkbox test plan to the PR.
   `seed-demo-data.cjs`).
 - All seeded docs are tagged with `_seedManifestId` and `_seedScenarioId` (the
   `_seed*` prefix is reserved across the codebase).
+- `npm run test:manual:status -- --all` — cross-branch view of seeded data.
+- `npm run test:manual:clean -- --orphans` — sweep orphaned/stale-branch data (use instead of dropDatabase).
+- `npm run test:manual:clean -- --manifest-id <branch>` — purge one branch's seeded data.
 - See `test/manual/scenarios/CATALOG.md` for available blocks.
 
 ### Database
