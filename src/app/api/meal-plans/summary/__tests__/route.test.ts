@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -48,8 +49,14 @@ describe('api/meal-plans/summary route', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved (GET)', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+  });
+
   it('GET returns year/month summary with plan counts', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: { year: '2026', month: '02' },
@@ -99,7 +106,7 @@ describe('api/meal-plans/summary route', () => {
   });
 
   it('GET returns empty array when no meal plans exist', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([]);
 
     const res = await routes.GET();
@@ -109,7 +116,7 @@ describe('api/meal-plans/summary route', () => {
   });
 
   it('GET uses aggregation pipeline with userId filter', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([]);
 
     await routes.GET();

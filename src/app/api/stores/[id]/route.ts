@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
+import { API_ERRORS, STORE_ERRORS, logError } from '@/lib/errors';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -11,10 +10,8 @@ type RouteParams = {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -59,10 +56,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -127,10 +122,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {

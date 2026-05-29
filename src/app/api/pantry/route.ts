@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, PANTRY_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { PANTRY_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') || '';
@@ -91,10 +88,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body = await request.json();
     const { foodItemId } = body;
@@ -171,10 +166,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const foodItemId = searchParams.get('foodItemId');

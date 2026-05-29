@@ -24,6 +24,8 @@ vi.mock('@/lib/mongodb', () => ({
 const { getServerSession } = await import('next-auth/next');
 const routes = await import('../route');
 
+const makeRequest = () => ({ url: 'http://localhost/api/recipes/tags' }) as any;
+
 beforeEach(() => {
   vi.restoreAllMocks();
   (getServerSession as any).mockReset();
@@ -31,41 +33,40 @@ beforeEach(() => {
   toArrayMock.mockReset();
 });
 
-describe('api/user/meal-plan-sharing/owners GET', () => {
+describe('GET /api/recipes/tags', () => {
   it('returns 401 when unauthenticated', async () => {
     (getServerSession as any).mockResolvedValueOnce(null);
-    const res = await routes.GET();
+    const res = await routes.GET(makeRequest());
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved', async () => {
     (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
-    const res = await routes.GET();
+    const res = await routes.GET(makeRequest());
     expect(res.status).toBe(403);
   });
 
-  it('returns owners whose invitations to the current user are accepted', async () => {
+  it('returns 200 with sorted unique tags for the current user', async () => {
     (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
-      { _id: 'owner1', email: 'owner@example.com', name: 'Owner One' },
+      { tags: ['dinner', 'quick'] },
+      { tags: ['quick', 'italian'] },
+      { tags: [] },
     ]);
 
-    const res = await routes.GET();
+    const res = await routes.GET(makeRequest());
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toHaveLength(1);
-    expect(json[0].userId).toBe('owner1');
-    expect(json[0].email).toBe('owner@example.com');
-    expect(json[0].name).toBe('Owner One');
-    // Query filters on accepted status
-    const filter = findMock.mock.calls[0][0];
-    expect(filter['settings.mealPlanSharing.invitations'].$elemMatch.status).toBe('accepted');
+    expect(json.tags).toEqual(['dinner', 'italian', 'quick']);
   });
 
-  it('returns 500 when the DB throws', async () => {
+  it('returns empty array when user has no tagged recipes', async () => {
     (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
-    toArrayMock.mockRejectedValueOnce(new Error('db down'));
-    const res = await routes.GET();
-    expect(res.status).toBe(500);
+    toArrayMock.mockResolvedValueOnce([]);
+
+    const res = await routes.GET(makeRequest());
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.tags).toEqual([]);
   });
 });

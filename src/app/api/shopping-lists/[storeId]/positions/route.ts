@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AUTH_ERRORS, API_ERRORS, STORE_ERRORS, FOOD_ITEM_ERRORS, logError } from '@/lib/errors';
+import { API_ERRORS, STORE_ERRORS, FOOD_ITEM_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 type RouteParams = {
   params: Promise<{ storeId: string }>;
@@ -15,10 +14,8 @@ type RouteParams = {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { storeId } = await params;
     if (!ObjectId.isValid(storeId)) {
@@ -90,10 +87,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { storeId } = await params;
     if (!ObjectId.isValid(storeId)) {

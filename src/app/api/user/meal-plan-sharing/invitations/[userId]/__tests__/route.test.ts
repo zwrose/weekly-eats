@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -42,8 +43,16 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const res = await routes.PUT(makeReq('http://localhost/api/x', { action: 'accept' }), {
+      params: Promise.resolve({ userId: 'u1' }),
+    } as any);
+    expect(res.status).toBe(403);
+  });
+
   it('returns 400 for an invalid action', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.PUT(makeReq('http://localhost/api/x', { action: 'bogus' }), {
       params: Promise.resolve({ userId: 'u1' }),
     } as any);
@@ -51,7 +60,7 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
   });
 
   it('returns 403 when acting on an invitation that is not the caller', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.PUT(makeReq('http://localhost/api/x', { action: 'accept' }), {
       params: Promise.resolve({ userId: 'someoneElse' }),
     } as any);
@@ -59,7 +68,7 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
   });
 
   it('returns 404 when no owner invitation is found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const res = await routes.PUT(makeReq('http://localhost/api/x', { action: 'accept' }), {
       params: Promise.resolve({ userId: 'u1' }),
@@ -68,7 +77,7 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
   });
 
   it('accepts an invitation and sets status to accepted', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({ _id: 'owner1' });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
 
@@ -83,7 +92,7 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
   });
 
   it('rejects an invitation and sets status to rejected', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({ _id: 'owner1' });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
 
@@ -96,7 +105,7 @@ describe('api/user/meal-plan-sharing/invitations/[userId] PUT', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockRejectedValueOnce(new Error('db down'));
     const res = await routes.PUT(makeReq('http://localhost/api/x', { action: 'accept' }), {
       params: Promise.resolve({ userId: 'u1' }),
@@ -114,10 +123,20 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(
+      unapprovedSession({ id: 'u1', email: 'me@example.com' })
+    );
+    const res = await routes.DELETE(makeReq('http://localhost/api/x'), {
+      params: Promise.resolve({ userId: 'u1' }),
+    } as any);
+    expect(res.status).toBe(403);
+  });
+
   it('returns 403 when caller is neither owner nor the user themselves', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { id: 'u1', email: 'me@example.com' },
-    });
+    (getServerSession as any).mockResolvedValueOnce(
+      approvedSession({ id: 'u1', email: 'me@example.com' })
+    );
     findOneMock.mockResolvedValueOnce(null); // not owner
     const res = await routes.DELETE(makeReq('http://localhost/api/x'), {
       params: Promise.resolve({ userId: 'someoneElse' }),
@@ -126,9 +145,9 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
   });
 
   it('owner removing a user pulls the invitation via updateOne', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { id: 'u1', email: 'owner@example.com' },
-    });
+    (getServerSession as any).mockResolvedValueOnce(
+      approvedSession({ id: 'u1', email: 'owner@example.com' })
+    );
     findOneMock.mockResolvedValueOnce({ _id: 'owner1' }); // is owner
     updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
@@ -147,9 +166,9 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
   });
 
   it('user leaving (self) pulls invitations via updateMany', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { id: 'u1', email: 'me@example.com' },
-    });
+    (getServerSession as any).mockResolvedValueOnce(
+      approvedSession({ id: 'u1', email: 'me@example.com' })
+    );
     findOneMock.mockResolvedValueOnce(null); // not owner
     updateManyMock.mockResolvedValueOnce({ modifiedCount: 1 });
 
@@ -168,9 +187,9 @@ describe('api/user/meal-plan-sharing/invitations/[userId] DELETE', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { id: 'u1', email: 'me@example.com' },
-    });
+    (getServerSession as any).mockResolvedValueOnce(
+      approvedSession({ id: 'u1', email: 'me@example.com' })
+    );
     findOneMock.mockRejectedValueOnce(new Error('db down'));
     const res = await routes.DELETE(makeReq('http://localhost/api/x'), {
       params: Promise.resolve({ userId: 'u1' }),

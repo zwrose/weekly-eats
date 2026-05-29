@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '../../../../lib/mongodb';
 import { DEFAULT_USER_SETTINGS } from '../../../../lib/user-settings';
-import { getUserObjectId } from '../../../../lib/user-utils';
+import { getUserObjectId, requireApprovedSession } from '../../../../lib/user-utils';
 import { AUTH_ERRORS, API_ERRORS, USER_ERRORS, SETTINGS_ERRORS, logError } from '@/lib/errors';
 
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
-    if (!session?.user?.email) {
+    if (!session.user.email) {
       return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 
@@ -40,9 +40,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
-    if (!session?.user?.email) {
+    if (!session.user.email) {
       return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
     }
 

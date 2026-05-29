@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getServerSession } from 'next-auth/next';
-import { getUserObjectId, getCurrentUserAdminStatus } from '../user-utils';
+import { getUserObjectId, getCurrentUserAdminStatus, requireApprovedSession } from '../user-utils';
 
 // Mock MongoDB
 const mockCollection = {
@@ -94,6 +94,66 @@ describe('user-utils', () => {
       const result = await getCurrentUserAdminStatus();
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('requireApprovedSession', () => {
+    it('returns a 401 error response when there is no session', async () => {
+      mockGetServerSession.mockResolvedValue(null);
+
+      const { session, error } = await requireApprovedSession();
+
+      expect(session).toBeUndefined();
+      expect(error?.status).toBe(401);
+      expect(await error?.json()).toEqual({ error: 'Unauthorized' });
+    });
+
+    it('returns a 401 error response when the session has no user id', async () => {
+      mockGetServerSession.mockResolvedValue({ user: { email: 'x@y.com' } } as never);
+
+      const { error } = await requireApprovedSession();
+
+      expect(error?.status).toBe(401);
+    });
+
+    it('returns a 403 error response when the user is not approved', async () => {
+      mockGetServerSession.mockResolvedValue({
+        user: { id: 'u1', isApproved: false },
+      } as never);
+
+      const { session, error } = await requireApprovedSession();
+
+      expect(session).toBeUndefined();
+      expect(error?.status).toBe(403);
+      expect(await error?.json()).toEqual({ error: 'Forbidden' });
+    });
+
+    it('returns a 403 when isApproved is absent (fail-closed)', async () => {
+      mockGetServerSession.mockResolvedValue({ user: { id: 'u1' } } as never);
+
+      const { error } = await requireApprovedSession();
+
+      expect(error?.status).toBe(403);
+    });
+
+    it('returns the session (no error) for an approved user', async () => {
+      const approved = { user: { id: 'u1', isApproved: true } };
+      mockGetServerSession.mockResolvedValue(approved as never);
+
+      const { session, error } = await requireApprovedSession();
+
+      expect(error).toBeUndefined();
+      expect(session).toEqual(approved);
+    });
+
+    it('returns the session for an unapproved ADMIN (admins bypass approval)', async () => {
+      const adminSession = { user: { id: 'a1', isApproved: false, isAdmin: true } };
+      mockGetServerSession.mockResolvedValue(adminSession as never);
+
+      const { session, error } = await requireApprovedSession();
+
+      expect(error).toBeUndefined();
+      expect(session).toEqual(adminSession);
     });
   });
 });
