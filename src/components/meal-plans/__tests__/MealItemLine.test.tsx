@@ -70,4 +70,29 @@ describe('MealItemLine', () => {
     expect(screen.getByText('Side salad')).toBeInTheDocument();
     expect(screen.getByText(/\(?\s*3\s*\)?/)).toBeInTheDocument();
   });
+
+  it('expanded group lists each ingredient under the title and drops the count', () => {
+    const item: MealItem = {
+      type: 'ingredientGroup',
+      id: '',
+      name: 'Side salad',
+      ingredients: [
+        {
+          title: 'Side salad',
+          ingredients: [
+            { type: 'foodItem', id: 'a', name: 'romaine', quantity: 1, unit: 'head' },
+            { type: 'foodItem', id: 'b', name: 'cherry tomatoes', quantity: 1, unit: 'pint' },
+            { type: 'foodItem', id: 'c', name: 'cucumber', quantity: 1, unit: 'each' },
+          ],
+        },
+      ],
+    };
+    render(<MealItemLine item={item} expandGroup />);
+    expect(screen.getByText('Side salad')).toBeInTheDocument();
+    expect(screen.getByText('romaine')).toBeInTheDocument();
+    expect(screen.getByText('cherry tomatoes')).toBeInTheDocument();
+    expect(screen.getByText('cucumber')).toBeInTheDocument();
+    // Expanded view shows the breakdown, not a collapsed "(3)" count.
+    expect(screen.queryByText(/\(\s*3\s*\)/)).not.toBeInTheDocument();
+  });
 });

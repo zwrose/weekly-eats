@@ -53,7 +53,7 @@ function MealRow({
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {meal.items.map((it, i) => (
-              <MealItemLine key={i} item={it} />
+              <MealItemLine key={i} item={it} expandGroup groupAccent={color} />
             ))}
           </Box>
         )}

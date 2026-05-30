@@ -10,13 +10,15 @@ export interface MealItemLineProps {
   item: MealItem;
   /** Mute colors for past days. */
   muted?: boolean;
-  /** Show a group's ingredients beneath the title (used in staples expand). */
+  /** Expand a group: dotted uppercase header + its ingredients listed under a rule. */
   expandGroup?: boolean;
+  /** Accent color for the expanded group's leading dot (typically the meal color). */
+  groupAccent?: string;
 }
 
 const numSx = { fontVariantNumeric: 'tabular-nums' } as const;
 
-export function MealItemLine({ item, muted, expandGroup }: MealItemLineProps) {
+export function MealItemLine({ item, muted, expandGroup, groupAccent }: MealItemLineProps) {
   const ink = muted ? tokens.text.past : tokens.text.primary;
   const dim = muted ? tokens.text.muted : tokens.text.secondary;
   const recipeEmoji = useRecipeEmoji(item.type === 'recipe' ? item.id : undefined);
@@ -87,22 +89,44 @@ export function MealItemLine({ item, muted, expandGroup }: MealItemLineProps) {
   // ingredientGroup
   const group = item.ingredients?.[0];
   const count = group?.ingredients?.length ?? 0;
-  return (
-    <Box sx={{ fontSize: 13, lineHeight: 1.4 }}>
-      <Box component="span" sx={{ color: ink, fontWeight: 500 }}>
-        {item.name || group?.title}
-      </Box>
-      <Box component="span" sx={{ fontSize: 11, color: dim, ml: 0.5, ...numSx }}>
-        ({count})
-      </Box>
-      {expandGroup && group && (
+  const title = item.name || group?.title;
+
+  // Expanded: a dotted, uppercase group header with the ingredients listed beneath a
+  // left rule — the full breakdown shown in the (roomy) mobile day-card detail.
+  if (expandGroup && group) {
+    return (
+      <Box sx={{ fontSize: 13, lineHeight: 1.4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+          <Box
+            component="span"
+            sx={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              bgcolor: groupAccent ?? dim,
+              flexShrink: 0,
+            }}
+          />
+          <Box
+            component="span"
+            sx={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: dim,
+            }}
+          >
+            {title}
+          </Box>
+        </Box>
         <Box
           sx={{
+            ml: '2px',
             pl: 1.25,
-            mt: 0.5,
             display: 'flex',
             flexDirection: 'column',
-            gap: 0.25,
+            gap: 0.375,
             borderLeft: `1px solid ${tokens.border.subtle}`,
           }}
         >
@@ -120,7 +144,19 @@ export function MealItemLine({ item, muted, expandGroup }: MealItemLineProps) {
             </Box>
           ))}
         </Box>
-      )}
+      </Box>
+    );
+  }
+
+  // Collapsed: just the title + a count, used where space is tight (desktop strip).
+  return (
+    <Box sx={{ fontSize: 13, lineHeight: 1.4 }}>
+      <Box component="span" sx={{ color: ink, fontWeight: 500 }}>
+        {title}
+      </Box>
+      <Box component="span" sx={{ fontSize: 11, color: dim, ml: 0.5, ...numSx }}>
+        ({count})
+      </Box>
     </Box>
   );
 }
