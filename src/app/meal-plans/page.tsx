@@ -32,11 +32,14 @@ import {
 } from '../../lib/meal-plan-utils';
 import dynamic from 'next/dynamic';
 import AddFoodItemDialog from '../../components/AddFoodItemDialog';
-import { ShareMealPlansDialog } from '@/components/meal-plans/ShareMealPlansDialog';
+const ShareMealPlansDialog = dynamic(
+  () => import('@/components/meal-plans/ShareMealPlansDialog').then((m) => m.ShareMealPlansDialog),
+  { ssr: false }
+);
 const MealPlanCreateDialog = dynamic(() => import('@/components/MealPlanCreateDialog'), {
   ssr: false,
 });
-import { calculateEndDateAsString } from '../../lib/date-utils';
+import { calculateEndDateAsString } from '@/lib/date-utils';
 import { addDays } from 'date-fns';
 import {
   checkMealPlanOverlap,
@@ -55,7 +58,7 @@ import {
 import { useDialog, useConfirmDialog } from '@/lib/hooks';
 import { responsiveDialogStyle } from '@/lib/theme';
 import { DialogActions, DialogTitle } from '@/components/ui';
-import { formatDateForAPI } from '../../lib/date-utils';
+import { formatDateForAPI } from '@/lib/date-utils';
 import MealPlanBrowser from '../../components/MealPlanBrowser';
 
 // Compact section header used across the index (Current / Shared / Past).

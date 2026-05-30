@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { fetchRecipeEmojiMap } from '@/lib/recipe-utils';
 
 /**
  * Recipe `_id` -> emoji, joined at READ time. Meal items only persist
@@ -31,12 +32,8 @@ export function useRecipeEmojiMap(): Record<string, string> {
   const [map, setMap] = useState<Record<string, string>>({});
   useEffect(() => {
     let active = true;
-    fetch('/api/recipes?limit=1000')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data?.data ?? []);
-        const next: Record<string, string> = {};
-        for (const r of list) if (r?._id && r?.emoji) next[r._id] = r.emoji;
+    fetchRecipeEmojiMap()
+      .then((next) => {
         if (active) setMap(next);
       })
       .catch(() => {});
