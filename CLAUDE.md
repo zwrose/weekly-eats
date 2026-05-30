@@ -208,10 +208,10 @@ All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-
 
 | When                                   | Skill                                   | Output                                                                                                              |
 | -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Drafting a plan/spec                   | `/review-plan`                          | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER                                              |
+| Drafting a plan/spec                   | `/review-plan`                          | Revises the plan doc in place until it passes; verdict: PLAN READY / REVISE / RECONSIDER                            |
 | End of subagent-driven-dev (before PR) | `/review-code` (branch mode)            | Auto-fix loop: fixes findings + commits locally until clean. `--review-only` for a read-only terminal report.       |
 | PR open                                | `/review-code pr <N>` or `/review-code` | Auto-fix loop on the PR's branch (commits locally, never pushes). `--post` posts inline findings read-only instead. |
-| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues                                                        |
+| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog consolidated into proposed GitHub issues (all tiers); optional save-to-file                     |
 
 Each skill dispatches the same 4 specialist agents (architecture, code, security, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives. When a skill presents findings for your decision, the orchestrator attaches its own POV (Fix / Skip / Defer + rationale + confidence) per `REVIEW.md`.
 

@@ -58,20 +58,20 @@ If a justification is plausible but unverifiable (e.g., "this is intentional bec
 
 ## Triage Rubric (auto-fix loop)
 
-`/review-code`'s default auto-fix loop classifies every finding as `auto_fix` or `needs_user` via a triage subagent that reads this rubric. **Bias hard toward `auto_fix`** — the user's default is "fix everything that doesn't have a good reason not to fix." A finding is `needs_user` only when the _fix_ (not merely the surface area it touches) involves judgment.
+`/review-code`'s default auto-fix loop runs a triage subagent that reads this rubric and emits, for **every** finding, a **`mechanical` vs `judgment`** classification (about the _fix_, not the surface area it touches) plus an orchestrator **POV** (`Fix` / `Skip` / `Defer` — see Orchestrator POV below). The loop then **auto-fixes** a finding only when its `recommendation` is `Fix` AND its `classification` is `mechanical`; it **stops to ask the user** about every other finding (any `Skip`/`Defer`, or a `Fix` that is a `judgment` call). **Bias hard toward `mechanical`** — the user's default is "fix everything that doesn't have a good reason not to fix."
 
-A finding → **`needs_user`** when ANY of:
+A finding → **`judgment`** when ANY of:
 
-- `tradeoff: true` is set on the finding (multiple valid fix approaches). Authoritative — always defer.
+- `tradeoff: true` is set on the finding (multiple valid fix approaches). Authoritative.
 - The fix is a **UX judgment call**: user-visible copy/wording, layout or visual change, interaction-model choice, empty/error-state design — AND more than one reasonable design exists.
 - The fix would **change established product behavior** in a way the user may have an opinion on.
 
-A finding → **`auto_fix`** when the fix is **mechanical / determinate**, e.g.:
+A finding → **`mechanical`** when the fix is **determinate**, e.g.:
 
 - Add a missing `userId` filter; add an `ObjectId.isValid()` guard; replace a hardcoded string with an error constant from `@/lib/errors`.
 - Add a missing test; fix a clear off-by-one or logic bug with one correct answer.
 
-Decisive example: **"replace the hardcoded `'Not found'` string with `FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND`"** is mechanical → `auto_fix`. **"this empty-state needs copy and a layout decision"** is a judgment call → `needs_user`. Read the cited code to tell them apart.
+Decisive example: **"replace the hardcoded `'Not found'` string with `FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND`"** is `mechanical`. **"this empty-state needs copy and a layout decision"** is a `judgment` call. Read the cited code to tell them apart.
 
 ## Findings Output Format
 
@@ -121,9 +121,9 @@ This is the **coordinator's own judgment, not a re-review** — it does not disp
 - **Rationale** — one sentence saying why.
 - **Confidence** — **High** (orchestrator is sure) or **Low** (genuinely unsure — scrutinize this one). Low confidence is a feature, not a hedge: it tells the user where to look hardest.
 
-**Grounding rule.** Before emitting a POV on an **individually-presented** finding (Critical / Important), open the cited file at the cited line and read enough to judge — this is a small targeted read, not the full diff. For **batched Minor / Nit** findings, derive the POV from the finding text; open the file only when the text is insufficient to judge. This keeps the POV grounded without re-reading the whole change. (Exception: `/audit-debt` intentionally omits the Minor/Nit POV entirely — a full-repo sweep surfaces far more Minor/Nit than a diff review, and only its Critical/Important findings are filed as issues, so a POV on every Nit would bloat the backlog without informing a decision.)
+**Grounding rule.** Before emitting a POV on an **individually-presented** finding (Critical / Important), open the cited file at the cited line and read enough to judge — this is a small targeted read, not the full diff. For **batched Minor / Nit** findings, derive the POV from the finding text; open the file only when the text is insufficient to judge. This keeps the POV grounded without re-reading the whole change. (Exception: `/audit-debt` intentionally omits the Minor/Nit POV entirely — a full-repo sweep surfaces far more Minor/Nit than a diff review, and its Minor/Nit findings are filed by default without a POV (the POV only gates which Critical/Important findings become issues), so a POV on every Nit would bloat the backlog without informing a decision.)
 
-Each skill says exactly where this POV surfaces (`/review-code` folds it into the triage subagent for the loop's `needs_user` prompt, and forms it inline on the read-only paths; `/review-plan` and `/audit-debt` form it inline at presentation).
+Each skill says exactly where this POV surfaces (`/review-code` folds it into the triage subagent, which emits a POV for every finding, and surfaces it when the loop stops to ask about `Skip`/`Defer` or judgment-call fixes — and forms it inline on the read-only paths; `/review-plan` and `/audit-debt` form it inline at presentation).
 
 ## Single-Pass Discipline
 
