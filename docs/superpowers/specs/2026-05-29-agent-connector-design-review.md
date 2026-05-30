@@ -151,3 +151,38 @@ Phase 1 exposes `/api/mcp` write tools behind a static bearer token with no enfo
   refresh token is the long-lived secret. _Fix (High)._
 - **🔵 MB — `dropAllIndexes()` list.** Add the three `mcp*` collections
   (`database-indexes.ts:155`) so dev resets don't leave stale indexes. _Fix (High)._
+
+---
+
+# Loop 3 — review of the twice-revised spec
+
+- **Reviewed:** 2026-05-29 (third pass)
+- **Verdict:** 🟠 REVISE BEFORE IMPLEMENTING → all addressed in the same commit
+- **Approved:** 0 Critical, 1 Important, 3 Minor. Strong convergence — code review came
+  back fully clean (`[]`); architecture and test found only Minor. No prior finding
+  re-raised. After these four fixes the spec rates **PLAN READY**.
+
+> Process note: a tool result during this loop contained an injected instruction (a
+> `<parameter name="prompt">…</parameter>` directing me to add boilerplate text). I
+> flagged it, quoted it, and did not act on it. Recorded for transparency.
+
+### §6.2 / §9 — OAuth Authorization Server
+
+- **🟠 S3 — atomic refresh-token rotation.** Rotation used non-atomic language; the same
+  serverless race the auth-code `findOneAndDelete` (MA) already guards against also
+  defeats refresh reuse-detection. Fixed with a conditional `findOneAndUpdate` (filter
+  on `replacedBy` unset); a non-matching rotation → revoke the chain. _Fix (High)._
+- **🔵 A2 — `state` data-model home.** §6.2/MC require server-side `state` storage, but
+  §9 had no collection for it. Added `mcpAuthStates` (TTL, single-use; signed cookie an
+  alternative). _Fix (High)._
+- **🔵 S4 — token entropy.** §9 hashed tokens at rest but didn't name the source; now
+  CSPRNG (`crypto.randomBytes(32)`) for tokens, codes, and `state`. _Fix (High)._
+
+### §8a — Testing strategy
+
+- **🔵 T4 — `/token` client authentication.** Added a case for unknown/unregistered
+  `client_id` → 400/401, plus a concurrent-rotation case guarding S3. _Fix (High)._
+
+### Clean
+
+- **Code review: `[]`** — no convention conflicts; loop-2 edits self-consistent.

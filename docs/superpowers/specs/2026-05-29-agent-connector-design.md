@@ -121,7 +121,12 @@ at the Protected Resource Metadata URL.
   invalidates the prior one; replay of a rotated token revokes the whole chain) and an
   **idle/sliding expiry** (TTL resets on use) rather than a hard absolute lifetime — so
   active users are never forced to periodically re-authenticate, while leaked or
-  abandoned tokens still expire.
+  abandoned tokens still expire. **Rotation is atomic (S3):** perform it with a
+  conditional `findOneAndUpdate` (filter: `hashedToken = H(R1)` **and** `replacedBy`
+  unset **and** `revokedAt` null → set `replacedBy = H(R2)`, `revokedAt`). If no document
+  matched, the token was already rotated → revoke the whole chain. This mirrors the
+  auth-code `findOneAndDelete` pattern (MA) and prevents a serverless race where two
+  concurrent refreshes of the same token both succeed without tripping reuse detection.
 - **DCR abuse (I6):** `/register` is per-IP rate limited; `mcpClients` documents carry
   a TTL/last-used cleanup policy (see §9). Registration is open per RFC 7591 but
   bounded by the rate limit; restricting to Claude's known client metadata is an option
@@ -304,7 +309,14 @@ No changes to existing collections. New collections for the AS:
   concurrent serverless exchanges of one code cannot both succeed.
 - `mcpTokens` — access + refresh tokens bound to `userId`, with expiry and a
   `revokedAt` field. Refresh tokens use rotation (a `replacedBy`/chain reference) for
-  reuse detection and an idle/sliding TTL (§6.2).
+  reuse detection and an idle/sliding TTL; rotation is performed with an **atomic
+  conditional `findOneAndUpdate`** (S3, §6.2).
+- `mcpAuthStates` (A2) — one document per in-flight `/authorize` request, holding the
+  `state` nonce (or its hash), `clientId`, `redirectUri`, and a short TTL (~10 min).
+  Single-use: deleted on the callback after verification. This is where the I4 `state`
+  lives (the stateless runtime can't hold it in memory, and the auth code doesn't exist
+  yet at redirect time). A signed, short-lived server-side cookie is an acceptable
+  alternative; the collection is the default.
 
 **Storage format (M2 + S1):** access tokens, **refresh tokens**, and auth codes are all
 persisted as **SHA-256 hashes**, never plaintext — the raw secret is returned to the
@@ -312,6 +324,9 @@ client once at issuance and never stored. The token endpoint hashes an incoming 
 token before lookup and stores its rotated replacement as a hash. A database read
 therefore cannot impersonate a user or mint new tokens (refresh tokens are the
 long-lived secret, so hashing them is as important as hashing access tokens).
+**Generation (S4):** raw tokens, auth codes, and `state` nonces are generated from a
+CSPRNG (`crypto.randomBytes(32)`, ≥256 bits) — hashing at rest does not compensate for a
+weak source, so the entropy must come from generation.
 
 **Revocation (M3):** `/revoke` (and refresh-rotation/approval-loss) sets `revokedAt`
 rather than deleting the document, so `verifyToken` and the token endpoint **must check
@@ -319,10 +334,11 @@ rather than deleting the document, so `verifyToken` and the token endpoint **mus
 `revokedAt`), so MongoDB's eventual TTL deletion never races ahead of an explicit
 revocation check.
 
-Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`
-expiry; `mcpClients` cleanup; lookup indexes on the hashed-token fields). **Also add
-the three `mcp*` collections to the hardcoded list in `dropAllIndexes()`
-(`database-indexes.ts:155`) (MB)**, or dev/test resets leave stale `mcp*` indexes behind.
+Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`/
+`mcpAuthStates` expiry; `mcpClients` cleanup; lookup indexes on the hashed-token
+fields). **Also add the four `mcp*` collections to the hardcoded list in
+`dropAllIndexes()` (`database-indexes.ts:155`) (MB)**, or dev/test resets leave stale
+`mcp*` indexes behind.
 
 ## 10. Security considerations
 
@@ -395,6 +411,12 @@ the `mcp*` collections (MB); §6.3 calls out `ObjectId.isValid` (ME); and §8a g
 cases for hashed-bearer lookup (T1), idle TTL (T2), post-issuance live revocation (T3),
 `state` cross-session isolation (MC), the `/authorize` happy path (MD), and malformed
 ids (ME).
+
+Resolved during plan review loop 3 (see the same review file): refresh-token rotation is
+**atomic** via conditional `findOneAndUpdate` (S3); a new `mcpAuthStates` collection
+holds the I4 `state` nonce (A2); tokens/codes/state are generated from a CSPRNG (S4);
+and §8a adds `/token` unknown-`client_id` and concurrent-rotation cases (T4 + S3). With
+these, the review converged — no Critical/Important findings remain.
 
 Remaining:
 
