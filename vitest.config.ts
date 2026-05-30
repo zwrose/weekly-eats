@@ -9,11 +9,9 @@ export default defineConfig({
     setupFiles: ['./react-act.setup.ts', './vitest.setup.ts'],
     isolate: true, // Ensure each test file runs in isolation
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true, // Use single fork for better isolation
-      },
-    },
+    // Vitest 4 removed poolOptions.forks.singleFork; maxWorkers: 1 is the
+    // equivalent (one forked process, modules re-isolated per file via isolate).
+    maxWorkers: 1,
     environmentOptions: {
       jsdom: {
         url: 'http://localhost/',
@@ -42,8 +40,6 @@ export default defineConfig({
         'dist/**',
         'build/**',
       ],
-      // Ensure coverage only processes source files, not compiled output
-      all: false,
     },
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
