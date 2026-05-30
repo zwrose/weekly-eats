@@ -14,6 +14,7 @@ import {
 } from '@/lib/meal-plan-utils';
 import { MealEditorDialog } from './MealEditorDialog';
 import { MealItemLine } from './MealItemLine';
+import { ConfirmDialog } from './ConfirmDialog';
 import { MEAL_LABEL, MEAL_ORDER, mealColorToken, mealItemCount } from './meal-display-utils';
 
 const DAY_CHIPS: { label: string; value: DayOfWeek }[] = [
@@ -50,9 +51,12 @@ const FieldLabel = ({ children }: { children: React.ReactNode }) => (
 export function TemplateSettings() {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Baseline the loaded template so we can detect unsaved edits before navigating away.
+  const [initial, setInitial] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [staplesOpen, setStaplesOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,11 +66,13 @@ export function TemplateSettings() {
         | { startDay: DayOfWeek; meals: Record<MealType, boolean>; weeklyStaples?: MealItem[] }
     ) => {
       if (cancelled) return;
-      setDraft({
+      const next: Draft = {
         startDay: base.startDay,
         meals: { ...base.meals },
         weeklyStaples: base.weeklyStaples ?? [],
-      });
+      };
+      setDraft(next);
+      setInitial(next);
     };
     fetchMealPlanTemplate()
       .then((t) => applyBase(t ?? DEFAULT_TEMPLATE))
@@ -80,7 +86,14 @@ export function TemplateSettings() {
     };
   }, []);
 
-  const back = useCallback(() => router.push('/meal-plans'), [router]);
+  const dirty =
+    draft != null && initial != null && JSON.stringify(draft) !== JSON.stringify(initial);
+
+  // Back to the index — but confirm first if there are unsaved edits.
+  const back = useCallback(() => {
+    if (dirty) setDiscardOpen(true);
+    else router.push('/meal-plans');
+  }, [dirty, router]);
 
   const save = async () => {
     if (!draft) return;
@@ -342,6 +355,20 @@ export function TemplateSettings() {
         }}
         onClose={() => setStaplesOpen(false)}
         onFoodItemAdded={noopFoodItemAdded}
+      />
+
+      {/* Discard-changes guard on leaving with unsaved edits */}
+      <ConfirmDialog
+        open={discardOpen}
+        title="Discard changes?"
+        body="You've made changes to your template. They won't be saved."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          router.push('/meal-plans');
+        }}
+        onCancel={() => setDiscardOpen(false)}
       />
     </Box>
   );

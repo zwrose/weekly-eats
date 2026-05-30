@@ -84,13 +84,36 @@ describe('TemplateSettings (template route)', () => {
     expect(captured[0]?.meals?.lunch).toBe(false);
   });
 
-  it('the back button navigates to the index', async () => {
+  it('the back button navigates to the index when there are no unsaved changes', async () => {
     const user = userEvent.setup();
     server.use(http.get('/api/meal-plans/template', () => HttpResponse.json(template)));
     render(<TemplateSettings />);
     await waitFor(() => expect(screen.getByText('Your default plan shape')).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /Plans/ }));
+    expect(push).toHaveBeenCalledWith('/meal-plans');
+  });
+
+  it('warns before discarding unsaved changes on leave; Keep editing stays, Discard leaves', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/meal-plans/template', () => HttpResponse.json(template)));
+    render(<TemplateSettings />);
+    await waitFor(() => expect(screen.getByText('Your default plan shape')).toBeInTheDocument());
+
+    // Make an edit, then try to leave → discard prompt instead of navigating.
+    await user.click(screen.getByRole('button', { name: 'Fri' }));
+    await user.click(screen.getByRole('button', { name: /Plans/ }));
+    expect(screen.getByText('Discard changes?')).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+
+    // Keep editing → stays put (wait for the modal to fully dismiss).
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(screen.queryByText('Discard changes?')).not.toBeInTheDocument());
+    expect(push).not.toHaveBeenCalled();
+
+    // Leave again, then Discard → navigates.
+    await user.click(screen.getByRole('button', { name: /Plans/ }));
+    await user.click(screen.getByRole('button', { name: 'Discard' }));
     expect(push).toHaveBeenCalledWith('/meal-plans');
   });
 
