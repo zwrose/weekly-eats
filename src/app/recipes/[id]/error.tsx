@@ -1,7 +1,13 @@
 'use client';
 import { Alert, Box, Button, Container } from '@mui/material';
 
-export default function RecipeDetailError({ error, reset }: { error: Error; reset: () => void }) {
+export default function RecipeDetailError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Alert severity="error" sx={{ mb: 2 }}>
