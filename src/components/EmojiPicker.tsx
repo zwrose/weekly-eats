@@ -14,7 +14,7 @@ interface EmojiPickerProps {
 }
 
 // Food and cooking related emojis with descriptions
-const FOOD_EMOJIS = [
+export const FOOD_EMOJIS = [
   // Stores & Shopping
   { emoji: '🏪', description: 'convenience store' },
   { emoji: '🛒', description: 'shopping cart' },
