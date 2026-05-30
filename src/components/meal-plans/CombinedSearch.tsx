@@ -175,77 +175,8 @@ export function CombinedSearch({
     // The sticky footer bg matches the editor dialog's surface (surface.sheet) so it
     // blends seamlessly instead of showing a darker band against the dialog body.
     <Box sx={{ position: 'sticky', bottom: 0, pt: 1.25, pb: 2, bgcolor: tokens.surface.sheet }}>
-      {/* Results — a separate floating list (the scrolling section), distinct from the box. */}
-      {open && hasResults && (
-        <Box
-          ref={listRef}
-          sx={{
-            mb: 1,
-            bgcolor: 'background.paper',
-            border: `1px solid ${tokens.border.subtle}`,
-            borderRadius: `${tokens.radius.xl}px`,
-            overflow: 'hidden',
-            maxHeight: 240,
-            overflowY: 'auto',
-          }}
-        >
-          {recipes.length > 0 && <SectionLabel>Recipes</SectionLabel>}
-          {recipes.map((o, i) => (
-            <Box
-              key={o._id}
-              data-active={i === activeIndex ? 'true' : undefined}
-              onMouseEnter={() => setActiveIndex(i)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                addOption(o);
-              }}
-              sx={rowSx(i, {
-                display: 'flex',
-                gap: 0.875,
-                alignItems: 'center',
-                fontSize: 14,
-                opacity: o.isExcluded ? 0.4 : 1,
-              })}
-            >
-              {o.type === 'recipe' && o.emoji && (
-                <Box component="span" sx={{ fontSize: 15, lineHeight: 1 }}>
-                  {o.emoji}
-                </Box>
-              )}
-              {/* Recipe names are plain content (the emoji + section header mark them) —
-                  not styled in the accent color reserved for links/actions. */}
-              <Box component="span" sx={{ color: tokens.text.primary, fontWeight: 500 }}>
-                {o.type === 'recipe' ? o.title : ''}
-              </Box>
-            </Box>
-          ))}
-          {foods.length > 0 && <SectionLabel>Food items</SectionLabel>}
-          {foods.map((o, j) => {
-            const idx = recipes.length + j;
-            return (
-              <Box
-                key={o._id}
-                data-active={idx === activeIndex ? 'true' : undefined}
-                onMouseEnter={() => setActiveIndex(idx)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  addOption(o);
-                }}
-                sx={rowSx(idx, {
-                  fontSize: 14,
-                  color: tokens.text.primary,
-                  opacity: o.isExcluded ? 0.4 : 1,
-                })}
-              >
-                {o.type === 'foodItem' ? o.name : ''}
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {/* The search box: its Create actions + the input share one surface + focus ring,
-          so the actions read as belonging to the box, not the results list. */}
+      {/* One bordered surface holds the results, the Create actions, and the input — sharing a
+          single focus ring so the results read as part of the box rather than a detached list. */}
       <Box
         sx={{
           bgcolor: tokens.surface.elevated,
@@ -255,6 +186,71 @@ export function CombinedSearch({
           overflow: 'hidden',
         }}
       >
+        {/* Results — the scrolling section, divided from the actions/input below by a hairline. */}
+        {open && hasResults && (
+          <Box
+            ref={listRef}
+            sx={{
+              maxHeight: 240,
+              overflowY: 'auto',
+              borderBottom: `1px solid ${tokens.border.subtle}`,
+            }}
+          >
+            {recipes.length > 0 && <SectionLabel>Recipes</SectionLabel>}
+            {recipes.map((o, i) => (
+              <Box
+                key={o._id}
+                data-active={i === activeIndex ? 'true' : undefined}
+                onMouseEnter={() => setActiveIndex(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  addOption(o);
+                }}
+                sx={rowSx(i, {
+                  display: 'flex',
+                  gap: 0.875,
+                  alignItems: 'center',
+                  fontSize: 14,
+                  opacity: o.isExcluded ? 0.4 : 1,
+                })}
+              >
+                {o.type === 'recipe' && o.emoji && (
+                  <Box component="span" sx={{ fontSize: 15, lineHeight: 1 }}>
+                    {o.emoji}
+                  </Box>
+                )}
+                {/* Recipe names are plain content (the emoji + section header mark them) —
+                  not styled in the accent color reserved for links/actions. */}
+                <Box component="span" sx={{ color: tokens.text.primary, fontWeight: 500 }}>
+                  {o.type === 'recipe' ? o.title : ''}
+                </Box>
+              </Box>
+            ))}
+            {foods.length > 0 && <SectionLabel>Food items</SectionLabel>}
+            {foods.map((o, j) => {
+              const idx = recipes.length + j;
+              return (
+                <Box
+                  key={o._id}
+                  data-active={idx === activeIndex ? 'true' : undefined}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addOption(o);
+                  }}
+                  sx={rowSx(idx, {
+                    fontSize: 14,
+                    color: tokens.text.primary,
+                    opacity: o.isExcluded ? 0.4 : 1,
+                  })}
+                >
+                  {o.type === 'foodItem' ? o.name : ''}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+
         {open && hasCreate && (
           <Box sx={{ pt: 0.5 }}>
             {!hasResults && (
