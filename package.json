@@ -42,7 +42,7 @@
     "@mui/x-date-pickers": "^8.5.3",
     "@wei/pluralize": "npm:@jsr/wei__pluralize@^8.0.2",
     "ably": "^1.2.48",
-    "convert": "^6.0.0",
+    "convert": "^7.0.0",
     "date-fns": "^4.1.0",
     "mongodb": "^6.17.0",
     "next": "15.5.18",
