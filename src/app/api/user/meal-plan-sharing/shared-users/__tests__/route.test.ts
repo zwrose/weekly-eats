@@ -44,22 +44,22 @@ describe('api/user/meal-plan-sharing/shared-users GET', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns an empty array when the user has no accepted invitations', async () => {
+  it('returns an empty array (no lookup) when there are no pending/accepted invitations', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: VALID_ID } });
     findOneMock.mockResolvedValueOnce({
       _id: VALID_ID,
-      settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'pending' }] } },
+      settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'rejected' }] } },
     });
 
     const res = await routes.GET();
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual([]);
-    // No lookup of shared users when nothing is accepted
+    // No lookup of shared users when nothing is pending/accepted
     expect(findMock).not.toHaveBeenCalled();
   });
 
-  it('returns shared user info for accepted invitations', async () => {
+  it('returns shared user info + status for accepted invitations', async () => {
     (getServerSession as any).mockResolvedValueOnce({ user: { id: VALID_ID } });
     findOneMock.mockResolvedValueOnce({
       _id: VALID_ID,
@@ -76,6 +76,25 @@ describe('api/user/meal-plan-sharing/shared-users GET', () => {
     expect(json[0].userId).toBe(SHARED_ID);
     expect(json[0].email).toBe('shared@example.com');
     expect(json[0].name).toBe('Shared User');
+    expect(json[0].status).toBe('accepted');
+  });
+
+  it('includes pending invitees with a pending status', async () => {
+    (getServerSession as any).mockResolvedValueOnce({ user: { id: VALID_ID } });
+    findOneMock.mockResolvedValueOnce({
+      _id: VALID_ID,
+      settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'pending' }] } },
+    });
+    toArrayMock.mockResolvedValueOnce([
+      { _id: SHARED_ID, email: 'pending@example.com', name: 'Pending User' },
+    ]);
+
+    const res = await routes.GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toHaveLength(1);
+    expect(json[0].userId).toBe(SHARED_ID);
+    expect(json[0].status).toBe('pending');
   });
 
   it('returns 500 when the DB throws', async () => {

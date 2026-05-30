@@ -11,10 +11,19 @@ const pending: PendingMealPlanInvitation[] = [
     ownerId: 'o1',
     ownerEmail: 'sara@example.com',
     ownerName: 'Sara Rose',
-    invitation: { userId: 'o1', status: 'pending', invitedAt: new Date('2026-01-01') },
+    invitation: {
+      userId: 'o1',
+      userEmail: 'sara@example.com',
+      status: 'pending',
+      invitedBy: 'o1',
+      invitedAt: new Date('2026-01-01'),
+    },
   },
 ];
-const shared: SharedUser[] = [{ userId: 'u2', email: 'casey@example.com', name: 'Casey Lin' }];
+const shared: SharedUser[] = [
+  { userId: 'u2', email: 'casey@example.com', name: 'Casey Lin', status: 'accepted' },
+  { userId: 'u3', email: 'pat@example.com', name: 'Pat Kim', status: 'pending' },
+];
 
 const baseProps = {
   open: true,
@@ -51,14 +60,17 @@ describe('ShareMealPlansDialog', () => {
     expect(onReject).toHaveBeenCalledWith('o1');
   });
 
-  it('lists shared users and remove calls onRemove with the user id', async () => {
+  it('lists shared users with status pills and remove calls onRemove with the user id', async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
     render(<ShareMealPlansDialog {...baseProps} sharedUsers={shared} onRemove={onRemove} />);
     expect(screen.getByText('Casey Lin')).toBeInTheDocument();
     expect(screen.getByText('casey@example.com')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /remove Casey Lin/i }));
-    expect(onRemove).toHaveBeenCalledWith('u2');
+    // Status pills surface accepted vs pending invitees.
+    expect(screen.getByText('accepted')).toBeInTheDocument();
+    expect(screen.getByText('pending')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /remove Pat Kim/i }));
+    expect(onRemove).toHaveBeenCalledWith('u3');
   });
 
   it('invite is disabled until an email is entered; Invite + Enter both fire onInvite', async () => {

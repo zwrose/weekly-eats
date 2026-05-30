@@ -64,6 +64,29 @@ const Avatar = ({ name, size = 32 }: { name: string; size?: number }) => (
   </Box>
 );
 
+const StatusPill = ({ status }: { status: 'pending' | 'accepted' }) => {
+  const accepted = status === 'accepted';
+  return (
+    <Box
+      component="span"
+      sx={{
+        flexShrink: 0,
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        px: 0.75,
+        py: '3px',
+        borderRadius: `${tokens.radius.xs}px`,
+        color: accepted ? tokens.state.success : tokens.state.warn,
+        bgcolor: accepted ? tokens.state.successMuted : tokens.state.warnMuted,
+      }}
+    >
+      {status}
+    </Box>
+  );
+};
+
 function Body({
   onClose,
   pendingInvitations,
@@ -281,6 +304,7 @@ function Body({
                         {user.email}
                       </Box>
                     </Box>
+                    {user.status && <StatusPill status={user.status} />}
                     <IconButton
                       aria-label={`Remove ${name}`}
                       onClick={() => onRemove(user.userId)}
