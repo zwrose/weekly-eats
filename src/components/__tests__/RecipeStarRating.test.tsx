@@ -183,12 +183,10 @@ describe('RecipeStarRating', () => {
       const user = userEvent.setup();
       render(<RecipeStarRating rating={3} onChange={mockOnChange} editable={false} />);
 
-      const stars = screen.getAllByRole('button');
-      if (stars.length > 0) {
-        await user.hover(stars[0]);
-        // Hover state should not change (component should handle this)
-        expect(stars[0]).toBeInTheDocument();
-      }
+      // Read-only mode renders static icons, not interactive buttons.
+      // queryAllByRole returns [] (getAllByRole throws on zero matches).
+      const stars = screen.queryAllByRole('button');
+      expect(stars).toHaveLength(0);
     });
 
     it('does not call onChange if onChange is not provided', async () => {
