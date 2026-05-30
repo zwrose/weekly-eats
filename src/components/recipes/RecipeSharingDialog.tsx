@@ -121,7 +121,7 @@ function Body({
   emailRef,
   sheet,
 }: BodyProps) {
-  const canInvite = shareEmail.trim().length > 0;
+  const canInvite = shareEmail.trim().length > 0 && (shareTags || shareRatings);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: sheet ? undefined : 480 }}>
@@ -179,7 +179,7 @@ function Body({
             <FieldLabel>Pending invitations · {pendingInvitations.length}</FieldLabel>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.25 }}>
               {pendingInvitations.map((inv) => {
-                const name = inv.invitation.userName || inv.invitation.userEmail;
+                const name = inv.ownerName || inv.ownerEmail;
                 const types = inv.invitation.sharingTypes.join(' + ');
                 return (
                   <Box

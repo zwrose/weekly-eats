@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeSharingDialog } from '../RecipeSharingDialog';
+import type { PendingRecipeInvitation } from '@/lib/recipe-sharing-utils';
 
 afterEach(cleanup);
 
@@ -11,17 +12,20 @@ const baseProps = {
   onClose: vi.fn(),
   pendingInvitations: [
     {
+      ownerId: 'o1',
+      ownerEmail: 'sara@x.com',
+      ownerName: 'Sara',
       invitation: {
         userId: 'p1',
-        userEmail: 'sara@x.com',
-        userName: 'Sara',
-        status: 'pending',
-        invitedBy: 'me',
+        userEmail: 'me@x.com',
+        userName: 'Me',
+        status: 'pending' as const,
+        invitedBy: 'o1',
         invitedAt: '2026-05-01',
-        sharingTypes: ['tags', 'ratings'],
+        sharingTypes: ['tags', 'ratings'] as ('tags' | 'ratings')[],
       },
     },
-  ],
+  ] satisfies PendingRecipeInvitation[],
   onAcceptInvitation: vi.fn(),
   onRejectInvitation: vi.fn(),
   shareTags: true,
