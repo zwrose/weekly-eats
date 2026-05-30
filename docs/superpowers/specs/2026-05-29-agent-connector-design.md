@@ -282,6 +282,15 @@ adapter. (Neither `mcp-handler` nor `@modelcontextprotocol/sdk` ships a reusable
 Authorization Server; the SDK removed `ProxyOAuthServerProvider`/`mcpAuthRouter`. The AS
 is hand-rolled by necessity, not just by preference — see §4.)
 
+> **Phase-1 contrast — carryover, do not lose (2026-05-30).** The Phase-1 dev-token gate
+> (`src/lib/mcp/verify-token.ts`, §11) intentionally **trusts `MCP_DEV_USER_ID` verbatim**
+> and hardcodes `isApproved: true` — it does **no** `users` lookup and never confirms the id
+> maps to a real, approved user. That is acceptable ONLY because the gate is dev-only and
+> fully inert in production (`NODE_ENV !== 'production'` + both env vars required). When
+> Phase 2 replaces `verify-token.ts`, the live `users` approval lookup above (M1) is the
+> required replacement — the static-id trust **must not** carry over. Surfaced by the Phase-1
+> `/review-code` pass; deferred to Phase 2 by explicit decision.
+
 ### 6.5 MCP tools
 
 Thin wrappers over the service layer, grouped by domain. Each tool: zod input schema,

@@ -150,6 +150,23 @@ aren't worth a spec rewrite.
 - **2026-05-30 — `food_items.create` forces `isGlobal:false` in the TOOL wrapper, not the
   service (A1).** Keeps "routes and tools call identical service functions" true; the
   service still accepts `isGlobal` (HTTP behavior preserved), the MCP tool overrides it.
+- **2026-05-30 — Phase-1 `/review-code` pass: clean (READY FOR PR), one Phase-2 carryover.**
+  Branch-mode multi-agent review of all of Phase 1 (commit `57259a7`): **0 Critical, 0
+  Important; security dimension clean.** Auto-fixed 4 Minor/Nit findings — hoisted the
+  duplicated `ToolServer` interface into `tool-helpers.ts`, and added 3 test-coverage cases
+  (`searchFoodItems` text-search `$and` scope, `searchRecipes` text-search ownership scope,
+  `verifyToken` same-length wrong-token to exercise `timingSafeEqual`). Deliberately NOT
+  changed: the `[id]`-route DELETE/PUT stayed inline (YAGNI scope), the two domain-specific
+  `computeAccessLevel` funcs stayed separate (no shared helper exists; different access
+  models), and the invalid-food-item-id message change (`'Bad request'` → `'Invalid food
+item ID'`, same 400) was **accepted** as an improvement matching the recipes route — note
+  it in the PR description. **Carryover to Phase 2:** the dev gate trusts `MCP_DEV_USER_ID`
+  verbatim + hardcodes `isApproved:true` with no `users` lookup (accepted: dev-only,
+  prod-inert). Phase 2's live-lookup `verifyToken` (spec §6.4 M1) is the required
+  replacement — the static-id trust must not carry over. Now noted in the spec §6.4.
+  (Process note: the orchestrator initially confabulated a different finding set from
+  garbled terminal output and had to be corrected against the agents' real JSON — the
+  reliability caveat below, again.)
 - **2026-05-30 — Seed recipe ingredient ids must be hex strings (bug fix, commit `cc10ea9`).**
   Manual verify surfaced "failed to fetch" on every _seeded_ recipe (organically-created
   ones were fine). Root cause was NOT in Phase-1 app code: the `recipes` seed block
