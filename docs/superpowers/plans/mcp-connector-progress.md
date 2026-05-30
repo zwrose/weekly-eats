@@ -21,7 +21,7 @@ all phases land.
 | --- | ------------------------------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
 | 1   | Service layer + recipes/food-items MCP tools (dev-token)     | **DONE** — code + manual verify + review-code (clean)                   | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
 | 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | **DONE** — merged to `main` (#146) + pulled into `feat/mcp` (`45bcd2b`) | — _(user effort)_                                                                                                        | —                                                                              | 2026-05-30 |
-| 2   | OAuth AS + approval-gated verification + deploy              | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
+| 2   | OAuth AS + approval-gated verification + deploy              | **DONE** — code + review-code (clean) + `npm run check` green           | [`plan`](2026-05-30-mcp-phase-2-oauth-as-plan.md)                                                                        | —                                                                              | 2026-05-30 |
 | 3   | `recipe-import` skill                                        | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
 | 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
 
@@ -32,34 +32,13 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
-**▶ PHASE 1 IS DONE (2026-05-30).** Pushed to `feat/mcp` (PR #140, HEAD `60e5581`). Built via
-`writing-plans` → 3-loop `review-plan` (clean) → `subagent-driven-development` (11 TDD tasks)
-→ `review-code` (1 round, clean: 0 Critical/Important, security clean, 4 Minor/Nit auto-fixed
-in `57259a7`) → `npm run check` green (**1488 tests**, lint 0, build OK) → synced with `main`
-→ **manual end-to-end verify passed** (all 3 checklist sections). Two bugs found + fixed during
-verify (`cc10ea9`, `920d771`). One Phase-2 carryover noted in spec §6.4 (dev-gate
-`MCP_DEV_USER_ID` trust → replace with the live users-lookup verifier). `/code-review ultra`
-is still recommended but optional — user's call; not blocking the phase.
+**▶ PHASE 2 IS DONE (2026-05-30).** Built via `writing-plans` → `review-plan` → `subagent-driven-development` (22 TDD tasks, two-stage review per task) → `review-code` (clean) → `npm run check` green. Delivers the full hand-rolled OAuth 2.1 AS: DCR (`register`), PKCE authorize flow with consent screen, `token` (auth-code exchange + refresh rotation with reuse detection), `revoke`, two `/.well-known/*` discovery docs via `next.config.ts` rewrites, six `mcp*` MongoDB collections (all secrets SHA-256-hashed / CSPRNG / single-use atomic / expiry-checked at use), rewritten `verifyToken` with live approval lookup on every call (M1 + audience R3 + dev token removed). **▶ NEXT: Phase 3 (recipe-import skill).**
 
-**▶ CURRENT SEQUENCING (updated 2026-05-30):** Phase 1.5 (#142 Auth.js v5) is **DONE** — merged
-to `main` (#146) and **pulled into `feat/mcp`** via merge `45bcd2b` (also brought ably v2 / #141).
-`feat/mcp` now sits on the Auth.js v5 foundation: `npm run check` green (**1500 tests**, lint 0,
-build OK) with **zero source fallout** — only `middleware.ts`/`middleware.test.ts` conflicted
-(re-applied the `/api/mcp` exemption on the v5 `auth((req)=>…)` wrapper) plus the lockfile.
-Phase 1 production code composed cleanly because it rides on `requireApprovedSession` (signature
-unchanged by v5; body now calls `auth()`). **▶ NEXT: Phase 2 (OAuth AS) is now unblocked** —
-plan it via `writing-plans`. When planning, the v5 wiring is in place: the AS login leg delegates
-to Auth.js v5 (`auth()` + the new redirect proxy — see `docs/superpowers/specs/2026-05-30-auth-v5-redirect-proxy-design.md`,
-merged from #142), and resolve the spec §6.4 `MCP_DEV_USER_ID` carryover (live users-lookup in
-the new token verifier). Do NOT start Phase 2 build without the user.
+**▶ CURRENT SEQUENCING (updated 2026-05-30):** Phase 2 (OAuth AS) is **DONE** — `npm run check` green, branch `feat/mcp`. Plan Phase 3 via `writing-plans` before starting code.
 
-**Historical (Phase 1 build narrative, kept for reference):** Built 2026-05-30 via
-`writing-plans` → `review-plan` → `subagent-driven-development` (11 tasks, TDD) →
-`review-code` → `npm run check`. Manual-test data seeded for `zwrose@gmail.com`
-(13 food items, 5 recipes); checklist on
-[PR #140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
+**Historical (Phase 1 + 1.5 build narrative, kept for reference):** Phase 1 pushed to `feat/mcp` (PR #140, HEAD `60e5581`). Built via `writing-plans` → 3-loop `review-plan` (clean) → `subagent-driven-development` (11 TDD tasks) → `review-code` (1 round, clean: 0 Critical/Important, security clean, 4 Minor/Nit auto-fixed in `57259a7`) → `npm run check` green (**1488 tests**, lint 0, build OK) → synced with `main` → **manual end-to-end verify passed** (all 3 checklist sections). Phase 1.5 (#142 Auth.js v5) merged to `main` (#146) and pulled into `feat/mcp` via merge `45bcd2b`; `npm run check` green (**1500 tests**) with zero source fallout.
 
-**Manual/end-to-end verification COMPLETE (2026-05-30).** User connected MCP Inspector to
+**Manual/end-to-end verification COMPLETE (2026-05-30, Phase 1).** User connected MCP Inspector to
 `/api/mcp` with the dev token and walked the full checklist: section A (browser regression),
 section B (all 7 tools — search/get/create/update for both domains, isGlobal-forced-false,
 error mapping), section C (401 gate: no-auth→401, wrong-token→401, correct-token→200,
@@ -116,6 +95,12 @@ type`); covered instead by verify-token unit tests + the register smoke test.
 
 Dated entries for things decided during design/review that affect implementation but
 aren't worth a spec rewrite.
+
+- **2026-05-30 — Phase 2 open questions resolved + §6.4 carryover closed.**
+  (a) **Login leg:** reuses the app's existing landing-page Google sign-in via a relative `callbackUrl` — NOT a programmatic `signIn()` call. No second identity system. The AS `/authorize` redirects the user to the landing page with a `callbackUrl` pointing back into the OAuth flow; Auth.js v5 handles the Google round-trip transparently.
+  (b) **OAuth wire error constants:** resolved as `MCP_OAUTH_ERRORS` — a dedicated group in `src/lib/errors.ts` holding RFC-literal values (e.g. `invalid_client`, `invalid_grant`, `rate_limited`). This is a documented exemption to the no-hardcoded-strings rule; the RFC requires these exact strings on the wire.
+  (c) **§6.4 dev-token carryover CLOSED:** the static `MCP_DEV_TOKEN`/`MCP_DEV_USER_ID` path has been removed from `verifyToken`. The live-lookup OAuth verifier is the only auth path. C1 regression test confirms the dev path is inert (rejects any token not in `mcpTokens`).
+  (d) **DCR rate limiter is best-effort:** the per-IP counter is a serverless read-then-write (not atomic), so it is a bound, not a hard control. Accepted — the cost of a DCR burst is low and the alternative (distributed atomic counters) is disproportionate.
 
 - **2026-05-30 — Hand-rolled OAuth AS is forced, not just preferred.** Dedicated research
   (25 primary-source claims) confirmed `@modelcontextprotocol/sdk` **removed**

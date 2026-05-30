@@ -231,6 +231,65 @@ const collection = db.collection('recipes');
 
 ---
 
+## MCP Agent Connector (OAuth 2.1 AS)
+
+The app hosts a self-contained Claude Connector: a **Resource Server** at `/api/mcp` plus a **hand-rolled OAuth 2.1 Authorization Server** under `/api/mcp/oauth/*`.
+
+### Resource Server and Token Verification
+
+`src/lib/mcp/verify-token.ts` is the single security chokepoint for all MCP tool calls. On every request it:
+
+- Looks up the SHA-256 hash of the Bearer token in `mcpTokens` (never compares plaintext)
+- Rejects non-access tokens (e.g. refresh tokens presented as Bearer)
+- Checks at-use expiry (TTL indexes are cleanup only; expiry is enforced here)
+- Checks the `revokedAt` field
+- Validates RFC 8707 `resource`/audience binding
+- Performs a **live `users` collection lookup** on every call — a revoked approval takes effect immediately (M1 gate)
+
+The Phase-1 static dev token (`MCP_DEV_TOKEN`) has been removed; the live-lookup verifier is the only path.
+
+### OAuth 2.1 Authorization Server
+
+Endpoints under `/api/mcp/oauth/`:
+
+| Endpoint             | Purpose                                                                                                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `register`           | RFC 7591 Dynamic Client Registration. Per-IP rate limited. Validates HTTPS/loopback `redirect_uri`.                                                                                                                                                          |
+| `authorize`          | PKCE S256-only. Issues a server `state` nonce. Delegates human login to the existing Auth.js v5 + Google flow via a relative `callbackUrl` (no second identity system). Live approval gate before code issuance on every path. Routes to the consent screen. |
+| `authorize/decision` | Allow/Deny POST from the consent screen.                                                                                                                                                                                                                     |
+| `token`              | PKCE auth-code exchange. Refresh-token rotation with reuse detection. Live approval re-check on every exchange.                                                                                                                                              |
+| `revoke`             | RFC 7009 token revocation.                                                                                                                                                                                                                                   |
+
+### Discovery Documents
+
+Two `/.well-known/*` metadata documents are served via rewrites in `next.config.ts` (Next.js ignores dot-prefixed directories, so the actual handlers live under `/api/mcp/oauth/*-metadata`):
+
+- `/.well-known/oauth-protected-resource` → RFC 9728 Protected Resource Metadata
+- `/.well-known/oauth-authorization-server` → RFC 8414 AS Metadata
+
+### Consent Screen
+
+`/mcp/consent` is the one new connector UI — a server-rendered, minimal, responsive consent page shown during the authorization flow.
+
+### Collections and Secret Storage
+
+Six new MongoDB collections support the OAuth AS:
+
+| Collection      | Purpose                                          |
+| --------------- | ------------------------------------------------ |
+| `mcpClients`    | Registered OAuth clients (DCR)                   |
+| `mcpAuthCodes`  | Short-lived authorization codes                  |
+| `mcpTokens`     | Access and refresh tokens                        |
+| `mcpAuthStates` | Server-issued `state` nonces for CSRF protection |
+| `mcpConsents`   | Per-user consent records                         |
+| `mcpRateLimits` | DCR per-IP rate-limit counters                   |
+
+All tokens, codes, and state nonces are stored SHA-256-hashed (never plaintext). Values are generated from a CSPRNG, single-use-enforced via atomic MongoDB ops (`findOneAndDelete` / conditional `findOneAndUpdate`), and expiry-checked at use. TTL indexes handle cleanup only.
+
+`MCP_ISSUER_URL` (optional env var) overrides the request-derived issuer/resource origin; otherwise the issuer is derived from proxy forwarding headers.
+
+---
+
 ## Key Subsystems
 
 ### Unit Deconfliction Engine
