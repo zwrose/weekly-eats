@@ -171,6 +171,27 @@ export const RECIPE_SHARING_ERRORS = {
   NOT_AUTHORIZED: 'Not authorized to perform this action',
 } as const;
 
+// OAuth 2.1 protocol error codes (RFC 6749 §4.1.2.1 / §5.2, RFC 6750, RFC 8628).
+// These are wire-format literals defined by the RFCs — kept here as the single
+// source of truth. RFC-literal exemption to the "no hardcoded strings" rule.
+export const MCP_OAUTH_ERRORS = {
+  INVALID_REQUEST: 'invalid_request',
+  INVALID_CLIENT: 'invalid_client',
+  INVALID_GRANT: 'invalid_grant',
+  UNAUTHORIZED_CLIENT: 'unauthorized_client',
+  UNSUPPORTED_GRANT_TYPE: 'unsupported_grant_type',
+  UNSUPPORTED_RESPONSE_TYPE: 'unsupported_response_type',
+  INVALID_SCOPE: 'invalid_scope',
+  ACCESS_DENIED: 'access_denied',
+  INVALID_TOKEN: 'invalid_token',
+  SERVER_ERROR: 'server_error',
+  // Custom (NOT an OAuth-RFC code): emitted by the rate-limited DCR endpoint.
+  // Kept here so every wire error string has one source of truth.
+  RATE_LIMITED: 'rate_limited',
+} as const;
+
+export type McpOAuthError = (typeof MCP_OAUTH_ERRORS)[keyof typeof MCP_OAUTH_ERRORS];
+
 // Helper function to create consistent error responses
 export const createErrorResponse = (message: string, status: number = 500) => {
   return {
