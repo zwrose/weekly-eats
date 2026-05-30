@@ -106,4 +106,12 @@ describe('jwt callback', () => {
     expect(findOne).toHaveBeenCalledWith({ email: 'user@example.com' });
     expect(result.isApproved).toBe(true);
   });
+
+  it('fetches DB claims on first hydration when isAdmin is undefined (no trigger)', async () => {
+    const findOne = vi.fn().mockResolvedValue({ isAdmin: false, isApproved: true });
+    mockGetMongoClient.mockResolvedValue({ db: () => ({ collection: () => ({ findOne }) }) });
+    const result = await jwtCallback({ token: { email: 'u@example.com' } as JWT });
+    expect(findOne).toHaveBeenCalled();
+    expect(result.isApproved).toBe(true);
+  });
 });

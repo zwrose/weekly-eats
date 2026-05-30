@@ -58,6 +58,11 @@ describe('middleware approval gate', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it('passes unauthenticated requests to /api/auth/* through (OAuth callback must work)', async () => {
+    const res = await middleware(req('/api/auth/callback/google', null));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
   it('passes an approved session through', async () => {
     const res = await middleware(req('/api/meal-plans', approved()));
     expect(res.headers.get('x-middleware-next')).toBe('1');
