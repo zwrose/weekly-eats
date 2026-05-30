@@ -105,4 +105,25 @@ describe('RecipesPage (list)', () => {
     render(<RecipesPage />);
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/recipes'));
   });
+
+  it('shows "No recipes found" empty state when the list is empty', async () => {
+    server.use(
+      http.get('/api/recipes', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 })
+      ),
+      http.post('/api/recipes/user-data/batch', () => HttpResponse.json({ data: {} })),
+      http.get('/api/recipes/tags', () => HttpResponse.json([])),
+      http.get('/api/user/recipe-sharing/invitations', () => HttpResponse.json([])),
+      http.get('/api/user/recipe-sharing/shared-users', () => HttpResponse.json([]))
+    );
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByText('No recipes found')).toBeInTheDocument());
+  });
+
+  // Loading state: useServerPagination initialises loading=true and immediately
+  // fires the fetch. MSW handlers resolve synchronously in the test environment,
+  // so the CircularProgress is never reliably visible before the data lands —
+  // any assertion on it would be a race condition and therefore flaky. The loading
+  // branch is exercised indirectly via the empty-state and list tests above, which
+  // both pass through the loading→resolved transition.
 });
