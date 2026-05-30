@@ -123,8 +123,10 @@ at the Protected Resource Metadata URL.
   active users are never forced to periodically re-authenticate, while leaked or
   abandoned tokens still expire. **Rotation is atomic (S3):** perform it with a
   conditional `findOneAndUpdate` (filter: `hashedToken = H(R1)` **and** `replacedBy`
-  unset **and** `revokedAt` null → set `replacedBy = H(R2)`, `revokedAt`). If no document
-  matched, the token was already rotated → revoke the whole chain. This mirrors the
+  unset **and** `revokedAt` null → set **only** `replacedBy = H(R2)`). `replacedBy` alone
+  marks the token consumed (it can no longer match the filter), so `revokedAt` is
+  reserved for "revoked for cause" (arch-002). If no document matched, the token was
+  already rotated → revoke the whole chain (set `revokedAt` on every link). This mirrors the
   auth-code `findOneAndDelete` pattern (MA) and prevents a serverless race where two
   concurrent refreshes of the same token both succeed without tripping reuse detection.
 - **DCR abuse (I6):** `/register` is per-IP rate limited; `mcpClients` documents carry
@@ -141,6 +143,14 @@ at the Protected Resource Metadata URL.
   both succeed on serverless. If an already-consumed code is presented again → `400`
   **and** revoke the access + refresh tokens issued from the first exchange (RFC 6749
   §4.1.2).
+- **PKCE S256-only (sec-004):** the AS advertises and accepts **only**
+  `code_challenge_method=S256`; `plain` or an absent method → `400`
+  (`code_challenge_methods_supported = ["S256"]`). `plain` makes the challenge equal the
+  verifier, which sits in the redirect URL — no real interception protection.
+- **Auth-code client binding (sec-005):** `/token` verifies the request `client_id`
+  equals the code's issuing `clientId` and the `redirect_uri` matches the authorization
+  request's (both stored on `mcpAuthCodes`, §9) — OAuth 2.1 §4.1.3, so a different
+  registered client cannot redeem another client's code.
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -179,7 +189,9 @@ Pure, transport-agnostic functions, one module per domain
 The connector equivalent of `requireApprovedSession`:
 
 - Extract the bearer token, hash it, look it up in `mcpTokens`; reject if missing,
-  expired, `revokedAt` set, or the resource indicator doesn't match (M3, §9).
+  **not `tokenType: 'access'` (arch-001 — a refresh token must never be accepted as a
+  bearer; RFC 6749 §1.5)**, expired, `revokedAt` set, or the resource indicator doesn't
+  match (M3, §9).
 - Resolve `userId`, then perform a **live `users` lookup** for `isApproved`/`isAdmin`
   (not embedded in the token — see M1 in §6.2) so revoked approval applies immediately.
 - Enforce `isApproved || isAdmin` (matches `requireApprovedSession` semantics).
@@ -278,20 +290,26 @@ pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
   live, not just documented. **Post-issuance revocation (T3):** with the `mcpTokens`
   record still valid (non-expired, non-revoked) but the **live `users` lookup** returning
   `isApproved: false`, `verifyToken` → `undefined` — proves the live lookup governs, not
-  a value cached in the token (the M1 guarantee).
+  a value cached in the token (the M1 guarantee). **Refresh-as-bearer (arch-001):** a
+  valid, non-expired refresh token presented as the bearer → `undefined` (only
+  `tokenType: 'access'` is accepted).
 - **OAuth AS endpoints (Phase 2)** — `/token`: successful PKCE code exchange;
   `code_verifier` mismatch → 400; missing verifier → 400; expired auth code → 400;
   **unknown/unregistered `client_id` → 400/401 (T4)** (client auth per OAuth 2.1; mock
-  `mcpClients.findOne` → null); replayed (single-use) code → 400 **and tokens from the
-  first exchange are revoked (MA)**; **concurrent refresh of one token — exactly one
+  `mcpClients.findOne` → null); **valid-but-wrong `client_id` or `redirect_uri` — code
+  issued to client A, exchanged by client B → 400 (sec-005)**; replayed (single-use)
+  code → 400 **and tokens from the first exchange are revoked (MA)**; **concurrent refresh of one token — exactly one
   succeeds, the loser triggers chain revocation (S3 atomicity)**; successful refresh
   **with** approval re-check; refresh by a now-unapproved user
   → 401 + token deleted; rotated-token replay revokes the chain. **Idle/sliding TTL
   (T2):** a successful refresh sets the replacement token's expiry relative to the
   exchange time; a token left unused past its idle window is rejected even if the
   absolute time since first issuance is short. `/authorize`: missing `code_challenge` →
-  400; missing/!verified `state` → 400; **`state` cross-session isolation (MC)** — a
-  valid `state` value generated in session A is rejected when replayed in session B;
+  400; **`code_challenge_method=plain` or absent → 400 (sec-004)**; missing/!verified
+  `state` → 400; **`state` cross-session isolation (MC)** — a valid `state` value
+  generated in session A is rejected when replayed in session B; **expired
+  `mcpAuthStates` doc rejected by application code (past `expiresAt`, mock lookup to
+  bypass the TTL reaper) → 400 (test-001)**;
   `redirect_uri` mismatch → 400; unapproved user cannot obtain a code; **happy path (MD)**
   — valid `code_challenge` + matching `state` + approved user → code issued, `state`
   single-use. `/register`: rate-limit enforced; **non-HTTPS `redirect_uri` (non-localhost)
@@ -307,13 +325,17 @@ No changes to existing collections. New collections for the AS:
 
 - `mcpClients` — registered OAuth clients (from DCR). Carries a `lastUsedAt`/TTL
   cleanup policy so abandoned registrations are reaped (I6).
-- `mcpAuthCodes` — short-lived PKCE-bound authorization codes. **Single-use enforced
-  via an atomic `findOneAndDelete` on exchange (MA)** — not a read-then-delete — so
-  concurrent serverless exchanges of one code cannot both succeed.
-- `mcpTokens` — access + refresh tokens bound to `userId`, with expiry and a
-  `revokedAt` field. Refresh tokens use rotation (a `replacedBy`/chain reference) for
-  reuse detection and an idle/sliding TTL; rotation is performed with an **atomic
-  conditional `findOneAndUpdate`** (S3, §6.2).
+- `mcpAuthCodes` — short-lived PKCE-bound authorization codes. Each stores the issuing
+  **`clientId`, `redirectUri`, and PKCE `code_challenge`**; `/token` verifies the
+  request's `client_id` and `redirect_uri` match these at exchange (sec-005, OAuth 2.1
+  §4.1.3 — prevents cross-client code injection). **Single-use enforced via an atomic
+  `findOneAndDelete` on exchange (MA)** — not a read-then-delete — so concurrent
+  serverless exchanges of one code cannot both succeed.
+- `mcpTokens` — access + refresh tokens bound to `userId`, each with a
+  **`tokenType: 'access' | 'refresh'`** discriminator (arch-001; `verifyToken` accepts
+  only `'access'`), expiry, and a `revokedAt` field. Refresh tokens use rotation (a
+  `replacedBy`/chain reference) for reuse detection and an idle/sliding TTL; rotation is
+  performed with an **atomic conditional `findOneAndUpdate`** (S3, §6.2).
 - `mcpAuthStates` (A2) — one document per in-flight `/authorize` request, holding the
   `state` nonce (or its hash), `clientId`, `redirectUri`, and a short TTL (~10 min).
   Single-use: deleted on the callback after verification. This is where the I4 `state`
@@ -418,8 +440,14 @@ ids (ME).
 Resolved during plan review loop 3 (see the same review file): refresh-token rotation is
 **atomic** via conditional `findOneAndUpdate` (S3); a new `mcpAuthStates` collection
 holds the I4 `state` nonce (A2); tokens/codes/state are generated from a CSPRNG (S4);
-and §8a adds `/token` unknown-`client_id` and concurrent-rotation cases (T4 + S3). With
-these, the review converged — no Critical/Important findings remain.
+and §8a adds `/token` unknown-`client_id` and concurrent-rotation cases (T4 + S3).
+
+Resolved during plan review loop 4 (deep security pass): `mcpTokens` gains a `tokenType`
+discriminator and `verifyToken` accepts only access tokens (arch-001); `mcpAuthCodes`
+stores and `/token` verifies `clientId`/`redirectUri` (sec-005); PKCE is S256-only,
+`plain` rejected (sec-004); the S3 rotation update payload is clarified (arch-002); and
+§8a adds refresh-as-bearer, cross-client-code, `plain`-rejection, and expired-`state`
+cases. With these, the review converged — no Critical/Important findings remain.
 
 Remaining:
 
