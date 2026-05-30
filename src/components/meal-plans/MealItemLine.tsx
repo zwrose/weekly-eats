@@ -27,8 +27,10 @@ export function MealItemLine({ item, muted, expandGroup }: MealItemLineProps) {
         <Box
           component="span"
           sx={{
-            color: tokens.section.plans,
-            fontWeight: 600,
+            // Recipes are plain content here, not interactive text — use the normal ink
+            // color instead of the accent used for links/actions.
+            color: ink,
+            fontWeight: 500,
             minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

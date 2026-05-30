@@ -41,6 +41,22 @@ describe('CombinedSearch', () => {
     );
   });
 
+  it('shows a recipe emoji inline before its title in the results', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/recipes', () =>
+        HttpResponse.json([{ _id: 'r1', title: 'Parmesan pasta', emoji: '🍝' }])
+      ),
+      http.get('/api/food-items', () => HttpResponse.json([]))
+    );
+    render(<CombinedSearch {...props()} />);
+    await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'parm');
+    await waitFor(() => expect(screen.getByText('Parmesan pasta')).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    expect(screen.getByText('🍝')).toBeInTheDocument();
+  });
+
   it('offers "New group with X" and calls onAddGroup with the query', async () => {
     const user = userEvent.setup();
     server.use(

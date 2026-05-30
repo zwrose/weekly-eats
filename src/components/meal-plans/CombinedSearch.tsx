@@ -201,15 +201,20 @@ export function CombinedSearch({
               }}
               sx={rowSx(i, {
                 display: 'flex',
-                gap: 1.25,
+                gap: 0.875,
                 alignItems: 'center',
+                fontSize: 14,
                 opacity: o.isExcluded ? 0.4 : 1,
               })}
             >
-              <Box
-                component="span"
-                sx={{ color: tokens.section.plans, fontSize: 14, fontWeight: 600 }}
-              >
+              {o.type === 'recipe' && o.emoji && (
+                <Box component="span" sx={{ fontSize: 15, lineHeight: 1 }}>
+                  {o.emoji}
+                </Box>
+              )}
+              {/* Recipe names are plain content (the emoji + section header mark them) —
+                  not styled in the accent color reserved for links/actions. */}
+              <Box component="span" sx={{ color: tokens.text.primary, fontWeight: 500 }}>
                 {o.type === 'recipe' ? o.title : ''}
               </Box>
             </Box>

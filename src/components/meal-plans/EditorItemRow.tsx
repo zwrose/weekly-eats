@@ -53,12 +53,10 @@ export function EditorItemRow({
           flex: 1,
           minWidth: 0,
           fontSize: 14,
-          fontWeight: isRecipe ? 600 : 400,
-          color: isRecipe
-            ? tokens.section.plans
-            : invalid
-              ? tokens.state.warn
-              : tokens.text.primary,
+          // Recipes aren't interactive text — style them as plain content (the "Recipe"
+          // tag marks them), not in the accent color used for links/actions.
+          fontWeight: isRecipe ? 500 : 400,
+          color: invalid ? tokens.state.warn : tokens.text.primary,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
