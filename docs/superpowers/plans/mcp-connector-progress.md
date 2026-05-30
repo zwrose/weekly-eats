@@ -17,13 +17,13 @@ all phases land.
 
 ## Phase status
 
-| #   | Phase                                                        | Status                                                      | Plan doc                                                                                                                 | PR test comment                                                                | Done       |
-| --- | ------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
-| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | **DONE** — code + manual verify + review-code (clean)       | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
-| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | in-progress _(user, own branch `feat/142-auth-v5-upgrade`)_ | — _(own effort)_                                                                                                         | —                                                                              | —          |
-| 2   | OAuth AS + approval-gated verification + deploy              | pending                                                     | —                                                                                                                        | —                                                                              | —          |
-| 3   | `recipe-import` skill                                        | pending                                                     | —                                                                                                                        | —                                                                              | —          |
-| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                                                     | —                                                                                                                        | —                                                                              | —          |
+| #   | Phase                                                        | Status                                                                  | Plan doc                                                                                                                 | PR test comment                                                                | Done       |
+| --- | ------------------------------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | **DONE** — code + manual verify + review-code (clean)                   | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
+| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | **DONE** — merged to `main` (#146) + pulled into `feat/mcp` (`45bcd2b`) | — _(user effort)_                                                                                                        | —                                                                              | 2026-05-30 |
+| 2   | OAuth AS + approval-gated verification + deploy              | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
+| 3   | `recipe-import` skill                                        | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
 `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
@@ -41,12 +41,17 @@ verify (`cc10ea9`, `920d771`). One Phase-2 carryover noted in spec §6.4 (dev-ga
 `MCP_DEV_USER_ID` trust → replace with the live users-lookup verifier). `/code-review ultra`
 is still recommended but optional — user's call; not blocking the phase.
 
-**▶ CURRENT SEQUENCING (set by user 2026-05-30):** Phase 1.5 (#142 Auth.js v5) is **in progress
-on its own branch** `feat/142-auth-v5-upgrade`, owned by the user. Plan: land/merge #142 to
-`main` first → then **merge `main` into `feat/mcp`** to pull the v5 foundation in → then plan +
-build **Phase 2** (OAuth AS) on top of v5. Do NOT start Phase 2 until #142 is merged and pulled
-into `feat/mcp`. When Phase 2 is planned, re-point the AS login leg at Auth.js v5 (`auth()` +
-redirect proxy) per the open questions below, and resolve the spec §6.4 carryover.
+**▶ CURRENT SEQUENCING (updated 2026-05-30):** Phase 1.5 (#142 Auth.js v5) is **DONE** — merged
+to `main` (#146) and **pulled into `feat/mcp`** via merge `45bcd2b` (also brought ably v2 / #141).
+`feat/mcp` now sits on the Auth.js v5 foundation: `npm run check` green (**1500 tests**, lint 0,
+build OK) with **zero source fallout** — only `middleware.ts`/`middleware.test.ts` conflicted
+(re-applied the `/api/mcp` exemption on the v5 `auth((req)=>…)` wrapper) plus the lockfile.
+Phase 1 production code composed cleanly because it rides on `requireApprovedSession` (signature
+unchanged by v5; body now calls `auth()`). **▶ NEXT: Phase 2 (OAuth AS) is now unblocked** —
+plan it via `writing-plans`. When planning, the v5 wiring is in place: the AS login leg delegates
+to Auth.js v5 (`auth()` + the new redirect proxy — see `docs/superpowers/specs/2026-05-30-auth-v5-redirect-proxy-design.md`,
+merged from #142), and resolve the spec §6.4 `MCP_DEV_USER_ID` carryover (live users-lookup in
+the new token verifier). Do NOT start Phase 2 build without the user.
 
 **Historical (Phase 1 build narrative, kept for reference):** Built 2026-05-30 via
 `writing-plans` → `review-plan` → `subagent-driven-development` (11 tasks, TDD) →
