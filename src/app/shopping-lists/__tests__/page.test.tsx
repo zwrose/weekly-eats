@@ -867,8 +867,19 @@ describe('ShoppingListsPage', () => {
       updatedAt: new Date(),
     };
 
+    // Opening the dialog triggers two concurrent fetchShoppingList calls
+    // (handleViewList + the restore useEffect). Track server-side checked state
+    // so a late-resolving refetch returns the post-toggle value instead of stale
+    // checked:false — mirroring real server behavior and removing a timing race.
+    let f1Checked = false;
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
+    mockFetchShoppingList.mockImplementation(
+      async () =>
+        ({
+          ...shoppingListWithItems,
+          items: [{ ...shoppingListWithItems.items[0], checked: f1Checked }],
+        }) as any,
+    );
     mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
     mockFetch.mockImplementation((url) => {
@@ -878,11 +889,12 @@ describe('ShoppingListsPage', () => {
           json: async () => [],
         } as Response);
       }
-      // Toggle endpoint should succeed so checkbox stays checked.
+      // Toggle flips the tracked server state so subsequent refetches agree.
       if (typeof url === 'string' && url.includes('/api/shopping-lists/store-1/items/f1/toggle')) {
+        f1Checked = !f1Checked;
         return Promise.resolve({
           ok: true,
-          json: async () => ({ success: true, foodItemId: 'f1', checked: true, items: [] }),
+          json: async () => ({ success: true, foodItemId: 'f1', checked: f1Checked, items: [] }),
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -904,6 +916,7 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
+    // Finish button appears after the toggle marks the item checked.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
     });
