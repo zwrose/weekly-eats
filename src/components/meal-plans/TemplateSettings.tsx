@@ -13,6 +13,7 @@ import {
   updateMealPlanTemplate,
 } from '@/lib/meal-plan-utils';
 import { MealEditorDialog } from './MealEditorDialog';
+import { MealItemLine } from './MealItemLine';
 import { MEAL_LABEL, MEAL_ORDER, mealColorToken, mealItemCount } from './meal-display-utils';
 
 const DAY_CHIPS: { label: string; value: DayOfWeek }[] = [
@@ -125,6 +126,27 @@ export function TemplateSettings() {
   const groups = draft.weeklyStaples.filter((s) => s.type === 'ingredientGroup');
   const loose = draft.weeklyStaples.filter((s) => s.type !== 'ingredientGroup');
   const totalStaples = mealItemCount(draft.weeklyStaples);
+  // Loose staples render under a synthetic "Other" group so they expand the same way.
+  const otherGroup: MealItem | null =
+    loose.length > 0
+      ? {
+          type: 'ingredientGroup',
+          id: '',
+          name: 'Other',
+          ingredients: [
+            {
+              title: 'Other',
+              ingredients: loose.map((l) => ({
+                type: l.type === 'recipe' ? ('recipe' as const) : ('foodItem' as const),
+                id: l.id,
+                name: l.name,
+                quantity: l.quantity ?? 1,
+                unit: l.unit,
+              })),
+            },
+          ],
+        }
+      : null;
 
   const card = {
     bgcolor: tokens.surface.raised,
@@ -291,23 +313,17 @@ export function TemplateSettings() {
           {totalStaples === 0 ? (
             <Box sx={{ fontSize: 13, color: tokens.text.muted, py: 1 }}>No staples yet</Box>
           ) : (
-            <Box
-              sx={{
-                bgcolor: tokens.surface.sunken,
-                borderRadius: `${tokens.radius.lg}px`,
-                overflow: 'hidden',
-              }}
-            >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75 }}>
               {groups.map((g, i) => (
-                <StaplesRow
+                <MealItemLine
                   key={`g${i}`}
-                  title={g.name || g.ingredients?.[0]?.title || 'Group'}
-                  count={g.ingredients?.[0]?.ingredients.length ?? 0}
-                  divider={i > 0}
+                  item={g}
+                  expandGroup
+                  groupAccent={tokens.meal.staples}
                 />
               ))}
-              {loose.length > 0 && (
-                <StaplesRow title="Other" count={loose.length} divider={groups.length > 0} />
+              {otherGroup && (
+                <MealItemLine item={otherGroup} expandGroup groupAccent={tokens.meal.staples} />
               )}
             </Box>
           )}
@@ -327,44 +343,6 @@ export function TemplateSettings() {
         onClose={() => setStaplesOpen(false)}
         onFoodItemAdded={noopFoodItemAdded}
       />
-    </Box>
-  );
-}
-
-function StaplesRow({
-  title,
-  count,
-  divider,
-}: {
-  title: string;
-  count: number;
-  divider?: boolean;
-}) {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.25,
-        px: 1.75,
-        py: 1.5,
-        borderTop: divider ? `1px solid ${tokens.border.subtle}` : 'none',
-      }}
-    >
-      <Box
-        component="span"
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          bgcolor: tokens.meal.staples,
-          flexShrink: 0,
-        }}
-      />
-      <Box sx={{ flex: 1, fontSize: 13, fontWeight: 500, color: tokens.text.primary }}>{title}</Box>
-      <Box sx={{ fontSize: 11, color: tokens.text.secondary, fontVariantNumeric: 'tabular-nums' }}>
-        {count} {count === 1 ? 'item' : 'items'}
-      </Box>
     </Box>
   );
 }
