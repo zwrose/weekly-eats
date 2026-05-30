@@ -246,3 +246,21 @@ and obtain a code. Blast radius is contained (M1's live `verifyToken` lookup sti
 every tool call → no data access), but it defeats the gate's intent. **Fix:** bind the
 check to _code issuance on every path including consent-skip_; added the §8a
 revocation-after-consent test case. This was a self-introduced wording bug from loop 5.
+
+---
+
+# Loop 7 — clean (converged)
+
+- **Reviewed:** 2026-05-29 (seventh pass, HEAD 3ef0e3a)
+- **Verdict:** 🟢 PLAN READY. All four agents (architecture, security, test, code)
+  returned `[]` — independently, each explicitly noting a clean result is the honest
+  outcome at this maturity (agents were told not to manufacture findings).
+- **Findings:** 0.
+
+**Convergence curve across loops:** 11 → 11 → 4 → 5 → 3 → 1 → 0. Loop-6's single finding
+was self-inflicted churn from a loop-5 edit, now fixed and confirmed clean. The spec is
+considered review-complete; further planning-stage loops would have diminishing value.
+The next meaningful security scrutiny is at code time (e.g. /code-review ultra) and,
+ideally, a human pass on the OAuth flow — plus the open questions for Bojan (library vs
+hand-roll; how he wires the login leg) and re-checking the 2025-11-25 MCP auth revision
+before Phase 2.
