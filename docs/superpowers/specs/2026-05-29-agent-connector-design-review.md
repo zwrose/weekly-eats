@@ -101,3 +101,53 @@ The only testing mention was "tests stay green." Project rules require an explic
 Phase 1 exposes `/api/mcp` write tools behind a static bearer token with no enforced removal before deploy. If Phase 1 reaches Vercel, any token holder gets unauthenticated write to all user data.
 **Fix:** gate the dev-token path behind a non-production env var (`MCP_DEV_TOKEN` present AND `NODE_ENV !== 'production'`); add a Phase 2 removal checklist item and an integration test asserting the production config rejects the static token.
 **POV:** Fix (High) — arguably Important at plan time, but the safeguard belongs in the spec.
+
+---
+
+# Loop 2 — review of the revised spec
+
+- **Reviewed:** 2026-05-29 (second pass)
+- **Verdict:** 🟠 REVISE BEFORE IMPLEMENTING → all addressed in the same commit series
+- **Approved:** 0 Critical, 6 Important, 5 Minor. No loop-1 finding was re-raised; these
+  are deeper OAuth-AS hardening and test-completeness gaps the loop-1 edits left open.
+
+> Process note (honesty): during this loop I raised a false alarm about a "prompt
+> injection" and then retracted it. There was no injection — my prior turn hit the
+> output-token limit, a runtime continuation message appeared, and I mischaracterized and
+> embellished it. I also twice misread corrupted terminal output (a phantom "detached
+> HEAD"). Recorded here for transparency; none of it affected the findings or the repo.
+
+### §6.2 — OAuth Authorization Server
+
+- **🟠 S2 — `redirect_uri` validation at DCR.** `/register` rejects non-HTTPS URIs
+  (except localhost, RFC 8252); store verbatim, match byte-for-byte at `/authorize`.
+  Prevents open-redirect auth-code exfiltration (RFC 7591 §5). _Fix (High)._
+- **🔵 MA — auth-code single-use.** Atomic `findOneAndDelete` on exchange; replay → 400
+  **and** revoke tokens from the first exchange (RFC 6749 §4.1.2). _Fix (High)._
+
+### §6.3 / §6.5 — Service layer & tools
+
+- **🟠 A1 — `isGlobal:false` override layer.** Service keeps accepting `isGlobal` (HTTP
+  behavior preserved); the MCP tool wrapper forces `false`. Keeps "identical service
+  functions" true. Create is not admin-gated today (`food-items/route.ts:162`);
+  `ONLY_ADMINS_CAN_MAKE_GLOBAL` gates only the update path. _Fix (High)._
+- **🔵 ME — malformed ObjectId.** Service validation includes `ObjectId.isValid(id)`;
+  §8a adds a malformed-id → `ValidationError` case. _Fix (High)._
+
+### §8a — Testing strategy
+
+- **🟠 T1 — hashed-bearer lookup test** (raw `T` matches `SHA-256(T)` record; pre-hashed
+  bearer does not) — guards M2. _Fix (Medium)._
+- **🟠 T2 — idle/sliding TTL test** (replacement expiry relative to exchange; idle-expired
+  token rejected) — guards I5. _Fix (Medium)._
+- **🟠 T3 — post-issuance revocation test** (token valid, live `users` lookup returns
+  `isApproved:false` → `undefined`) — guards M1. _Fix (High)._
+- **🔵 MC — `state` cross-session isolation test.** _Fix (Medium)._
+- **🔵 MD — `/authorize` happy-path test.** _Fix (Medium)._
+
+### §9 — Data model
+
+- **🟠 S1 — hash refresh tokens too.** M2 extended to access + refresh + auth codes; the
+  refresh token is the long-lived secret. _Fix (High)._
+- **🔵 MB — `dropAllIndexes()` list.** Add the three `mcp*` collections
+  (`database-indexes.ts:155`) so dev resets don't leave stale indexes. _Fix (High)._
