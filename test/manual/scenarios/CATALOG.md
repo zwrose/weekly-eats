@@ -209,7 +209,7 @@ Inserts `count` purchase history records into the purchaseHistory collection. Ea
 
 ### `recipes`
 
-Inserts `count` recipes into the recipes collection. Depends on a user-baseline scenario — the manifest MUST give that scenario the id "u" so this block can call ctx.resolve("u") to obtain the userId. Optionally accepts `foodItemsRef` (the scenario id of a food-items block) to use real food item ObjectIds as ingredient ids; otherwise placeholder string ids are used. Set `withUserData: true` to also insert companion docs into recipeUserData.
+Inserts `count` recipes into the recipes collection. Depends on a user-baseline scenario — the manifest MUST give that scenario the id "u" so this block can call ctx.resolve("u") to obtain the userId. Optionally accepts `foodItemsRef` (the scenario id of a food-items block) to use real food item ObjectIds as ingredient ids; otherwise placeholder string ids are used. Set `withUserData: true` to also insert companion docs into recipeUserData, each with a deterministic rating (3-5) and two tags so list stars/tags and the rating/tags filters have data.
 
 **Config examples:**
 

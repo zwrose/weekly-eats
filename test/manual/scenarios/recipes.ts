@@ -24,7 +24,8 @@ const documentation: BlockDocumentation = {
     'so this block can call ctx.resolve("u") to obtain the userId. ' +
     'Optionally accepts `foodItemsRef` (the scenario id of a food-items block) to use real ' +
     'food item ObjectIds as ingredient ids; otherwise placeholder string ids are used. ' +
-    'Set `withUserData: true` to also insert companion docs into recipeUserData.',
+    'Set `withUserData: true` to also insert companion docs into recipeUserData, each with a ' +
+    'deterministic rating (3-5) and two tags so list stars/tags and the rating/tags filters have data.',
   configExamples: [
     { label: 'two user-scoped recipes', config: { count: 2, isGlobal: false } },
     {
@@ -56,6 +57,7 @@ function buildIngredients(
   index: number,
   foodItemValues: ObjectId[]
 ): Array<{
+  isStandalone: true;
   ingredients: Array<{ type: 'foodItem'; id: string; quantity: number; unit: string }>;
 }> {
   const pool = foodItemValues.length > 0 ? foodItemValues : PLACEHOLDER_IDS;
@@ -70,7 +72,11 @@ function buildIngredients(
     quantity: j + 1,
     unit: 'cup',
   }));
-  return [{ ingredients }];
+  // `isStandalone: true` marks this as an untitled flat list — exactly how the real app persists
+  // ungrouped recipes. Omitting it makes the editor treat the list as an invalid (untitled) GROUP:
+  // it shows a red error border and disables Save (validateRecipeIngredients fails). See the editor
+  // at src/components/recipes/RecipeIngredientsEditor.tsx (titleInvalid / validateRecipeIngredients).
+  return [{ isStandalone: true, ingredients }];
 }
 
 // ─── Block ───────────────────────────────────────────────────────────────────
@@ -136,10 +142,16 @@ export const block: Block<Config, State> = {
     // ── Insert recipeUserData if requested ──
     if (config.withUserData) {
       const userDataCol = ctx.db.collection('recipeUserData');
-      for (const recipeId of recipeIds) {
+      // Deterministic per-recipe rating (3,4,5,3,…) and a rotating 2-tag slice so the list
+      // stars/tags AND the rating/tags filters all have real data to exercise. Field names
+      // (`tags`, `rating`) match what the user-data/rating/tags routes read & write.
+      const TAG_POOL = ['Weeknight', 'Favorite', 'Vegetarian', 'Quick', 'Spicy'];
+      for (let i = 0; i < recipeIds.length; i++) {
         await userDataCol.insertOne({
           userId,
-          recipeId: recipeId.toString(),
+          recipeId: recipeIds[i].toString(),
+          tags: [TAG_POOL[i % TAG_POOL.length], TAG_POOL[(i + 2) % TAG_POOL.length]],
+          rating: (i % 3) + 3,
           notes: 'Manual test note',
           ...tagFilter,
         });
