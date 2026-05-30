@@ -193,6 +193,12 @@ Each chunk is its own set of commits direct to the branch. Order: foundations fi
 
 **Recipe dialog → full-page route (chunk 4 — the one real routing change).** Target shape: `src/app/recipes/[id]/page.tsx` (async params per Next 15) with its own `loading.tsx` + `error.tsx`. This replaces the current query-param deep-link mechanism (`usePersistentDialog('viewRecipe')`); the chunk must migrate that mechanism and handle **old `?viewRecipe=<id>` URLs** (redirect to the new path) so existing links and any beta-user bookmarks don't break.
 
+**Tap-a-recipe-to-open from meal plans — re-add in chunk 4 (deferred from chunk 3, user-approved 2026-05-29).** Prod lets you tap a recipe inside a meal plan to open it: `MealPlanViewDialog.tsx` rendered recipe items (and recipe staples) as `<a href="/recipes?viewRecipe=true&viewRecipe_recipeId=<id>">`. Chunk 3 **deleted `MealPlanViewDialog`** and renders recipes as plain text (`MealItemLine`, `EditorItemRow`), so this affordance is currently **absent**. Re-add it in chunk 4 when the recipe surface is built, with three requirements:
+
+1. **Navigate to the new route `/recipes/[id]`** (chunk 4's full-page recipe), NOT the legacy `?viewRecipe=` dialog param.
+2. **PWA constraint (the key ask):** the tap must navigate **within the installed PWA**, never spawn an external browser window. Use **client-side navigation** (`useRouter().push(...)` or `next/link` `<Link>`) — NOT `window.open`, NOT `target="_blank"`. Avoid even a plain same-origin `<a href>` for the primary path: iOS standalone PWAs can kick a full-document `<a>` navigation out into Safari, whereas `router.push` stays in the standalone window.
+3. **Placement against the new interaction model:** the redesign read view opens the **editor** on meal tap (prod's was a read-only dialog), so a recipe tap-target can't simply wrap the meal row. Decide the placement in chunk 4 — candidates: a tap/affordance on recipe rows in `EditorItemRow` (open the recipe while editing) and/or a non-conflicting recipe affordance in the read-mode `MealItemLine`. Reference: prod's `MealPlanViewDialog-recipe-view.test.tsx` covers the original behavior.
+
 ### Locked meal-plan edit-flow decisions (B3)
 
 Full-screen editor, numpad qty, sticky combined search at bottom, flat group headers (no nesting box). Resolved decisions:
@@ -211,7 +217,7 @@ Full-screen editor, numpad qty, sticky combined search at bottom, flat group hea
 The standing "rewritten components get rewritten tests" rule (§6 0e) is not enough for the three interaction-heavy rewrites — enumerate the cases so coverage doesn't lean on manual testing alone:
 
 - **Chunk 3 — B3 meal-plan editor:** one test per locked edit-decision above — Done-disabled + warn borders on invalid (1), dirty-cancel confirm vs clean-cancel close (2), recipe `[× n]` chip qty (4), skip toggle clear-confirm + empty-on-untoggle (5), empty-group / empty-meal states (6), remove-group confirm (7), flat group structure (8). Plus staples bar expand/collapse and numpad qty entry.
-- **Chunk 4 — recipe full-page route:** `loading.tsx` / `error.tsx` render, async-params resolution, deep-link to `/recipes/[id]`, and the old `?viewRecipe=` redirect path.
+- **Chunk 4 — recipe full-page route:** `loading.tsx` / `error.tsx` render, async-params resolution, deep-link to `/recipes/[id]`, and the old `?viewRecipe=` redirect path. Plus **tap-a-recipe-from-a-meal-plan** (re-added, deferred from chunk 3): asserts the tap calls `router.push('/recipes/<id>')` (client nav, in-PWA) rather than rendering a `target="_blank"`/`window.open` escape.
 - **Chunk 5 — two-pane shopping:** store-pane ↔ working-list selection, KEEP/SKIP pantry-check filtering, finish-shop bar behavior. (Realtime/presence stays visual-only — no new logic tests.)
 
 ---
