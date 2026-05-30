@@ -202,13 +202,17 @@ at the Protected Resource Metadata URL.
 authorization_servers, scopes_supported }`) and AS metadata are **distinct documents** —
   a hand-rolled AS commonly serves only the latter; both are required.
 
-**Approval gate at `/authorize` (L5-S1):** after the Google/NextAuth login callback and
-**before** rendering the consent screen, `/authorize` checks `isApproved || isAdmin` from
-`users`. If false → redirect back with `error=access_denied` (no consent screen, no code).
-Without this, an unapproved user completes the whole OAuth flow and receives tokens that
-are then rejected on every `verifyToken` call — a confusing "connected but nothing works"
-state in Claude. This is the authorize-time companion to the `verifyToken` (M1) and
-refresh (I5) approval checks; §8a's "unapproved user cannot obtain a code" tests it.
+**Approval gate at `/authorize` (L5-S1):** after the Google/NextAuth login callback,
+`/authorize` checks `isApproved || isAdmin` from `users` **on every path before issuing an
+auth code — including the consent-skip path** (the check gates _code issuance_, not merely
+consent-screen rendering; L6). If false → redirect back with `error=access_denied` (no
+consent screen, no code). This ordering matters because the prior-consent optimization
+skips the consent screen entirely on a matching `mcpConsents` row, so a user who consented
+while approved and was later un-approved must still be denied here. Without the gate, an
+unapproved user completes the whole OAuth flow and receives tokens that are then rejected
+on every `verifyToken` call — a confusing "connected but nothing works" state in Claude.
+This is the authorize-time companion to the `verifyToken` (M1) and refresh (I5) approval
+checks; §8a tests both the first-time and consent-skip (revocation-after-consent) paths.
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -395,6 +399,10 @@ clientId)` → consent screen shown, **no code issued until Allow**; **Deny → 
   with `error=access_denied`, no code**; **prior-consent skip** — an exact `(userId,
 clientId, scope)` match in `mcpConsents` issues a code without re-prompting, but a new
   `clientId` re-prompts even with a live Google session (silent-authorization guard);
+  **approval gate on the skip path (L6)** — a user with a matching `mcpConsents` row but
+  `isApproved: false` (consented while approved, later un-approved) is still denied at
+  `/authorize` with `error=access_denied` and **no code**, proving the gate runs on the
+  consent-skip path, not only at consent-screen rendering;
   **happy path (MD)** — valid `code_challenge` + matching `state` + approved user +
   consent → code issued, `state` single-use. `/register`: rate-limit enforced;
   **non-HTTPS `redirect_uri` (non-localhost) → 400 (S2)**. `/revoke`: valid revocation succeeds; unknown token succeeds silently

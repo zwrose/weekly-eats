@@ -228,3 +228,21 @@ Phase 1 exposes `/api/mcp` write tools behind a static bearer token with no enfo
 
 - **🔵 test-001 — expired `mcpAuthStates` rejected in-code.** Plus new cases for
   refresh-as-bearer, cross-client code exchange, and `plain` rejection. _Fix (High)._
+
+---
+
+# Loop 6 — convergence
+
+- **Reviewed:** 2026-05-29 (sixth pass, HEAD b694092)
+- **Verdict:** 🟢 effectively PLAN READY after one fix. Strong convergence signal: **all
+  three non-code agents independently flagged the same single issue**; code review clean.
+- **Approved:** 1 finding (severity contained — see below).
+
+### §6.2 / §8a — `/authorize` approval gate ordering (L6)
+The loop-5 L5-S1 gate was worded "before rendering the consent screen," but the
+consent-skip path doesn't render the screen — so a literal implementation could let a
+**previously-consented, since-unapproved** user skip both consent and the approval gate
+and obtain a code. Blast radius is contained (M1's live `verifyToken` lookup still blocks
+every tool call → no data access), but it defeats the gate's intent. **Fix:** bind the
+check to _code issuance on every path including consent-skip_; added the §8a
+revocation-after-consent test case. This was a self-introduced wording bug from loop 5.
