@@ -2,7 +2,13 @@ import { z } from 'zod';
 import type { PaginationParams } from '@/lib/pagination-utils';
 import type { CreateRecipeRequest, UpdateRecipeRequest } from '@/types/recipe';
 import { searchRecipes, getRecipe, createRecipe, updateRecipe } from '@/lib/services/recipes';
-import { getAuthContext, runTool, type ToolExtra, type ToolResult } from '@/lib/mcp/tool-helpers';
+import {
+  getAuthContext,
+  runTool,
+  type ToolExtra,
+  type ToolResult,
+  type ToolServer,
+} from '@/lib/mcp/tool-helpers';
 
 const ingredientSchema = z.object({
   type: z.enum(['foodItem', 'recipe']),
@@ -104,14 +110,6 @@ export async function recipesUpdateHandler(
     const { id, ...patch } = args;
     return updateRecipe(userId, id, patch);
   });
-}
-
-interface ToolServer {
-  registerTool: (
-    name: string,
-    config: { title: string; description: string; inputSchema: Record<string, unknown> },
-    handler: (args: never, extra: never) => Promise<ToolResult>
-  ) => unknown;
 }
 
 export function registerRecipeTools(server: ToolServer): void {

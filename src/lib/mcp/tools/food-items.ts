@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import type { PaginationParams } from '@/lib/pagination-utils';
 import { searchFoodItems, getFoodItem, createFoodItem } from '@/lib/services/food-items';
-import { getAuthContext, runTool, type ToolExtra, type ToolResult } from '@/lib/mcp/tool-helpers';
+import {
+  getAuthContext,
+  runTool,
+  type ToolExtra,
+  type ToolResult,
+  type ToolServer,
+} from '@/lib/mcp/tool-helpers';
 
 // --- input shapes (zod raw shapes for registerTool inputSchema) ---
 
@@ -71,14 +77,6 @@ export async function foodItemsCreateHandler(
 }
 
 // --- registration ---
-
-interface ToolServer {
-  registerTool: (
-    name: string,
-    config: { title: string; description: string; inputSchema: Record<string, unknown> },
-    handler: (args: never, extra: never) => Promise<ToolResult>
-  ) => unknown;
-}
 
 export function registerFoodItemTools(server: ToolServer): void {
   server.registerTool(

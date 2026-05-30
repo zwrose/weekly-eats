@@ -35,6 +35,15 @@ describe('verifyToken (Phase 1 dev-token gate)', () => {
     expect(await verifyToken(req, 'wrong')).toBeUndefined();
   });
 
+  it('returns undefined for a same-length wrong token (exercises the constant-time path)', async () => {
+    // 'secret-dev-token' and 'secret-dev-tokeX' are both 16 chars, so safeEqual
+    // passes the length check and reaches timingSafeEqual — proving the
+    // constant-time comparison itself rejects a mismatch.
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
+    expect(await verifyToken(req, 'secret-dev-tokeX')).toBeUndefined();
+  });
+
   it('returns undefined when no bearer token is supplied', async () => {
     vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
     vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');

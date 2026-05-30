@@ -83,6 +83,28 @@ describe('searchFoodItems', () => {
     expect(filterArg.createdBy).toEqual({ $ne: 'u1' });
   });
 
+  it('wraps the access scope in $and with the text-search clauses when a query is supplied', async () => {
+    paginatedResponseMock.mockResolvedValueOnce({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+    });
+    await searchFoodItems('u1', { query: 'sug', pagination });
+    const filterArg = paginatedResponseMock.mock.calls[0][1];
+    // First $and element is the untouched base access scope...
+    expect(filterArg.$and[0]).toEqual({ $or: [{ isGlobal: true }, { createdBy: 'u1' }] });
+    // ...second element carries the three name $regex clauses (access scope survives).
+    expect(filterArg.$and[1]).toEqual({
+      $or: [
+        { name: { $regex: 'sug', $options: 'i' } },
+        { singularName: { $regex: 'sug', $options: 'i' } },
+        { pluralName: { $regex: 'sug', $options: 'i' } },
+      ],
+    });
+  });
+
   it("scopes accessLevel=shared-by-you to the caller's own global items", async () => {
     paginatedResponseMock.mockResolvedValueOnce({
       data: [],

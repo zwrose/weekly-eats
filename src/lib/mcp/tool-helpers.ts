@@ -19,6 +19,15 @@ export interface ToolResult {
   content: Array<{ type: 'text'; text: string }>;
 }
 
+/** Minimal MCP server surface a tool module needs to register its tools. */
+export interface ToolServer {
+  registerTool: (
+    name: string,
+    config: { title: string; description: string; inputSchema: Record<string, unknown> },
+    handler: (args: never, extra: never) => Promise<ToolResult>
+  ) => unknown;
+}
+
 /**
  * Resolves the authenticated user from the MCP auth context. verifyToken
  * (withMcpAuth) places { userId, isApproved, isAdmin } on authInfo.extra.

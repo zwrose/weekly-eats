@@ -83,6 +83,20 @@ describe('searchRecipes', () => {
     expect(result.data[2].accessLevel).toBe('shared-by-others');
   });
 
+  it('retains the ownership scope under text search on the simple find path', async () => {
+    toArrayMock.mockResolvedValueOnce([]);
+    countDocumentsMock.mockResolvedValueOnce(0);
+
+    await searchRecipes('u1', { query: 'pizza', pagination });
+
+    // No tags/ratings → simple find() path (not aggregation).
+    expect(aggregateMock).not.toHaveBeenCalled();
+    const filter = findMock.mock.calls[0][0];
+    // Text search wraps the base filter in $and; $and[0] is the ownership scope.
+    expect(filter.$and[0]).toEqual({ $or: [{ isGlobal: true }, { createdBy: 'u1' }] });
+    expect(filter.$and[0].$or).toContainEqual({ createdBy: 'u1' });
+  });
+
   it('uses the aggregation path when tags are provided', async () => {
     aggregateToArrayMock.mockResolvedValueOnce([
       {
