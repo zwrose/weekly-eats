@@ -47,7 +47,7 @@ export default function PendingApprovalPage() {
   }
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/' });
+    signOut({ redirectTo: '/' });
   };
 
   return (
