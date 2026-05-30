@@ -67,7 +67,7 @@
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
-    "jsdom": "^26.1.0",
+    "jsdom": "^29.0.0",
     "msw": "^2.10.4",
     "prettier": "^3.8.1",
     "tsx": "4.22.3",
