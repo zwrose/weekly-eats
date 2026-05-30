@@ -180,7 +180,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
   } as const;
 
   return (
-    <Box sx={{ color: tokens.text.primary }}>
+    <Box sx={{ color: tokens.text.primary, mt: { xs: -2, md: 0 } }}>
       {/* ── Mobile top app-bar ── */}
       <Box
         sx={{
