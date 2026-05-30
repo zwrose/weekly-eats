@@ -15,19 +15,19 @@ This guide covers everything needed to get Weekly Eats running locally, from fir
 
 Create a `.env.local` file in the project root. This file is git-ignored and must never be committed.
 
-| Variable               | Description                                       | Example                                     |
-| ---------------------- | ------------------------------------------------- | ------------------------------------------- |
-| `MONGODB_URI`          | MongoDB connection string including database name | `mongodb://localhost:27017/weekly-eats-dev` |
-| `NEXTAUTH_URL`         | Canonical URL of the app (used by NextAuth)       | `http://localhost:3000`                     |
-| `NEXTAUTH_SECRET`      | Random secret for signing JWT tokens              | `openssl rand -base64 32`                   |
-| `GOOGLE_CLIENT_ID`     | OAuth 2.0 client ID from Google Cloud Console     | `123456789.apps.googleusercontent.com`      |
-| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret                           | `GOCSPX-xxxxxxxx`                           |
-| `ABLY_API_KEY`         | Ably API key for real-time messaging              | `xxxxxx.xxxxxx:xxxxxxxxxxxx`                |
+| Variable                  | Description                                                                                            | Example                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| `MONGODB_URI`             | MongoDB connection string including database name                                                      | `mongodb://localhost:27017/weekly-eats-dev` |
+| `AUTH_SECRET`             | Random secret for signing session JWTs                                                                 | `openssl rand -base64 33`                   |
+| `AUTH_GOOGLE_ID`          | OAuth 2.0 client ID from Google Cloud Console                                                          | `123456789.apps.googleusercontent.com`      |
+| `AUTH_GOOGLE_SECRET`      | OAuth 2.0 client secret                                                                                | `GOCSPX-xxxxxxxx`                           |
+| `ABLY_API_KEY`            | Ably API key for real-time messaging                                                                   | `xxxxxx.xxxxxx:xxxxxxxxxxxx`                |
+| `AUTH_REDIRECT_PROXY_URL` | OAuth redirect proxy for Vercel preview deploys (set on Preview + Production only; not needed locally) | `https://weekly-eats.vercel.app/api/auth`   |
 
-Generate your `NEXTAUTH_SECRET`:
+Generate your `AUTH_SECRET`:
 
 ```bash
-openssl rand -base64 32
+openssl rand -base64 33
 ```
 
 ## First-Time Setup
@@ -46,7 +46,7 @@ What it does:
 2. Creates a `.env.local` template if one does not exist
 3. Runs `npm run setup-db` to create database indexes
 
-After the script finishes, edit `.env.local` and fill in your Google OAuth credentials, Ably API key, and NEXTAUTH_SECRET.
+After the script finishes, edit `.env.local` and fill in your Google OAuth credentials, Ably API key, and AUTH_SECRET.
 
 ### Google OAuth Credentials
 
@@ -252,8 +252,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to 
 2. **Test with coverage** -- `npm run test:coverage` with fake environment variables:
    ```yaml
    MONGODB_URI: mongodb://localhost:27017/fake
-   GOOGLE_CLIENT_ID: fake
-   GOOGLE_CLIENT_SECRET: fake
+   AUTH_GOOGLE_ID: fake
+   AUTH_GOOGLE_SECRET: fake
    NODE_ENV: test
    SKIP_DB_SETUP: true
    ```
