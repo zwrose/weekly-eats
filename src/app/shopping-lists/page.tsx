@@ -24,12 +24,6 @@ import {
   Divider,
   Autocomplete,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Snackbar,
   Chip,
 } from '@mui/material';
@@ -57,9 +51,7 @@ import {
   Edit,
   Delete,
   Share,
-  Check,
   Close as CloseIcon,
-  PersonAdd,
   Kitchen,
   MoreVert,
   Refresh,
@@ -105,6 +97,7 @@ import { DialogActions } from '../../components/ui/DialogActions';
 import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
+import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
 import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
@@ -1434,397 +1427,140 @@ function ShoppingListsPageContent() {
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ShoppingCart sx={{ fontSize: 40, color: '#2e7d32' }} />
-              <Typography variant="h3" component="h1" sx={{ color: '#2e7d32' }}>
-                Shopping Lists
-              </Typography>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={createStoreDialog.openDialog}
-              sx={{
-                bgcolor: '#2e7d32',
-                '&:hover': { bgcolor: '#1b5e20' },
-                width: { xs: '100%', sm: 'auto' },
+          ) : (
+            <StoreListView
+              stores={storePagination.paginatedData.map((store) => ({
+                _id: store._id,
+                name: store.name,
+                emoji: store.emoji,
+                itemCount: store.shoppingList?.itemCount || 0,
+                shared: (store.invitations ?? []).some((inv) => inv.status === 'accepted'),
+              }))}
+              onSelectStore={(id) => {
+                const store = stores.find((s) => s._id === id);
+                if (store) handleViewList(store);
               }}
-            >
-              Add Store
-            </Button>
-          </Box>
-
-          {/* Pending Invitations Section */}
-          {pendingInvitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-              >
-                <PersonAdd />
-                Pending Invitations ({pendingInvitations.length})
-              </Typography>
-              <List>
-                {pendingInvitations.map((inv) => (
-                  <Box key={inv.storeId}>
-                    <ListItem>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          flex: 1,
-                        }}
-                      >
-                        <Typography variant="h6">{inv.storeEmoji}</Typography>
-                        <ListItemText
-                          primary={inv.storeName}
-                          secondary={`Invited ${new Date(
-                            inv.invitation.invitedAt
-                          ).toLocaleDateString()}`}
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          color="success"
-                          size="small"
-                          title="Accept"
-                          onClick={() => handleAcceptInvitation(inv.storeId, inv.invitation.userId)}
-                        >
-                          <Check fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          title="Reject"
-                          onClick={() => handleRejectInvitation(inv.storeId, inv.invitation.userId)}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                    <Divider />
-                  </Box>
-                ))}
-              </List>
-            </Paper>
-          )}
-
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <SearchBar
-              value={storePagination.searchTerm}
-              onChange={storePagination.setSearchTerm}
-              placeholder="Search stores..."
-            />
-
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : storePagination.paginatedData.length === 0 ? (
-              <Alert severity="info">
-                {storePagination.searchTerm
-                  ? 'No stores match your search criteria'
-                  : 'No stores yet. Add your first store to create shopping lists.'}
-              </Alert>
-            ) : (
-              <>
-                {/* Desktop Table View */}
-                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell
-                            sx={{
-                              width: '50%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Store (click to view list)
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '20%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Items on Lists
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '30%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Manage Store
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {storePagination.paginatedData.map((store) => (
-                          <TableRow
-                            key={store._id}
-                            onClick={() => handleViewList(store)}
-                            sx={{
-                              '&:hover': { backgroundColor: 'action.hover' },
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <TableCell sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1,
-                                }}
-                              >
-                                <Typography variant="h6">{store.emoji}</Typography>
-                                <Typography variant="body1">{store.name}</Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {store.shoppingList?.itemCount || 0}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  gap: 1,
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  title="Start Shopping"
-                                  disabled={!store.shoppingList?.itemCount}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartShopping(store);
-                                  }}
-                                >
-                                  <ShoppingCart fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  title="Purchase History"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenHistory(store);
-                                  }}
-                                >
-                                  <History fontSize="small" />
-                                </IconButton>
-
-                                {isStoreOwner(store) ? (
-                                  <>
-                                    <IconButton
-                                      size="small"
-                                      title="Share Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenShareDialog(store);
-                                      }}
-                                    >
-                                      <Share fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      title="Edit Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditStore(store);
-                                      }}
-                                    >
-                                      <Edit fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      title="Delete Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedStore(store);
-                                        deleteConfirmDialog.openDialog();
-                                      }}
-                                    >
-                                      <Delete fontSize="small" />
-                                    </IconButton>
-                                  </>
-                                ) : (
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    title="Leave Store"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleLeaveStore(store);
-                                    }}
-                                  >
-                                    <CloseIcon fontSize="small" />
-                                  </IconButton>
-                                )}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-
-                {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {storePagination.paginatedData.map((store) => (
-                    <Paper
-                      key={store._id}
-                      onClick={() => handleViewList(store)}
-                      sx={{
-                        p: 3,
-                        mb: 2,
-                        boxShadow: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                          transform: 'translateY(-2px)',
-                          boxShadow: 4,
-                        },
-                        transition: 'all 0.2s ease-in-out',
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          mb: 2,
-                        }}
-                      >
-                        <Typography variant="h4">{store.emoji}</Typography>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                            {store.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {store.shoppingList?.itemCount || 0} items
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          gap: 1,
-                          justifyContent: 'flex-end',
-                        }}
-                      >
-                        <IconButton
-                          size="small"
-                          color="success"
-                          title="Start Shopping"
-                          disabled={!store.shoppingList?.itemCount}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartShopping(store);
-                          }}
-                        >
-                          <ShoppingCart fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          title="Purchase History"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenHistory(store);
-                          }}
-                        >
-                          <History fontSize="small" />
-                        </IconButton>
-
-                        {isStoreOwner(store) ? (
-                          <>
-                            <IconButton
-                              size="small"
-                              title="Share Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenShareDialog(store);
-                              }}
-                            >
-                              <Share fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              title="Edit Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditStore(store);
-                              }}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              title="Delete Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedStore(store);
-                                deleteConfirmDialog.openDialog();
-                              }}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </>
-                        ) : (
-                          <IconButton
-                            size="small"
-                            color="warning"
-                            title="Leave Store"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLeaveStore(store);
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </Paper>
-                  ))}
-                </Box>
-
+              onAddStore={createStoreDialog.openDialog}
+              search={
+                <SearchBar
+                  value={storePagination.searchTerm}
+                  onChange={storePagination.setSearchTerm}
+                  placeholder="Search stores..."
+                />
+              }
+              emptyMessage={
+                <Alert severity="info">
+                  {storePagination.searchTerm
+                    ? 'No stores match your search criteria'
+                    : 'No stores yet. Add your first store to create shopping lists.'}
+                </Alert>
+              }
+              pagination={
                 <Pagination
                   count={storePagination.totalPages}
                   page={storePagination.currentPage}
                   onChange={storePagination.setCurrentPage}
                   show={storePagination.totalPages > 1}
                 />
-              </>
-            )}
-          </Paper>
+              }
+              pendingInvitations={pendingInvitations.map((inv) => ({
+                storeId: inv.storeId,
+                storeName: inv.storeName,
+                storeEmoji: inv.storeEmoji,
+                invitedAt: inv.invitation.invitedAt,
+              }))}
+              onAcceptInvite={(storeId) => {
+                const inv = pendingInvitations.find((i) => i.storeId === storeId);
+                if (inv) handleAcceptInvitation(inv.storeId, inv.invitation.userId);
+              }}
+              onDeclineInvite={(storeId) => {
+                const inv = pendingInvitations.find((i) => i.storeId === storeId);
+                if (inv) handleRejectInvitation(inv.storeId, inv.invitation.userId);
+              }}
+              renderStoreActions={(listItem) => {
+                const store = stores.find((s) => s._id === listItem._id);
+                if (!store) return null;
+                return (
+                  <>
+                    <IconButton
+                      size="small"
+                      color="success"
+                      title="Start Shopping"
+                      disabled={!store.shoppingList?.itemCount}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartShopping(store);
+                      }}
+                    >
+                      <ShoppingCart fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      title="Purchase History"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenHistory(store);
+                      }}
+                    >
+                      <History fontSize="small" />
+                    </IconButton>
+                    {isStoreOwner(store) ? (
+                      <>
+                        <IconButton
+                          size="small"
+                          title="Share Store"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenShareDialog(store);
+                          }}
+                        >
+                          <Share fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          title="Edit Store"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStore(store);
+                          }}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          title="Delete Store"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedStore(store);
+                            deleteConfirmDialog.openDialog();
+                          }}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <IconButton
+                        size="small"
+                        color="warning"
+                        title="Leave Store"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLeaveStore(store);
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </>
+                );
+              }}
+            />
+          )}
         </Box>
       </Container>
 

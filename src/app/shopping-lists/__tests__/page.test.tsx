@@ -256,7 +256,8 @@ describe('ShoppingListsPage', () => {
     render(<ShoppingListsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 items')).toBeInTheDocument();
+      // Mobile store card shows the to-buy count for the store.
+      expect(screen.getByText('2 to buy')).toBeInTheDocument();
     });
   });
 
@@ -878,7 +879,7 @@ describe('ShoppingListsPage', () => {
         ({
           ...shoppingListWithItems,
           items: [{ ...shoppingListWithItems.items[0], checked: f1Checked }],
-        }) as any,
+        }) as any
     );
     mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
