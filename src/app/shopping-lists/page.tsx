@@ -92,7 +92,6 @@ import Pagination from '@/components/optimized/Pagination';
 import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
 import { ShoppingListView } from '@/components/shopping-list/Working/ShoppingListView';
 import { ShoppingItemRow } from '@/components/shopping-list/Working/ShoppingItemRow';
-import { AddItemRow } from '@/components/shopping-list/Working/AddItemRow';
 import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
