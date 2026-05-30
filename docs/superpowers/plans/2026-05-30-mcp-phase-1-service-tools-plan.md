@@ -6,7 +6,7 @@
 
 **Architecture:** Business logic moves from route handlers into `src/lib/services/{food-items,recipes}.ts`, which throw typed domain errors from `src/lib/service-errors.ts`. HTTP routes map those errors to status codes via `src/lib/api-error-response.ts`. MCP tools (`src/lib/mcp/tools/*`) are thin wrappers that resolve the authed `userId` from `extra.authInfo`, call the same service functions, and map domain errors to MCP `isError` results. Auth on the MCP route is a Phase-1 static dev token (`MCP_DEV_TOKEN`), enabled only when set **and** `NODE_ENV !== 'production'`. No OAuth — that is Phase 2.
 
-**Tech Stack:** Next.js 15 App Router, React 19, MongoDB driver 6, `mcp-handler@1.1.0` over `@modelcontextprotocol/sdk@1.29.0`, `zod@3.23.8`, Vitest 3.
+**Tech Stack:** Next.js 15 App Router, React 19, MongoDB driver 6, `mcp-handler@1.1.0` over `@modelcontextprotocol/sdk@1.26.0` (pinned exactly — mcp-handler's peer is exact), `zod@3.23.8`, Vitest 3.
 
 **Spec:** `docs/superpowers/specs/2026-05-29-agent-connector-design.md` (§6.1, §6.3, §6.5, §8, §8a, §11). **Ledger:** `docs/superpowers/plans/mcp-connector-progress.md`.
 
@@ -66,10 +66,11 @@
 Run:
 
 ```bash
-npm install mcp-handler@1.1.0 @modelcontextprotocol/sdk@1.29.0
+npm install mcp-handler@1.1.0
+npm install --save-exact @modelcontextprotocol/sdk@1.26.0
 ```
 
-Expected: both added to `dependencies`; `zod` already present at `3.23.8` (no change). `@modelcontextprotocol/sdk@1.29.0` satisfies the spec's ≥1.26.0 requirement (the version that removed `ProxyOAuthServerProvider`).
+Expected: both added to `dependencies`; `zod` already present at `3.23.8` (no change). **Version note (corrected during implementation):** `mcp-handler@1.1.0` declares an **exact** peer `@modelcontextprotocol/sdk@1.26.0`, so installing `1.29.0` fails with `ERESOLVE`. Pin the SDK to **exactly `1.26.0`** (`--save-exact`, no caret) — it satisfies the spec's ≥1.26.0 requirement (the release that removed `ProxyOAuthServerProvider`) and matches the adapter's exact peer, so no `--force`/`--legacy-peer-deps` is needed. The exact pin prevents a future float to a version the peer would reject.
 
 - [ ] **Step 2: Verify the install resolved**
 
@@ -82,8 +83,8 @@ node -e "const p=require('./package.json'); console.log('mcp-handler', p.depende
 Expected:
 
 ```
-mcp-handler 1.1.0
-sdk 1.29.0
+mcp-handler ^1.1.0
+sdk 1.26.0
 zod 3.23.8
 ```
 
