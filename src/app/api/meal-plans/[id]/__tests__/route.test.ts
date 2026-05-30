@@ -317,4 +317,45 @@ describe('api/meal-plans/[id] route', () => {
     expect(staplesItem).toBeDefined();
     expect(staplesItem.items[0].name).toBe('banana'); // Singular
   });
+
+  it('GET populates food-item names inside template.weeklyStaples groups', async () => {
+    const validMealPlanId = '64b7f8c2a2b7c2f1a2b7c2f5';
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    findOneMock.mockResolvedValueOnce({
+      _id: validMealPlanId,
+      userId: 'u1',
+      templateId: 't1',
+      templateSnapshot: {
+        startDay: 'saturday',
+        meals: { breakfast: true, lunch: true, dinner: true },
+        // Snapshot stores food-item ids only; names must be joined at read time.
+        weeklyStaples: [
+          {
+            type: 'ingredientGroup',
+            name: '',
+            ingredients: [
+              {
+                title: 'Core Staples',
+                ingredients: [
+                  { type: 'foodItem', id: '507f1f77bcf86cd799439011', quantity: 1, unit: 'piece' },
+                  { type: 'foodItem', id: '507f1f77bcf86cd799439012', quantity: 3, unit: 'piece' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      items: [],
+      createdAt: new Date(),
+    });
+
+    const res = await routes.GET(makeReq(`http://localhost/api/meal-plans/${validMealPlanId}`), {
+      params: Promise.resolve({ id: validMealPlanId }),
+    } as any);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    const ings = json.template.weeklyStaples[0].ingredients[0].ingredients;
+    expect(ings[0].name).toBe('banana'); // qty 1 → singular
+    expect(ings[1].name).toBe('tomatoes'); // qty 3 → plural
+  });
 });

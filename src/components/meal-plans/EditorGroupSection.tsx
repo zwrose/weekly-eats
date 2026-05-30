@@ -35,7 +35,9 @@ export function EditorGroupSection({
   isTarget,
 }: EditorGroupSectionProps) {
   const ings = group.ingredients?.[0]?.ingredients ?? [];
-  const title = group.name ?? group.ingredients?.[0]?.title ?? '';
+  // `||` not `??`: a stored group.name of '' must fall through to the ingredient-list title
+  // (staples groups keep the title on ingredients[0].title with an empty top-level name).
+  const title = group.name || group.ingredients?.[0]?.title || '';
 
   return (
     <Box

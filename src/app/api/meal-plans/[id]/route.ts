@@ -139,6 +139,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
     );
 
+    // The template snapshot stores food-item/recipe ids only — join their names at read time
+    // (same as meal items) so the staples editor and summary render real names, not placeholders.
+    const populatedStaples = await Promise.all(
+      ((mealPlan.templateSnapshot?.weeklyStaples || []) as MealItem[]).map(populateMealItemName)
+    );
+
     // Use template snapshot instead of fetching current template
     const mealPlanWithTemplate = {
       ...mealPlan,
@@ -147,6 +153,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         _id: mealPlan.templateId,
         userId: session.user.id,
         ...mealPlan.templateSnapshot,
+        weeklyStaples: populatedStaples,
         createdAt: mealPlan.createdAt,
         updatedAt: mealPlan.createdAt, // Use creation time as template was snapshot at creation
       },
