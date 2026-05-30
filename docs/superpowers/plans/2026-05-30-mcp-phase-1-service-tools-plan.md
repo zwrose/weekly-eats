@@ -17,10 +17,10 @@
 - **Phase 1 only.** Do **not** implement any OAuth AS endpoint, `verifyToken` hash/`mcpTokens` lookup, consent screen, `mcp*` collections, or database-index changes. Those are Phase 2. The only auth in this phase is the static dev token.
 - **Four routes refactored:** `src/app/api/food-items/route.ts`, `src/app/api/food-items/[id]/route.ts`, `src/app/api/recipes/route.ts`, `src/app/api/recipes/[id]/route.ts`. Leave all other routes untouched (spec §12 "service extraction surface").
 - **Behavior-preserving = existing route tests stay green unchanged.** Do **not** edit any existing `__tests__/route.test.ts`. They are the regression guard.
-- **One intentional response-body refinement:** `food-items/[id]` GET/PUT/DELETE currently return `API_ERRORS.BAD_REQUEST` ("Bad request") for a malformed id. The shared service throws `ValidationError(FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID)` ("Invalid food item ID") instead — **same 400 status**, more accurate message. The existing tests only assert `res.status === 400` (verified), so they stay green. This is the ME convention ("malformed id → ValidationError with the right `@/lib/errors` constant") applied consistently.
+- **One intentional response-body refinement (GET only):** `food-items/[id]` GET currently returns `API_ERRORS.BAD_REQUEST` ("Bad request") for a malformed id. Its refactor to `getFoodItem` throws `ValidationError(FOOD_ITEM_ERRORS.INVALID_FOOD_ITEM_ID)` ("Invalid food item ID") instead — **same 400 status**, more accurate message. The existing tests assert only `res.status === 400` (verified), so they stay green. This is the ME convention ("malformed id → ValidationError with the right `@/lib/errors` constant"). **Known inconsistency (accepted):** Phase 1 refactors only the GET handler of `food-items/[id]`; PUT/DELETE stay inline (their admin-vs-owner permission logic is route-specific and exposed by no Phase-1 tool) and keep returning `API_ERRORS.BAD_REQUEST` ("Bad request") for a malformed id. So GET vs PUT/DELETE briefly return different 400 _messages_ for the same malformed id on the same resource. Status codes are identical (400), existing tests assert only status, and the inconsistency disappears in Phase 4 when those handlers move to the service. Flagged here deliberately rather than fixed now, to keep the Phase-1 refactor scoped to what the tools actually use.
 - **A1 (isGlobal):** `createFoodItem` **service** keeps accepting `isGlobal` (HTTP path unchanged). The **MCP `food_items.create` tool** omits `isGlobal` from its input schema and passes `isGlobal: false`. The restriction lives in the tool, never the service.
 - **Tool names use dots** (`food_items.search`) per spec §6.5. Task 11's smoke test registers them on a real `McpServer`, so if the SDK rejects dot-names the test fails immediately — fall back to underscores (`food_items_search`) and update the smoke test's expected list.
-- **MCP route path:** `mcp-handler` requires a `[transport]` dynamic segment. We mount at `src/app/api/[transport]/route.ts` with `basePath: '/api'`, which makes the connector endpoint `/api/mcp` (transport segment `mcp` = Streamable HTTP) — matching the spec's intended `/api/mcp` endpoint. The spec's §6.1 illustrative path `src/app/api/mcp/route.ts` is superseded by this library requirement. Static sibling routes (`/api/recipes`, etc.) take precedence over the dynamic segment, so nothing else breaks. (Phase 2's `/api/mcp/oauth/*` routes live deeper and do not collide.)
+- **MCP route path:** `mcp-handler` requires a `[transport]` dynamic segment. We mount at `src/app/api/[transport]/route.ts` with `basePath: '/api'`, which makes the connector endpoint `/api/mcp` (transport segment `mcp` = Streamable HTTP) — matching the spec's intended `/api/mcp` endpoint. The spec's §6.1 illustrative path `src/app/api/mcp/route.ts` is superseded by this library requirement. Static sibling routes (`/api/recipes`, etc.) take precedence over the dynamic segment, so nothing else breaks. (Phase 2's `/api/mcp/oauth/*` routes live deeper and do not collide.) **Accepted side-effect:** the top-level `[transport]` catch-all means a request to any _unknown_ `/api/<typo>` path (one with no matching static route directory) now hits this handler and returns **401** (`withMcpAuth required:true`) instead of the framework default **404**. This is harmless (no real route changes behavior) but can briefly mislead debugging — documented so a 401-on-a-typo'd-API-path isn't mistaken for an auth bug. If this becomes annoying, the documented escape hatch (nest under `src/app/api/mcp/[transport]/route.ts`, `basePath: '/api/mcp'`) confines the catch-all to `/api/mcp/*`.
 - **Commit after every task.** Conventional-commit messages. Do not push (the long-lived draft PR #140 tracks the branch; pushing happens at end-of-phase per the ledger).
 - **Per-task test command:** `cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npx vitest run <file>`. Final validation: `npm run check` (only when no dev server is running — Turbopack/build collide on `.next`).
 - **Conventions:** named exports only; no `as` casts (except the `as const` literal-narrowing used in tool results); error strings come from `@/lib/errors`; `logError('Context', error)` for server-side logging; services must **not** import `next/server` (transport-agnostic).
@@ -970,6 +970,19 @@ describe('getRecipe', () => {
     await expect(getRecipe('u1', '64b7f8c2a2b7c2f1a2b7c2f1')).rejects.toBeInstanceOf(NotFoundError);
   });
 
+  // Ownership-rejection test (§8a). The recipe domain folds "not owned / not
+  // visible" into NotFoundError by design (the query carries the visibility
+  // predicate, so an unowned private recipe returns null) — it does NOT throw
+  // ForbiddenError like the food-item domain. Asserting the query is scoped
+  // means a regression that drops the predicate is caught.
+  it("throws NotFoundError for another user's private recipe and scopes the query to the caller", async () => {
+    findOneMock.mockResolvedValueOnce(null);
+    await expect(getRecipe('u1', '64b7f8c2a2b7c2f1a2b7c2f1')).rejects.toBeInstanceOf(NotFoundError);
+    const filter = findOneMock.mock.calls[0][0];
+    expect(filter.$or).toContainEqual({ isGlobal: true });
+    expect(filter.$or).toContainEqual({ createdBy: 'u1' });
+  });
+
   it('returns the recipe with resolved ingredient names', async () => {
     const { ObjectId } = await import('mongodb');
     const foodItemId = '64b7f8c2a2b7c2f1a2b7c2f2';
@@ -1034,11 +1047,17 @@ describe('updateRecipe', () => {
     await expect(updateRecipe('u1', 'bad', { title: 'X' })).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it('throws NotFoundError when the caller does not own the recipe', async () => {
+  // Ownership-rejection test (§8a). updateRecipe queries
+  // { _id, createdBy: userId }; a non-owner match returns null → NotFoundError
+  // (mirrors the existing route's RECIPE_ERRORS.NO_PERMISSION_TO_EDIT behavior).
+  // Asserts the ownership predicate is in the query so a regression is caught.
+  it('throws NotFoundError when the caller does not own the recipe and scopes the lookup by createdBy', async () => {
     findOneMock.mockResolvedValueOnce(null);
     await expect(
       updateRecipe('u1', '64b7f8c2a2b7c2f1a2b7c2f1', { title: 'X' })
     ).rejects.toBeInstanceOf(NotFoundError);
+    const filter = findOneMock.mock.calls[0][0];
+    expect(filter.createdBy).toBe('u1');
   });
 
   it('allowlists fields — never $sets createdBy/_id/createdAt', async () => {
@@ -2309,26 +2328,30 @@ git commit -m "feat: add recipes MCP tools (search/get/create/update)"
 Create `src/lib/mcp/__tests__/verify-token.test.ts`:
 
 ```ts
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verifyToken } from '@/lib/mcp/verify-token';
 
 const req = new Request('http://localhost/api/mcp');
-const ORIGINAL = { ...process.env };
 
+// Use Vitest's env stubbing (auto-tracked + restored) rather than mutating
+// process.env directly — direct reassignment is fragile under the project's
+// singleFork vitest pool and can bleed into other test files. `vi.stubEnv`
+// sets the value live; `vi.unstubAllEnvs` in afterEach restores everything.
 beforeEach(() => {
-  delete process.env.MCP_DEV_TOKEN;
-  delete process.env.MCP_DEV_USER_ID;
-  process.env.NODE_ENV = 'test';
+  vi.stubEnv('NODE_ENV', 'test');
+  // Default both to unset; each test stubs what it needs.
+  vi.stubEnv('MCP_DEV_TOKEN', '');
+  vi.stubEnv('MCP_DEV_USER_ID', '');
 });
 
 afterEach(() => {
-  process.env = { ...ORIGINAL };
+  vi.unstubAllEnvs();
 });
 
 describe('verifyToken (Phase 1 dev-token gate)', () => {
   it('returns AuthInfo for the correct dev token in a non-production env', async () => {
-    process.env.MCP_DEV_TOKEN = 'secret-dev-token';
-    process.env.MCP_DEV_USER_ID = 'dev-user-id';
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
     const info = await verifyToken(req, 'secret-dev-token');
     expect(info).toBeDefined();
     expect(info?.extra?.userId).toBe('dev-user-id');
@@ -2337,26 +2360,32 @@ describe('verifyToken (Phase 1 dev-token gate)', () => {
   });
 
   it('returns undefined for a wrong token', async () => {
-    process.env.MCP_DEV_TOKEN = 'secret-dev-token';
-    process.env.MCP_DEV_USER_ID = 'dev-user-id';
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
     expect(await verifyToken(req, 'wrong')).toBeUndefined();
   });
 
   it('returns undefined when no bearer token is supplied', async () => {
-    process.env.MCP_DEV_TOKEN = 'secret-dev-token';
-    process.env.MCP_DEV_USER_ID = 'dev-user-id';
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
     expect(await verifyToken(req, undefined)).toBeUndefined();
   });
 
   it('returns undefined when MCP_DEV_TOKEN is not configured', async () => {
-    process.env.MCP_DEV_USER_ID = 'dev-user-id';
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
     expect(await verifyToken(req, 'anything')).toBeUndefined();
   });
 
+  it('returns undefined when MCP_DEV_USER_ID is not configured', async () => {
+    // Token present, user id absent → gate must still reject (C1: both required).
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    expect(await verifyToken(req, 'secret-dev-token')).toBeUndefined();
+  });
+
   it('is inert in production even with the correct token (C1)', async () => {
-    process.env.NODE_ENV = 'production';
-    process.env.MCP_DEV_TOKEN = 'secret-dev-token';
-    process.env.MCP_DEV_USER_ID = 'dev-user-id';
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
     expect(await verifyToken(req, 'secret-dev-token')).toBeUndefined();
   });
 });
@@ -2414,7 +2443,7 @@ export async function verifyToken(
 - [ ] **Step 4: Run the verify-token test to verify it passes**
 
 Run: `cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npx vitest run src/lib/mcp/__tests__/verify-token.test.ts`
-Expected: PASS (5 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 5: Write the registration smoke test (validates tool names/schemas on a real McpServer)**
 
@@ -2496,7 +2525,66 @@ export {
 };
 ```
 
-- [ ] **Step 8: Typecheck the whole project**
+- [ ] **Step 8: (Optional) Transport-route auth-wiring test**
+
+The route wiring (`withMcpAuth` actually invokes `verifyToken`; `required:true` rejects no-auth) is declarative and otherwise only exercised by manual verification. Add a light test that the **rejection** path is wired — it does NOT need a full MCP JSON-RPC handshake, only that an unauthenticated POST is refused.
+
+Create `src/app/api/[transport]/__tests__/route.test.ts`:
+
+```ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Tools must import cleanly without hitting Mongo.
+vi.mock('@/lib/services/food-items', () => ({
+  searchFoodItems: vi.fn(),
+  getFoodItem: vi.fn(),
+  createFoodItem: vi.fn(),
+}));
+vi.mock('@/lib/services/recipes', () => ({
+  searchRecipes: vi.fn(),
+  getRecipe: vi.fn(),
+  createRecipe: vi.fn(),
+  updateRecipe: vi.fn(),
+}));
+
+const { POST } = await import('../route');
+
+beforeEach(() => {
+  vi.stubEnv('NODE_ENV', 'test');
+  vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
+  vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
+});
+afterEach(() => vi.unstubAllEnvs());
+
+describe('/api/mcp transport auth wiring', () => {
+  it('rejects a POST with no Authorization header (401)', async () => {
+    const req = new Request('http://localhost/api/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a POST with a wrong bearer (401)', async () => {
+    const req = new Request('http://localhost/api/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer wrong' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+});
+```
+
+Run: `cross-env MONGODB_URI=mongodb://localhost:27017/fake SKIP_DB_SETUP=true npx vitest run "src/app/api/[transport]/__tests__/route.test.ts"`
+Expected: PASS (2 tests).
+
+**Skip clause (do not rabbit-hole):** if `mcp-handler` needs request internals that don't construct cleanly in the jsdom/undici test env (e.g. a `ReadableStream`/`Request` body incompatibility — see the undici notes in `docs/testing.md`), and the 401 assertions can't be made to pass within ~15 min, **delete this optional test file and move on.** The wiring is declarative, the `verify-token` unit tests prove the gate, the `register` smoke test proves tools load, and the deliverable is manually verified. This step is a Minor nicety (spec §8a does not require a Phase-1 transport integration test), not a gate.
+
+- [ ] **Step 9: Typecheck the whole project**
 
 Run: `npx tsc --noEmit`
 Expected: no errors. If `createMcpHandler`'s server callback param type does not structurally accept our `registerFoodItemTools`/`registerRecipeTools` (whose `ToolServer` interface is a structural subset of `McpServer`), the call still typechecks because `McpServer` provides `registerTool`. If TS complains, widen the `ToolServer.registerTool` handler param types or annotate the callback param as the type `createMcpHandler` provides.
@@ -2505,6 +2593,8 @@ Expected: no errors. If `createMcpHandler`'s server callback param type does not
 
 ```bash
 git add src/lib/mcp/verify-token.ts src/lib/mcp/__tests__/verify-token.test.ts src/lib/mcp/__tests__/register.test.ts "src/app/api/[transport]/route.ts"
+# Also add the optional transport auth-wiring test if Step 8 produced one (skip if you deleted it per the skip clause):
+git add "src/app/api/[transport]/__tests__/route.test.ts" 2>/dev/null || true
 git commit -m "feat: stand up /api/mcp transport with dev-token gate (Phase 1)"
 ```
 
@@ -2559,7 +2649,7 @@ After the phase lands: push `feat/mcp`, let CI run, post the Phase-1 manual-test
 - Refactor the existing routes (behavior-preserving, existing tests green) → Tasks 5, 7. ✓
 - Stand up `/api/mcp` stateless Streamable HTTP with recipes + food-items tools → Tasks 9, 10, 11. ✓
 - Dev-token gate C1 (set **and** non-prod) → Task 11 (`verify-token.ts` + tests incl. production-inert). ✓
-- §8a service tests (happy path, userId scoping, ForbiddenError, ValidationError incl. malformed ObjectId, NotFoundError, ConflictError) → Tasks 4, 6. ✓
+- §8a service tests (happy path, userId scoping, ValidationError incl. malformed ObjectId, NotFoundError, ConflictError) → Tasks 4, 6. ✓ **ForbiddenError ownership-rejection → Task 4 (food-items `getFoodItem`).** The recipe domain (Task 6) folds "not owned / not visible" into **NotFoundError** by design (matching the existing route's `RECIPE_ERRORS.NO_PERMISSION_TO_EDIT`), so its ownership-rejection tests assert NotFoundError + a scoped query, not ForbiddenError. Both domains thus cover ownership rejection; only the food-item domain uses ForbiddenError.
 - §8a tool tests (mock services, authed userId passed, domain-error→isError, zod rejection, isGlobal:false forcing) → Tasks 9, 10. ✓
 - A1 (service keeps `isGlobal`; tool forces false) → Task 4 service + Task 9 tool. ✓
 - ME (`ObjectId.isValid` in services) → `getFoodItem`, `getRecipe`, `updateRecipe`. ✓
