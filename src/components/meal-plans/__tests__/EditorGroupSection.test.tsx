@@ -46,11 +46,11 @@ describe('EditorGroupSection', () => {
     expect(screen.getByText(/group title is required/i)).toBeInTheDocument();
   });
 
-  it('empty group shows a tappable "Add items to this group" affordance', async () => {
+  it('empty group shows a tappable "Add to group" affordance', async () => {
     const user = userEvent.setup();
     const onAddToGroup = vi.fn();
     render(<EditorGroupSection group={group('Sides', [])} {...noop} onAddToGroup={onAddToGroup} />);
-    const add = screen.getByText(/add items to this group/i);
+    const add = screen.getByText(/^\+ add to group$/i);
     expect(add).toBeInTheDocument();
     await user.click(add);
     expect(onAddToGroup).toHaveBeenCalledTimes(1);

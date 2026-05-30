@@ -178,18 +178,19 @@ describe('MealEditorDialog', () => {
       )
     );
     render(<MealEditorDialog {...base({ items: [group('Sides', [])] })} />);
-    // tap the group's "Add items to this group" affordance to target it
-    await user.click(screen.getByText(/add items to this group/i));
+    // tap the group's "Add to group" affordance to target it
+    await user.click(screen.getByText(/^\+ add to group$/i));
     expect(screen.getByText(/adding to:\s*sides/i)).toBeInTheDocument();
     // add a food item via the sticky search → should land inside "Sides", not loose
     await user.type(screen.getByPlaceholderText(/add item, recipe, or new group/i), 'rom');
     await waitFor(() => expect(screen.getByText('romaine')).toBeInTheDocument(), { timeout: 2000 });
     await user.click(screen.getByText('romaine'));
-    // romaine routed INTO the targeted group: the empty-group affordance is replaced
-    // (a loose add would leave "Add items to this group" intact) and a removable row exists.
-    await waitFor(() =>
-      expect(screen.queryByText(/add items to this group/i)).not.toBeInTheDocument()
-    );
+    // romaine routed INTO the targeted group: it renders inside the group's subtree
+    // (a loose add would place it outside the group, which would stay empty).
+    await waitFor(() => {
+      const groupRoot = screen.getByText('GROUP').closest('div')!.parentElement as HTMLElement;
+      expect(within(groupRoot).getByText('romaine')).toBeInTheDocument();
+    });
     expect(screen.getByRole('button', { name: /remove item/i })).toBeInTheDocument();
     // clearing the chip resets the target back to loose
     await user.click(screen.getByRole('button', { name: /stop adding to group/i }));
@@ -199,7 +200,7 @@ describe('MealEditorDialog', () => {
   it('clicking away in the body clears the group search target', async () => {
     const user = userEvent.setup();
     render(<MealEditorDialog {...base({ items: [group('Sides', [])] })} />);
-    await user.click(screen.getByText(/add items to this group/i));
+    await user.click(screen.getByText(/^\+ add to group$/i));
     expect(screen.getByText(/adding to:\s*sides/i)).toBeInTheDocument();
     // Click the "Items" label — in the body but outside the group → clears the target.
     await user.click(screen.getByText('Items'));

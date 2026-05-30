@@ -97,7 +97,7 @@ export function EditorGroupSection({
       )}
       <Box sx={{ borderTop: `1px solid ${tokens.border.subtle}` }}>
         {ings.length === 0 ? (
-          // Empty group: the empty state IS the affordance — styled like the non-empty
+          // Empty group: the empty state IS the affordance — identical to the non-empty
           // "+ Add to group" row so the two read consistently.
           <ButtonBase
             onClick={onAddToGroup}
@@ -112,7 +112,7 @@ export function EditorGroupSection({
               fontWeight: 600,
             }}
           >
-            + Add items to this group
+            + Add to group
           </ButtonBase>
         ) : (
           <>
