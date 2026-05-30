@@ -250,7 +250,7 @@ export default function MealEditor({
       ))}
 
       {mealItems.length === 0 && (
-        <Typography variant="body2" color="text.secondary" textAlign="center" py={1}>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
           Use the buttons below to add items.
         </Typography>
       )}

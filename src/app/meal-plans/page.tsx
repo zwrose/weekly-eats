@@ -1261,7 +1261,9 @@ function MealPlansPageContent() {
               maxWidth="sm"
               fullWidth
               sx={responsiveDialogStyle}
-              TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
+              slotProps={{
+                transition: { onEntered: () => shareEmailRef.current?.focus() },
+              }}
             >
               <DialogTitle onClose={shareDialog.closeDialog}>Share Meal Plans</DialogTitle>
               <DialogContent>

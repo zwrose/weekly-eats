@@ -195,12 +195,14 @@ export default function IngredientInput({
       )}
 
       <Box
-        display="flex"
-        gap={2}
-        alignItems="flex-start"
-        flexDirection={{ xs: 'column', sm: 'row' }}
+        sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'flex-start',
+          flexDirection: { xs: 'column', sm: 'row' },
+        }}
       >
-        <Box flex={1} width="100%">
+        <Box sx={{ flex: 1, width: '100%' }}>
           <FoodItemAutocomplete
             allowRecipes={true}
             excludeIds={selectedIds}
@@ -242,11 +244,13 @@ export default function IngredientInput({
         </Box>
 
         <Box
-          display="flex"
-          gap={2}
-          alignItems="flex-start"
-          width={{ xs: '100%', sm: 'auto' }}
-          flexDirection={{ xs: 'column', sm: 'row' }}
+          sx={{
+            display: 'flex',
+            gap: 2,
+            alignItems: 'flex-start',
+            width: { xs: '100%', sm: 'auto' },
+            flexDirection: { xs: 'column', sm: 'row' },
+          }}
         >
           <QuantityInput
             value={ingredient.quantity ?? 1}
