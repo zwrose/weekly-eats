@@ -28,3 +28,12 @@ describe('design tokens', () => {
     expect(tokens.shadow.card).toBe('0 0 0 3px rgba(122,167,255,0.08)');
   });
 });
+
+describe('shopping on-accent ink tokens', () => {
+  it('exposes dark on-accent ink for the shop section fill', () => {
+    expect(tokens.onAccent.shop).toBe('#0c1a13');
+  });
+  it('exposes dark on-danger ink for danger fills (SKIP segment / retry)', () => {
+    expect(tokens.onDanger).toBe('#1a0f0f');
+  });
+});

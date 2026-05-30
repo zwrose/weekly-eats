@@ -34,6 +34,8 @@ export const tokens = {
     pantry: '#c79bff',
   },
   accentUtility: '#9aa4b3',
+  onAccent: { shop: '#0c1a13' },
+  onDanger: '#1a0f0f',
   state: {
     success: '#8edcb4',
     successMuted: 'rgba(142,220,180,0.14)',
