@@ -2,16 +2,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Dialog,
-  Box,
-  Button,
-  Switch,
-  FormControlLabel,
-  InputBase,
-  IconButton,
-} from '@mui/material';
+import { Dialog, Box, Button, FormControlLabel, InputBase, IconButton } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
+import { PillSwitch } from '@/components/ui';
 import { tokens } from '@/lib/design-tokens';
 import type { MealItem } from '@/types/meal-plan';
 import type { FoodItem } from '@/lib/hooks/use-food-item-selector';
@@ -364,9 +357,15 @@ export function MealEditorDialog({
         <Box sx={{ px: 2.75, py: 1.5, borderBottom: `1px solid ${tokens.border.subtle}` }}>
           <FormControlLabel
             control={
-              <Switch checked={draft.skipped} onChange={(e) => onToggleSkip(e.target.checked)} />
+              <PillSwitch
+                checked={draft.skipped}
+                onChange={(e) => onToggleSkip(e.target.checked)}
+              />
             }
             label="Skip this meal"
+            // The compact pill has no internal padding, so add the gap explicitly and drop
+            // FormControlLabel's default negative margin that offset the old switch padding.
+            sx={{ gap: 1.25, ml: 0 }}
             slotProps={{ typography: { sx: { fontSize: 13 } } }}
           />
           {draft.skipped && (

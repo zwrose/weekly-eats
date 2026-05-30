@@ -3,8 +3,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Button, ButtonBase, CircularProgress, Switch } from '@mui/material';
+import { Box, Button, ButtonBase, CircularProgress } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
+import { PillSwitch } from '@/components/ui';
 import { tokens } from '@/lib/design-tokens';
 import type { DayOfWeek, MealItem, MealType } from '@/types/meal-plan';
 import {
@@ -287,34 +288,12 @@ export function TemplateSettings() {
                 <Box sx={{ flex: 1, fontSize: 14, color: tokens.text.primary }}>
                   {MEAL_LABEL[meal]}
                 </Box>
-                <Switch
+                <PillSwitch
                   checked={Boolean(draft.meals[meal])}
                   onChange={(e) =>
                     setDraft((p) => p && { ...p, meals: { ...p.meals, [meal]: e.target.checked } })
                   }
                   slotProps={{ input: { 'aria-label': MEAL_LABEL[meal] } }}
-                  sx={{
-                    width: 36,
-                    height: 22,
-                    padding: 0,
-                    '& .MuiSwitch-switchBase': {
-                      padding: '2px',
-                      '&.Mui-checked': {
-                        transform: 'translateX(14px)',
-                        color: '#fff',
-                        '& + .MuiSwitch-track': {
-                          backgroundColor: tokens.section.plans,
-                          opacity: 1,
-                        },
-                      },
-                    },
-                    '& .MuiSwitch-thumb': { width: 18, height: 18, boxShadow: 'none' },
-                    '& .MuiSwitch-track': {
-                      borderRadius: '11px',
-                      backgroundColor: tokens.border.strong,
-                      opacity: 1,
-                    },
-                  }}
                 />
               </Box>
             ))}
