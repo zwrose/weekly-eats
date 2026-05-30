@@ -6,6 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
 import { getUnitForm } from '@/lib/food-items-utils';
+import type { ActiveUser } from '@/lib/hooks';
 import type { ShoppingListItem } from '@/types/shopping-list';
 import { StoreSidebar, type StoreSidebarStore } from './StoreSidebar';
 
@@ -27,7 +28,7 @@ export interface ShoppingListViewProps {
   onFinish: () => void;
   onReconnect: () => void;
   connectionState: 'connected' | 'connecting' | 'disconnected';
-  activeUsers: unknown[];
+  activeUsers: ActiveUser[];
   /** Add-store affordance for the sidebar. Optional; defaults to onAddItem-less no-op. */
   onAddStore?: () => void;
   /** Presence cluster (live pill + "also viewing") — page passes its existing construct. */

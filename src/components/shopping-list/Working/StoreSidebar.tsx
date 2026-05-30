@@ -91,7 +91,7 @@ export function StoreSidebar({
             <ButtonBase
               key={store._id}
               onClick={() => onSelect(store._id)}
-              aria-current={active}
+              aria-current={active ? 'true' : undefined}
               aria-label={store.name}
               sx={{
                 display: 'flex',

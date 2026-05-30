@@ -15,10 +15,7 @@ describe('StoreSidebar', () => {
       'aria-current',
       'true'
     );
-    expect(screen.getByRole('button', { name: /Greenleaf/ })).toHaveAttribute(
-      'aria-current',
-      'false'
-    );
+    expect(screen.getByRole('button', { name: /Greenleaf/ })).not.toHaveAttribute('aria-current');
   });
   it('calls onSelect with the store id when a different store is clicked', async () => {
     const user = userEvent.setup();
