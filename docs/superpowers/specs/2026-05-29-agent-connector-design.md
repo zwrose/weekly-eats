@@ -63,8 +63,8 @@ Claude (agent / recipe-import skill)
       │                              ▲
       │                              │ tokens minted by ↓
       │                     Weekly Eats OAuth AS (hand-rolled, §6.2)
-      │                              │ delegates human login to
-      │                     existing Google / NextAuth flow
+      │                              │ login via Google/NextAuth, then
+      │                              │ explicit user consent (CS1) before code issuance
       ▼
 src/lib/services/*   ◄── same functions ──►  /api/* route handlers (thin wrappers)
       │
@@ -91,18 +91,18 @@ for validation, ownership, and user-scoping.
 
 Weekly Eats acts as a spec-compliant OAuth 2.1 Authorization Server. New endpoints:
 
-| Endpoint                                  | Role                                                                                                                                                                                                              |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/.well-known/oauth-protected-resource`   | RFC 9728 Protected Resource Metadata; advertises the AS. Served by `protectedResourceHandler()`.                                                                                                                  |
-| `/.well-known/oauth-authorization-server` | AS metadata: issuer, authorize/token/register URLs, PKCE methods, supported scopes.                                                                                                                               |
-| `/api/mcp/oauth/register`                 | Dynamic Client Registration (RFC 7591) — Claude auto-registers itself. Per-IP rate limited; see "AS hardening" below.                                                                                             |
-| `/api/mcp/oauth/authorize`                | Authorization endpoint. Requires PKCE **and a server-verified `state`**. Bounces the user through existing Google/NextAuth login, then issues a short-lived, PKCE-bound auth code.                                |
-| `/api/mcp/oauth/token`                    | Token endpoint. Exchanges auth code (or refresh token) for the app's own MCP access + refresh tokens, bound to `userId` and the resource indicator (RFC 8707). Re-checks approval on refresh; see "AS hardening". |
-| `/api/mcp/oauth/revoke`                   | Token revocation (sets `revokedAt`; see §9).                                                                                                                                                                      |
+| Endpoint                                  | Role                                                                                                                                                                                                                                                |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/.well-known/oauth-protected-resource`   | RFC 9728 Protected Resource Metadata; advertises the AS. Served by `protectedResourceHandler()`.                                                                                                                                                    |
+| `/.well-known/oauth-authorization-server` | AS metadata: issuer, authorize/token/register URLs, PKCE methods, supported scopes.                                                                                                                                                                 |
+| `/api/mcp/oauth/register`                 | Dynamic Client Registration (RFC 7591) — Claude auto-registers itself. Per-IP rate limited; see "AS hardening" below.                                                                                                                               |
+| `/api/mcp/oauth/authorize`                | Authorization endpoint. Requires PKCE **and a server-verified `state`**. Bounces the user through existing Google/NextAuth login, then shows an **explicit consent screen** (CS1), and only on approval issues a short-lived, PKCE-bound auth code. |
+| `/api/mcp/oauth/token`                    | Token endpoint. Exchanges auth code (or refresh token) for the app's own MCP access + refresh tokens, bound to `userId` and the resource indicator (RFC 8707). Re-checks approval on refresh; see "AS hardening".                                   |
+| `/api/mcp/oauth/revoke`                   | Token revocation (sets `revokedAt`; see §9).                                                                                                                                                                                                        |
 
 **Token flow:** Claude → `register` → `authorize` → (Google login via NextAuth) →
-auth code → `token` → MCP access + refresh token. Google's tokens are never returned
-to Claude.
+**consent screen → user approves** → auth code → `token` → MCP access + refresh token.
+Google's tokens are never returned to Claude.
 
 **Requirements enforced:** OAuth 2.1 + PKCE; Resource Indicators (RFC 8707) so tokens
 are valid only for this MCP server; `401` responses carry `WWW-Authenticate` pointing
@@ -151,6 +151,21 @@ at the Protected Resource Metadata URL.
   equals the code's issuing `clientId` and the `redirect_uri` matches the authorization
   request's (both stored on `mcpAuthCodes`, §9) — OAuth 2.1 §4.1.3, so a different
   registered client cannot redeem another client's code.
+- **Explicit user consent (CS1):** after Google login and **before** issuing an auth
+  code, `/authorize` renders a consent screen naming the requesting client and the access
+  it will receive ("Allow _\<client_name\>_ to read and modify your Weekly Eats recipes,
+  food items, meal plans, pantry, and shopping lists?") with Allow / Deny. A code is
+  issued **only** on explicit Allow; Deny redirects back with `error=access_denied`.
+  Consent is **never auto-skipped just because a Google/NextAuth session already exists**
+  — this is the defense against the confused-deputy / silent-authorization attack, where
+  open DCR lets an attacker register a client and an already-logged-in victim would
+  otherwise be silently authorized. Consent is recorded per `(userId, clientId)` (see
+  §9, `mcpConsents`) and **may** be skipped on subsequent authorizations for that exact
+  pair (same client, same-or-narrower scope); a new or unrecognized `clientId` always
+  re-prompts. This is the one new piece of connector UI (a minimal server-rendered
+  page); it does not change how browser users authenticate to the web app. CSRF: the
+  consent form's submit is protected by the same server-side `state`/session binding as
+  the rest of the flow (the Allow action must carry the verified `state`).
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -310,10 +325,15 @@ pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
   generated in session A is rejected when replayed in session B; **expired
   `mcpAuthStates` doc rejected by application code (past `expiresAt`, mock lookup to
   bypass the TTL reaper) → 400 (test-001)**;
-  `redirect_uri` mismatch → 400; unapproved user cannot obtain a code; **happy path (MD)**
-  — valid `code_challenge` + matching `state` + approved user → code issued, `state`
-  single-use. `/register`: rate-limit enforced; **non-HTTPS `redirect_uri` (non-localhost)
-  → 400 (S2)**. `/revoke`: valid revocation succeeds; unknown token succeeds silently
+  `redirect_uri` mismatch → 400; unapproved user cannot obtain a code; **consent
+  required (CS1)** — authenticated user, no prior `mcpConsents` row for this `(userId,
+clientId)` → consent screen shown, **no code issued until Allow**; **Deny → redirect
+  with `error=access_denied`, no code**; **prior-consent skip** — an exact `(userId,
+clientId, scope)` match in `mcpConsents` issues a code without re-prompting, but a new
+  `clientId` re-prompts even with a live Google session (silent-authorization guard);
+  **happy path (MD)** — valid `code_challenge` + matching `state` + approved user +
+  consent → code issued, `state` single-use. `/register`: rate-limit enforced;
+  **non-HTTPS `redirect_uri` (non-localhost) → 400 (S2)**. `/revoke`: valid revocation succeeds; unknown token succeeds silently
   (RFC 7009 §2.2); unauthenticated → 401.
 - **Phase 1 dev-token gate (Phase 2)** — integration test asserting the production
   configuration rejects the static dev token (see §11, C1).
@@ -342,6 +362,11 @@ No changes to existing collections. New collections for the AS:
   lives (the stateless runtime can't hold it in memory, and the auth code doesn't exist
   yet at redirect time). A signed, short-lived server-side cookie is an acceptable
   alternative; the collection is the default.
+- `mcpConsents` (CS1) — one document per `(userId, clientId)` recording that the user
+  granted this client access, with `scope` and `grantedAt`. `/authorize` skips the
+  consent screen only on an exact match (same client, same-or-narrower scope); a new
+  `clientId`, or a broader scope, re-prompts. Revoked when the user revokes the client
+  (a future "connected apps" management surface can delete these rows).
 
 **Storage format (M2 + S1):** access tokens, **refresh tokens**, and auth codes are all
 persisted as **SHA-256 hashes**, never plaintext — the raw secret is returned to the
@@ -361,9 +386,9 @@ revocation check.
 
 Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`/
 `mcpAuthStates` expiry; `mcpClients` cleanup; lookup indexes on the hashed-token
-fields). **Also add the four `mcp*` collections to the hardcoded list in
-`dropAllIndexes()` (`database-indexes.ts:155`) (MB)**, or dev/test resets leave stale
-`mcp*` indexes behind.
+fields). **Also add the five `mcp*` collections (`mcpClients`, `mcpAuthCodes`,
+`mcpTokens`, `mcpAuthStates`, `mcpConsents`) to the hardcoded list in `dropAllIndexes()`
+(`database-indexes.ts:155`) (MB)**, or dev/test resets leave stale `mcp*` indexes behind.
 
 ## 10. Security considerations
 
@@ -377,6 +402,10 @@ fields). **Also add the four `mcp*` collections to the hardcoded list in
   (RFC 8707).
 - **PKCE + `state` required** on the authorization code flow (I4, §6.2); DCR endpoint
   is rate limited (I6, §6.2).
+- **Explicit consent (CS1):** `/authorize` requires user approval on a consent screen
+  before issuing a code and never auto-skips on an existing Google session for an
+  unrecognized client — the defense against confused-deputy / silent authorization that
+  open DCR otherwise enables (§6.2).
 - **Pinned dependencies:** `@modelcontextprotocol/sdk` ≥ 1.26.0 (prior versions have
   advisories). Per the `mcp-handler` README, **Redis is optional and only needed for
   the legacy SSE transport** — stateless Streamable HTTP needs none. The earlier
@@ -399,9 +428,11 @@ them (existing tests stay green) and add the service + tool tests in §8a. Stand
 deployed environment. _Deliverable: tools callable from a local MCP client._
 
 **Phase 2 — OAuth Authorization Server + approval-gated verification + deploy.**
-Implement the AS endpoints (§6.2) including `state`/CSRF, refresh re-approval + rotation,
-DCR rate limiting, and hashed token storage; implement `verifyToken` (§6.4); create the
-`mcp*` collections + indexes (§9); add the §8a auth tests. **Exit checklist:** the
+Implement the AS endpoints (§6.2) including `state`/CSRF, the **consent screen (CS1)**,
+refresh re-approval + rotation, DCR rate limiting, and hashed token storage; implement
+`verifyToken` (§6.4); create the `mcp*` collections + indexes (§9, incl. `mcpConsents`);
+add the §8a auth tests. The consent screen is a minimal server-rendered, responsive
+(phone-width) page — the only new connector UI. **Exit checklist:** the
 Phase 1 dev-token code path is removed or provably inert in production, verified by the
 §8a integration test, before deploy. Replace the dev token with real OAuth.
 _Deliverable: a self-serve connector an approved user can add in Claude and use for
@@ -447,7 +478,14 @@ discriminator and `verifyToken` accepts only access tokens (arch-001); `mcpAuthC
 stores and `/token` verifies `clientId`/`redirectUri` (sec-005); PKCE is S256-only,
 `plain` rejected (sec-004); the S3 rotation update payload is clarified (arch-002); and
 §8a adds refresh-as-bearer, cross-client-code, `plain`-rejection, and expired-`state`
-cases. With these, the review converged — no Critical/Important findings remain.
+cases.
+
+Added after loop 4 (user decision): an **explicit user-consent screen (CS1)** on
+`/authorize` before code issuance, never auto-skipped for an unrecognized client on an
+existing Google session — closing the confused-deputy / silent-authorization vector that
+open DCR enables. New `mcpConsents` collection (§9); §8a gains consent-required, Deny,
+and prior-consent-skip cases (§6.2, §8a, §10). This was raised, then set aside as
+out-of-scope, during loop 4; the user elected to include it.
 
 Remaining:
 
