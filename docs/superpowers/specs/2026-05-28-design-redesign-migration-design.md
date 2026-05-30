@@ -228,24 +228,30 @@ This spec is the stable roadmap; each chunk gets its own **just-in-time implemen
 
 One-time setup is folded into Chunk 1: open the draft PR; extend `review-code` to accept a base-ref override (it currently hardcodes `main`/PR-base) without disturbing its `--post` / `--review-only` / loop paths; establish the `redesign-chunk-NN` tag convention; add the CI branch trigger; point local `.env.local` at a dedicated local dev DB (e.g. `weekly-eats-redesign-local`) so `manual-testing` seeds there, never prod; create the progress ledger.
 
+**Artboard-compliance review (both gates).** Every chunk whose surface has artboards gets **two** explicit artboard passes — one at plan time (raise concerns _before_ code) and one post-implementation (catch fidelity drift _before_ review-code). This is folded into steps 0 and 2 below. Chunks whose surface has no/thin artboards (e.g. 9 Settings placeholder, parts of 10/11) note "no artboards — N/A" and skip both.
+
 Per chunk, in order:
 
-0. **Plan** — invoke `writing-plans` to write `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md` from this spec's scope for the chunk, against the _current_ state of the code. For the three interaction-heavy chunks (**3 Meal Plans, 4 Recipes, 5 Shopping**) run `/review-plan` on the chunk plan before implementing; smaller/mechanical chunks skip it. Update the ledger: mark the chunk in-progress.
+0. **Plan** — invoke `writing-plans` to write `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md` from this spec's scope for the chunk, against the _current_ state of the code.
+   - **Artboard-compliance gate #1 (plan-time concerns).** For surfaces with artboards, the plan MUST include an **Artboard compliance** section: (a) extract the exact-value spec (colors, type scale, spacing, radii, dimensions, per-screen layout) for each artboard screen at **both** breakpoints; (b) an **Artboard concerns** subsection that flags anything unrealistic, technically costly, or a likely-bad idea, each with a recommended disposition (**honor / adapt / drop**) for the user to rule on **before** implementing. Fold the resolved concerns into the plan as locked decisions.
+   - For the three interaction-heavy chunks (**3 Meal Plans, 4 Recipes, 5 Shopping**) run `/review-plan` on the chunk plan before implementing (it reviews the Artboard-compliance section too); smaller/mechanical chunks skip `/review-plan`. Update the ledger: mark the chunk in-progress.
 1. **Implement** the chunk in logical commits. `npm run check` green locally.
-2. **`review-code` (auto-fix loop), scoped to this chunk** — base = previous chunk tag (`redesign-chunk-(N-1)...HEAD`; Chunk 1 = `main...HEAD`). Review → triage → fix → re-review, committing fixes locally until no Critical/Important findings remain. Judgment calls surface via the skill's intervention prompts.
-3. **`npm run check`** again after review fixes.
-4. **`manual-testing`, per-chunk slot** (`chunk-NN-<surface>`) — reads CATALOG, analyzes the chunk diff, picks/creates scenario blocks, seeds the **local dev DB**, posts a **new** checklist comment (distinct slot marker) to the draft PR. New scenario blocks/manifests get committed.
-5. **Push** → CI runs on the draft PR; Vercel deploys to beta.
-6. **Execute the chunk-qualification plan locally** — localhost + local dev DB, via the `verify` skill / Chrome, checking off the PR checklist. **This is the gate, not beta.**
-7. **Fold fixes** found during manual testing into the chunk; if substantial, re-run `review-code` (step 2) on the new delta.
-8. **Tag** `redesign-chunk-NN` once the checklist passes — this becomes the next chunk's review base.
-9. **Update the ledger** — mark the chunk done; record the tag, the plan-doc path, the PR test-comment link, and any decisions/carryovers learned mid-chunk that affect later chunks.
-10. **Merge `main` → branch** (if main moved).
-11. **Compact context** (see §9) — write a one-paragraph handoff, then compact; the next context starts clean and re-reads the spec + ledger (+ the next chunk's plan once written).
+2. **Artboard-compliance gate #2 (post-implementation fidelity audit), before `review-code`.** For surfaces with artboards: compare as-built to the artboards **value-by-value** (exact tokens/sizes from the `.jsx`) **and visually at both breakpoints** (desktop + ~390–430px) on seeded data via chrome-devtools-mcp. Produce `docs/superpowers/plans/redesign-chunk-NN-<surface>-artboard-audit.md` with a **disposition log** (per finding: **close** vs **keep-as-built** + rationale; kept deviations are recorded once and not re-litigated). Close the material/minor fidelity gaps in this chunk so the fixes land in the diff `review-code` sees. Template/precedent: `docs/design/weekly-eats-redesign/AS-BUILT-VS-ARTBOARDS-AUDIT.md` (the post-hoc chunk-1–3 audit + disposition log).
+3. **`review-code` (auto-fix loop), scoped to this chunk** — base = previous chunk tag (`redesign-chunk-(N-1)...HEAD`; Chunk 1 = `main...HEAD`). Review → triage → fix → re-review, committing fixes locally until no Critical/Important findings remain. Judgment calls surface via the skill's intervention prompts.
+4. **`npm run check`** again after review fixes.
+5. **`manual-testing`, per-chunk slot** (`chunk-NN-<surface>`) — reads CATALOG, analyzes the chunk diff, picks/creates scenario blocks, seeds the **local dev DB**, posts a **new** checklist comment (distinct slot marker) to the draft PR. New scenario blocks/manifests get committed.
+6. **Push** → CI runs on the draft PR; Vercel deploys to beta.
+7. **Execute the chunk-qualification plan locally** — localhost + local dev DB, via the `verify` skill / Chrome, checking off the PR checklist. **This is the gate, not beta.**
+8. **Fold fixes** found during manual testing into the chunk; if substantial, re-run `review-code` (step 3) on the new delta.
+9. **Tag** `redesign-chunk-NN` once the checklist passes — this becomes the next chunk's review base.
+10. **Update the ledger** — mark the chunk done; record the tag, the plan-doc path, the PR test-comment link, the artboard-audit-doc path, and any decisions/carryovers learned mid-chunk that affect later chunks.
+11. **Merge `main` → branch** (if main moved).
+12. **Compact context** (see §9) — write a one-paragraph handoff, then compact; the next context starts clean and re-reads the spec + ledger (+ the next chunk's plan once written).
 
 **Definition of done (per chunk):**
 
-- Chunk plan written (and `/review-plan`'d for chunks 3–5).
+- Chunk plan written (and `/review-plan`'d for chunks 3–5), **including the Artboard-compliance section with concerns resolved by the user** (or "no artboards — N/A").
+- **Post-implementation artboard-fidelity audit done** (`…-artboard-audit.md` with disposition log); material/minor gaps closed, kept-as-built deviations recorded — run **before** `review-code` (or N/A for surfaces without artboards).
 - `review-code` auto-fix loop exited clean (no Critical/Important remaining, or remaining ones explicitly skipped).
 - `npm run check` green.
 - Manual-test plan posted as its own slot comment **and** executed locally with the checklist passing.
