@@ -610,9 +610,15 @@ Remaining:
 - **Newer MCP auth revision:** a `2025-11-25` MCP authorization revision exists; the
   research confirmed it does not contradict the `2025-06-18` requirements used here, but
   re-check it against the newest revision before implementing Phase 2.
-- **NextAuth threading:** confirm the programmatic AS authorize→login→callback flow
-  threads cleanly through NextAuth v4 + Google (vs. `mcp-paprika`'s direct OIDC-client
-  approach) during Phase 2.
+- **NextAuth/Auth.js threading (gated by #142):** confirm the programmatic AS
+  authorize→login→callback flow threads cleanly through the app's Google login (vs.
+  `mcp-paprika`'s direct OIDC-client approach) during Phase 2. **Issue #142 migrates
+  `next-auth` v4 → Auth.js v5 (`auth()` + redirect proxy, so Google login works on Vercel
+  preview deploys) and is folded into this effort as Phase 1.5 — it gates Phase 2.** Build
+  the AS login leg against the **v5** surface, not v4, to avoid redoing auth-critical code.
+  Also evaluate whether the connector's Google-callback leg should ride on v5's redirect
+  proxy (reusing its origin allowlisting) rather than reinventing it. (#142 sequences around
+  the in-flight dependency upgrades it references.)
 - **Vercel specifics (deferred to Phase 2):** clock-skew tolerance for second-scale code
   expiry across regions; signing/hashing-pepper secret management (env var vs KMS).
 - **Service extraction surface:** keep each phase's refactor scoped to the routes that
