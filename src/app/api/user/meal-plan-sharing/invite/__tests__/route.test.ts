@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -19,27 +18,27 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
 });
 
 describe('api/user/meal-plan-sharing/invite POST', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.POST(makeReq('http://localhost/api/x', { email: 'a@b.com' }));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       unapprovedSession({ id: 'u1', email: 'me@example.com' })
     );
     const res = await routes.POST(
@@ -49,7 +48,7 @@ describe('api/user/meal-plan-sharing/invite POST', () => {
   });
 
   it('returns 400 for an invalid email', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       approvedSession({ id: 'u1', email: 'me@example.com' })
     );
     const res = await routes.POST(makeReq('http://localhost/api/x', { email: 'not-an-email' }));
@@ -57,7 +56,7 @@ describe('api/user/meal-plan-sharing/invite POST', () => {
   });
 
   it('returns 400 when inviting yourself', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       approvedSession({ id: 'u1', email: 'me@example.com' })
     );
     const res = await routes.POST(makeReq('http://localhost/api/x', { email: 'ME@example.com' }));
@@ -65,7 +64,7 @@ describe('api/user/meal-plan-sharing/invite POST', () => {
   });
 
   it('returns 404 when the invited user is not registered', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       approvedSession({ id: 'u1', email: 'me@example.com' })
     );
     findOneMock.mockResolvedValueOnce(null); // invited user lookup
@@ -76,7 +75,7 @@ describe('api/user/meal-plan-sharing/invite POST', () => {
   });
 
   it('creates a pending invitation and returns 201', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       approvedSession({ id: 'u1', email: 'me@example.com' })
     );
     // 1) invited user lookup
@@ -105,7 +104,7 @@ describe('api/user/meal-plan-sharing/invite POST', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       approvedSession({ id: 'u1', email: 'me@example.com' })
     );
     findOneMock.mockRejectedValueOnce(new Error('db down'));

@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const toArrayMock = vi.fn();
@@ -16,21 +15,21 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const SELF_ID = '64b7f8c2a2b7c2f1a2b7c2f1';
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   toArrayMock.mockReset();
   findMock.mockClear();
 });
 
 describe('api/user/recipe-sharing/invitations route (GET)', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(401);
     const json = await res.json();
@@ -38,13 +37,13 @@ describe('api/user/recipe-sharing/invitations route (GET)', () => {
   });
 
   it('returns 403 when user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: SELF_ID }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: SELF_ID }));
     const res = await routes.GET();
     expect(res.status).toBe(403);
   });
 
   it('returns pending invitations for the current user with owner info', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: { toString: () => 'owner-1' },
@@ -88,7 +87,7 @@ describe('api/user/recipe-sharing/invitations route (GET)', () => {
   });
 
   it('filters out owners with no matching pending invitation for the user', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: { toString: () => 'owner-2' },
@@ -115,7 +114,7 @@ describe('api/user/recipe-sharing/invitations route (GET)', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
     toArrayMock.mockRejectedValueOnce(new Error('db boom'));
     const res = await routes.GET();
     expect(res.status).toBe(500);

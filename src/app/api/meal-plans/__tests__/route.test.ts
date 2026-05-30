@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findMock = vi.fn();
@@ -108,14 +107,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findMock.mockReset();
   toArrayMock.mockReset();
   findOneMock.mockReset();
@@ -125,19 +124,19 @@ beforeEach(() => {
 
 describe('api/meal-plans route', () => {
   it('GET requires auth', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved (GET)', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans'));
     expect(res.status).toBe(403);
   });
 
   it('GET returns user meal plans', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -161,7 +160,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('POST validates startDate and creates meal plan', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     // Existing plans for overlap check
     toArrayMock.mockResolvedValueOnce([]); // existing plans for overlap
     // No existing template -> create default
@@ -199,7 +198,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET populates names for food items in meal plans', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -232,7 +231,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET populates names for recipes in meal plans', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -263,7 +262,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET populates names for ingredient groups in meal plans', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -322,7 +321,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET handles missing food items gracefully', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -367,7 +366,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET filters by startDate and endDate when provided', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -399,7 +398,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET filters by minEndDate when provided', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',
@@ -429,7 +428,7 @@ describe('api/meal-plans route', () => {
   });
 
   it('GET returns all plans when no date filters provided', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       {
         _id: 'p1',

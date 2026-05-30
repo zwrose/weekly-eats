@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -30,7 +29,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const SELF_ID = '64b7f8c2a2b7c2f1a2b7c2f1';
@@ -40,7 +39,7 @@ const makeReq = (body?: unknown) => ({ url: 'http://localhost', json: async () =
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
   updateManyMock.mockReset();
@@ -49,7 +48,7 @@ beforeEach(() => {
 describe('api/user/recipe-sharing/invitations/[userId] route', () => {
   describe('PUT (accept/reject invitation)', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.PUT(makeReq({ action: 'accept' }), {
         params: Promise.resolve({ userId: SELF_ID }),
       } as any);
@@ -57,7 +56,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: SELF_ID }));
       const res = await routes.PUT(makeReq({ action: 'accept' }), {
         params: Promise.resolve({ userId: SELF_ID }),
       } as any);
@@ -65,7 +64,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 400 for an invalid action', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       const res = await routes.PUT(makeReq({ action: 'maybe' }), {
         params: Promise.resolve({ userId: SELF_ID }),
       } as any);
@@ -75,7 +74,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 403 when acting on an invitation that is not yours', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       const res = await routes.PUT(makeReq({ action: 'accept' }), {
         params: Promise.resolve({ userId: OTHER_ID }),
       } as any);
@@ -85,7 +84,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 404 when no pending invitation exists', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       findOneMock.mockResolvedValueOnce(null);
       const res = await routes.PUT(makeReq({ action: 'accept' }), {
         params: Promise.resolve({ userId: SELF_ID }),
@@ -96,7 +95,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('accepts an invitation and sets status to accepted', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       findOneMock.mockResolvedValueOnce({ _id: 'owner-1' });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
@@ -112,7 +111,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('rejects an invitation and sets status to rejected', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       findOneMock.mockResolvedValueOnce({ _id: 'owner-1' });
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
 
@@ -126,7 +125,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 500 when the DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: SELF_ID }));
       findOneMock.mockRejectedValueOnce(new Error('db boom'));
       const res = await routes.PUT(makeReq({ action: 'accept' }), {
         params: Promise.resolve({ userId: SELF_ID }),
@@ -139,7 +138,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
 
   describe('DELETE (remove user / leave sharing)', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.DELETE(makeReq(), {
         params: Promise.resolve({ userId: SELF_ID }),
       } as any);
@@ -147,7 +146,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         unapprovedSession({ id: SELF_ID, email: 'me@example.com' })
       );
       const res = await routes.DELETE(makeReq(), {
@@ -157,7 +156,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 403 when not the owner and not the invited user', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: SELF_ID, email: 'me@example.com' })
       );
       // Not an owner of any invitation for OTHER_ID
@@ -171,7 +170,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('owner removes a shared user via $pull on their own doc', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: SELF_ID, email: 'owner@example.com' })
       );
       // Current user is the owner of an invitation for OTHER_ID
@@ -190,7 +189,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('user leaves sharing via $pull across all owners (updateMany)', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: SELF_ID, email: 'me@example.com' })
       );
       // Not an owner, but self (userId === session.user.id)
@@ -208,7 +207,7 @@ describe('api/user/recipe-sharing/invitations/[userId] route', () => {
     });
 
     it('returns 500 when the DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: SELF_ID, email: 'me@example.com' })
       );
       findOneMock.mockRejectedValueOnce(new Error('db boom'));

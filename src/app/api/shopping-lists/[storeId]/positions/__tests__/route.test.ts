@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const storesFindOne = vi.fn();
@@ -26,7 +25,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const VALID_STORE_ID = '64b7f8c2a2b7c2f1a2b7c2f1';
@@ -34,7 +33,7 @@ const VALID_FOOD_ID = '507f1f77bcf86cd799439011';
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   storesFindOne.mockReset();
   positionsFindOne.mockReset();
   positionsBulkWrite.mockReset();
@@ -46,7 +45,7 @@ beforeEach(() => {
 describe('api/shopping-lists/[storeId]/positions route', () => {
   describe('GET', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.GET(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`),
         {
@@ -57,7 +56,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.GET(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`),
         {
@@ -68,7 +67,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.GET(makeReq('http://localhost/api/shopping-lists/bad/positions'), {
         params: Promise.resolve({ storeId: 'bad' }),
       } as any);
@@ -76,7 +75,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 404 when store not accessible', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce(null);
       const res = await routes.GET(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`),
@@ -88,7 +87,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns all positions for the store', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       positionsToArray.mockResolvedValueOnce([
         { foodItemId: VALID_FOOD_ID, position: 0.5, updatedAt: new Date() },
@@ -106,7 +105,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns single position when foodItemId query provided', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       positionsFindOne.mockResolvedValueOnce({ position: 0.25 });
       const res = await routes.GET(
@@ -121,7 +120,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns null position when not found for foodItemId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       positionsFindOne.mockResolvedValueOnce(null);
       const res = await routes.GET(
@@ -136,7 +135,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for invalid foodItemId query', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       const res = await routes.GET(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions?foodItemId=bad`),
@@ -146,7 +145,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 500 when DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockRejectedValueOnce(new Error('db down'));
       const res = await routes.GET(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`),
@@ -160,7 +159,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
 
   describe('POST', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: [],
@@ -171,7 +170,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: [],
@@ -182,7 +181,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq('http://localhost/api/shopping-lists/bad/positions', { positions: [] }),
         { params: Promise.resolve({ storeId: 'bad' }) } as any
@@ -191,7 +190,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 when positions is not an array', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: 'nope',
@@ -202,7 +201,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for missing foodItemId in a position', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: [{ position: 0.5 }],
@@ -213,7 +212,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for out-of-range position', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: [{ foodItemId: VALID_FOOD_ID, position: 5 }],
@@ -224,7 +223,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 400 for invalid foodItemId format', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
           positions: [{ foodItemId: 'bad', position: 0.5 }],
@@ -235,7 +234,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 404 when store not accessible', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce(null);
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
@@ -247,7 +246,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('upserts positions on success', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       positionsBulkWrite.mockResolvedValueOnce({ ok: 1 });
       const res = await routes.POST(
@@ -263,7 +262,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('succeeds with empty positions without calling bulkWrite', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       const res = await routes.POST(
         makeReq(`http://localhost/api/shopping-lists/${VALID_STORE_ID}/positions`, {
@@ -276,7 +275,7 @@ describe('api/shopping-lists/[storeId]/positions route', () => {
     });
 
     it('returns 500 when DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({ _id: VALID_STORE_ID, userId: 'u1' });
       positionsBulkWrite.mockRejectedValueOnce(new Error('db down'));
       const res = await routes.POST(
