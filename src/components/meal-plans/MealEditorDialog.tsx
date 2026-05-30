@@ -295,9 +295,11 @@ export function MealEditorDialog({
         '& .MuiDialog-container': { alignItems: { xs: 'flex-end', md: 'center' } },
         '& .MuiDialog-paper': {
           bgcolor: tokens.surface.sheet,
+          // Every responsive prop sets an explicit md value — MUI breakpoints are min-width, so a
+          // bare { xs } leaks up to desktop. md restores the centered, gutter'd modal sizing.
           margin: { xs: 0, md: 'auto' },
-          width: { xs: '100%' },
-          maxWidth: { xs: '100%', md: undefined },
+          width: { xs: '100%', md: 'calc(100% - 64px)' },
+          maxWidth: { xs: '100%', md: '900px' },
           height: { xs: '92%', md: 'auto' },
           maxHeight: { xs: '92%', md: '90vh' },
           borderTopLeftRadius: { xs: `${tokens.radius.sheet}px`, md: `${tokens.radius.xxxl}px` },
