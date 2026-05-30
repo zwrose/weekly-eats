@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "branch": "feat/mcp",
+  "slot": "default",
+  "createdAt": "2026-05-30T03:00:00.000Z",
+  "updatedAt": "2026-05-30T03:00:00.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline" },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": {
+        "ensure": ["apple", "bread", "egg", "butter", "flour"],
+        "globalCount": 4,
+        "userCount": 4
+      },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "r",
+      "block": "recipes",
+      "config": { "count": 3, "isGlobal": false, "withUserData": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "rg",
+      "block": "recipes",
+      "config": { "count": 2, "isGlobal": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    }
+  ],
+  "stepMappings": []
+}
