@@ -81,11 +81,11 @@ cat > "$SESSION_DIR/meta.json" <<EOF
 EOF
 ```
 
-The classification is informational — it appears in the dispatch plan and is passed to subagents as context, but **all four specialists still run**. Coverage uniformity beats saving one agent dispatch; a "no data flow proposed" guess is exactly when a missing ownership check slips through.
+The classification is informational — it appears in the dispatch summary and is passed to subagents as context, but **all four specialists still run**. Coverage uniformity beats saving one agent dispatch; a "no data flow proposed" guess is exactly when a missing ownership check slips through.
 
-### 2. Plan Dispatch
+### 2. Dispatch Summary
 
-Enter plan mode via `EnterPlanMode`. Show the user:
+Print this dispatch summary as a plain status message, then dispatch the specialists immediately (no approval gate):
 
 - **Plan file:** `$PLAN_PATH` and its line count (`wc -l < $SESSION_DIR/plan.md`)
 - **Classification:** the `touches` array (e.g. `["API", "data", "auth"]`)
@@ -95,8 +95,6 @@ Enter plan mode via `EnterPlanMode`. Show the user:
   - `test-reviewer` → `findings-test.json`
   - `code-reviewer` → `findings-code.json` _(lighter at plan time)_
 - **Session directory:** `$SESSION_DIR`
-
-Exit plan mode via `ExitPlanMode` and wait for approval before dispatching.
 
 ### 3. Dispatch Specialists in Parallel
 

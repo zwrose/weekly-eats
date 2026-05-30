@@ -81,9 +81,9 @@ cat > "$SESSION_DIR/meta.json" <<EOF
 EOF
 ```
 
-### 2. Plan Dispatch
+### 2. Dispatch Summary
 
-Enter plan mode via `EnterPlanMode`. Show the user:
+Print this dispatch summary as a plain status message, then dispatch the specialists immediately (no approval gate):
 
 - **Skill:** `audit-debt`
 - **Scope:** the whole repo — `$FILE_COUNT` files under `src/`
@@ -95,8 +95,6 @@ Enter plan mode via `EnterPlanMode`. Show the user:
 - **Orchestrator-driven dimensions (run in parallel with specialists):** dependency staleness + vulnerabilities, TODO/FIXME accumulation, documentation drift
 - **Session directory:** `$SESSION_DIR`
 - **Note:** this is a slow run by design — expect ~minutes, not seconds.
-
-Exit plan mode via `ExitPlanMode` and wait for approval before dispatching.
 
 ### 3. Dispatch Specialists in Parallel
 

@@ -149,7 +149,7 @@ EOF
 
 `REVIEW_PATH` is `loop` (default), `review-only`, or `post`, decided from the flags at invocation. It is written to `meta.json` so a cold-resumed orchestrator (after compaction) knows which top-level flow to continue.
 
-Size the round-1 diff for the dispatch plan (after writing it to `round-1/diff.txt` per the command above):
+Size the round-1 diff for the dispatch summary (after writing it to `round-1/diff.txt` per the command above):
 
 ```bash
 DIFF_LINES=$(wc -l < "$SESSION_DIR/round-1/diff.txt")
@@ -157,11 +157,11 @@ DIFF_LINES=$(wc -l < "$SESSION_DIR/round-1/diff.txt")
 
 **CRITICAL:** Do not `cat`, `head`, `tail`, or otherwise read any `diff.txt` from the main context. The line count is the only thing the orchestrator needs to know about its contents.
 
-### 2. Plan Dispatch
+### 2. Dispatch Summary
 
-Enter plan mode via `EnterPlanMode`. The dispatch plan shows the user:
+Print this dispatch summary as a plain status message, then dispatch the specialists immediately (no approval gate):
 
-- **Skill:** `review-code` (so the orchestrator can reload the skill via the `Skill` tool if plan mode is re-entered)
+- **Skill:** `review-code`
 - **Mode:** PR or branch
 - **Target:** `PR #<N> "<title>"` (PR mode) or `<branch> vs main` (branch mode)
 - **Repo:** `<owner>/<repo>`
@@ -178,8 +178,6 @@ Enter plan mode via `EnterPlanMode`. The dispatch plan shows the user:
 - **What happens after dispatch (default loop):** compile + dedupe → triage → user interventions on judgment calls → fixer subagent commits → `npm run check` → circuit-breaker → re-review or exit
 
 Do **not** tier or skip specialists based on which files changed. Coverage uniformity matters more than saving an agent dispatch — a "no security-relevant files changed" guess is exactly when an IDOR slips through. All four always run. The agents themselves return an empty findings array when there's nothing in their dimension, which is cheap.
-
-Exit plan mode via `ExitPlanMode` and wait for user approval before dispatching.
 
 ### 3. Dispatch Specialists in Parallel
 
