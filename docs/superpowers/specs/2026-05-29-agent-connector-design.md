@@ -281,8 +281,11 @@ pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
   a value cached in the token (the M1 guarantee).
 - **OAuth AS endpoints (Phase 2)** — `/token`: successful PKCE code exchange;
   `code_verifier` mismatch → 400; missing verifier → 400; expired auth code → 400;
-  replayed (single-use) code → 400 **and tokens from the first exchange are revoked
-  (MA)**; successful refresh **with** approval re-check; refresh by a now-unapproved user
+  **unknown/unregistered `client_id` → 400/401 (T4)** (client auth per OAuth 2.1; mock
+  `mcpClients.findOne` → null); replayed (single-use) code → 400 **and tokens from the
+  first exchange are revoked (MA)**; **concurrent refresh of one token — exactly one
+  succeeds, the loser triggers chain revocation (S3 atomicity)**; successful refresh
+  **with** approval re-check; refresh by a now-unapproved user
   → 401 + token deleted; rotated-token replay revokes the chain. **Idle/sliding TTL
   (T2):** a successful refresh sets the replacement token's expiry relative to the
   exchange time; a token left unused past its idle window is rejected even if the
