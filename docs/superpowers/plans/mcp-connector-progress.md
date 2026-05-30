@@ -130,6 +130,18 @@ aren't worth a spec rewrite.
 - **2026-05-30 — `food_items.create` forces `isGlobal:false` in the TOOL wrapper, not the
   service (A1).** Keeps "routes and tools call identical service functions" true; the
   service still accepts `isGlobal` (HTTP behavior preserved), the MCP tool overrides it.
+- **2026-05-30 — Seed recipe ingredient ids must be hex strings (bug fix, commit `cc10ea9`).**
+  Manual verify surfaced "failed to fetch" on every _seeded_ recipe (organically-created
+  ones were fine). Root cause was NOT in Phase-1 app code: the `recipes` seed block
+  (`test/manual/scenarios/recipes.ts`) wrote ingredient `id` as a raw BSON `ObjectId`, but
+  `RecipeIngredient.id` is a hex string and `getRecipe` runs every id through
+  `ObjectId.createFromHexString` (identical call pre- and post-refactor — behavior preserved),
+  which throws on a non-string → unhandled 500. Fixed by stringifying the resolved food-item
+  `_id`s + giving the placeholder fallback valid 24-hex ids; corrected two tests that had
+  codified the buggy shape. Re-seeded; verified all 5 recipes' 9 ingredient ids are 24-hex.
+  Carryover: the service does a raw `createFromHexString` on ingredient ids with no guard — a
+  latent 500 on any malformed id; out of scope for behavior-preserving Phase 1, worth a guard
+  later if real data can ever hold bad ids.
 - **2026-05-30 — Reviewer reliability caveat (this design session).** During the 7-loop
   review the orchestrator confabulated "prompt injection" alarms 3× and once overstated a
   finding's severity (CS1), each corrected after the fact. None reached the committed spec
