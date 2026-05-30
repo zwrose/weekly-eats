@@ -222,6 +222,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
           alignItems: 'flex-start',
           gap: { xs: 1.75, md: 2 },
           borderBottom: { xs: 'none', md: `1px solid ${tokens.border.subtle}` },
+          pt: { xs: 0, md: 1 },
           pb: { xs: 0, md: 2.75 },
           mb: { xs: 2.25, md: 2.75 },
         }}
