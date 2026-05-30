@@ -29,7 +29,6 @@ export function RecipeIngredientRow({ ingredient, onChange, onRemove }: RecipeIn
   const [qtyAnchor, setQtyAnchor] = useState<HTMLElement | null>(null);
   const [unitAnchor, setUnitAnchor] = useState<HTMLElement | null>(null);
   const [prepOpen, setPrepOpen] = useState(Boolean(ingredient.prepInstructions));
-  const [prepDraft, setPrepDraft] = useState(ingredient.prepInstructions ?? '');
   const isRecipe = ingredient.type === 'recipe';
   const name = ingredient.name ?? '';
 
@@ -97,13 +96,10 @@ export function RecipeIngredientRow({ ingredient, onChange, onRemove }: RecipeIn
             Prep
           </Box>
           <InputBase
-            value={prepDraft}
+            value={ingredient.prepInstructions ?? ''}
             placeholder="e.g. sifted"
             inputProps={{ 'aria-label': `prep for ${name}` }}
-            onChange={(e) => {
-              setPrepDraft(e.target.value);
-              onChange({ ...ingredient, prepInstructions: e.target.value });
-            }}
+            onChange={(e) => onChange({ ...ingredient, prepInstructions: e.target.value })}
             sx={{
               flex: 1,
               height: 28,
@@ -119,7 +115,6 @@ export function RecipeIngredientRow({ ingredient, onChange, onRemove }: RecipeIn
             aria-label={`Remove prep for ${name}`}
             onClick={() => {
               setPrepOpen(false);
-              setPrepDraft('');
               onChange({ ...ingredient, prepInstructions: undefined });
             }}
             sx={{ color: tokens.text.muted, px: 0.5 }}

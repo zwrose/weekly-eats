@@ -1,6 +1,7 @@
 // src/components/recipes/__tests__/RecipeIngredientRow.test.tsx
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
+import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { RecipeIngredientRow } from '../RecipeIngredientRow';
 import type { RecipeIngredient } from '@/types/recipe';
@@ -14,6 +15,12 @@ const base: RecipeIngredient = {
   unit: 'cup',
   name: 'flour',
 };
+
+/** Stateful wrapper so the controlled prep field accumulates typed characters. */
+function Harness({ base: initialIng }: { base: RecipeIngredient }) {
+  const [ing, setIng] = useState(initialIng);
+  return <RecipeIngredientRow ingredient={ing} onChange={setIng} onRemove={vi.fn()} />;
+}
 
 describe('RecipeIngredientRow', () => {
   it('renders name, qty, and unit; hides unit for recipe ingredients', () => {
@@ -42,15 +49,12 @@ describe('RecipeIngredientRow', () => {
     expect(onRemove).toHaveBeenCalled();
   });
 
-  it('adds a prep field and edits emit onChange with prepInstructions', async () => {
+  it('adds a prep field and typing accumulates in the controlled field', async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<RecipeIngredientRow ingredient={base} onChange={onChange} onRemove={vi.fn()} />);
+    render(<Harness base={base} />);
     await user.click(screen.getByRole('button', { name: /prep instructions/i }));
     const prep = screen.getByPlaceholderText(/sifted/i);
     await user.type(prep, 'sifted');
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ prepInstructions: 'sifted' })
-    );
+    expect(prep).toHaveValue('sifted');
   });
 });
