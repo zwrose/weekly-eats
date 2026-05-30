@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
-import { responsiveDialogStyle } from '@/lib/theme';
 import type { MealItem } from '@/types/meal-plan';
 import type { FoodItem } from '@/lib/hooks/use-food-item-selector';
 import { EditorItemRow } from './EditorItemRow';
@@ -288,11 +287,34 @@ export function MealEditorDialog({
       open={open}
       onClose={handleCancel}
       fullScreen={false}
-      sx={responsiveDialogStyle}
       maxWidth="md"
       fullWidth
-      slotProps={{ paper: { sx: { bgcolor: tokens.surface.sheet } } }}
+      // Mobile: a tall bottom sheet (anchored bottom, rounded top, drag handle, sheet shadow)
+      // rather than a square full-screen takeover. Desktop: a centered modal.
+      sx={{
+        '& .MuiDialog-container': { alignItems: { xs: 'flex-end', md: 'center' } },
+        '& .MuiDialog-paper': {
+          bgcolor: tokens.surface.sheet,
+          margin: { xs: 0, md: 'auto' },
+          width: { xs: '100%' },
+          maxWidth: { xs: '100%', md: undefined },
+          height: { xs: '92%', md: 'auto' },
+          maxHeight: { xs: '92%', md: '90vh' },
+          borderTopLeftRadius: { xs: `${tokens.radius.sheet}px`, md: `${tokens.radius.xxxl}px` },
+          borderTopRightRadius: { xs: `${tokens.radius.sheet}px`, md: `${tokens.radius.xxxl}px` },
+          borderBottomLeftRadius: { xs: 0, md: `${tokens.radius.xxxl}px` },
+          borderBottomRightRadius: { xs: 0, md: `${tokens.radius.xxxl}px` },
+          boxShadow: { xs: tokens.shadow.sheet, md: tokens.shadow.modal },
+        },
+      }}
     >
+      {/* Drag handle (mobile sheet) */}
+      <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', pt: 1, pb: 0.5 }}>
+        <Box
+          sx={{ width: 36, height: 4, borderRadius: '2px', bgcolor: 'rgba(255,255,255,0.18)' }}
+        />
+      </Box>
+
       {/* Header */}
       <Box
         sx={{
