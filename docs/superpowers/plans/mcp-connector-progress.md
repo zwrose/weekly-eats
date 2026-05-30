@@ -17,12 +17,12 @@ all phases land.
 
 ## Phase status
 
-| #   | Phase                                                    | Status  | Plan doc            | PR test comment | Done |
-| --- | -------------------------------------------------------- | ------- | ------------------- | --------------- | ---- |
-| 1   | Service layer + recipes/food-items MCP tools (dev-token) | pending | — _(writing-plans)_ | —               | —    |
-| 2   | OAuth AS + approval-gated verification + deploy          | pending | —                   | —               | —    |
-| 3   | `recipe-import` skill                                    | pending | —                   | —               | —    |
-| 4   | Remaining domains (meal plans, pantry, shopping lists)   | pending | —                   | —               | —    |
+| #   | Phase                                                    | Status  | Plan doc                                                                                       | PR test comment | Done |
+| --- | -------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- | --------------- | ---- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token) | pending | [`2026-05-30-mcp-phase-1-service-tools-plan.md`](2026-05-30-mcp-phase-1-service-tools-plan.md) | —               | —    |
+| 2   | OAuth AS + approval-gated verification + deploy          | pending | —                                                                                              | —               | —    |
+| 3   | `recipe-import` skill                                    | pending | —                                                                                              | —               | —    |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)   | pending | —                                                                                              | —               | —    |
 
 Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
 `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
