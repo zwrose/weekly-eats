@@ -209,13 +209,13 @@ Each round:
 5. **Print findings in chat** — grouped by plan section heading, each with its POV line (e.g. `→ POV: Defer (High confidence) — real gap, but fine to nail down the test names during implementation`). Do **not** write these to a file.
 6. **Auto-revise.** For each effective finding where `recommendation == Fix` AND `classification == mechanical`, edit the plan document at `$PLAN_PATH` directly to address it (apply the finding's suggested replacement). Make these edits without asking.
 7. **Interventions.** `present-set` = effective findings where `recommendation` is `Skip` or `Defer`, OR (`recommendation` is `Fix` AND `classification` is `judgment`). If non-empty, present ONE consolidated `AskUserQuestion`: lead with each finding's POV; offer **Apply as suggested** / **Apply with my guidance** (free text) / **Skip** in this neutral order. Apply the user's chosen revisions to `$PLAN_PATH`. Add every `Skip` identity to the `skip-set`.
-8. **Refresh + exit check.** Re-copy the revised plan: `cp "$PLAN_PATH" "$SESSION_DIR/plan.md"`. If any edits were made this round AND one or more Critical/Important findings remain that are not in the `skip-set`, set `round += 1` and repeat from step 1 (re-review the revised plan). Otherwise **EXIT**.
+8. **Refresh + exit check.** Re-copy the revised plan: `cp "$PLAN_PATH" "$SESSION_DIR/plan.md"`. If any edits were made this round AND one or more Critical/Important findings remain that are not in the `skip-set` AND `round < 7`, set `round += 1` and repeat from step 1 (re-review the revised plan). Otherwise **EXIT** — but if the loop is exiting because it hit the **7-round cap** with Critical/Important findings still unresolved, `log` that the cap was reached and report those remaining findings explicitly; do **not** declare PLAN READY in that case (coverage may be incomplete, mirroring audit-debt's cap at `audit-debt/SKILL.md`).
 
 After exit, print a terminal summary in chat:
 
-- Lead with the final verdict label in bold.
+- Lead with the final verdict label in bold. If the loop exited because it hit the 7-round cap with one or more Critical/Important findings still unresolved (and not in the `skip-set`), the verdict is **REVISE** — do **not** declare PLAN READY.
 - List, grouped by plan section heading, the revisions applied (auto + user-approved) and the findings the user chose to skip — each with its POV line.
-- End with a count summary (e.g. `"2 auto-revised, 1 applied with guidance, 1 skipped; final verdict PLAN READY"`).
+- End with a count summary (e.g. `"2 auto-revised, 1 applied with guidance, 1 skipped; final verdict PLAN READY"`). If the cap was hit, note it explicitly: e.g. `"7-round cap reached; N Critical/Important findings unresolved — see above"`.
 
 Nothing else is written to the repo — the revised `$PLAN_PATH` is the deliverable.
 

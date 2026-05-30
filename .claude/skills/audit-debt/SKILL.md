@@ -185,9 +185,11 @@ Write all orchestrator-derived findings to `$SESSION_DIR/orchestrator-findings.j
 
 Initialize `round = 1` and an empty `seen` set (finding identities = `file::normalized-title`). Each round:
 
-1. (Round 1: the specialists dispatched in §3 have already written `$SESSION_DIR/findings-*.json`.) For round > 1, re-dispatch the four specialists per §3 into `$SESSION_DIR/round-<round>/findings-*.json`.
-2. Read this round's specialist findings. Compute `new-blocking` = findings with severity Critical or Important whose identity is not already in `seen`. Add every finding's identity to `seen` and accumulate every finding into the running pool `$SESSION_DIR/all-findings.json`.
-3. If `new-blocking` is empty → **stop looping**. Else if `round == 7` → **stop looping** and `log` that the 7-round cap was reached (coverage may be incomplete — note it in the report). Else `round += 1` and repeat.
+**Loop step 1:** (Round 1: the specialists dispatched in §3 have already written `$SESSION_DIR/findings-*.json`.) For round > 1, re-dispatch the four specialists per §3 into `$SESSION_DIR/round-<round>/findings-*.json`.
+
+**Loop step 2:** Read this round's specialist findings. Compute `new-blocking` = findings with severity Critical or Important whose identity is not already in `seen`. Add every finding's identity to `seen` and accumulate every finding into the running pool `$SESSION_DIR/all-findings.json`.
+
+**Loop step 3:** If `new-blocking` is empty → **stop looping**. Else if `round == 7` → **stop looping** and `log` that the 7-round cap was reached (coverage may be incomplete — note it in the report). Else `round += 1` and repeat.
 
 Then merge the accumulated specialist pool with `orchestrator-findings.json` and continue with the consolidation below.
 
@@ -233,7 +235,7 @@ Present the proposed issue set in chat (title + tier + the findings each issue c
 - **Let me deselect some** — present the proposed issues multi-select, then file the kept ones.
 - **No** — skip.
 
-Issue title format: `"<severity>: <finding title>"` (for a multi-finding lower-tier issue, a summary title like `"Nit: 6 convention nits across src/"`). Body: each finding's text + `file:line` + suggestion + effort estimate, then `_Surfaced by /audit-debt on <date>_`. The POV guides filing decisions; it is not written into the issue body.
+Issue title format: `"<severity>: <finding title>"` (for a multi-finding lower-tier issue, a summary title like `"Nit: 5 convention nits across src/"`). Body: each finding's text + `file:line` + suggestion + effort estimate, then `_Surfaced by /audit-debt on <date>_`. The POV guides filing decisions; it is not written into the issue body.
 
 **Optionally save the report.** `AskUserQuestion`: _"Save this report to a file?"_ Options:
 
