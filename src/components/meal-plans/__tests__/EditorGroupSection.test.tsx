@@ -5,6 +5,8 @@ import { EditorGroupSection } from '../EditorGroupSection';
 import type { MealItem } from '@/types/meal-plan';
 import type { RecipeIngredient } from '@/types/recipe';
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 afterEach(cleanup);
 
 function group(title: string, ings: RecipeIngredient[] = []): MealItem {

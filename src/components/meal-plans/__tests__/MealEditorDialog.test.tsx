@@ -7,6 +7,8 @@ import { MealEditorDialog, type EditableMeal } from '../MealEditorDialog';
 import type { MealItem } from '@/types/meal-plan';
 import type { RecipeIngredient } from '@/types/recipe';
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 // MSW is globally active (vitest.setup.ts) — the inner CombinedSearch auto-loads
 // /api/food-items + /api/recipes on mount; the global handlers serve those, and
 // per-test server.use(...) overrides them. Do NOT stub global.fetch.

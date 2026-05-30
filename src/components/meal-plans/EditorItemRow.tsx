@@ -2,6 +2,7 @@
 'use client';
 
 import { Box, ButtonBase, IconButton } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import type { MealItem } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
@@ -40,6 +41,33 @@ export function EditorItemRow({
 }: EditorItemRowProps) {
   const isRecipe = item.type === 'recipe';
   const emoji = useRecipeEmoji(isRecipe ? item.id : undefined);
+  const router = useRouter();
+
+  const nameContent = (
+    <>
+      {emoji && (
+        <Box component="span" sx={{ flexShrink: 0, fontSize: 15, lineHeight: 1 }}>
+          {emoji}
+        </Box>
+      )}
+      <Box
+        component="span"
+        sx={{
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {item.name || (
+          <Box component="span" sx={{ fontStyle: 'italic', color: tokens.state.warn }}>
+            Pick a food or recipe
+          </Box>
+        )}
+      </Box>
+    </>
+  );
+
   return (
     <Box
       sx={{
@@ -50,41 +78,40 @@ export function EditorItemRow({
         borderBottom: `1px solid ${tokens.border.subtle}`,
       }}
     >
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.75,
-          fontSize: 14,
-          // Recipes aren't interactive text — style them as plain content (the emoji +
-          // "Recipe" tag mark them), not in the accent color used for links/actions.
-          fontWeight: isRecipe ? 500 : 400,
-          color: invalid ? tokens.state.warn : tokens.text.primary,
-        }}
-      >
-        {emoji && (
-          <Box component="span" sx={{ flexShrink: 0, fontSize: 15, lineHeight: 1 }}>
-            {emoji}
-          </Box>
-        )}
-        <Box
-          component="span"
+      {isRecipe ? (
+        <ButtonBase
+          onClick={() => router.push(`/recipes/${item.id}`)}
           sx={{
+            flex: 1,
             minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            fontSize: 14,
+            fontWeight: 500,
+            color: invalid ? tokens.state.warn : tokens.text.primary,
+            textAlign: 'left',
+            cursor: 'pointer',
           }}
         >
-          {item.name || (
-            <Box component="span" sx={{ fontStyle: 'italic', color: tokens.state.warn }}>
-              Pick a food or recipe
-            </Box>
-          )}
+          {nameContent}
+        </ButtonBase>
+      ) : (
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            fontSize: 14,
+            fontWeight: 400,
+            color: invalid ? tokens.state.warn : tokens.text.primary,
+          }}
+        >
+          {nameContent}
         </Box>
-      </Box>
+      )}
       {isRecipe && (
         <Box
           component="span"
@@ -102,7 +129,10 @@ export function EditorItemRow({
       )}
       <ButtonBase
         aria-label="Quantity"
-        onClick={(e) => onQtyClick(e.currentTarget)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onQtyClick(e.currentTarget);
+        }}
         sx={chipSx(false, Boolean(invalid && !item.name))}
       >
         {isRecipe ? `× ${item.quantity ?? 1}` : (item.quantity ?? 1)}
@@ -110,7 +140,10 @@ export function EditorItemRow({
       {!isRecipe && (
         <ButtonBase
           aria-label="Unit"
-          onClick={(e) => onUnitClick(e.currentTarget)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnitClick(e.currentTarget);
+          }}
           sx={chipSx(false, Boolean(invalid && !item.name))}
         >
           {getUnitForm(item.unit || 'cup', item.quantity ?? 1)}{' '}
@@ -119,7 +152,10 @@ export function EditorItemRow({
       )}
       <IconButton
         aria-label="Remove item"
-        onClick={onRemove}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
         size="small"
         sx={{ color: tokens.text.muted }}
       >

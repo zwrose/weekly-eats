@@ -5,6 +5,9 @@ import { EditorItemRow } from '../EditorItemRow';
 import { RecipeEmojiProvider } from '../recipe-emoji';
 import type { MealItem } from '@/types/meal-plan';
 
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+
 afterEach(cleanup);
 
 describe('EditorItemRow', () => {
@@ -70,5 +73,46 @@ describe('EditorItemRow', () => {
       />
     );
     expect(screen.getByText(/pick a food or recipe/i)).toBeInTheDocument();
+  });
+});
+
+describe('EditorItemRow recipe navigation', () => {
+  afterEach(() => {
+    cleanup();
+    push.mockClear();
+  });
+
+  it('tapping a recipe row navigates to the recipe via router.push (no target=_blank)', async () => {
+    const user = userEvent.setup();
+    render(
+      <RecipeEmojiProvider value={{}}>
+        <EditorItemRow
+          item={{ type: 'recipe', id: 'r1', name: 'Pesto', quantity: 1 }}
+          onQtyClick={vi.fn()}
+          onUnitClick={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </RecipeEmojiProvider>
+    );
+    await user.click(screen.getByText('Pesto'));
+    expect(push).toHaveBeenCalledWith('/recipes/r1');
+  });
+
+  it('the remove control does not trigger navigation', async () => {
+    const user = userEvent.setup();
+    const onRemove = vi.fn();
+    render(
+      <RecipeEmojiProvider value={{}}>
+        <EditorItemRow
+          item={{ type: 'recipe', id: 'r1', name: 'Pesto', quantity: 1 }}
+          onQtyClick={vi.fn()}
+          onUnitClick={vi.fn()}
+          onRemove={onRemove}
+        />
+      </RecipeEmojiProvider>
+    );
+    await user.click(screen.getByRole('button', { name: /remove/i }));
+    expect(onRemove).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 });
