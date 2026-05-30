@@ -10,26 +10,28 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status      | Tag               | Plan doc                                                                      | PR test comment | Done       |
-| --- | ---------------------------- | ----------- | ----------------- | ----------------------------------------------------------------------------- | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                                                    | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                          | PR #89 comment  | 2026-05-28 |
-| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                                 | PR #89 comment  | 2026-05-28 |
-| 3   | Meal Plans                   | in-progress | —                 | redesign-chunk-03-meal-plans-plan.md _(review-plan ✓✓✓ — ready to implement)_ | —               | —          |
-| 4   | Recipes                      | pending     | —                 | — _(review-plan)_                                                             | —               | —          |
-| 5   | Shopping Lists               | pending     | —                 | — _(review-plan)_                                                             | —               | —          |
-| 6   | Pantry                       | pending     | —                 | —                                                                             | —               | —          |
-| 7   | Food Items                   | pending     | —                 | —                                                                             | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                                             | —               | —          |
-| 9   | Settings (placeholder)       | pending     | —                 | —                                                                             | —               | —          |
-| 10  | Marketing / home             | pending     | —                 | —                                                                             | —               | —          |
-| 11  | Cleanup                      | pending     | —                 | —                                                                             | —               | —          |
+| #   | Chunk                        | Status  | Tag               | Plan doc                             | PR test comment | Done       |
+| --- | ---------------------------- | ------- | ----------------- | ------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done    | redesign-chunk-00 | §6 of spec                           | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done    | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | done    | redesign-chunk-02 | redesign-chunk-02-nav-plan.md        | PR #89 comment  | 2026-05-28 |
+| 3   | Meal Plans                   | done    | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md | PR #89 comment  | 2026-05-29 |
+| 4   | Recipes                      | pending | —                 | — _(review-plan)_                    | —               | —          |
+| 5   | Shopping Lists               | pending | —                 | — _(review-plan)_                    | —               | —          |
+| 6   | Pantry                       | pending | —                 | —                                    | —               | —          |
+| 7   | Food Items                   | pending | —                 | —                                    | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending | —                 | —                                    | —               | —          |
+| 9   | Settings (placeholder)       | pending | —                 | —                                    | —               | —          |
+| 10  | Marketing / home             | pending | —                 | —                                    | —               | —          |
+| 11  | Cleanup                      | pending | —                 | —                                    | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
 ## Next up
 
-**Chunk 3 — Meal Plans: IMPLEMENTED + reviewed + pushed + Chrome-verified. HELD at the HARD STOP, awaiting the user's morning review.** All 16 TDD tasks implemented via subagent-driven-development (each spec-reviewed; the core + integration tasks also code-quality-reviewed). `/review-code --base redesign-chunk-02` ran (1 auto-fix round: 6 findings — cleanup leak, added MealPlanCreateDialog test, group-recipe unit-strip parity, waitFor, selectors; 2 Minor/Nit deliberately deferred: extract MealEditorDialog draft-state machine [arch-001], "Add to meal instead" clear-target label [code-002]). `npm run check` GREEN. `/manual-testing chunk-03-meal-plans` seeded the local dev DB (14 food items + 4 recipes) + posted the plan to PR #89. Pushed `0778f99..afc61f6` (29 commits). Chrome-verified locally on :3235 (index sections+accent, create dialog, detail route today-hero/week-strip/TODAY-sliver, staples bar, B3 editor: combined search/recipe ×n/food qty+unit/numpad popover, save-persists, zero console errors). **One issue found live + fixed:** a plan straddling the Current/Past boundary was double-listed → `afc61f6` dedupes Past against Current (+ regression test). **NOT TAGGED, NOT marked done — that's the user's call after review.** Next action AFTER user approval: tag `redesign-chunk-03`, flip the row to `done` (record tag/PR-comment/date), push the ledger update, back-merge `main` if it moved, compact. (A Chrome-created plan "Week of May 23, 2026" remains in the LOCAL dev DB for the user to inspect; manual seed is tag-cleanable via `npm run test:manual:clean claude-design-redesign chunk-03-meal-plans`.)
+**Chunk 3 — Meal Plans: DONE (2026-05-29), tagged `redesign-chunk-03` (commit `b9fcf55`).** Built via subagent-driven-development (16 TDD tasks) then heavily refined during the user's hands-on testing: the **Template surface** as a pushed route `/meal-plans/template` (`TemplateSettings`), the **Sharing surface** as a designed sheet/dialog (`ShareMealPlansDialog`), staples-group expansion, recipe-emoji read-side join, pending-invite read-side surfacing (+ status pill), discard-changes guard, mobile padding/spacing fixes, and **PWA branding** (dark manifest/viewport/color-scheme + regenerated icons from the AppIcon logomark via `scripts/generate-app-icons.mjs`). Final `/review-code --base redesign-chunk-02` (15.8k-line diff, 4 specialists) came back **READY FOR PR** — 0 Critical/Important; 1 auto-fix round resolved 2 Minor + 1 Nit (dynamic ShareMealPlansDialog import, recipe-emoji fetch → `fetchRecipeEmojiMap` in recipe-utils, date-utils alias), 1 Nit skipped (util placement). Pushed. **Back-merged `main` (commit `b9be176`)** — brought #83 server-side approval + dep upgrades (TS6, Node24, zod4, React 19.2.6, mongodb 6.21, **@mui/material 7.3**). Merge was clean except the shared-users route test (resolved: #83 approval scaffolding + chunk-3 pending/status). **MUI 7.3 fallout fixed:** Switch input now `role="switch"` and `inputProps` no longer forwards `aria-label` → meal-toggle Switches moved to `slotProps.input`; tests query role `switch`. `npm run check` GREEN (lint + 1534 tests + build).
+
+**Next: Chunk 4 — Recipes.** Base for chunk-4 review = `redesign-chunk-03` tag, BUT the `b9be176` back-merge sits between the tag and chunk-4 work → re-base the review on the post-merge commit (per the chunk-2 precedent) or the tag diff will be polluted by the main merge. Carryover: **re-add tap-a-recipe-to-open from meal plans** in chunk 4 (deferred — see spec §4 + the 2026-05-29 carryover below) against the new `/recipes/[id]` route, with in-PWA `router.push` navigation. The chunk-3 manual-seed in the LOCAL dev DB is tag-cleanable via `npm run test:manual:clean -- --manifest-id claude-design-redesign` (clean syntax changed in the back-merge — see updated CLAUDE.md).
 
 **How to resume (cold-start checklist):**
 
