@@ -222,6 +222,14 @@ vector the issue calls out.
   in every file — importing `@/lib/auth` still loads the adapter at module init.
   `src/test-utils/session.ts` helpers (`approvedSession` / `unapprovedSession`)
   stay as-is; the `Session` type import still resolves.
+- **`src/lib/__tests__/user-utils.test.ts`** (existing) — the direct unit test of
+  the rewritten chokepoint. It currently mocks `next-auth/next` + `authOptions` and
+  drives the session via `vi.mocked(getServerSession)` (user-utils.test.ts:18-21).
+  Apply the same swap as the route tests: `vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))`,
+  rename the mock handle `getServerSession` → `auth`, drop the `next-auth/next` mock.
+  Preserve its existing cases (`getUserObjectId`, `getCurrentUserAdminStatus`, and
+  `requireApprovedSession` 401 / 403 / admin-bypass / fail-closed). It is **not** one
+  of the ~40 route tests (those live under `src/app`; this is the lone `src/lib` one).
 - **`src/lib/__tests__/auth.test.ts`** (existing) — **must be re-homed.** It
   currently does `const { authOptions } = await import('../auth')` and tests
   `authOptions.callbacks.redirect` / `.session` / `.jwt` (auth.test.ts:16-18).
