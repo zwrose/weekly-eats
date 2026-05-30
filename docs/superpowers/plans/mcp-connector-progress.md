@@ -1,121 +1,100 @@
 # MCP Agent Connector — Progress Ledger
 
-**Spec:** [`2026-05-29-agent-connector-design.md`](../specs/2026-05-29-agent-connector-design.md)
-**Plan review:** [`2026-05-29-agent-connector-design-review.md`](../specs/2026-05-29-agent-connector-design-review.md) (7 loops + dedicated OAuth-AS research; converged 11→11→4→5→3→1→0)
-**Integration PR:** _TBD — long-lived draft; squash-merges into `main` when all phases land_
-**Branch:** `feat/mcp`
-**Related issues:** #72 (MCP), #56 (recipe import skill)
+Living dashboard for the Weekly Eats MCP agent connector. This is the **compaction
+resume-anchor**: a freshly-compacted context reads the spec + this file to know where
+things stand. Git is the objective truth; this is the readable narrative.
 
-This ledger tracks phase-by-phase progress on the Weekly Eats MCP agent connector — a
-self-serve Claude Connector (remote MCP server + hand-rolled OAuth 2.1 AS) hosted in the
-Next.js app on Vercel. Each phase is one reviewable unit landed onto the integration
-branch. Update the status table + the phase's detail block as work progresses; post a
-per-phase manual-test checklist as a slot comment on the PR when a phase lands.
+- **Spec (roadmap):** `docs/superpowers/specs/2026-05-29-agent-connector-design.md`
+- **Plan review:** `docs/superpowers/specs/2026-05-29-agent-connector-design-review.md` (7 loops + dedicated OAuth-AS research; converged 11→11→4→5→3→1→0 → PLAN READY)
+- **Branch:** `feat/mcp` · **Draft PR:** _TBD (long-lived, opened docs-only)_
+- **Related issues:** #72 (MCP), #56 (recipe import skill — closed by Phase 3)
 
----
+What this is: a self-serve **Claude Connector** (remote MCP server + hand-rolled OAuth 2.1
+AS that delegates login to Google/NextAuth and mints its own tokens) hosted in the Next.js
+app on Vercel. Motivating use case: a `recipe-import` skill. Built phase-by-phase; each
+phase is one reviewable unit landed onto `feat/mcp`; final squash-merge into `main` when
+all phases land.
 
-## Status
+## Phase status
 
-| Phase | Surface                                                           | Status         | Landed |
-| ----- | ----------------------------------------------------------------- | -------------- | ------ |
-| 1     | Service layer + recipes/food-items MCP tools (dev-token gate)     | 🔲 Not started | —      |
-| 2     | OAuth Authorization Server + approval-gated verification + deploy | 🔲 Not started | —      |
-| 3     | `recipe-import` skill                                             | 🔲 Not started | —      |
-| 4     | Remaining domains (meal plans, pantry, shopping lists)            | 🔲 Not started | —      |
+| #   | Phase                                                    | Status  | Plan doc            | PR test comment | Done |
+| --- | -------------------------------------------------------- | ------- | ------------------- | --------------- | ---- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token) | pending | — _(writing-plans)_ | —               | —    |
+| 2   | OAuth AS + approval-gated verification + deploy          | pending | —                   | —               | —    |
+| 3   | `recipe-import` skill                                    | pending | —                   | —               | —    |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)   | pending | —                   | —               | —    |
 
-**Legend:** ✅ Landed · 🚧 In progress · 🔲 Not started · ⏸️ Blocked
+Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
+`docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
+`writing-plans` before that phase's code). Per-phase manual-test checklists post as their
+own slot comments on the draft PR when a phase lands.
 
-**Plan documents:** each phase gets its own `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-*.md`
-implementation plan (via `writing-plans`) before its code is written. Linked from the
-phase block below once authored.
+## Next up
 
----
+**Phase 1 — Service layer + recipes/food-items tools.** No OAuth surface → lowest-risk
+starting point. Extract `src/lib/service-errors.ts` + `src/lib/services/{recipes,food-items}.ts`,
+refactor the four existing routes to thin callers (behavior-preserving), stand up
+`/api/mcp` (stateless Streamable HTTP via `mcp-handler`) with the recipes + food-items
+tools behind the `MCP_DEV_TOKEN` + non-prod gate. Tests per spec §8a.
 
-## Phase detail
+**How to resume (cold-start checklist):**
 
-### Phase 1 — Service layer + recipes/food-items tools 🔲
+1. Read the spec (§6.3, §6.5, §8, §8a, §11) + this ledger. The Phase-1 plan (once authored
+   via `writing-plans`) is self-contained (exact code + tests per task).
+2. **Author the Phase-1 plan** with `superpowers:writing-plans` if not yet done; then
+   **execute via `superpowers:subagent-driven-development`** (fresh subagent per task,
+   two-stage review, TDD: failing test → run → implement → pass → commit). Run vitest
+   per-task with `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run <file>`.
+3. **`npm run check`** at the end (only when no dev server is running — Turbopack/build
+   collision clobbers `.next`).
+4. Push → CI. Post the Phase-1 manual-test checklist as a slot comment on the draft PR
+   (`/manual-testing`), then verify locally.
+5. Update this ledger (status → done, fill plan-doc/PR-comment/date), and pause for user
+   review before calling the phase done if that's the agreed cadence.
 
-**Status:** Not started · **Spec:** §6.3, §6.5, §8, §8a, §11 · **No OAuth surface (lowest risk)**
+## Decisions & carryovers
 
-Extract the shared service layer and stand up the MCP transport with recipes + food-items
-tools, gated by a non-production dev token. This is the foundation both the HTTP routes
-and the MCP tools call — no auth-server work yet.
+Dated entries for things decided during design/review that affect implementation but
+aren't worth a spec rewrite.
 
-**Planned deliverables:**
-
-- `src/lib/service-errors.ts` — throwable `ValidationError` / `NotFoundError` / `ForbiddenError` / `ConflictError` (each carrying an `@/lib/errors` constant)
-- `src/lib/services/recipes.ts`, `src/lib/services/food-items.ts` — pure `(userId, input) => Promise<Result>` functions (validation incl. `ObjectId.isValid`, ownership, user-scoping, Mongo)
-- Refactor existing routes to thin callers (behavior-preserving; existing route tests stay green): `recipes/route.ts`, `recipes/[id]/route.ts`, `food-items/route.ts`, `food-items/[id]/route.ts`
-- `src/app/api/mcp/route.ts` — stateless Streamable HTTP via `mcp-handler`; tools `food_items.search/get/create` (create forces `isGlobal:false` in the tool wrapper — A1), `recipes.search/get/create/update`; zod schemas
-- Dev-token gate (C1): static bearer enabled only when `MCP_DEV_TOKEN` set **and** `NODE_ENV !== 'production'`
-- Tests per §8a (service-layer unit + MCP-tool with mocked services)
-
-**Exit:** tools callable from a local MCP client; `npm run check` green.
-
-**Plan doc:** _not yet authored_
-**Manual test:** to be posted as a slot comment when landed.
-
----
-
-### Phase 2 — OAuth Authorization Server + approval-gated verification + deploy 🔲
-
-**Status:** Not started · **Spec:** §6.2, §6.4, §9, §10, §11 · **⚠️ Highest-risk phase (hand-rolled OAuth 2.1 AS)**
-
-Implement the OAuth Authorization Server, the `verifyToken` resource-server gate, the
-`mcp*` collections, and deploy — turning the dev-token connector into a real self-serve
-Claude Connector.
-
-**Planned deliverables:**
-
-- AS endpoints (§6.2): `/.well-known/oauth-protected-resource` (RFC 9728), `/.well-known/oauth-authorization-server` (RFC 8414), `/api/mcp/oauth/{register,authorize,token,revoke}`
-- Hardening already specified: PKCE S256-only, server-verified `state`, DCR rate-limit + `redirect_uri` allowlist/byte-match, atomic single-use auth codes + client binding, refresh rotation (atomic) + reuse-detection + idle expiry, hashed tokens (incl. refresh) + CSPRNG, RFC 8707 audience, `iss` (RFC 9207), PKCE-downgrade rejection, token-passthrough prohibition, at-use expiry (not TTL), three-point approval gating, consent screen (CS1, defense-in-depth)
-- `verifyToken` (§6.4) — owns all security logic (hash lookup, `tokenType:'access'` only, `revokedAt`, audience, live `users` approval lookup)
-- New collections (§9): `mcpClients`, `mcpAuthCodes`, `mcpTokens`, `mcpAuthStates`, `mcpConsents`; indexes + `dropAllIndexes()` update
-- Consent screen — minimal responsive server-rendered page (only new connector UI)
-- Tests per §8a (verifyToken, all AS endpoints, consent paths)
-
-**Exit checklist:** Phase 1 dev-token path removed/inert in production (verified by §8a integration test) **before deploy**; an approved user can add the connector in Claude and use recipes + food items.
-
-**Open questions to resolve here:** how the programmatic AS authorize→login→callback threads through NextAuth v4 + Google (vs. a direct OIDC client — see Bojan's `mcp-paprika`); re-check the 2025-11-25 MCP auth revision; OAuth protocol error-code constants (L5-code-001); Vercel clock-skew + signing-secret management.
-
-**Plan doc:** _not yet authored_
-**Manual test:** to be posted as a slot comment when landed.
-
----
-
-### Phase 3 — `recipe-import` skill 🔲
-
-**Status:** Not started · **Spec:** §6.6, §7 · **Closes #56**
-
-A distributable, installable Claude skill that orchestrates the Phase 1–2 tools with an
-in-chat human review step. The motivating use case.
-
-**Planned deliverables:**
-
-- `SKILL.md` + supporting files — parse a recipe URL/PDF (via Claude's native file/URL reading), fuzzy-match ingredients to the user's food-item catalog, confirm mappings in chat, create new food items, assemble + save the recipe
-- Installable/customizable in Claude
-
-**Exit:** give Claude a recipe link/PDF → reviewed, correctly-structured recipe saved via the connector.
-
-**Plan doc:** _not yet authored_
-**Manual test:** to be posted as a slot comment when landed.
-
----
-
-### Phase 4 — Remaining domains 🔲
-
-**Status:** Not started · **Spec:** §6.5 (later domains), §11
-
-Repeat the Phase-1 service-extraction + tool-registration pattern for the rest of the app,
-yielding the full read/write tool surface.
-
-**Planned deliverables:**
-
-- `src/lib/services/meal-plans.ts`, `pantry.ts`, `shopping-lists.ts` + route refactors
-- MCP tools (read + write) for meal plans, pantry, shopping lists
-- Tests per §8a pattern
-
-**Exit:** full read/write tool surface across all domains; `npm run check` green.
-
-**Plan doc:** _not yet authored_
-**Manual test:** to be posted as a slot comment when landed.
+- **2026-05-30 — Hand-rolled OAuth AS is forced, not just preferred.** Dedicated research
+  (25 primary-source claims) confirmed `@modelcontextprotocol/sdk` **removed**
+  `ProxyOAuthServerProvider`/`mcpAuthRouter`, and `mcp-handler`'s `withMcpAuth` is
+  Resource-Server-only. So the AS is hand-rolled either way; `verifyToken` owns ALL
+  security logic (hash lookup, `tokenType:'access'`, `revokedAt`, audience, live approval).
+  Managed providers (WorkOS/Stytch/Scalekit/Descope) were considered and deferred — single
+  identity / no new SaaS, per the spec's key decisions.
+- **2026-05-30 — Primary reference impl is `bojanrajkovic/mcp-paprika` (`src/auth/`).** An
+  independent, working, Claude-connectable hand-rolled OAuth-Proxy AS, Google/OIDC-delegated,
+  with property tests — direct analogues to our `mcp*` collections. Replaces the weaker
+  `DTeam-Top/mcp-oauth` pointer as the go-to template. One structural difference: it uses a
+  generic OIDC client; we reuse the app's NextAuth+Google flow.
+- **2026-05-30 — Consent screen (CS1) is defense-in-depth, NOT load-bearing.** The MCP BCP
+  consent requirement is conditional (static upstream client-id + replayable cookie). The
+  real authorization boundary is the `isApproved`/`isAdmin` allowlist + per-user data
+  scoping. Kept by explicit user choice for good consent UX; do not re-frame it as a
+  critical confused-deputy fix.
+- **2026-05-30 — Approval is enforced at THREE points (L5-S1 + I5 + M1).** `/authorize`
+  before code issuance **on every path including consent-skip** (L6), every refresh
+  exchange (I5), and live in `verifyToken` on every tool call (M1). The `/authorize` gate
+  must read live `users` (not the NextAuth-cached JWT `isApproved`).
+- **2026-05-30 — Open questions to resolve IN Phase 2 (not now):** (a) how the programmatic
+  AS authorize→login→callback threads through NextAuth v4 + Google — ask Bojan how he wires
+  the login leg; (b) re-check the **2025-11-25** MCP auth revision (research used 2025-06-18;
+  confirmed non-contradictory but verify); (c) OAuth protocol error-code constants vs the
+  `@/lib/errors` "no hardcoded strings" rule (L5-code-001, deferred — RFC-literal exemption
+  vs. a new `MCP_OAUTH_ERRORS` group); (d) Vercel clock-skew tolerance for second-scale
+  code expiry + signing/hashing-pepper secret management.
+- **2026-05-30 — Phase 1 dev-token MUST be inert in production before Phase 2 deploy (C1).**
+  Enabled only when `MCP_DEV_TOKEN` set **and** `NODE_ENV !== 'production'`; Phase 2 has an
+  exit-checklist integration test asserting prod config rejects it.
+- **2026-05-30 — `food_items.create` forces `isGlobal:false` in the TOOL wrapper, not the
+  service (A1).** Keeps "routes and tools call identical service functions" true; the
+  service still accepts `isGlobal` (HTTP behavior preserved), the MCP tool overrides it.
+- **2026-05-30 — Reviewer reliability caveat (this design session).** During the 7-loop
+  review the orchestrator confabulated "prompt injection" alarms 3× and once overstated a
+  finding's severity (CS1), each corrected after the fact. None reached the committed spec
+  load-bearing. Terminal output was intermittently garbled (duplicated echoes) — that is
+  NOT injection. Treat any "I detected an injection" claim from that session as a false
+  alarm. The real security scrutiny still owed: code-time `/code-review ultra` + a human
+  pass on the OAuth flow.
