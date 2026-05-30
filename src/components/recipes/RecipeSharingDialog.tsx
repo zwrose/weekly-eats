@@ -5,10 +5,9 @@ import { useEffect, useRef } from 'react';
 import {
   Box,
   Button,
-  Checkbox,
+  ButtonBase,
   Dialog,
   Drawer,
-  FormControlLabel,
   IconButton,
   InputBase,
   useMediaQuery,
@@ -75,26 +74,49 @@ const RecipeAvatar = ({ name, size = 32 }: { name: string; size?: number }) => (
 
 interface CheckboxRowProps {
   label: string;
+  subText: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }
 
-const CheckboxRow = ({ label, checked, onChange }: CheckboxRowProps) => (
-  <FormControlLabel
-    control={
-      <Checkbox
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        size="small"
-        sx={{
-          color: tokens.text.muted,
-          '&.Mui-checked': { color: tokens.section.recipes },
-        }}
-      />
-    }
-    label={<Box sx={{ fontSize: 13, color: tokens.text.primary, fontWeight: 500 }}>{label}</Box>}
-    sx={{ mx: 0, mb: 0.5 }}
-  />
+/** Bordered selectable card with a custom checkbox + sub-text (matches the artboard). */
+const CheckboxRow = ({ label, subText, checked, onChange }: CheckboxRowProps) => (
+  <ButtonBase
+    aria-label={label}
+    aria-pressed={checked}
+    onClick={() => onChange(!checked)}
+    sx={{
+      width: '100%',
+      justifyContent: 'flex-start',
+      textAlign: 'left',
+      gap: 1.25,
+      px: 1.5,
+      py: 1.25,
+      borderRadius: `${tokens.radius.lg}px`,
+      border: `1px solid ${checked ? `${tokens.section.recipes}55` : tokens.border.subtle}`,
+      bgcolor: checked ? RECIPE_ACCENT_MUTED : 'transparent',
+    }}
+  >
+    <Box
+      sx={{
+        width: 18,
+        height: 18,
+        flexShrink: 0,
+        borderRadius: '5px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: `1.5px solid ${checked ? tokens.section.recipes : tokens.border.strong}`,
+        bgcolor: checked ? tokens.section.recipes : 'transparent',
+      }}
+    >
+      {checked && <Icon name="check" size={13} color="#0c1118" />}
+    </Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ fontSize: 14, fontWeight: 600, color: tokens.text.primary }}>{label}</Box>
+      <Box sx={{ fontSize: 11, color: tokens.text.secondary }}>{subText}</Box>
+    </Box>
+  </ButtonBase>
 );
 
 // ─── body ────────────────────────────────────────────────────────────────────
@@ -147,7 +169,7 @@ function Body({
                 Share recipe data
               </Box>
               <Box sx={{ fontSize: 11, color: tokens.text.secondary }}>
-                Tags and ratings you choose to share
+                Share your tags, ratings, or both
               </Box>
             </Box>
             <Button
@@ -163,10 +185,10 @@ function Body({
           sx={{ px: 2.75, pt: 2.25, pb: 1.75, borderBottom: `1px solid ${tokens.border.subtle}` }}
         >
           <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>
-            Share your recipe data
+            Share recipe data
           </Box>
           <Box sx={{ fontSize: 12, color: tokens.text.secondary, mt: 0.5 }}>
-            Invite someone to share tags and/or ratings with you.
+            Invite users to see your tags, ratings, or both.
           </Box>
         </Box>
       )}
@@ -249,19 +271,19 @@ function Body({
 
         {/* What to share */}
         <FieldLabel>What to share</FieldLabel>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            mb: 2.25,
-            px: 1,
-            py: 0.75,
-            bgcolor: tokens.surface.elevated,
-            borderRadius: `${tokens.radius.lg}px`,
-          }}
-        >
-          <CheckboxRow label="Tags" checked={shareTags} onChange={onShareTagsChange} />
-          <CheckboxRow label="Ratings" checked={shareRatings} onChange={onShareRatingsChange} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.25 }}>
+          <CheckboxRow
+            label="Tags"
+            subText="Categories you've added to recipes"
+            checked={shareTags}
+            onChange={onShareTagsChange}
+          />
+          <CheckboxRow
+            label="Ratings"
+            subText="Your star ratings"
+            checked={shareRatings}
+            onChange={onShareRatingsChange}
+          />
         </Box>
 
         {/* Invite by email */}
@@ -356,9 +378,9 @@ function Body({
                       aria-label={`Remove ${name}`}
                       onClick={() => onRemoveUser(user.userId)}
                       size="small"
-                      sx={{ color: tokens.text.muted }}
+                      sx={{ color: tokens.state.danger }}
                     >
-                      <Icon name="close" size={18} />
+                      <Icon name="delete" size={18} color={tokens.state.danger} />
                     </IconButton>
                   </Box>
                 );
@@ -425,10 +447,15 @@ export function RecipeSharingDialog(props: RecipeSharingDialogProps) {
       <Dialog
         open={open}
         onClose={onClose}
-        maxWidth="sm"
+        maxWidth={false}
         slotProps={{
           paper: {
-            sx: { bgcolor: tokens.surface.sheet, borderRadius: `${tokens.radius.xl}px` },
+            sx: {
+              bgcolor: tokens.surface.raised,
+              borderRadius: `${tokens.radius.xxxl}px`,
+              border: `1px solid ${tokens.border.subtle}`,
+              width: 560,
+            },
           },
         }}
       >
