@@ -64,15 +64,10 @@ export async function GET() {
       capability[`user:${session.user.id}`] = ['subscribe'];
     }
 
-    const tokenRequest = await new Promise<Ably.Types.TokenRequest>((resolve, reject) => {
-      client.auth.createTokenRequest(
-        { clientId: 'weekly-eats', capability: JSON.stringify(capability) },
-        (err, result) => {
-          if (err) return reject(err);
-          if (!result) return reject(new Error('No token request returned'));
-          resolve(result);
-        }
-      );
+    // ably-js v2 is Promise-only — createTokenRequest no longer takes a callback.
+    const tokenRequest = await client.auth.createTokenRequest({
+      clientId: 'weekly-eats',
+      capability: JSON.stringify(capability),
     });
 
     return NextResponse.json(tokenRequest);
