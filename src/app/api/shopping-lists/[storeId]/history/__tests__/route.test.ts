@@ -2,15 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock mongodb-adapter
 vi.mock('@/lib/mongodb-adapter', () => ({
@@ -41,7 +33,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 
 const routes = await import('../route');
 
@@ -49,7 +41,7 @@ const makeRequest = () => ({}) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   findMock.mockReset();
   sortMock.mockReset();
@@ -65,7 +57,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
 
   describe('Authentication & Authorization', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.GET(makeRequest(), {
         params: Promise.resolve({ storeId }),
       });
@@ -73,7 +65,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
       const res = await routes.GET(makeRequest(), {
         params: Promise.resolve({ storeId }),
       });
@@ -81,7 +73,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       const res = await routes.GET(makeRequest(), {
         params: Promise.resolve({ storeId: 'invalid' }),
       });
@@ -89,7 +81,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns 404 when user has no access to store', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce(null);
 
       const res = await routes.GET(makeRequest(), {
@@ -99,7 +91,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('allows access for store owner', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -113,7 +105,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('allows access for user with accepted invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'user2', email: 'user2@test.com' })
       );
       findOneMock.mockResolvedValueOnce({
@@ -132,7 +124,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
 
   describe('Response data', () => {
     it('returns history items sorted by lastPurchasedAt descending', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -171,7 +163,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns empty array when no history exists', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -187,7 +179,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('queries purchaseHistory with correct storeId and sort', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',

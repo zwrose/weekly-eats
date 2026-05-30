@@ -1,6 +1,6 @@
 # Weekly Eats
 
-Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB, and NextAuth.
+Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB, and Auth.js (v5).
 
 ## Quick Reference
 
@@ -82,7 +82,8 @@ src/
   lib/
     hooks/        # Custom React hooks (useRecipes, useFoodItems, etc.)
     __tests__/    # Utility tests
-    auth.ts       # NextAuth config
+    auth.config.ts # Edge-safe Auth.js v5 config (providers, session/redirect callbacks)
+    auth.ts       # Full Auth.js v5 config (adapter + jwt) — exports handlers/auth/signIn/signOut
     mongodb.ts    # MongoDB connection singleton
     errors.ts     # Centralized error constants
     validation.ts # Input validation helpers
@@ -95,11 +96,11 @@ src/
 
 ### API Routes
 
-- Check auth first: `const session = await getServerSession(authOptions)`
+- Check auth first: `const session = await auth()` (import `auth` from `@/lib/auth`)
 - Return `{ error: AUTH_ERRORS.UNAUTHORIZED }` with 401 if no session
 - Admin routes check `user.isAdmin`, return 403 with `AUTH_ERRORS.FORBIDDEN`
 - Session user has typed `id`, `isAdmin`, `isApproved` properties — never use `as` casts
-- Auth uses JWT strategy; `isAdmin`/`isApproved` are cached in the token (see `src/lib/auth.ts`)
+- Auth uses JWT strategy; `isAdmin`/`isApproved` are cached in the token. Config is split: `src/lib/auth.config.ts` holds the edge-safe callbacks (session/redirect, trustHost), `src/lib/auth.ts` adds the MongoDB adapter + DB-backed jwt callback and exports `handlers`/`auth`/`signIn`/`signOut`.
 - Use error constants from `@/lib/errors` (never hardcode error strings)
 - Log errors with `logError('ContextName', error)`
 - Validate ObjectIds with `ObjectId.isValid(id)` before querying
@@ -119,7 +120,7 @@ src/
 - Colocated in `__tests__/` folders next to source files
 - Vitest + React Testing Library + MSW for API mocking
 - When mocking `@/lib/errors`, include ALL error constant groups the route uses (missing ones cause silent 500s)
-- Mock next-auth: `vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }))`
+- Mock auth: `vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))` then `vi.mocked(auth).mockResolvedValue(...)` (route tests mock the `auth()` helper, not `next-auth` directly)
 - Mock MongoDB: `vi.mock('@/lib/mongodb', () => ({ getMongoClient: vi.fn() }))`
 - Use `userEvent.setup()` for user interactions (not fireEvent)
 - Use `waitFor()` for async assertions
@@ -207,10 +208,10 @@ All review skills read `REVIEW.md` (repo root) for severity calibration, do-NOT-
 
 | When                                   | Skill                                   | Output                                                                                                              |
 | -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Drafting a plan/spec                   | `/review-plan`                          | Annotations on the plan doc; verdict: PLAN READY / REVISE / RECONSIDER                                              |
+| Drafting a plan/spec                   | `/review-plan`                          | Revises the plan doc in place until it passes; verdict: PLAN READY / REVISE / RECONSIDER                            |
 | End of subagent-driven-dev (before PR) | `/review-code` (branch mode)            | Auto-fix loop: fixes findings + commits locally until clean. `--review-only` for a read-only terminal report.       |
 | PR open                                | `/review-code pr <N>` or `/review-code` | Auto-fix loop on the PR's branch (commits locally, never pushes). `--post` posts inline findings read-only instead. |
-| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog; optional save-to-file or file-as-issues                                                        |
+| Periodic (monthly)                     | `/audit-debt`                           | Prioritized backlog consolidated into proposed GitHub issues (all tiers); optional save-to-file                     |
 
 Each skill dispatches the same 4 specialist agents (architecture, code, security, test) in parallel. The agents enforce `file:line` citations and diff-scope rules to suppress false positives. When a skill presents findings for your decision, the orchestrator attaches its own POV (Fix / Skip / Defer + rationale + confidence) per `REVIEW.md`.
 

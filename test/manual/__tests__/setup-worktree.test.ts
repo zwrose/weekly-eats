@@ -2,20 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { rewriteWorktreeEnv } from '../../../scripts/setup-worktree.js';
 
 describe('rewriteWorktreeEnv', () => {
-  const main = [
-    'MONGODB_URI=mongodb://localhost:27017/weekly-eats-dev',
-    'NEXTAUTH_URL=http://localhost:3000',
-    'NEXTAUTH_SECRET=abc',
-  ].join('\n');
+  const main = ['MONGODB_URI=mongodb://localhost:27017/weekly-eats-dev', 'AUTH_SECRET=abc'].join(
+    '\n'
+  );
 
   it('preserves the MONGODB_URI line verbatim (no DB-name rewrite)', () => {
     const out = rewriteWorktreeEnv(main, { port: 3456 });
     expect(out).toContain('MONGODB_URI=mongodb://localhost:27017/weekly-eats-dev');
   });
 
-  it('rewrites NEXTAUTH_URL port and sets PORT', () => {
+  it('sets PORT to the worktree port', () => {
     const out = rewriteWorktreeEnv(main, { port: 3456 });
-    expect(out).toContain('NEXTAUTH_URL=http://localhost:3456');
     expect(out).toMatch(/^PORT=3456$/m);
   });
 
@@ -23,5 +20,10 @@ describe('rewriteWorktreeEnv', () => {
     const out = rewriteWorktreeEnv(main + '\nPORT=9999', { port: 3456 });
     expect(out.match(/^PORT=/gm)?.length).toBe(1);
     expect(out).toMatch(/^PORT=3456$/m);
+  });
+
+  it('no longer rewrites a NEXTAUTH_URL port (trustHost handles the host)', () => {
+    const out = rewriteWorktreeEnv(main + '\nNEXTAUTH_URL=http://localhost:3000', { port: 3456 });
+    expect(out).toContain('NEXTAUTH_URL=http://localhost:3000'); // left verbatim, NOT rewritten to :3456
   });
 });

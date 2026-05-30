@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const findOneMock = vi.fn();
 
@@ -13,24 +12,24 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('..//route');
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
 });
 
 describe('api/user/approval-status GET', () => {
   it('401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(401);
   });
 
   it('returns booleans for isApproved and isAdmin', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'x@example.com', isApproved: true, isAdmin: false });
     const res = await routes.GET();
     expect(res.status).toBe(200);

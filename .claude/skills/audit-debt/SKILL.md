@@ -6,7 +6,7 @@ user-invocable: true
 
 # Audit Debt
 
-Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same four specialist agents `/review-code` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), compiles the results into a backlog sorted by severity × inverse-effort, attaches its own point of view to each Critical/Important finding, and offers to save the report and/or file approved findings as GitHub issues.
+Periodic full-repo sweep for accumulated technical, security, and architectural debt. The main context is an orchestrator: it gathers sweep-prep artifacts (npm audit, TODO census, file list, recent dependency churn), dispatches the same four specialist agents `/review-code` uses in **sweep mode** (no diff scope) in parallel, computes three additional dimensions itself (dependency staleness/vulns, TODO/FIXME accumulation, documentation drift), loops the sweep until it stops surfacing new blocking debt, compiles the results into a backlog sorted by severity × inverse-effort, attaches its own point of view to each Critical/Important finding, and consolidates the findings into a proposed set of GitHub issues to file. It **never edits code** — its only output is the report and the issues.
 
 This skill is **not a sibling of `/review-code`**. `/review-code` finds bugs in new code; `/audit-debt` finds bugs in old code that has rotted. The diff-scope rule does NOT apply — every line in `src/` is in scope. The trade-off is that it is **slow and thorough by design** — meant to be run occasionally (suggest monthly), not before every PR. Running it weekly will drown you in nits you have already triaged; running it never will let real debt accumulate to "rewrite this feature" levels.
 
@@ -14,9 +14,9 @@ Read `REVIEW.md` first for the severity rubric — the tier definitions get a de
 
 ## Invocation
 
-| Form          | Behavior                                                                                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/audit-debt` | Sweep the whole repo. No flags. After the report is produced, the skill offers (interactively) to save the report to a file and/or file Critical/Important findings as GitHub issues. |
+| Form          | Behavior                                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/audit-debt` | Sweep the whole repo. No flags. Repeats the specialist sweep until it stops surfacing new blocking debt (hard cap 7 rounds), then consolidates findings across all tiers into a proposed set of GitHub issues and offers to file them and/or save the report. |
 
 ## Session Directory
 
@@ -26,17 +26,19 @@ All audit artifacts live in a per-invocation temp directory so parallel runs don
 SESSION_DIR=$(mktemp -d /tmp/audit-debt-XXXXXXXX)
 ```
 
-| Path                                      | Written by   | Purpose                                                                    |
-| ----------------------------------------- | ------------ | -------------------------------------------------------------------------- |
-| `$SESSION_DIR/meta.json`                  | orchestrator | Repo, branch, head SHA, session dir, file count                            |
-| `$SESSION_DIR/sweep-prep/`                | orchestrator | Directory of prep artifacts (npm audit, TODO census, file list, dep churn) |
-| `$SESSION_DIR/findings-architecture.json` | arch agent   | Architecture-reviewer findings array                                       |
-| `$SESSION_DIR/findings-code.json`         | code agent   | Code-reviewer findings array                                               |
-| `$SESSION_DIR/findings-security.json`     | sec agent    | Security-reviewer findings array                                           |
-| `$SESSION_DIR/findings-test.json`         | test agent   | Test-reviewer findings array                                               |
-| `$SESSION_DIR/orchestrator-findings.json` | orchestrator | Deps + TODO accumulation + doc-drift findings                              |
-| `$SESSION_DIR/compiled.json`              | orchestrator | Sorted, prioritized backlog + totals + summary                             |
-| `$SESSION_DIR/report.md`                  | orchestrator | Final markdown report (optionally saved by user)                           |
+| Path                                      | Written by   | Purpose                                                                            |
+| ----------------------------------------- | ------------ | ---------------------------------------------------------------------------------- |
+| `$SESSION_DIR/meta.json`                  | orchestrator | Repo, branch, head SHA, session dir, file count                                    |
+| `$SESSION_DIR/sweep-prep/`                | orchestrator | Directory of prep artifacts (npm audit, TODO census, file list, dep churn)         |
+| `$SESSION_DIR/findings-architecture.json` | arch agent   | Architecture-reviewer findings array                                               |
+| `$SESSION_DIR/findings-code.json`         | code agent   | Code-reviewer findings array                                                       |
+| `$SESSION_DIR/findings-security.json`     | sec agent    | Security-reviewer findings array                                                   |
+| `$SESSION_DIR/findings-test.json`         | test agent   | Test-reviewer findings array                                                       |
+| `$SESSION_DIR/round-<N>/findings-*.json`  | agents       | Specialist findings for discovery-loop round N (round 1 uses the flat paths above) |
+| `$SESSION_DIR/all-findings.json`          | orchestrator | Accumulated specialist findings across all discovery-loop rounds                   |
+| `$SESSION_DIR/orchestrator-findings.json` | orchestrator | Deps + TODO accumulation + doc-drift findings                                      |
+| `$SESSION_DIR/compiled.json`              | orchestrator | Sorted, prioritized backlog + totals + summary                                     |
+| `$SESSION_DIR/report.md`                  | orchestrator | Final markdown report (optionally saved by user)                                   |
 
 ## Workflow
 
@@ -81,9 +83,9 @@ cat > "$SESSION_DIR/meta.json" <<EOF
 EOF
 ```
 
-### 2. Plan Dispatch
+### 2. Dispatch Summary
 
-Enter plan mode via `EnterPlanMode`. Show the user:
+Print this dispatch summary as a plain status message, then dispatch the specialists immediately (no approval gate):
 
 - **Skill:** `audit-debt`
 - **Scope:** the whole repo — `$FILE_COUNT` files under `src/`
@@ -95,8 +97,6 @@ Enter plan mode via `EnterPlanMode`. Show the user:
 - **Orchestrator-driven dimensions (run in parallel with specialists):** dependency staleness + vulnerabilities, TODO/FIXME accumulation, documentation drift
 - **Session directory:** `$SESSION_DIR`
 - **Note:** this is a slow run by design — expect ~minutes, not seconds.
-
-Exit plan mode via `ExitPlanMode` and wait for approval before dispatching.
 
 ### 3. Dispatch Specialists in Parallel
 
@@ -181,7 +181,19 @@ Write all orchestrator-derived findings to `$SESSION_DIR/orchestrator-findings.j
 
 ### 5. Compile + Prioritize + Present
 
-Once all four specialist files and `orchestrator-findings.json` exist on disk, read them all. Apply:
+**Discovery loop (specialists only — no code is ever edited).** A single stochastic sweep misses findings, so repeat the specialist sweep until it stops surfacing new blocking debt. Sweep-prep (§1) and the orchestrator-derived dimensions (§4) are deterministic — compute them once, not per round.
+
+Initialize `round = 1` and an empty `seen` set (finding identities = `file::normalized-title`). Each round:
+
+**Loop step 1:** (Round 1: the specialists dispatched in §3 have already written `$SESSION_DIR/findings-*.json`.) For round > 1, re-dispatch the four specialists per §3 into `$SESSION_DIR/round-<round>/findings-*.json`.
+
+**Loop step 2:** Read this round's specialist findings. Compute `new-blocking` = findings with severity Critical or Important whose identity is not already in `seen`. Add every finding's identity to `seen` and accumulate every finding into the running pool `$SESSION_DIR/all-findings.json`.
+
+**Loop step 3:** If `new-blocking` is empty → **stop looping**. Else if `round == 7` → **stop looping** and `log` that the 7-round cap was reached (coverage may be incomplete — note it in the report). Else `round += 1` and repeat.
+
+Then merge the accumulated specialist pool with `orchestrator-findings.json` and continue with the consolidation below.
+
+After the discovery loop exits, read the accumulated specialist pool (`$SESSION_DIR/all-findings.json`) together with `orchestrator-findings.json`. Apply:
 
 1. **Citation check.** Drop any finding with `file == null` or `line == null` (matches `REVIEW.md` §Verification Rules — citations are required even in sweep mode). Exception: the single aggregate "Accumulated TODO/FIXME markers" finding may cite the oldest file/line.
 2. **Existence check.** For every cited file, confirm it exists. Subagents occasionally hallucinate file paths under a sweep — drop findings whose `file` does not resolve on disk.
@@ -211,17 +223,27 @@ Write `$SESSION_DIR/compiled.json`:
 
 Render `$SESSION_DIR/report.md`: a markdown report grouped by category (Architecture / Code / Security / Test / Dependencies / TODOs / Docs), with the priority order above applied within each category. Under each Critical/Important finding, render its **POV** on its own line (e.g. `→ POV: Defer (High confidence) — real debt, but a multi-session restructure; schedule it, don't fix it now`). Print the report to the terminal.
 
-**Interactive offers at the end** (apply in order):
+**Consolidate into proposed GitHub issues.** `audit-debt` never edits code — its output is a backlog. Roll the surviving findings **across all tiers, including Minor and Nit** into a proposed set of issues:
 
-1. `AskUserQuestion`: _"Save this report to a file?"_ Options:
-   - **Yes, default location** — `cp "$SESSION_DIR/report.md" "docs/debt-audit-$(date +%Y-%m-%d).md"`
-   - **Yes, custom path** — prompt for the path, then `cp`.
-   - **No** — skip.
-2. If `compiled.json` contains any Critical or Important findings, `AskUserQuestion`: _"File any Critical/Important findings as GitHub issues?"_ Options:
-   - **Yes — go through them one by one** — iterate Critical+Important findings; for each, `AskUserQuestion` _"File this as an issue?"_ — lead with the orchestrator **POV** (recommendation + rationale + confidence) so you can decide whether it's even worth an issue, then show the auto-drafted title and body. On Yes, run `gh issue create --title "<title>" --body "<body>"`. Title format: `"<severity>: <finding title>"`. Body: finding text + `file:line` + suggestion + effort estimate + `_Surfaced by /audit-debt on <date>_`. (The POV guides your filing decision; it is not written into the issue body.)
-   - **No, I'll do this manually** — skip.
+- **Critical / Important:** apply the review gate — auto-include findings with `recommendation` of `Fix` or `Defer` (filing an issue _is_ deferring real debt to a backlog), and ask the user only about `Skip`/borderline ones via `AskUserQuestion` (lead with the POV; **File** / **Drop**).
+- **Minor / Nit:** these carry no POV; include them by default.
+- **Do not mix tiers within a single issue.** A Critical/Important finding gets its own issue (or is grouped only with closely-related same-tier findings). Minor/Nit findings are consolidated into their own separate lower-tier issue(s) — never folded into a higher-tier issue.
 
-End of skill — no posting to PRs, no further checks.
+Present the proposed issue set in chat (title + tier + the findings each issue covers). Then `AskUserQuestion`: _"File these as GitHub issues?"_ Options:
+
+- **Yes, file all** — run `gh issue create` for each proposed issue.
+- **Let me deselect some** — present the proposed issues multi-select, then file the kept ones.
+- **No** — skip.
+
+Issue title format: `"<severity>: <finding title>"` (for a multi-finding lower-tier issue, a summary title like `"Nit: 5 convention nits across src/"`). Body: each finding's text + `file:line` + suggestion + effort estimate, then `_Surfaced by /audit-debt on <date>_`. The POV guides filing decisions; it is not written into the issue body.
+
+**Optionally save the report.** `AskUserQuestion`: _"Save this report to a file?"_ Options:
+
+- **Yes, default location** — `cp "$SESSION_DIR/report.md" "docs/debt-audit-$(date +%Y-%m-%d).md"`
+- **Yes, custom path** — prompt for the path, then `cp`.
+- **No** — skip.
+
+End of skill — no code edits, no commits, no posting to PRs, no further checks.
 
 ## Severity Recalibration for Debt Context
 
@@ -259,4 +281,4 @@ The `severity × inverse-effort` sort means a `Important + Quick` finding ranks 
 | Treating consistent patterns as drift                              | Consistency > novelty. If 12 of 13 routes use the same pattern, the 13th matching is **consistency**, not debt. If 6 use pattern A and 7 use pattern B, THAT is drift.     |
 | Mapping every npm-audit advisory to Critical                       | Advisory severity is a hint, not a verdict — `moderate` maps to Minor in this skill. If the vulnerable code path isn't reachable in our usage, the advisory is even lower. |
 | Running this before every PR                                       | This skill is slow and broad by design. Run it monthly. For PR review, use `/review-code`.                                                                                 |
-| Treating the GitHub-issue offer as automatic                       | Every issue created is a chore for the author. The interactive offer in §5 step 2 is one-finding-at-a-time on purpose — don't bulk-create issues.                          |
+| Treating the GitHub-issue offer as automatic                       | Every issue created is a chore for the author. Review the proposed issue set before filing — use "Let me deselect some" or "No" to trim it down.                           |

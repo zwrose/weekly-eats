@@ -13,7 +13,7 @@ export default function SignInButton() {
       variant="contained"
       color="inherit"
       size="large"
-      onClick={() => signIn('google', { callbackUrl })}
+      onClick={() => signIn('google', { redirectTo: callbackUrl })}
       sx={{
         textTransform: 'none',
         bgcolor: 'background.paper',

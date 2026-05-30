@@ -41,7 +41,7 @@ export default function BottomNav() {
   }, []);
 
   const handleSignOut = useCallback(() => {
-    signOut({ callbackUrl: '/' });
+    signOut({ redirectTo: '/' });
     setAnchorEl(null);
   }, []);
 

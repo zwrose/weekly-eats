@@ -83,20 +83,19 @@ else
 # For local development, use: mongodb://localhost:27017/weekly-eats
 MONGODB_URI=mongodb://localhost:27017/weekly-eats
 
-# NextAuth Configuration
-# Generate a random secret with: openssl rand -base64 32
-NEXTAUTH_SECRET=your-nextauth-secret-here
-NEXTAUTH_URL=http://localhost:3000
+# Auth.js Configuration
+# Generate a random secret with: openssl rand -base64 33
+AUTH_SECRET=your-auth-secret-here
 
 # Google OAuth (for authentication)
 # Get these from Google Cloud Console: https://console.cloud.google.com/
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+AUTH_GOOGLE_ID=your-google-client-id
+AUTH_GOOGLE_SECRET=your-google-client-secret
 EOF
     echo "✅ Created .env.local template"
     echo ""
     echo "⚠️  IMPORTANT: Please edit .env.local and fill in the required values:"
-    echo "   1. Generate NEXTAUTH_SECRET: openssl rand -base64 32"
+    echo "   1. Generate AUTH_SECRET: openssl rand -base64 33"
     echo "   2. Add your Google OAuth credentials (if needed)"
 fi
 

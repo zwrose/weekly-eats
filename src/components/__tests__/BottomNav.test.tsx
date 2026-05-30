@@ -8,7 +8,7 @@ const mockSignOut = vi.fn();
 const mockUseSession = vi.fn();
 vi.mock('next-auth/react', () => ({
   useSession: () => mockUseSession(),
-  signOut: (options: { callbackUrl?: string }) => mockSignOut(options),
+  signOut: (options: { redirectTo?: string }) => mockSignOut(options),
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
@@ -350,7 +350,7 @@ describe('BottomNav', () => {
       const signOutMenuItem = screen.getByText('Sign Out');
       await user.click(signOutMenuItem);
 
-      expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: '/' });
+      expect(mockSignOut).toHaveBeenCalledWith({ redirectTo: '/' });
     });
 
     it('closes menu when pressing escape', async () => {
