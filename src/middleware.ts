@@ -8,11 +8,14 @@ export async function middleware(request: NextRequest) {
   // Allow access to:
   // - Home page (login page)
   // - Auth API routes
+  // - The MCP endpoint (self-authenticates via Bearer token in withMcpAuth, not
+  //   a NextAuth session cookie — so this session middleware must not shadow it)
   // - Static files and Next.js internals
   // - Public assets (manifest, icons, images)
   if (
     pathname === '/' ||
     pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/mcp') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/static/') ||
     pathname === '/manifest.json' ||

@@ -74,6 +74,17 @@ describe('middleware approval gate', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it('lets /api/mcp through without a session token (route enforces its own bearer auth)', async () => {
+    // The MCP client authenticates with a Bearer token, not a NextAuth session
+    // cookie — so getToken() is null. The session middleware must NOT redirect it
+    // to the HTML login page; the route's withMcpAuth gate owns auth here.
+    mockGetToken.mockResolvedValue(null);
+
+    const res = await middleware(req('/api/mcp'));
+
+    expect(res.headers.get('x-middleware-next')).toBe('1'); // NextResponse.next()
+  });
+
   it('redirects to / when there is no token (existing behavior)', async () => {
     mockGetToken.mockResolvedValue(null);
 
