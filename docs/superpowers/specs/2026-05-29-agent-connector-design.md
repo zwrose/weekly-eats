@@ -40,18 +40,18 @@ and saves a properly-structured recipe via the connector.
 
 ## 4. Key decisions (with rationale)
 
-| Decision        | Choice                                                                       | Rationale                                                                                                              |
-| --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Audience        | Any Weekly Eats user, self-serve                                             | User requirement. Drives OAuth + public remote endpoint.                                                               |
-| Surface         | Remote MCP server = Claude Connector                                         | Self-serve "add by URL" can't be a local CLI.                                                                          |
-| Hosting         | Route in the existing Next.js app on Vercel                                  | App already deploys to Vercel; shares auth + data layer.                                                               |
-| Transport       | Streamable HTTP, **stateless**                                               | Current best practice; works with Fluid Compute; **no Redis** (Redis was only for legacy SSE / stateful sessions).     |
-| Adapter         | `vercel/mcp-handler` over `@modelcontextprotocol/sdk` (≥ 1.26.0)             | Maintained Next.js adapter; provides `withMcpAuth` + RFC 9728 metadata handler. Pin a known-good version (see §10).    |
-| Data access     | **Shared service layer** (Approach A)                                        | One source of truth for validation/ownership; no drift between HTTP and MCP.                                           |
-| Auth server     | **Hand-rolled OAuth 2.1 AS** on top of Google/NextAuth                       | Single identity, no new SaaS dependency. Weekly Eats becomes the Authorization Server; Google is the human-login step. |
-| Token model     | App mints its **own** MCP access/refresh tokens; Google tokens never exposed | "OAuth Proxy" pattern — control over token lifecycle, scope, revocation.                                               |
-| Recipe review   | **In chat**, no draft state                                                  | Fastest, agent-native; avoids schema + review-UI work.                                                                 |
-| Build structure | One spec, multiple implementation plans                                      | Pieces are tightly coupled (shared auth/service/tool conventions).                                                     |
+| Decision        | Choice                                                                       | Rationale                                                                                                                                                                                                                                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audience        | Any Weekly Eats user, self-serve                                             | User requirement. Drives OAuth + public remote endpoint.                                                                                                                                                                                                                                                                                     |
+| Surface         | Remote MCP server = Claude Connector                                         | Self-serve "add by URL" can't be a local CLI.                                                                                                                                                                                                                                                                                                |
+| Hosting         | Route in the existing Next.js app on Vercel                                  | App already deploys to Vercel; shares auth + data layer.                                                                                                                                                                                                                                                                                     |
+| Transport       | Streamable HTTP, **stateless**                                               | Current best practice; works with Fluid Compute; **no Redis** (Redis was only for legacy SSE / stateful sessions).                                                                                                                                                                                                                           |
+| Adapter         | `vercel/mcp-handler` over `@modelcontextprotocol/sdk` (≥ 1.26.0)             | Maintained Next.js adapter. Provides **only** the Resource-Server side: `withMcpAuth` (our `verifyToken` callback) + RFC 9728 metadata. Ships **no** Authorization Server — no DCR/PKCE/issuance/rotation; the SDK removed `ProxyOAuthServerProvider`. So the AS is hand-rolled by necessity (R5, §6.4). Pin a known-good version (see §10). |
+| Data access     | **Shared service layer** (Approach A)                                        | One source of truth for validation/ownership; no drift between HTTP and MCP.                                                                                                                                                                                                                                                                 |
+| Auth server     | **Hand-rolled OAuth 2.1 AS** on top of Google/NextAuth                       | Single identity, no new SaaS dependency. Weekly Eats becomes the Authorization Server; Google is the human-login step.                                                                                                                                                                                                                       |
+| Token model     | App mints its **own** MCP access/refresh tokens; Google tokens never exposed | "OAuth Proxy" pattern — control over token lifecycle, scope, revocation.                                                                                                                                                                                                                                                                     |
+| Recipe review   | **In chat**, no draft state                                                  | Fastest, agent-native; avoids schema + review-UI work.                                                                                                                                                                                                                                                                                       |
+| Build structure | One spec, multiple implementation plans                                      | Pieces are tightly coupled (shared auth/service/tool conventions).                                                                                                                                                                                                                                                                           |
 
 ## 5. Architecture overview
 
@@ -166,6 +166,28 @@ at the Protected Resource Metadata URL.
   page); it does not change how browser users authenticate to the web app. CSRF: the
   consent form's submit is protected by the same server-side `state`/session binding as
   the rest of the flow (the Allow action must carry the verified `state`).
+- **Issuer identification — `iss` (R1, RFC 9207):** every authorization response —
+  **including error redirects** — carries an `iss` parameter equal to the AS's `issuer`
+  in the metadata document. This is the recommended mix-up-attack countermeasure (RFC 9700) and matters because Claude talks to many connectors at once; the easy-to-miss
+  part is emitting `iss` on the error path too.
+- **PKCE-downgrade rejection (R2, RFC 9700 §2.1.1):** a distinct MUST beyond "require
+  PKCE" — `/token` accepts a `code_verifier` **only if** a `code_challenge` was stored
+  with that auth code, and rejects a code that had a challenge but arrives with no
+  verifier. The `code_challenge` is persisted on `mcpAuthCodes` (§9) and the binding is
+  an explicit, tested code path, not an implicit consequence of S256-only.
+- **Token passthrough prohibition (R3, MCP Security BCP — normative MUST):** the MCP
+  server **MUST NOT** accept any token not explicitly issued for itself (no accepting a
+  raw Google access token as a bearer — enforced by the resource-indicator/audience
+  check in §6.4), and **MUST NOT** pass a client-supplied token through to upstream APIs.
+  This is a separate control from the consent screen (CS1): consent is UX, this is
+  audience binding enforced inside token validation.
+- **Discovery contract (R4, RFC 9728 + RFC 8414):** the Resource Server returns `401`
+  with `WWW-Authenticate: Bearer ..., resource_metadata="<PRM URL>"` (the exact RFC 9728
+  §5.1 challenge form Claude parses), serves **path-aware** Protected Resource Metadata
+  at `/.well-known/oauth-protected-resource` ( + path segment), and the AS serves RFC
+  8414 metadata at `/.well-known/oauth-authorization-server`. PRM (`{ resource,
+authorization_servers, scopes_supported }`) and AS metadata are **distinct documents** —
+  a hand-rolled AS commonly serves only the latter; both are required.
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -182,8 +204,17 @@ Protected Resource Metadata document must include `authorization_servers` and
 endpoints and supported PKCE methods. Only residual: confirm exact field names against
 the live Claude connector docs while implementing Phase 2.
 
-**Reference implementation:** DTeam-Top/mcp-oauth (OAuth 2.1 MCP server as a Next.js
-app) — adapt its AS endpoint structure to our Google/NextAuth login + Mongo storage.
+**Reference implementations:** the closest real-world match is
+**`bojanrajkovic/mcp-paprika`** (`src/auth/`) — a hand-rolled OAuth 2.1 AS for a Claude
+connector that delegates identity to Google/OIDC and mints its own tokens, exactly our
+OAuth-Proxy pattern, and is confirmed addable in Claude (incl. chat). It has direct
+analogues to our collections (`client-registration`/`dcr-validator`, `auth-code-store`,
+`token-store`, `auth-request-store`, `ttl-store`/`cleanup`, `allowlist`, `metadata`,
+`oidc-client`/`presets`) and ships property-based tests for DCR/token logic — a strong
+template. `DTeam-Top/mcp-oauth` is a secondary Next.js reference. Note the one structural
+difference: `mcp-paprika` delegates login via a generic OIDC client; we instead reuse the
+app's existing NextAuth+Google flow (our "no second identity system" decision) — confirm
+the programmatic AS flow threads cleanly through NextAuth during Phase 2.
 
 ### 6.3 Service layer — `src/lib/services/*`
 
@@ -212,7 +243,19 @@ The connector equivalent of `requireApprovedSession`:
 - Enforce `isApproved || isAdmin` (matches `requireApprovedSession` semantics).
 - On success return `AuthInfo` with `userId` (+ approval flags) in `extra`; tool
   handlers read `extra.authInfo`.
-- On failure return `undefined` → `withMcpAuth` issues `401` with `WWW-Authenticate`.
+- On failure return `undefined` → `withMcpAuth` issues `401` with `WWW-Authenticate`
+  (carrying the `resource_metadata` challenge, R4 in §6.2).
+
+**`verifyToken` owns all the security logic (R5, build-vs-adopt reality):** research
+confirmed that `mcp-handler`/`withMcpAuth` and the MCP SDK's bearer middleware do **only**
+expiry + required-scope checks after our callback returns — they perform no signature
+check, no introspection, no RFC 8707 audience compare, no revocation lookup, no
+token-hash check, and no `tokenType` check. Therefore the hash lookup, `tokenType:
+'access'` filter, `revokedAt` check, resource/audience match, and the live `users`
+approval lookup all **must** live inside our `verifyToken` — they are not provided by the
+adapter. (Neither `mcp-handler` nor `@modelcontextprotocol/sdk` ships a reusable
+Authorization Server; the SDK removed `ProxyOAuthServerProvider`/`mcpAuthRouter`. The AS
+is hand-rolled by necessity, not just by preference — see §4.)
 
 ### 6.5 MCP tools
 
@@ -346,9 +389,11 @@ No changes to existing collections. New collections for the AS:
 - `mcpClients` — registered OAuth clients (from DCR). Carries a `lastUsedAt`/TTL
   cleanup policy so abandoned registrations are reaped (I6).
 - `mcpAuthCodes` — short-lived PKCE-bound authorization codes. Each stores the issuing
-  **`clientId`, `redirectUri`, and PKCE `code_challenge`**; `/token` verifies the
-  request's `client_id` and `redirect_uri` match these at exchange (sec-005, OAuth 2.1
-  §4.1.3 — prevents cross-client code injection). **Single-use enforced via an atomic
+  **`clientId`, `redirectUri`, PKCE `code_challenge`, and the bound `resource`** (RFC
+  8707); `/token` verifies the request's `client_id` and `redirect_uri` match these at
+  exchange (sec-005, OAuth 2.1 §4.1.3 — prevents cross-client code injection), accepts a
+  `code_verifier` only if a `code_challenge` was stored (R2 PKCE-downgrade rejection),
+  and carries the `resource` through to the minted token's audience. **Single-use enforced via an atomic
   `findOneAndDelete` on exchange (MA)** — not a read-then-delete — so concurrent
   serverless exchanges of one code cannot both succeed.
 - `mcpTokens` — access + refresh tokens bound to `userId`, each with a
@@ -384,6 +429,15 @@ rather than deleting the document, so `verifyToken` and the token endpoint **mus
 `revokedAt`), so MongoDB's eventual TTL deletion never races ahead of an explicit
 revocation check.
 
+**TTL is cleanup, not security (R6, Vercel/Mongo):** MongoDB's TTL reaper runs only
+~every 60s (longer under load), so an expired auth code/token/state remains _queryable_
+for ≥60s past its `expiresAt`. Every consumer (`/token`, `/authorize` callback,
+`verifyToken`) **must compare `expiresAt` against the current time at use** and reject if
+past — never treat "document still present" as "still valid". For auth codes (lifetimes
+in seconds) this at-use check is the actual single-use/expiry guarantee; the TTL index
+only reclaims space. (Pair with the atomic `findOneAndDelete`/`findOneAndUpdate` already
+specified.)
+
 Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`/
 `mcpAuthStates` expiry; `mcpClients` cleanup; lookup indexes on the hashed-token
 fields). **Also add the five `mcp*` collections (`mcpClients`, `mcpAuthCodes`,
@@ -406,6 +460,13 @@ fields). **Also add the five `mcp*` collections (`mcpClients`, `mcpAuthCodes`,
   before issuing a code and never auto-skips on an existing Google session for an
   unrecognized client — the defense against confused-deputy / silent authorization that
   open DCR otherwise enables (§6.2).
+- **Token passthrough is prohibited (R3):** only tokens this server minted (correct
+  `resource`/audience) are accepted; client-supplied tokens are never forwarded upstream.
+  Audience binding is enforced in `verifyToken`, independent of consent (§6.2, §6.4).
+- **Expiry is checked at use, not via TTL (R6):** the Mongo TTL reaper lags ≥60s, so
+  every code/token/state use re-checks `expiresAt`; TTL is only space reclamation (§9).
+- **Issuer + PKCE-downgrade (R1/R2):** `iss` on all authorization responses (mix-up
+  defense); a `code_verifier` is honored only against a stored `code_challenge` (§6.2).
 - **Pinned dependencies:** `@modelcontextprotocol/sdk` ≥ 1.26.0 (prior versions have
   advisories). Per the `mcp-handler` README, **Redis is optional and only needed for
   the legacy SSE transport** — stateless Streamable HTTP needs none. The earlier
@@ -487,11 +548,31 @@ open DCR enables. New `mcpConsents` collection (§9); §8a gains consent-require
 and prior-consent-skip cases (§6.2, §8a, §10). This was raised, then set aside as
 out-of-scope, during loop 4; the user elected to include it.
 
+Resolved during dedicated OAuth-AS research (25 primary-source claims, all confirmed —
+see References): the **hand-roll decision is validated** — neither `mcp-handler` nor the
+MCP SDK ships a reusable Authorization Server (the SDK removed `ProxyOAuthServerProvider`),
+so the AS is hand-rolled by necessity; an independent working Claude connector
+(`mcp-paprika`) uses the same OAuth-Proxy pattern. Added GAPs the prior checklist didn't
+name: RFC 9207 `iss` on all authorization responses incl. errors (R1); explicit
+PKCE-downgrade rejection (R2); the token-passthrough prohibition as a distinct
+audience-binding control (R3); the full RFC 9728 + RFC 8414 discovery contract incl. the
+`resource_metadata` `401` challenge (R4); the explicit statement that `verifyToken` owns
+all security logic since the adapter only checks expiry+scope (R5); and the
+TTL-is-cleanup-not-security at-use expiry rule (R6).
+
 Remaining:
 
 - **Exact Claude DCR/metadata field names:** confirm against the live Claude connector
   docs while implementing Phase 2 (low risk — shape is known, only field-name details
   remain).
+- **Newer MCP auth revision:** a `2025-11-25` MCP authorization revision exists; the
+  research confirmed it does not contradict the `2025-06-18` requirements used here, but
+  re-check it against the newest revision before implementing Phase 2.
+- **NextAuth threading:** confirm the programmatic AS authorize→login→callback flow
+  threads cleanly through NextAuth v4 + Google (vs. `mcp-paprika`'s direct OIDC-client
+  approach) during Phase 2.
+- **Vercel specifics (deferred to Phase 2):** clock-skew tolerance for second-scale code
+  expiry across regions; signing/hashing-pepper secret management (env var vs KMS).
 - **Service extraction surface:** keep each phase's refactor scoped to the routes that
   phase exposes; avoid a big-bang refactor of all routes at once. (Process guideline,
   not an unknown.)
@@ -504,4 +585,15 @@ Remaining:
 - [vercel/mcp-handler](https://github.com/vercel/mcp-handler) · [AUTHORIZATION.md](https://github.com/vercel/mcp-handler/blob/main/docs/AUTHORIZATION.md)
 - [Vercel — building efficient MCP servers](https://vercel.com/blog/building-efficient-mcp-servers)
 - [Google OAuth + custom MCP tokens (OAuth Proxy pattern)](https://medium.com/@v31u/mcp-security-simplified-leveraging-google-oauth-for-authentication-475893c51ce0)
-- [DTeam-Top/mcp-oauth — OAuth 2.1 MCP server on Next.js](https://mcpservers.org/servers/DTeam-Top/mcp-oauth)
+- [bojanrajkovic/mcp-paprika — hand-rolled OAuth 2.1 AS for a Claude connector, Google/OIDC-delegated (primary reference)](https://github.com/bojanrajkovic/mcp-paprika/tree/main/src/auth)
+- [DTeam-Top/mcp-oauth — OAuth 2.1 MCP server on Next.js (secondary reference)](https://mcpservers.org/servers/DTeam-Top/mcp-oauth)
+
+OAuth-AS research primary sources (all claims confirmed 3-0 unless noted):
+
+- [OAuth 2.1 draft (draft-ietf-oauth-v2-1)](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1)
+- [RFC 9700 — Best Current Practice for OAuth 2.0 Security](https://www.rfc-editor.org/rfc/rfc9700.html)
+- [RFC 9207 — OAuth 2.0 Authorization Server Issuer Identification (`iss`)](https://datatracker.ietf.org/doc/html/rfc9207)
+- [MCP Security Best Practices (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices)
+- [MongoDB TTL indexes — reaper runs ~every 60s](https://www.mongodb.com/docs/manual/core/index-ttl/)
+- [@modelcontextprotocol/sdk — AS helpers removed; RS-only verifier](https://github.com/modelcontextprotocol/typescript-sdk)
+- [mcp-handler — withMcpAuth is RS-only (npm)](https://www.npmjs.com/package/mcp-handler)
