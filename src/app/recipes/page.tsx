@@ -20,10 +20,9 @@ import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import Pagination from '@/components/optimized/Pagination';
 import { RecipeFilterBar } from '@/components/recipes/RecipeFilterBar';
 import { RecipeCardMobile, RecipeTableRow } from '@/components/recipes/RecipeRow';
-import { RecipeSharingDialog } from '@/components/recipes/RecipeSharingDialog';
-import { RecipeEditor } from '@/components/recipes/RecipeEditor';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
+import dynamic from 'next/dynamic';
 import {
   inviteUserToRecipeSharing,
   respondToRecipeSharingInvitation,
@@ -36,6 +35,16 @@ import {
 import { fetchRecipeUserDataBatch, fetchUserTags } from '@/lib/recipe-user-data-utils';
 import { RecipeUserDataResponse } from '@/types/recipe-user-data';
 import { Recipe } from '@/types/recipe';
+
+// ── Dynamically imported heavy components ──
+const RecipeSharingDialog = dynamic(
+  () => import('@/components/recipes/RecipeSharingDialog').then((m) => m.RecipeSharingDialog),
+  { ssr: false }
+);
+const RecipeEditor = dynamic(
+  () => import('@/components/recipes/RecipeEditor').then((m) => m.RecipeEditor),
+  { ssr: false }
+);
 
 // ── Extended recipe type with server-computed accessLevel ──
 
@@ -57,7 +66,7 @@ const paginationContainerSx = {
   mt: 2,
 } as const;
 
-// ── DotBadge — small orange dot for sharing button ──
+// ── DotBadge — pending-invite alert dot (danger color, matches today's Badge) ──
 
 function DotBadge({ show }: { show: boolean }) {
   if (!show) return null;

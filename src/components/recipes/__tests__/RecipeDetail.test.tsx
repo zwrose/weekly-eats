@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeDetail } from '../RecipeDetail';
+import { deleteRecipe } from '@/lib/recipe-utils';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -63,5 +64,21 @@ describe('RecipeDetail', () => {
     await waitFor(() => screen.getByText('Lemon pasta'));
     await user.click(screen.getByRole('button', { name: /edit/i }));
     expect(screen.getByTestId('recipe-editor')).toBeInTheDocument();
+  });
+
+  it('delete flow: ⋯ menu → Delete → confirm calls deleteRecipe and navigates to /recipes', async () => {
+    const user = userEvent.setup();
+    render(<RecipeDetail recipeId="r1" />);
+    await waitFor(() => screen.getByText('Lemon pasta'));
+
+    // Open the ⋯ more menu
+    await user.click(screen.getByRole('button', { name: /more options/i }));
+    // Click Delete in the menu
+    await user.click(screen.getByRole('menuitem', { name: /delete/i }));
+    // ConfirmDialog should appear — click the confirm button
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+
+    await waitFor(() => expect(deleteRecipe).toHaveBeenCalledWith('r1'));
+    expect(push).toHaveBeenCalledWith('/recipes');
   });
 });

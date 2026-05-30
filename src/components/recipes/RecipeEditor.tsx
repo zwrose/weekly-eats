@@ -78,7 +78,8 @@ export function RecipeEditor({
       ingredients: recipe?.ingredients ?? [{ isStandalone: true, ingredients: [] }],
       instructions: recipe?.instructions ?? '',
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // `seed` is intentionally computed once from the initial `recipe` prop as a stable
+    // dirty-check baseline; re-running on every prop identity change is not wanted.
     [recipe]
   );
 

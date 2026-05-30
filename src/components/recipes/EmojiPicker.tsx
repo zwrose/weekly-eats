@@ -25,8 +25,6 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
     return FOOD_EMOJIS.filter((e) => e.description.toLowerCase().includes(needle));
   }, [q]);
 
-  const emojiOf = (e: { emoji: string }) => e.emoji;
-
   const body = (
     <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: isDesktop ? '80vh' : '78vh' }}>
       <Box
@@ -89,7 +87,7 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
           }}
         >
           {filtered.map((e, i) => {
-            const em = emojiOf(e);
+            const em = e.emoji;
             const selected = em === currentEmoji;
             return (
               <ButtonBase

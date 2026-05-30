@@ -13,11 +13,16 @@ import { Stars } from './Stars';
 import { TagChip, AccessChip } from './TagChip';
 import { RecipeIngredientsView } from './RecipeIngredientsView';
 import { RecipeInstructionsView } from './RecipeInstructionsView';
-import { RecipeEditor } from './RecipeEditor';
+import dynamic from 'next/dynamic';
 import { ConfirmDialog } from '@/components/meal-plans/ConfirmDialog';
-import { accessLevelMeta, type AccessLevel } from './recipe-display-utils';
+import { type AccessLevel } from './recipe-display-utils';
 import type { Recipe } from '@/types/recipe';
 import type { RecipeUserDataResponse } from '@/types/recipe-user-data';
+
+// ── Dynamically imported heavy editor ──
+const RecipeEditor = dynamic(() => import('./RecipeEditor').then((m) => m.RecipeEditor), {
+  ssr: false,
+});
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -128,7 +133,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
     <Box sx={{ color: tokens.text.primary }}>
       {/* Back link */}
       <ButtonBase
-        aria-label="‹ Recipes"
+        aria-label="Back to recipes"
         onClick={() => router.push('/recipes')}
         sx={{
           display: 'flex',
@@ -158,8 +163,8 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-          {/* Emoji tile */}
-          {recipe.emoji && (
+          {/* Emoji tile — always rendered; falls back to 🍽️ for emoji-less recipes */}
+          {
             <Box
               sx={{
                 width: 56,
@@ -173,9 +178,9 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
                 fontSize: 28,
               }}
             >
-              {recipe.emoji}
+              {recipe.emoji || '🍽️'}
             </Box>
-          )}
+          }
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {/* Eyebrow */}

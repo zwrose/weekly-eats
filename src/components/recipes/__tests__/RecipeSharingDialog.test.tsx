@@ -1,11 +1,14 @@
 // src/components/recipes/__tests__/RecipeSharingDialog.test.tsx
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeSharingDialog } from '../RecipeSharingDialog';
 import type { PendingRecipeInvitation } from '@/lib/recipe-sharing-utils';
 
 afterEach(cleanup);
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const baseProps = {
   open: true,
