@@ -50,6 +50,10 @@ describe('redirect callback', () => {
     const url = 'https://weekly-eats.vercel.app/recipes';
     expect(redirect({ url, baseUrl })).toBe(url);
   });
+  it('accepts the long-lived beta design-preview origin', () => {
+    const url = 'https://beta.weekly-eats.zamilyfam.com/recipes';
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
   it('rejects a suffix-attack lookalike host (→ baseUrl)', () => {
     const url = 'https://weekly-eats-x-zach-roses-projects.vercel.app.evil.com/cb';
     expect(redirect({ url, baseUrl })).toBe(baseUrl);

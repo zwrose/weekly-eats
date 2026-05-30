@@ -5,8 +5,14 @@ import Google from 'next-auth/providers/google';
 
 // Preview-origin allowlist (defense-in-depth beyond the signed OAuth state).
 // Match on the EXTRACTED origin, never the raw url — see the redirect callback.
-// Production is reachable at the custom domain (canonical) and the .vercel.app alias.
-const PROD_ORIGINS = ['https://weekly-eats.zamilyfam.com', 'https://weekly-eats.vercel.app'];
+// Stable, non-ephemeral origins allowed as redirect-back targets through the
+// proxy: production (custom domain + .vercel.app alias) and the long-lived
+// `beta` design-preview domain (claude-design-redesign branch).
+const PROD_ORIGINS = [
+  'https://weekly-eats.zamilyfam.com',
+  'https://weekly-eats.vercel.app',
+  'https://beta.weekly-eats.zamilyfam.com',
+];
 const PREVIEW_ORIGIN = /^https:\/\/weekly-eats-[a-z0-9-]+-zach-roses-projects\.vercel\.app$/;
 
 function isAllowedOrigin(origin: string, baseUrl: string): boolean {
