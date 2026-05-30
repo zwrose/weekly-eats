@@ -158,8 +158,10 @@ at the Protected Resource Metadata URL.
   with Allow / Deny. A code is issued **only** on explicit Allow; Deny redirects back with
   `error=access_denied`. Consent is **not auto-skipped for an unrecognized client** just
   because a Google/NextAuth session exists. Recorded per `(userId, clientId)` (§9,
-  `mcpConsents`); skipped only on an exact match (same client, same-or-narrower scope); a
-  new/unrecognized `clientId` re-prompts. One new piece of connector UI (a minimal,
+  `mcpConsents`); skipped only on an exact `(userId, clientId, scope)` match; a
+  new/unrecognized `clientId` re-prompts. (v1 is single-scope, so exact-match suffices; a
+  same-or-narrower **subset** check is a future multi-scope refinement — L5-arch-001.)
+  One new piece of connector UI (a minimal,
   responsive server-rendered page); does not change how browser users authenticate.
   CSRF: the Allow submit carries the same server-verified `state` as the rest of the flow.
 
@@ -199,6 +201,14 @@ at the Protected Resource Metadata URL.
   8414 metadata at `/.well-known/oauth-authorization-server`. PRM (`{ resource,
 authorization_servers, scopes_supported }`) and AS metadata are **distinct documents** —
   a hand-rolled AS commonly serves only the latter; both are required.
+
+**Approval gate at `/authorize` (L5-S1):** after the Google/NextAuth login callback and
+**before** rendering the consent screen, `/authorize` checks `isApproved || isAdmin` from
+`users`. If false → redirect back with `error=access_denied` (no consent screen, no code).
+Without this, an unapproved user completes the whole OAuth flow and receives tokens that
+are then rejected on every `verifyToken` call — a confusing "connected but nothing works"
+state in Claude. This is the authorize-time companion to the `verifyToken` (M1) and
+refresh (I5) approval checks; §8a's "unapproved user cannot obtain a code" tests it.
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -430,8 +440,9 @@ No changes to existing collections. New collections for the AS:
   alternative; the collection is the default.
 - `mcpConsents` (CS1) — one document per `(userId, clientId)` recording that the user
   granted this client access, with `scope` and `grantedAt`. `/authorize` skips the
-  consent screen only on an exact match (same client, same-or-narrower scope); a new
-  `clientId`, or a broader scope, re-prompts. Revoked when the user revokes the client
+  consent screen only on an exact `(userId, clientId, scope)` match (single-scope in v1; a
+  same-or-narrower subset check is a future multi-scope refinement, L5-arch-001); a new
+  `clientId`, or a different scope, re-prompts. Revoked when the user revokes the client
   (a future "connected apps" management surface can delete these rows).
 
 **Storage format (M2 + S1):** access tokens, **refresh tokens**, and auth codes are all
@@ -470,8 +481,9 @@ fields). **Also add the five `mcp*` collections (`mcpClients`, `mcpAuthCodes`,
 - **User-scoping is non-negotiable:** every service function filters by the authed
   `userId`; no tool accepts a caller-supplied user id. `food_items.create` forces
   `isGlobal: false` (I3, §6.5).
-- **Approval gating** re-checked live on every tool call **and on every refresh
-  exchange** (not just at token issuance) — see §6.2 (I5) and §6.4 (M1).
+- **Approval gating** enforced at **three** points: `/authorize` before code issuance
+  (L5-S1), every refresh exchange (I5), and live on every tool call (M1) — never only at
+  token issuance. See §6.2.
 - **Token isolation:** Google tokens never leave the server; only app-minted MCP
   tokens reach Claude, stored hashed at rest (M2, §9). Tokens are resource-scoped
   (RFC 8707).
