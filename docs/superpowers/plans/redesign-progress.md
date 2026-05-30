@@ -10,20 +10,20 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status      | Tag               | Plan doc                                                 | PR test comment | Done       |
-| --- | ---------------------------- | ----------- | ----------------- | -------------------------------------------------------- | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                               | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                     | PR #89 comment  | 2026-05-28 |
-| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                            | PR #89 comment  | 2026-05-28 |
-| 3   | Meal Plans                   | done        | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                     | PR #89 comment  | 2026-05-29 |
-| 4   | Recipes                      | done        | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_        | PR #89 comment  | 2026-05-30 |
-| 5   | Shopping Lists               | in-progress | —                 | _(next: writing-plans + artboard gate #1 + review-plan)_ | —               | —          |
-| 6   | Pantry                       | pending     | —                 | —                                                        | —               | —          |
-| 7   | Food Items                   | pending     | —                 | —                                                        | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                        | —               | —          |
-| 9   | Settings (placeholder)       | pending     | —                 | —                                                        | —               | —          |
-| 10  | Marketing / home             | pending     | —                 | —                                                        | —               | —          |
-| 11  | Cleanup                      | pending     | —                 | —                                                        | —               | —          |
+| #   | Chunk                        | Status      | Tag               | Plan doc                                                                 | PR test comment | Done       |
+| --- | ---------------------------- | ----------- | ----------------- | ------------------------------------------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                                               | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                     | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                            | PR #89 comment  | 2026-05-28 |
+| 3   | Meal Plans                   | done        | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                                     | PR #89 comment  | 2026-05-29 |
+| 4   | Recipes                      | done        | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_                        | PR #89 comment  | 2026-05-30 |
+| 5   | Shopping Lists               | in-progress | —                 | redesign-chunk-05-shopping-lists-plan.md _(gate #1 ✅ + review-plan ✅)_ | —               | —          |
+| 6   | Pantry                       | pending     | —                 | —                                                                        | —               | —          |
+| 7   | Food Items                   | pending     | —                 | —                                                                        | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                                        | —               | —          |
+| 9   | Settings (placeholder)       | pending     | —                 | —                                                                        | —               | —          |
+| 10  | Marketing / home             | pending     | —                 | —                                                                        | —               | —          |
+| 11  | Cleanup                      | pending     | —                 | —                                                                        | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
@@ -37,15 +37,17 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 
 ## NEXT UP — Chunk 5: Shopping Lists (in-progress 2026-05-30; cold-start)
 
-**State at handoff:** branch synced — 0 behind `origin/main`, 0 unpushed, HEAD = `redesign-chunk-04` tag (`ecba86d`). Dev server may be running on `:3235` (restart with `npm run dev` if not; `npm run clean` first if Turbopack errors after a build). Beta runs on PROD DB + NextAuth v5.
+**State at handoff:** branch synced — HEAD = `dc620ba` (chunk-5 plan, converged), 0 behind `origin/main`, plan commits unpushed (long-lived branch — push happens at the per-chunk push step). Dev server may be running on `:3235` (restart with `npm run dev` if not; `npm run clean` first if Turbopack errors after a build). Beta runs on PROD DB + NextAuth v5.
 
-**Cold-start checklist (start here):**
+**✅ Step 0 DONE (2026-05-30):** `docs/superpowers/plans/redesign-chunk-05-shopping-lists-plan.md` written (full §3 exact-value spec at both breakpoints), **Artboard gate #1 signed off** (C1=in-page master-detail / C2=default KEEP / C3=full presence pill w/ derived avatars / C6=both finish-confirms), and **`/review-plan` converged → PLAN READY** over 2 rounds (see plan §7). Plan = 11 tasks (1 tokens, 2 PresenceAvatar, 3 KeepSkipToggle, 3A renderWithTheme, 3B StoreListView, 4 two-pane shell ⭐, 5 item rows, 6 finish bar+confirm, 7 presence pill, 8 pantry KEEP/SKIP, 9 dialogs+flat emoji, 10 page slim-down, 11 validate).
 
-1. **Read:** this ledger + spec **§4** (chunk-5 row + the chunk-5 test list + "Surface migration scope") + spec **§5** (per-chunk loop — note it now carries the **two MANDATORY artboard gates**, steps 0 & 2) + the shopping artboard `docs/design/weekly-eats-redesign/project/artboards-shopping.jsx` (1602 lines) at both breakpoints.
-2. **Step 0 — Plan.** Write `docs/superpowers/plans/redesign-chunk-05-shopping-lists-plan.md` via `superpowers:writing-plans`, against the **current** code (`src/app/shopping-lists/*`, `src/components/shopping-list/*`). Chunk 5 is interaction-heavy, so it gets the full plan-time treatment:
-   - **Artboard gate #1 (MANDATORY — raise concerns before code):** the plan MUST include an **Artboard compliance** section = exact-value spec per shopping screen at both breakpoints **+** an **Artboard concerns** subsection flagging unrealistic / costly / likely-bad-idea elements with an `honor / adapt / drop` recommendation. **HARD STOP for user sign-off on the concerns before implementing.**
-   - Then **`/review-plan`** to convergence (it reviews the Artboard-compliance section too).
-3. **Scope (spec §4):** two-pane desktop **route** (store sidebar + working list, **no modal**), presence pill, **KEEP/SKIP toggle in pantry check**, solid finish-shop bar, flat emoji picker. **Visual-only on realtime/presence — NO API / write-logic change.** Test list: store-pane↔working-list selection, KEEP/SKIP pantry-check filtering, finish-shop bar behavior.
+**▶ NEXT: Step 1 — implement** via `superpowers:subagent-driven-development` (fresh subagent per task, two-stage review), Tasks 1 → 11, `npm run check` green. Then Gate #2 (§6 below). The plan is self-contained (full test code per task); read it + this ledger to resume.
+
+**Cold-start checklist (reference):**
+
+1. **Read:** this ledger + spec **§4/§5** + the converged plan `docs/superpowers/plans/redesign-chunk-05-shopping-lists-plan.md` (the artboard exact-value spec lives in plan §3, so re-reading the 1602-line `.jsx` is optional now).
+2. ~~Step 0 — Plan + gate #1 + review-plan~~ **✅ DONE** (see above).
+3. **Scope (spec §4, as locked in the plan):** in-page master-detail two-pane desktop (store sidebar + working list, **no modal**) + mobile pushed view, presence pill (full multi-user, derived avatars), **KEEP/SKIP toggle in pantry check** (default KEEP), solid finish-shop bar + confirm, flat shared emoji picker. **Visual-only on realtime/presence — NO API / write-logic change.** Required tests: store-pane↔working-list selection (Task 4), KEEP/SKIP filtering (Task 8), finish-shop bar (Task 6).
 4. **Reuse:** old `src/components/EmojiPicker.tsx` is kept specifically for shopping — use/restyle it for the spec's "flat emoji picker." Chunk-3/4 primitives (`ConfirmDialog`, etc.) where applicable.
 5. **Review base** = `redesign-chunk-04` tag (`ecba86d`) — clean (no `main` merge intervenes yet). If `main` moves before the chunk-5 review, re-base on the post-merge commit (precedent: chunks 2 & 4).
 6. **Then the per-chunk loop (spec §5):** implement (logical commits, `npm run check` green) → **artboard gate #2** (`docs/superpowers/plans/redesign-chunk-05-shopping-lists-artboard-audit.md`, value-by-value + live dual-breakpoint audit, close gaps **before** review-code) → `review-code` auto-fix loop → `npm run check` → `manual-testing chunk-05-shopping-lists` → push → execute the checklist (the gate) → tag `redesign-chunk-05` → update this ledger → merge `main` → compact.
