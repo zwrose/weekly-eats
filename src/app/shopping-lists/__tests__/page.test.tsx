@@ -904,9 +904,14 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
-    });
+    // Finish button appears only after the async toggle round-trip + re-render;
+    // give waitFor headroom beyond the 1000ms default for slower CI runners.
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
 
     // After finishing, the handler calls fetchStores() then a useEffect
     // re-fetches the shopping list. Update mocks so refetched data reflects
@@ -920,11 +925,14 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('button', { name: /finish shop/i }));
 
-    await waitFor(() => {
-      expect(mockFinishShop).toHaveBeenCalled();
-      expect(screen.queryByText('Milk')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(mockFinishShop).toHaveBeenCalled();
+        expect(screen.queryByText('Milk')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('renders with unit selector and keyboard support without errors', async () => {
