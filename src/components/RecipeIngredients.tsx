@@ -84,7 +84,7 @@ export default function RecipeIngredients({
           >
             {addIngredientButtonText}
           </Button>
-          <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
             {emptyNoGroupsText}
           </Typography>
         </Box>
@@ -242,7 +242,7 @@ export default function RecipeIngredients({
           </Button>
 
           {ingredients[0].ingredients.length === 0 && (
-            <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
               {emptyGroupText}
             </Typography>
           )}
@@ -271,7 +271,7 @@ export default function RecipeIngredients({
           ))}
 
           {ingredients.length === 0 && (
-            <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
               {emptyNoGroupsText}
             </Typography>
           )}

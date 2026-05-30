@@ -95,7 +95,14 @@ const RecipeInstructionsView: React.FC<RecipeInstructionsViewProps> = ({ instruc
       }
 
       return (
-        <Typography variant="body1" component="p" paragraph {...props}>
+        <Typography
+          variant="body1"
+          component="p"
+          {...props}
+          sx={{
+            marginBottom: '16px',
+          }}
+        >
           {children}
         </Typography>
       );

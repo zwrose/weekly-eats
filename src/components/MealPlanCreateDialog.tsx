@@ -105,9 +105,11 @@ const MealPlanCreateDialog: React.FC<MealPlanCreateDialogProps> = ({
                   required: true,
                   error: !!validationError,
                   helperText: validationError || '',
-                  inputProps: {
-                    readOnly: true,
-                    inputMode: 'none',
+                  slotProps: {
+                    htmlInput: {
+                      readOnly: true,
+                      inputMode: 'none',
+                    },
                   },
                 },
               }}

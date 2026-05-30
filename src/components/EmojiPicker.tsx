@@ -209,7 +209,9 @@ export default function EmojiPicker({ open, onClose, onSelect, currentEmoji }: E
       maxWidth="md"
       fullWidth
       sx={responsiveDialogStyle}
-      TransitionProps={{ onEntered: () => searchInputRef.current?.focus() }}
+      slotProps={{
+        transition: { onEntered: () => searchInputRef.current?.focus() },
+      }}
     >
       <DialogTitle onClose={onClose}>
         <Typography variant="h6">Choose an Emoji</Typography>
@@ -222,12 +224,14 @@ export default function EmojiPicker({ open, onClose, onSelect, currentEmoji }: E
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           margin="normal"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 

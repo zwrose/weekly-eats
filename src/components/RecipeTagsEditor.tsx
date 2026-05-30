@@ -198,10 +198,10 @@ export default function RecipeTagsEditor({
                 }}
               />
             )}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((option, index) => (
                 <Chip
-                  {...getTagProps({ index })}
+                  {...getItemProps({ index })}
                   key={option}
                   label={option}
                   size="small"
@@ -218,7 +218,7 @@ export default function RecipeTagsEditor({
             noOptionsText={
               inputValue.trim() ? (
                 <Box>
-                  <Typography variant="body2" color="text.secondary" mb={1}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     No tags found
                   </Typography>
                   <Button
