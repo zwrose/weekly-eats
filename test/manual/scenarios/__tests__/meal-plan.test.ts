@@ -90,6 +90,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'mp') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'feat/te',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'test@example.com', name: 'Test User' };
       if (id === 'mpt') return { templateId: TEMPLATE_ID };
@@ -189,6 +190,7 @@ describe('mealPlan.apply — fresh insert', () => {
     const doc = mealPlansInsertOne.mock.calls[0][0] as Record<string, unknown>;
     expect(doc._seedManifestId).toBe('feat/test::default');
     expect(doc._seedScenarioId).toBe('mp');
+    expect(doc.name as string).toMatch(/^Manual Test Meal Plan \[.+\]$/);
   });
 
   it('inserts userId and templateId from resolved state', async () => {

@@ -76,7 +76,7 @@ describe('TemplateSettings (template route)', () => {
     await waitFor(() => expect(screen.getByText('Your default plan shape')).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: 'Wed' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Lunch' }));
+    await user.click(screen.getByRole('switch', { name: 'Lunch' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/meal-plans'));

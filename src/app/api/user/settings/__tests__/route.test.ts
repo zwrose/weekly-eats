@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-
+const requireApprovedSessionMock = vi.fn();
 const getUserObjectIdMock = vi.fn();
 vi.mock('@/lib/user-utils', () => ({
+  requireApprovedSession: (...args: any[]) => requireApprovedSessionMock(...args),
   getUserObjectId: (...args: any[]) => getUserObjectIdMock(...args),
 }));
 vi.mock('@/lib/user-settings', () => ({ DEFAULT_USER_SETTINGS: { themeMode: 'system' } }));
@@ -22,14 +23,13 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
 const routes = await import('..//route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  requireApprovedSessionMock.mockReset();
   getUserObjectIdMock.mockReset();
   updateOneMock.mockReset();
   findOneMock.mockReset();
@@ -37,13 +37,25 @@ beforeEach(() => {
 
 describe('api/user/settings route', () => {
   it('GET 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    });
     const res = await routes.GET();
     expect(res.status).toBe(401);
   });
 
+  it('GET 403 when user is not approved', async () => {
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }),
+    });
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+  });
+
   it('GET returns DEFAULT_USER_SETTINGS when user not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com' }),
+    });
     getUserObjectIdMock.mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(200);
@@ -52,15 +64,29 @@ describe('api/user/settings route', () => {
   });
 
   it('POST 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    });
     const res = await routes.POST(
       makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } })
     );
     expect(res.status).toBe(401);
   });
 
+  it('POST 403 when user is not approved', async () => {
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }),
+    });
+    const res = await routes.POST(
+      makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } })
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('POST 404 when no user id found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com' }),
+    });
     getUserObjectIdMock.mockResolvedValueOnce(null);
     const res = await routes.POST(
       makeReq('http://localhost/api/user/settings', { settings: { themeMode: 'light' } })
@@ -69,15 +95,17 @@ describe('api/user/settings route', () => {
   });
 
   it('POST 400 when invalid settings payload', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'x@example.com' } });
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com' }),
+    });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     const res = await routes.POST(makeReq('http://localhost/api/user/settings', { settings: {} }));
     expect(res.status).toBe(400);
   });
 
   it('POST succeeds and returns success true', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { email: 'x@example.com', name: 'X' },
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com', name: 'X' }),
     });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
@@ -90,8 +118,8 @@ describe('api/user/settings route', () => {
   });
 
   it('POST allowlists settings — never writes sharing invitation arrays (mass-assignment guard)', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { email: 'x@example.com', name: 'X' },
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com', name: 'X' }),
     });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
@@ -117,8 +145,8 @@ describe('api/user/settings route', () => {
   });
 
   it('POST writes defaultMealPlanOwner when provided, unsets it when empty', async () => {
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { email: 'x@example.com', name: 'X' },
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com', name: 'X' }),
     });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
@@ -129,8 +157,8 @@ describe('api/user/settings route', () => {
     );
     expect(updateOneMock.mock.calls[0][1].$set['settings.defaultMealPlanOwner']).toBe('owner-123');
 
-    (getServerSession as any).mockResolvedValueOnce({
-      user: { email: 'x@example.com', name: 'X' },
+    requireApprovedSessionMock.mockResolvedValueOnce({
+      session: approvedSession({ email: 'x@example.com', name: 'X' }),
     });
     getUserObjectIdMock.mockResolvedValueOnce('507f1f77bcf86cd799439011');
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -42,10 +43,7 @@ export const block: Block<Config, State> = {
   },
 
   async apply(config, ctx) {
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const usersCol = ctx.db.collection('users');
 
@@ -71,7 +69,7 @@ export const block: Block<Config, State> = {
     const now = new Date();
     const result = await usersCol.insertOne({
       email,
-      name: config.name ?? 'Manual Test Pending User',
+      name: config.name ?? `${SEED_TITLE_PREFIX}Pending User [${ctx.label}]`,
       isApproved: false,
       image: null,
       emailVerified: null,
@@ -105,4 +103,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-

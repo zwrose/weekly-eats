@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ObjectId } from 'mongodb';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 import { PANTRY_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: PANTRY_ERRORS.PANTRY_ITEM_NOT_FOUND }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const client = await getMongoClient();
     const db = client.db();

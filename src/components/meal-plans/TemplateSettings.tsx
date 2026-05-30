@@ -293,7 +293,7 @@ export function TemplateSettings() {
                   onChange={(e) =>
                     setDraft((p) => p && { ...p, meals: { ...p.meals, [meal]: e.target.checked } })
                   }
-                  inputProps={{ 'aria-label': MEAL_LABEL[meal] }}
+                  slotProps={{ input: { 'aria-label': MEAL_LABEL[meal] } }}
                 />
               </Box>
             ))}

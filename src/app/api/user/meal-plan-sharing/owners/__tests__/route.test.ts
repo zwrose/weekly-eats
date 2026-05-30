@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -37,8 +38,14 @@ describe('api/user/meal-plan-sharing/owners GET', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+  });
+
   it('returns owners whose invitations to the current user are accepted', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockResolvedValueOnce([
       { _id: 'owner1', email: 'owner@example.com', name: 'Owner One' },
     ]);
@@ -56,7 +63,7 @@ describe('api/user/meal-plan-sharing/owners GET', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     toArrayMock.mockRejectedValueOnce(new Error('db down'));
     const res = await routes.GET();
     expect(res.status).toBe(500);

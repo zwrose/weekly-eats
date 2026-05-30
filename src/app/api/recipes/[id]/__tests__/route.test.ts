@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextResponse } from 'next/server';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -66,8 +67,17 @@ beforeEach(() => {
 });
 
 describe('api/recipes/[id] route', () => {
+  it('GET returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
+    expect(res.status).toBe(403);
+  });
+
   it('GET 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.GET(makeRequest('http://localhost/api/recipes/bad'), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -75,7 +85,7 @@ describe('api/recipes/[id] route', () => {
   });
 
   it('GET 404 when not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.GET(makeRequest(`http://localhost/api/recipes/${id}`), {
@@ -85,7 +95,7 @@ describe('api/recipes/[id] route', () => {
   });
 
   it('PUT validates ingredient lists and returns updated recipe', async () => {
-    (getServerSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValue(approvedSession({ id: 'u1' }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     // Existing recipe belongs to u1
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1' });
@@ -106,7 +116,7 @@ describe('api/recipes/[id] route', () => {
   });
 
   it('PUT allowlists update fields — ignores createdBy/createdAt/_id injection', async () => {
-    (getServerSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValue(approvedSession({ id: 'u1' }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     findOneMock.mockResolvedValueOnce({ _id: id, createdBy: 'u1' });
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
@@ -134,7 +144,7 @@ describe('api/recipes/[id] route', () => {
   });
 
   it('GET resolves ingredient names from food items and recipes', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const foodItemId = '64b7f8c2a2b7c2f1a2b7c2f2';
     const subRecipeId = '64b7f8c2a2b7c2f1a2b7c2f3';
@@ -185,7 +195,7 @@ describe('api/recipes/[id] route', () => {
   });
 
   it('GET uses singular name when quantity is 1', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const foodItemId = '64b7f8c2a2b7c2f1a2b7c2f2';
 
@@ -230,5 +240,14 @@ describe('api/recipes/[id] route', () => {
       params: Promise.resolve({ id }),
     } as any);
     expect(res.status).toBe(401);
+  });
+
+  it('DELETE returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    const res = await routes.DELETE(makeRequest(`http://localhost/api/recipes/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
+    expect(res.status).toBe(403);
   });
 });

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
+import { API_ERRORS, logError } from '@/lib/errors';
 
 /**
  * GET /api/recipes/tags
@@ -12,10 +11,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
   // Request parameter is required by Next.js route handler signature but unused
   void _request;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const client = await getMongoClient();
     const db = client.db();

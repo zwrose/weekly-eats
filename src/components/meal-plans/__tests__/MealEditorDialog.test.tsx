@@ -80,7 +80,7 @@ describe('MealEditorDialog', () => {
   it('decision 5: toggling skip on with items confirms then clears', async () => {
     const user = userEvent.setup();
     render(<MealEditorDialog {...base({ items: [recipe] })} />);
-    await user.click(screen.getByRole('checkbox', { name: /skip this meal/i }));
+    await user.click(screen.getByRole('switch', { name: /skip this meal/i }));
     expect(screen.getByText(/will clear 1 item/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Skip anyway' }));
     expect(screen.queryByText('Lemon ricotta pasta')).not.toBeInTheDocument();
@@ -89,7 +89,7 @@ describe('MealEditorDialog', () => {
   it('decision 5: toggling skip off leaves the meal empty (no items restored)', async () => {
     const user = userEvent.setup();
     render(<MealEditorDialog {...base({ items: [], skipped: true, skipReason: 'out' })} />);
-    await user.click(screen.getByRole('checkbox', { name: /skip this meal/i }));
+    await user.click(screen.getByRole('switch', { name: /skip this meal/i }));
     expect(screen.getByText(/no items planned yet/i)).toBeInTheDocument();
   });
 
@@ -143,7 +143,7 @@ describe('MealEditorDialog', () => {
 
   it('staples mode hides the skip bar', () => {
     render(<MealEditorDialog {...base()} isStaples title="Weekly staples" />);
-    expect(screen.queryByRole('checkbox', { name: /skip this meal/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /skip this meal/i })).not.toBeInTheDocument();
   });
 
   it('skip reason text flows into the onSave payload', async () => {

@@ -51,6 +51,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'fi') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'feat/te',
     resolve: vi.fn((id: string) => {
       if (id === 'u') return { userId: 'u1', email: 'a@b.c', name: 'A' };
       throw new Error(`unexpected resolve id: ${id}`);
@@ -282,6 +283,39 @@ describe('food-items.status', () => {
 
     expect(s.present).toBe(false);
     expect(s.docCount).toBe(0);
+  });
+});
+
+// ─── apply — mixed globalCount + userCount (regression guard) ────────────────
+
+describe('food-items.apply — mixed globalCount + userCount', () => {
+  it('creates 3 distinct items and preserves the user item when globalCount:2 userCount:1', async () => {
+    // Each findOne call returns null → all items are new → insertOne fires each time.
+    const { db, insertOne } = mockDb({ existingDoc: null });
+    const ctx = mockCtx(db);
+    const cfg = foodItems.validate({ globalCount: 2, userCount: 1 });
+
+    const result = await foodItems.apply(cfg, ctx);
+
+    // 3 distinct inserts must have happened (regression: buggy code only inserts 2)
+    expect(insertOne).toHaveBeenCalledTimes(3);
+
+    // All 3 must appear in the returned state
+    expect(Object.keys(result.state.foodItemIds)).toHaveLength(3);
+
+    const docs = insertOne.mock.calls.map((c) => c[0] as Record<string, unknown>);
+
+    // At least one user item (isGlobal: false) must survive
+    expect(docs.some((d) => d.isGlobal === false)).toBe(true);
+
+    // The two global items must be present
+    expect(docs.filter((d) => d.isGlobal === true)).toHaveLength(2);
+
+    // Name format: each generated item matches the stamped shape
+    const generatedNames = docs.map((d) => d.singularName as string);
+    generatedNames.forEach((name) => {
+      expect(name).toMatch(/^Manual Test Food (Global|User) \[.+\] \d+$/);
+    });
   });
 });
 

@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -54,10 +55,7 @@ export const block: Block<Config, State> = {
       );
     }
 
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const storesCol = ctx.db.collection('stores');
 
@@ -82,7 +80,7 @@ export const block: Block<Config, State> = {
     for (let i = 0; i < config.count; i++) {
       const result = await storesCol.insertOne({
         userId,
-        name: `Manual Test Store ${i + 1}`,
+        name: `${SEED_TITLE_PREFIX}Store [${ctx.label}] ${i + 1}`,
         emoji: '🛒',
         createdAt: now,
         updatedAt: now,
@@ -151,4 +149,3 @@ export const block: Block<Config, State> = {
     return { present: count > 0, docCount: count, configHashMatches: true };
   },
 };
-

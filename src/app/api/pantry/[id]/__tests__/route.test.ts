@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -36,8 +37,17 @@ describe('api/pantry/[id] DELETE', () => {
     expect(res.status).toBe(401);
   });
 
+  it('403 when user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const id = '64b7f8c2a2b7c2f1a2b7c2f1';
+    const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), {
+      params: Promise.resolve({ id }),
+    } as any);
+    expect(res.status).toBe(403);
+  });
+
   it('400 when invalid id', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.DELETE(makeReq('http://localhost/api/pantry/bad'), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -45,7 +55,7 @@ describe('api/pantry/[id] DELETE', () => {
   });
 
   it('404 when item not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';
     const res = await routes.DELETE(makeReq(`http://localhost/api/pantry/${id}`), {
@@ -55,7 +65,7 @@ describe('api/pantry/[id] DELETE', () => {
   });
 
   it('200 on delete success', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({ _id: 'x', userId: 'u1' });
     deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
     const id = '64b7f8c2a2b7c2f1a2b7c2f1';

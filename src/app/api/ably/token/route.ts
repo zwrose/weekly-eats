@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import Ably from 'ably';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
-import { AUTH_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { API_ERRORS, logError } from '@/lib/errors';
+import { requireApprovedSession } from '@/lib/user-utils';
 
 let restClient: Ably.Rest | null = null;
 
@@ -28,10 +27,8 @@ function getRestClient(): Ably.Rest | null {
 const CHANNEL_OPS = ['subscribe', 'presence'];
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-  }
+  const { session, error } = await requireApprovedSession();
+  if (error) return error;
 
   const client = getRestClient();
   if (!client) {

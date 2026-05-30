@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 import { GET, POST } from '../route';
 
 // Mock dependencies
@@ -11,9 +12,7 @@ import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
 
 describe('Stores API', () => {
-  const mockSession = {
-    user: { id: 'user-123', email: 'test@example.com' },
-  };
+  const mockSession = approvedSession({ id: 'user-123', email: 'test@example.com' });
 
   const mockStores = [
     {
@@ -195,6 +194,15 @@ describe('Stores API', () => {
 
       expect(response.status).toBe(401);
     });
+
+    it('returns 403 if user is not approved', async () => {
+      (getServerSession as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
+
+      const request = new NextRequest('http://localhost:3000/api/stores');
+      const response = await GET(request);
+
+      expect(response.status).toBe(403);
+    });
   });
 
   describe('POST', () => {
@@ -281,6 +289,19 @@ describe('Stores API', () => {
       const response = await POST(request);
 
       expect(response.status).toBe(401);
+    });
+
+    it('returns 403 if user is not approved', async () => {
+      (getServerSession as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
+
+      const request = new NextRequest('http://localhost:3000/api/stores', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Target' }),
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(403);
     });
   });
 });

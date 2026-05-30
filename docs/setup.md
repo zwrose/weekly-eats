@@ -4,25 +4,25 @@ This guide covers everything needed to get Weekly Eats running locally, from fir
 
 ## Prerequisites
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Node.js | 20+ | CI uses Node 20; local dev works with 20 or later |
-| MongoDB | 8.0 Community | Local install or Docker |
-| Google OAuth credentials | -- | Required for authentication (Google Cloud Console) |
-| Ably API key | -- | Required for real-time updates between clients |
+| Requirement              | Version       | Notes                                              |
+| ------------------------ | ------------- | -------------------------------------------------- |
+| Node.js                  | 20+           | CI uses Node 20; local dev works with 20 or later  |
+| MongoDB                  | 8.0 Community | Local install or Docker                            |
+| Google OAuth credentials | --            | Required for authentication (Google Cloud Console) |
+| Ably API key             | --            | Required for real-time updates between clients     |
 
 ## Environment Variables
 
 Create a `.env.local` file in the project root. This file is git-ignored and must never be committed.
 
-| Variable | Description | Example |
-|---|---|---|
-| `MONGODB_URI` | MongoDB connection string including database name | `mongodb://localhost:27017/weekly-eats` |
-| `NEXTAUTH_URL` | Canonical URL of the app (used by NextAuth) | `http://localhost:3000` |
-| `NEXTAUTH_SECRET` | Random secret for signing JWT tokens | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` | OAuth 2.0 client ID from Google Cloud Console | `123456789.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret | `GOCSPX-xxxxxxxx` |
-| `ABLY_API_KEY` | Ably API key for real-time messaging | `xxxxxx.xxxxxx:xxxxxxxxxxxx` |
+| Variable               | Description                                       | Example                                     |
+| ---------------------- | ------------------------------------------------- | ------------------------------------------- |
+| `MONGODB_URI`          | MongoDB connection string including database name | `mongodb://localhost:27017/weekly-eats-dev` |
+| `NEXTAUTH_URL`         | Canonical URL of the app (used by NextAuth)       | `http://localhost:3000`                     |
+| `NEXTAUTH_SECRET`      | Random secret for signing JWT tokens              | `openssl rand -base64 32`                   |
+| `GOOGLE_CLIENT_ID`     | OAuth 2.0 client ID from Google Cloud Console     | `123456789.apps.googleusercontent.com`      |
+| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret                           | `GOCSPX-xxxxxxxx`                           |
+| `ABLY_API_KEY`         | Ably API key for real-time messaging              | `xxxxxx.xxxxxx:xxxxxxxxxxxx`                |
 
 Generate your `NEXTAUTH_SECRET`:
 
@@ -67,7 +67,7 @@ After the script finishes, edit `.env.local` and fill in your Google OAuth crede
 npm install
 ```
 
-The `postinstall` hook runs `scripts/setup-worktree.js`, which auto-detects whether you're in a worktree or the main repo. In the main repo it creates database indexes. In a worktree it also generates `.env.local` and clones the main database. If MongoDB is not running at install time, the script warns and exits gracefully -- the dev server will still start, and you can run `npm run setup-db` later once MongoDB is available.
+The `postinstall` hook runs `scripts/setup-worktree.js`, which auto-detects whether you're in a worktree or the main repo. In the main repo it creates database indexes. In a worktree it also generates `.env.local` (pointing at the shared dev DB `weekly-eats-dev`, the same database as main) and creates database indexes. If MongoDB is not running at install time, the script warns and exits gracefully -- the dev server will still start, and you can run `npm run setup-db` later once MongoDB is available.
 
 ## Database
 
@@ -151,7 +151,7 @@ Test files (`**/__tests__/**/*.{ts,tsx}`, `**/*.{test,spec}.{ts,tsx}`) have rela
 
 ## Worktree Workflow
 
-Git worktrees allow running multiple development branches simultaneously with fully isolated ports, databases, and `node_modules`. Worktrees live inside the project at `.worktrees/`, which keeps them within the Claude Code sandbox and avoids permission/consent issues.
+Git worktrees allow running multiple development branches simultaneously with fully isolated ports and `node_modules`, sharing the dev database. Worktrees live inside the project at `.worktrees/`, which keeps them within the Claude Code sandbox and avoids permission/consent issues.
 
 ### Creating a Worktree
 
@@ -163,9 +163,8 @@ npm install
 
 The `postinstall` hook automatically detects the worktree context and:
 
-1. Generates `.env.local` with a unique port and database name
-2. Clones the main database (requires `mongodump`/`mongorestore`)
-3. Creates database indexes
+1. Generates `.env.local` with a unique port (the database name points to the shared dev DB)
+2. Creates database indexes
 
 ### Port Assignment
 
@@ -185,26 +184,26 @@ node scripts/worktree-remove.js <branch-name>
 
 This command:
 
-1. Drops the MongoDB database (`weekly-eats-<branch>`)
+1. Purges this branch's seeded data from the shared dev DB (never drops a database)
 2. Runs `git worktree remove .worktrees/<branch>`
 3. Runs `git worktree prune`
 
 ### Isolation
 
-| Resource | Main worktree | Each new worktree |
-|---|---|---|
-| Port | 3000 | Deterministic 3001-3999 (hashed from branch name) |
-| Database | from `.env.local` | `weekly-eats-<branch>` (cloned from main) |
-| `node_modules` | Own copy | Own copy |
-| `.env.local` | Manual | Auto-generated by postinstall |
-| `.next/` build cache | Own | Own |
+| Resource             | Main worktree     | Each new worktree                                 |
+| -------------------- | ----------------- | ------------------------------------------------- |
+| Port                 | 3000              | Deterministic 3001-3999 (hashed from branch name) |
+| Database             | from `.env.local` | shared (same as main — `weekly-eats-dev`)         |
+| `node_modules`       | Own copy          | Own copy                                          |
+| `.env.local`         | Manual            | Auto-generated by postinstall                     |
+| `.next/` build cache | Own               | Own                                               |
 
 ### Rules for Parallel Agents
 
 - Never run two agents on the same worktree/branch -- file edits will collide.
 - Always create a worktree before starting parallel work on a new branch.
 - `npm test` and `npm run check` are safe in any worktree (they use fake DB URIs and `SKIP_DB_SETUP=true`).
-- Clean up worktrees when done -- `node scripts/worktree-remove.js <branch>` drops the DB and removes the worktree.
+- Clean up worktrees when done -- `node scripts/worktree-remove.js <branch>` purges the branch's seeded data from the shared DB and removes the worktree (never drops a database).
 
 ## Database Migration
 

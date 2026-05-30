@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
+import { requireApprovedSession } from '@/lib/user-utils';
 import {
   CreateMealPlanRequest,
   MealPlan,
@@ -13,16 +12,14 @@ import {
 import { generateMealPlanNameFromString, calculateEndDateAsString } from '@/lib/date-utils';
 import { checkMealPlanOverlap } from '@/lib/meal-plan-utils';
 import { isValidDateString } from '@/lib/validation';
-import { AUTH_ERRORS, MEAL_PLAN_ERRORS, TEMPLATE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { MEAL_PLAN_ERRORS, TEMPLATE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { ObjectId } from 'mongodb';
 import { RecipeIngredientList } from '@/types/recipe';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
@@ -190,10 +187,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body: CreateMealPlanRequest & { ownerId?: string } = await request.json();
     const { startDate, ownerId } = body;

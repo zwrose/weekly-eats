@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
+import { requireApprovedSession } from '@/lib/user-utils';
 import { ObjectId } from 'mongodb';
 import {
   CreateMealPlanTemplateRequest,
@@ -11,14 +10,12 @@ import {
 import { RecipeIngredientList } from '@/types/recipe';
 import { isValidDayOfWeek, isValidMealsConfig } from '@/lib/validation';
 import { DEFAULT_TEMPLATE } from '@/lib/meal-plan-utils';
-import { AUTH_ERRORS, TEMPLATE_ERRORS, MEAL_PLAN_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { TEMPLATE_ERRORS, MEAL_PLAN_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const client = await getMongoClient();
     const db = client.db();
@@ -111,10 +108,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body: CreateMealPlanTemplateRequest = await request.json();
     const { startDay, meals, weeklyStaples } = body;
@@ -163,10 +158,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body: UpdateMealPlanTemplateRequest = await request.json();
     const { startDay, meals, weeklyStaples } = body;

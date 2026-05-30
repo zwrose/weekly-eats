@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -67,12 +68,7 @@ beforeEach(() => {
 });
 
 describe('api/user/recipe-sharing/invite route', () => {
-  const mockSession = {
-    user: {
-      id: 'user-1',
-      email: 'user1@example.com',
-    },
-  };
+  const mockSession = approvedSession({ id: 'user-1', email: 'user1@example.com' });
 
   const mockInvitedUser = {
     _id: ObjectId.createFromHexString('507f1f77bcf86cd799439011'),
@@ -99,6 +95,16 @@ describe('api/user/recipe-sharing/invite route', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe('Unauthorized');
+  });
+
+  it('POST returns 403 when user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(
+      unapprovedSession({ id: 'user-1', email: 'user1@example.com' })
+    );
+    const res = await routes.POST(
+      makeRequest({ email: 'user2@example.com', sharingTypes: ['tags'] })
+    );
+    expect(res.status).toBe(403);
   });
 
   it('POST returns 400 for invalid email', async () => {

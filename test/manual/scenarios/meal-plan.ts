@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -110,10 +111,7 @@ export const block: Block<Config, State> = {
     const { userId } = ctx.resolve<{ userId: string }>('u');
     const templateState = ctx.resolve<{ templateId: ObjectId }>(config.templateRef);
 
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const mealPlansCol = ctx.db.collection('mealPlans');
 
@@ -192,7 +190,7 @@ export const block: Block<Config, State> = {
     const now = new Date();
     const insertResult = await mealPlansCol.insertOne({
       userId,
-      name: 'Manual Test Meal Plan',
+      name: `${SEED_TITLE_PREFIX}Meal Plan [${ctx.label}]`,
       startDate,
       endDate,
       templateId: templateState.templateId.toString(),

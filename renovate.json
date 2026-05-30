@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
+  "timezone": "America/New_York",
+  "labels": ["dependencies"],
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "description": "Auto-merge non-major npm updates once CI passes",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Major npm updates: PR only, manual review",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "Auto-merge GitHub Actions version updates once CI passes",
+      "matchManagers": ["github-actions"],
+      "automerge": true
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 5am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  }
+}

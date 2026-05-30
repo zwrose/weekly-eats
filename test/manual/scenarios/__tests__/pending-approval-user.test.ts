@@ -32,6 +32,7 @@ function mockCtx(db: import('mongodb').Db, scenarioId = 'pau') {
     db,
     manifestId: 'feat/test::default',
     scenarioId,
+    label: 'feat/te',
     resolve: vi.fn((_id: string) => {
       throw new Error('pending-approval-user should not call resolve');
     }),
@@ -142,6 +143,7 @@ describe('pendingApprovalUser.apply — user document', () => {
     const doc = usersInsertOne.mock.calls[0][0] as Record<string, unknown>;
     expect(typeof doc.name).toBe('string');
     expect((doc.name as string).length).toBeGreaterThan(0);
+    expect(doc.name as string).toMatch(/^Manual Test Pending User \[.+\]$/);
   });
 
   it('uses config.name when provided', async () => {

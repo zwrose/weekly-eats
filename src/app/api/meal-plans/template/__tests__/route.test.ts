@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -40,8 +41,14 @@ describe('api/meal-plans/template route', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 when the user is not approved (GET)', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    const res = await routes.GET();
+    expect(res.status).toBe(403);
+  });
+
   it('POST creates template when none exists', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null); // existing template
     insertOneMock.mockResolvedValueOnce({ insertedId: 't1' });
     findOneMock.mockResolvedValueOnce({
@@ -60,7 +67,7 @@ describe('api/meal-plans/template route', () => {
   });
 
   it('PUT upserts template and returns updated', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { id: 'u1' } });
+    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({ _id: 't1', userId: 'u1' }); // existing
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
     findOneMock.mockResolvedValueOnce({

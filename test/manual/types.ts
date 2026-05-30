@@ -1,13 +1,13 @@
 // test/manual/types.ts
 import type { Db, ObjectId } from 'mongodb';
-import { SEEDABLE_COLLECTIONS, type SeedableCollection } from '../../src/lib/database-indexes.js';
+import { SEEDABLE_COLLECTIONS } from '../../src/lib/seedable-collections.js';
 
 // ─── Canonical collection names ─────────────────────────────────────────
-// Re-export from src/lib/database-indexes.ts (single source of truth).
+// Re-export from src/lib/seedable-collections.ts (pure ESM, no mongodb dep).
 // Used by registry tests to validate blocks only write to known collections,
 // and by `cli.ts clean --all` to iterate every seedable collection.
 export const KNOWN_COLLECTIONS = SEEDABLE_COLLECTIONS;
-export type KnownCollection = SeedableCollection;
+export type KnownCollection = (typeof SEEDABLE_COLLECTIONS)[number];
 
 // ─── Manifest ───────────────────────────────────────────────────────────
 export interface ManifestScenario {
@@ -38,6 +38,8 @@ export interface BlockContext {
   db: Db;
   manifestId: string;
   scenarioId: string;
+  /** Short human stamp for display names: branch.slice(0,8) [+ "·"+slot]. */
+  label: string;
   resolve: <T = unknown>(id: string) => T;
 }
 
@@ -113,4 +115,16 @@ export interface CliResult {
   scenarios: CliScenarioResult[];
   lock: { acquiredAt: string; releasedAt: string } | null;
   warnings: string[];
+}
+
+// ─── status --all result ─────────────────────────────────────────────────
+export interface StatusAllManifest {
+  manifestId: string;
+  collections: Record<string, number>;
+  hasOrphans: boolean;
+}
+
+export interface StatusAllResult {
+  command: 'status-all';
+  manifests: StatusAllManifest[];
 }

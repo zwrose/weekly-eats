@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { AUTH_ERRORS } from '@/lib/errors';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -37,7 +38,28 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // User is authenticated, allow access
+  // Approval gate: a signed-in but unapproved user may only reach the
+  // pending-approval screen and the endpoints that keep it functional.
+  // (/api/auth/* is already allowed by the exempt short-circuit above, so
+  // sign-out keeps working.)
+  const isApprovalExempt =
+    pathname === '/pending-approval' ||
+    pathname === '/api/user/approval-status' ||
+    pathname === '/api/avatar';
+
+  // Admins bypass approval (isAdmin and isApproved are independent flags; an
+  // unapproved admin must still reach /user-management to approve users).
+  if (token.isApproved !== true && token.isAdmin !== true && !isApprovalExempt) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/pending-approval';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // User is authenticated and approved (or exempt), allow access
   return NextResponse.next();
 }
 

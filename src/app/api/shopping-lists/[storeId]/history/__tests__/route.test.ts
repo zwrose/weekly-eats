@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 // Mock next-auth session
 vi.mock('next-auth/next', () => ({
@@ -71,10 +72,16 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
       expect(res.status).toBe(401);
     });
 
-    it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
+    it('returns 403 when user is not approved', async () => {
+      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+      const res = await routes.GET(makeRequest(), {
+        params: Promise.resolve({ storeId }),
       });
+      expect(res.status).toBe(403);
+    });
+
+    it('returns 400 for invalid storeId', async () => {
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       const res = await routes.GET(makeRequest(), {
         params: Promise.resolve({ storeId: 'invalid' }),
       });
@@ -82,9 +89,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns 404 when user has no access to store', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce(null);
 
       const res = await routes.GET(makeRequest(), {
@@ -94,9 +99,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('allows access for store owner', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -110,9 +113,9 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('allows access for user with accepted invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user2', email: 'user2@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(
+        approvedSession({ id: 'user2', email: 'user2@test.com' })
+      );
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -129,9 +132,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
 
   describe('Response data', () => {
     it('returns history items sorted by lastPurchasedAt descending', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -170,9 +171,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('returns empty array when no history exists', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',
@@ -188,9 +187,7 @@ describe('GET /api/shopping-lists/[storeId]/history', () => {
     });
 
     it('queries purchaseHistory with correct storeId and sort', async () => {
-      (getServerSession as any).mockResolvedValueOnce({
-        user: { id: 'user1', email: 'user@test.com' },
-      });
+      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user1' }));
       findOneMock.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(storeId),
         userId: 'user1',

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
 import { getMongoClient } from '@/lib/mongodb';
+import { requireApprovedSession } from '@/lib/user-utils';
 import { CreateRecipeRequest } from '../../../types/recipe';
 import { parsePaginationParams } from '@/lib/pagination-utils';
-import { AUTH_ERRORS, RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
+import { RECIPE_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 
 type AccessLevel = 'private' | 'shared-by-you' | 'shared-by-others';
 
@@ -46,10 +45,8 @@ function addTextSearch(
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const { page, limit, sortBy, sortOrder } = parsePaginationParams(searchParams);
@@ -202,10 +199,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 });
-    }
+    const { session, error } = await requireApprovedSession();
+    if (error) return error;
 
     const body: CreateRecipeRequest = await request.json();
 

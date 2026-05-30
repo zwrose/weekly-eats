@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
 vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -66,7 +67,7 @@ const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
-const mockSession = { user: { id: 'user1', isAdmin: false, isApproved: true } };
+const mockSession = approvedSession({ id: 'user1' });
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -90,6 +91,12 @@ describe('GET /api/recipes', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe('Unauthorized');
+  });
+
+  it('returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+    const res = await routes.GET(makeReq('http://localhost/api/recipes'));
+    expect(res.status).toBe(403);
   });
 
   it('returns paginated response with defaults', async () => {
@@ -335,6 +342,12 @@ describe('POST /api/recipes', () => {
     (getServerSession as any).mockResolvedValueOnce(null);
     const res = await routes.POST(makeReq('http://localhost/api/recipes', {}));
     expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when the user is not approved', async () => {
+    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+    const res = await routes.POST(makeReq('http://localhost/api/recipes', {}));
+    expect(res.status).toBe(403);
   });
 
   it('validates required fields', async () => {

@@ -2,6 +2,7 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Block, BlockDocumentation } from '../types.js';
+import { seedTag, SEED_TITLE_PREFIX } from '../seedTag.js';
 
 // ─── Config schema ───────────────────────────────────────────────────────────
 
@@ -92,10 +93,7 @@ export const block: Block<Config, State> = {
       foodItemValues = Object.values(fiState.foodItemIds);
     }
 
-    const tagFilter = {
-      _seedManifestId: ctx.manifestId,
-      _seedScenarioId: ctx.scenarioId,
-    };
+    const tagFilter = seedTag(ctx);
 
     const recipesCol = ctx.db.collection('recipes');
 
@@ -121,7 +119,7 @@ export const block: Block<Config, State> = {
     // ── Insert recipes ──
     for (let i = 0; i < config.count; i++) {
       const result = await recipesCol.insertOne({
-        title: `Manual Test Recipe ${i + 1}`,
+        title: `${SEED_TITLE_PREFIX}Recipe [${ctx.label}] ${i + 1}`,
         emoji: '🍝',
         ingredients: buildIngredients(i, foodItemValues),
         instructions: 'Step 1: Test.\nStep 2: Verify.',

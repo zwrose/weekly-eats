@@ -13,7 +13,7 @@ Generate idempotent manual test plans backed by seeded test data. Plans get post
 
 1. **Stop at plan ready.** This skill ends when the manifest is applied and the plan is posted. Do NOT drive Chrome, do NOT execute steps, do NOT report findings. **REQUIRED HANDOFF:** for execution, use the `verify` skill.
 2. **No DB writes outside blocks.** Every insert/update/delete on app collections goes through a block in `test/manual/scenarios/`. No exceptions, including "just this once" for debugging.
-3. **No `dropDatabase` ever.** Cleanup is `npm run test:manual:clean`. Period.
+3. **No `dropDatabase` ever — and never drop the shared dev DB.** Cleanup is `npm run test:manual:clean`. Period.
 4. **No editing manifests by hand without updating `updatedAt`.** Use the engine — `npm run test:manual:apply --dry-run` will validate without applying.
 
 ## Step 0 (BLOCKING): Read the CATALOG
@@ -78,12 +78,16 @@ Re-invocation on same branch+slot: re-analyze diff, MERGE manifest (preserve unc
 ## CLI quick reference
 
 ```
-npm run test:manual:apply <branch> [slot]    # idempotent apply
-npm run test:manual:clean <branch> [slot]    # remove tagged docs
-npm run test:manual:status <branch> [slot]   # show state, drift, failures
-npm run test:manual:unlock <branch> [slot]   # force-release a stale lock
-npm run test:manual:gen-catalog              # regenerate CATALOG.md
-npm run seed:demo                            # apply the demo manifest
+npm run test:manual:apply <branch> [slot]                    # idempotent apply
+npm run test:manual:clean <branch> [slot]                    # remove tagged docs for branch+slot
+npm run test:manual:clean -- --manifest-id <branch>          # purge all of a branch's seeded data (file-independent)
+npm run test:manual:clean -- --orphans                       # sweep orphaned/stale-branch seed data (add --yes to delete)
+npm run test:manual:clean -- --all --yes                     # purge every branch's seeded data (prints preview first)
+npm run test:manual:status <branch> [slot]                   # show state, drift, failures
+npm run test:manual:status -- --all                          # cross-branch landscape (all manifests in the shared DB)
+npm run test:manual:unlock <branch> [slot]                   # force-release a stale lock
+npm run test:manual:gen-catalog                              # regenerate CATALOG.md
+npm run seed:demo                                            # apply the demo manifest
 
 # Flags: --json --dry-run --verbose --yes --force <id> --allow-main-db --allow-remote
 ```
