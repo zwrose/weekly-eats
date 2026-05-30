@@ -904,14 +904,37 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
+    // --- TEMP CI DIAGNOSTIC (remove after root-causing the CI-only failure) ---
+    {
+      const cbs = screen.queryAllByRole('checkbox') as HTMLInputElement[];
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] checkbox count:', cbs.length, 'checked:', cbs.map((c) => c.checked));
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] fetch URLs called:', mockFetch.mock.calls.map((c) => String(c[0])));
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] buttons present:', screen.queryAllByRole('button').map((b) => b.textContent));
+    }
+    // --- end diagnostic ---
+
     // Finish button appears only after the async toggle round-trip + re-render;
     // give waitFor headroom beyond the 1000ms default for slower CI runners.
-    await waitFor(
-      () => {
-        expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
+    try {
+      await waitFor(
+        () => {
+          expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
+    } catch (e) {
+      const cbs = screen.queryAllByRole('checkbox') as HTMLInputElement[];
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] FAILURE — checkbox checked:', cbs.map((c) => c.checked));
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] FAILURE — fetch URLs:', mockFetch.mock.calls.map((c) => String(c[0])));
+      // eslint-disable-next-line no-console
+      console.error('[DIAG] FAILURE — buttons:', screen.queryAllByRole('button').map((b) => b.textContent));
+      throw e;
+    }
 
     // After finishing, the handler calls fetchStores() then a useEffect
     // re-fetches the shopping list. Update mocks so refetched data reflects
