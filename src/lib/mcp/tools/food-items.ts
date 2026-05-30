@@ -82,7 +82,7 @@ interface ToolServer {
 
 export function registerFoodItemTools(server: ToolServer): void {
   server.registerTool(
-    'food_items.search',
+    'food_items_search',
     {
       title: 'Search food items',
       description:
@@ -92,7 +92,7 @@ export function registerFoodItemTools(server: ToolServer): void {
     foodItemsSearchHandler as never
   );
   server.registerTool(
-    'food_items.get',
+    'food_items_get',
     {
       title: 'Get a food item',
       description: 'Fetch a single food item by its id, if the user can see it.',
@@ -101,7 +101,7 @@ export function registerFoodItemTools(server: ToolServer): void {
     foodItemsGetHandler as never
   );
   server.registerTool(
-    'food_items.create',
+    'food_items_create',
     {
       title: 'Create a food item',
       description:

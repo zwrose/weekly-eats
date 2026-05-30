@@ -116,7 +116,7 @@ interface ToolServer {
 
 export function registerRecipeTools(server: ToolServer): void {
   server.registerTool(
-    'recipes.search',
+    'recipes_search',
     {
       title: 'Search recipes',
       description:
@@ -126,7 +126,7 @@ export function registerRecipeTools(server: ToolServer): void {
     recipesSearchHandler as never
   );
   server.registerTool(
-    'recipes.get',
+    'recipes_get',
     {
       title: 'Get a recipe',
       description: 'Fetch a single recipe by id with resolved ingredient names.',
@@ -135,7 +135,7 @@ export function registerRecipeTools(server: ToolServer): void {
     recipesGetHandler as never
   );
   server.registerTool(
-    'recipes.create',
+    'recipes_create',
     {
       title: 'Create a recipe',
       description:
@@ -145,7 +145,7 @@ export function registerRecipeTools(server: ToolServer): void {
     recipesCreateHandler as never
   );
   server.registerTool(
-    'recipes.update',
+    'recipes_update',
     {
       title: 'Update a recipe',
       description: "Update one of the user's own recipes by id.",
