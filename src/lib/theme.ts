@@ -35,7 +35,7 @@ const createThemeOptions = (): ThemeOptions => ({
     h3: { fontFamily: display, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em' },
     h4: { fontFamily: display, fontSize: '15px', fontWeight: 700, letterSpacing: '-0.01em' },
     body1: { fontFamily: body, fontSize: '14px', fontWeight: 500 },
-    body2: { fontFamily: body, fontSize: '13px', fontWeight: 400 },
+    body2: { fontFamily: body, fontSize: '13px', fontWeight: 500 },
     button: { fontFamily: body, fontSize: '14px', fontWeight: 600, textTransform: 'none' },
     displayXl: {
       fontFamily: display,
@@ -61,7 +61,7 @@ const createThemeOptions = (): ThemeOptions => ({
     displaySm: { fontFamily: display, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em' },
     displayXs: { fontFamily: display, fontSize: '15px', fontWeight: 700, letterSpacing: '-0.01em' },
     bodyLg: { fontFamily: body, fontSize: '14px', fontWeight: 500 },
-    bodyMd: { fontFamily: body, fontSize: '13px', fontWeight: 400 },
+    bodyMd: { fontFamily: body, fontSize: '13px', fontWeight: 500 },
     bodySm: { fontFamily: body, fontSize: '12px', fontWeight: 400 },
     bodyXs: { fontFamily: body, fontSize: '11px', fontWeight: 400 },
     labelMd: {
@@ -104,7 +104,9 @@ const createThemeOptions = (): ThemeOptions => ({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: tokens.radius.md,
+          // Canonical button radius, system-wide (artboard spec = 10). Per-surface overrides
+          // that re-set this to radius.lg are now redundant and inherit from here.
+          borderRadius: tokens.radius.lg,
           textTransform: 'none',
           fontWeight: 600,
           boxShadow: 'none',
