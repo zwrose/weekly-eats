@@ -37,10 +37,12 @@ export function renderWithTheme(
  *
  * Handler names belong to the View layer; `ShoppingItemRow` receives narrowed
  * props (`onToggle`/`onEdit`) that the View maps internally — keep them distinct.
+ *
+ * `onSelectStore` is intentionally omitted so tests can pass an explicit spy
+ * (`onSelectStore={fn} {...stubHandlers()}`) without the spread clobbering it.
  */
 export function stubHandlers() {
   return {
-    onSelectStore: () => {},
     onToggleItem: () => {},
     onEditItem: () => {},
     onAddItem: () => {},

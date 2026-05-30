@@ -46,7 +46,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   ShoppingCart,
-  Add,
   DragIndicator,
   Edit,
   Delete,
@@ -98,6 +97,7 @@ import { responsiveDialogStyle } from '@/lib/theme';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
+import { ShoppingListView } from '@/components/shopping-list/Working/ShoppingListView';
 import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
@@ -260,7 +260,9 @@ function ShoppingListsPageContent() {
   // Shopping Sync SSE connection
   const shoppingSync = useShoppingSync({
     storeId: selectedStore?._id || null,
-    enabled: viewListDialog.open,
+    // Sync runs whenever a store is selected (incl. the always-mounted desktop
+    // pane), not just when a modal is open — the working view is no longer modal.
+    enabled: selectedStore !== null,
     presenceUser: session?.user?.email
       ? {
           email: session.user.email,
@@ -348,6 +350,9 @@ function ShoppingListsPageContent() {
   useEffect(() => {
     if (!viewListDialog.open) {
       setListActionsAnchorEl(null);
+      // No store selected in the URL → leave the working view, return to the
+      // store index, and let useShoppingSync disable (enabled = selectedStore).
+      setSelectedStore(null);
     }
   }, [viewListDialog.open]);
 
@@ -1405,6 +1410,227 @@ function ShoppingListsPageContent() {
     );
   };
 
+  // ── Working-view slots (presence / actions / finish / list) ──────────────
+  // These reuse the existing handlers/JSX, lifted out of the former modal into
+  // the in-page ShoppingListView via slots. The page keeps owning all state,
+  // sync, DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
+  const presenceSlot = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
+      <Box
+        role={shoppingSync.isConnected ? undefined : 'button'}
+        onClick={shoppingSync.isConnected ? undefined : handleManualReconnect}
+        sx={{
+          flex: '0 0 auto',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1,
+          py: 0.5,
+          borderRadius: 1,
+          bgcolor: shoppingSync.isConnected
+            ? 'success.main'
+            : shoppingSync.connectionState === 'connecting'
+              ? 'warning.main'
+              : (theme) => (theme.palette.mode === 'dark' ? 'grey.700' : 'grey.300'),
+          color: shoppingSync.isConnected
+            ? 'success.contrastText'
+            : shoppingSync.connectionState === 'connecting'
+              ? 'warning.contrastText'
+              : (theme) => (theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800'),
+          fontSize: '0.7rem',
+          whiteSpace: 'nowrap',
+          cursor: shoppingSync.isConnected ? 'default' : 'pointer',
+          userSelect: 'none',
+        }}
+        title={
+          shoppingSync.isConnected
+            ? 'Live'
+            : shoppingSync.connectionState === 'connecting'
+              ? 'Reconnecting…'
+              : 'Offline (tap to reconnect)'
+        }
+      >
+        {shoppingSync.isConnected ? (
+          <Box
+            sx={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              bgcolor: 'success.contrastText',
+            }}
+          />
+        ) : (
+          <Refresh sx={{ fontSize: 14 }} />
+        )}
+        {shoppingSync.isConnected
+          ? 'Live'
+          : shoppingSync.connectionState === 'connecting'
+            ? 'Reconnecting'
+            : 'Offline'}
+      </Box>
+      {activeUsers.length > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" color="text.secondary">
+            Also viewing:
+          </Typography>
+          {activeUsers.map((user, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                fontSize: '0.75rem',
+              }}
+            >
+              {user.name}
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+
+  const actionsSlot = (
+    <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
+      <MoreVert />
+    </IconButton>
+  );
+
+  const finishSlot =
+    orderedShoppingItems.checked.length > 0 ? (
+      <Button
+        size="small"
+        variant="outlined"
+        color="success"
+        startIcon={<DoneAll />}
+        onClick={() => void handleClearCheckedItems()}
+      >
+        Finish Shop
+      </Button>
+    ) : undefined;
+
+  const workingListSlot =
+    shoppingListItems.length === 0 ? (
+      <Box>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No items in this shopping list yet. Add an item to get started.
+        </Alert>
+      </Box>
+    ) : (
+      <Box
+        ref={listContainerRef}
+        sx={{
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          touchAction: 'pan-y',
+          overscrollBehaviorX: 'none',
+          '@media (pointer: fine) and (min-width:600px)': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(255,255,255,0.5) transparent'
+                : 'rgba(0,0,0,0.35) transparent',
+            '&::-webkit-scrollbar': { width: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.25)',
+              borderRadius: 999,
+              border: '2px solid transparent',
+              backgroundClip: 'content-box',
+            },
+            '&:hover::-webkit-scrollbar-thumb': {
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+            },
+          },
+        }}
+      >
+        <List sx={{ overflowX: 'hidden' }}>
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedShoppingItems.unchecked.map((item, index) => (
+                <SortableShoppingListRow
+                  key={item.foodItemId}
+                  item={item}
+                  isLast={
+                    index === orderedShoppingItems.unchecked.length - 1 &&
+                    orderedShoppingItems.checked.length === 0
+                  }
+                />
+              ))}
+            </SortableContext>
+
+            {orderedShoppingItems.checked.length > 0 && (
+              <>
+                {orderedShoppingItems.unchecked.length > 0 && <Divider />}
+                {orderedShoppingItems.checked.map((item, index) => (
+                  <Box key={item.foodItemId}>
+                    <ListItem
+                      disableGutters
+                      secondaryAction={
+                        <IconButton
+                          edge="end"
+                          aria-label="Reorder (disabled)"
+                          size="small"
+                          disabled
+                        >
+                          <DragIndicator fontSize="small" />
+                        </IconButton>
+                      }
+                      sx={{ px: 1, py: 0.25 }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <Checkbox
+                          checked={item.checked}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleToggleItemChecked(item.foodItemId);
+                          }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.name}
+                        secondary={`${item.quantity} ${
+                          item.unit && item.unit !== 'each'
+                            ? getUnitForm(item.unit, item.quantity)
+                            : item.unit === 'each'
+                              ? 'each'
+                              : ''
+                        }`}
+                        onClick={() => handleOpenEditItemEditor(item)}
+                        sx={{
+                          cursor: 'pointer',
+                          textDecoration: item.checked ? 'line-through' : 'none',
+                          opacity: item.checked ? 0.6 : 1,
+                          pr: 4,
+                        }}
+                      />
+                    </ListItem>
+                    {index < orderedShoppingItems.checked.length - 1 && <Divider />}
+                  </Box>
+                ))}
+              </>
+            )}
+          </DndContext>
+        </List>
+      </Box>
+    );
+
   // Show loading state while session is being fetched
   if (status === 'loading') {
     return (
@@ -1431,6 +1657,40 @@ function ShoppingListsPageContent() {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
+          ) : selectedStore ? (
+            <ShoppingListView
+              stores={stores.map((store) => ({
+                _id: store._id,
+                name: store.name,
+                emoji: store.emoji,
+                itemCount: store.shoppingList?.itemCount || 0,
+              }))}
+              activeStoreId={selectedStore._id}
+              items={shoppingListItems}
+              onSelectStore={(id) => {
+                const store = stores.find((s) => s._id === id);
+                if (store) void handleViewList(store);
+              }}
+              onToggleItem={(foodItemId) => void handleToggleItemChecked(foodItemId)}
+              onEditItem={handleOpenEditItemEditor}
+              onAddItem={handleOpenAddItemEditor}
+              onFinish={() => void handleClearCheckedItems()}
+              onBack={viewListDialog.closeDialog}
+              onReconnect={handleManualReconnect}
+              onAddStore={createStoreDialog.openDialog}
+              connectionState={
+                shoppingSync.isConnected
+                  ? 'connected'
+                  : shoppingSync.connectionState === 'connecting'
+                    ? 'connecting'
+                    : 'disconnected'
+              }
+              activeUsers={activeUsers}
+              presenceSlot={presenceSlot}
+              actionsSlot={actionsSlot}
+              finishSlot={finishSlot}
+              listSlot={workingListSlot}
+            />
           ) : (
             <StoreListView
               stores={storePagination.paginatedData.map((store) => ({
@@ -1675,392 +1935,51 @@ function ShoppingListsPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* View/Edit Shopping List Dialog */}
-      <Dialog
-        open={viewListDialog.open}
-        onClose={viewListDialog.closeDialog}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          ...responsiveDialogStyle,
-          '& .MuiDialog-paper': {
-            ...(() => {
-              const paper = (responsiveDialogStyle as Record<string, unknown>)[
-                '& .MuiDialog-paper'
-              ];
-              return paper && typeof paper === 'object' ? (paper as Record<string, unknown>) : {};
-            })(),
-            // Only full-height/flex on mobile. Desktop should size to content.
-            display: { xs: 'flex', sm: 'block' },
-            flexDirection: { xs: 'column' },
-          },
-        }}
+      {/* Working-list overflow actions menu (anchored from ShoppingListView actionsSlot) */}
+      <Menu
+        anchorEl={listActionsAnchorEl}
+        open={Boolean(listActionsAnchorEl)}
+        onClose={handleCloseListActionsMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <DialogTitle
-          onClose={viewListDialog.closeDialog}
-          actions={
-            <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
-              <MoreVert />
-            </IconButton>
-          }
-        >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Single-line header: emoji + name (ellipsis) + live pill */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                flexWrap: 'nowrap',
-                minWidth: 0,
-              }}
-            >
-              <Typography variant="h4" sx={{ flex: '0 0 auto' }}>
-                {selectedStore?.emoji}
-              </Typography>
-              <Typography
-                variant="h6"
-                noWrap
-                sx={{
-                  flex: '1 1 auto',
-                  minWidth: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {selectedStore?.name}
-              </Typography>
-              <Box
-                role={shoppingSync.isConnected ? undefined : 'button'}
-                onClick={shoppingSync.isConnected ? undefined : handleManualReconnect}
-                sx={{
-                  flex: '0 0 auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1,
-                  py: 0.5,
-                  mr: 1,
-                  borderRadius: 1,
-                  bgcolor: shoppingSync.isConnected
-                    ? 'success.main'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'warning.main'
-                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.700' : 'grey.300'),
-                  color: shoppingSync.isConnected
-                    ? 'success.contrastText'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'warning.contrastText'
-                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800'),
-                  fontSize: '0.7rem',
-                  whiteSpace: 'nowrap',
-                  cursor: shoppingSync.isConnected ? 'default' : 'pointer',
-                  userSelect: 'none',
-                }}
-                title={
-                  shoppingSync.isConnected
-                    ? 'Live'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'Reconnecting…'
-                      : 'Offline (tap to reconnect)'
-                }
-              >
-                {shoppingSync.isConnected ? (
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: 'success.contrastText',
-                    }}
-                  />
-                ) : (
-                  <Refresh sx={{ fontSize: 14 }} />
-                )}
-                {shoppingSync.isConnected
-                  ? 'Live'
-                  : shoppingSync.connectionState === 'connecting'
-                    ? 'Reconnecting'
-                    : 'Offline'}
-              </Box>
-            </Box>
-
-            {/* Secondary line can wrap: active viewers */}
-            {activeUsers.length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  Also viewing:
-                </Typography>
-                {activeUsers.map((user, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      px: 1,
-                      py: 0.5,
-                      borderRadius: 1,
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {user.name}
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
-        </DialogTitle>
-        <Menu
-          anchorEl={listActionsAnchorEl}
-          open={Boolean(listActionsAnchorEl)}
-          onClose={handleCloseListActionsMenu}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <MenuItem
-            onClick={() => {
-              handleCloseListActionsMenu();
-              void handleOpenMealPlanSelection();
-            }}
-          >
-            <ListItemIcon>
-              <CalendarMonth fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Add items from meal plans</ListItemText>
-          </MenuItem>
-          <MenuItem
-            disabled={loadingPantryCheck}
-            onClick={() => {
-              handleCloseListActionsMenu();
-              void handleOpenPantryCheck();
-            }}
-          >
-            <ListItemIcon>
-              {loadingPantryCheck ? <CircularProgress size={16} /> : <Kitchen fontSize="small" />}
-            </ListItemIcon>
-            <ListItemText>Pantry check</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              handleCloseListActionsMenu();
-              if (selectedStore) {
-                void handleOpenHistory(selectedStore);
-              }
-            }}
-          >
-            <ListItemIcon>
-              <History fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Purchase history</ListItemText>
-          </MenuItem>
-        </Menu>
-        <DialogContent
-          sx={{
-            overflowX: 'hidden',
-            // Only stretch on mobile. Desktop should size naturally.
-            flex: { xs: 1, sm: 'initial' },
-            minHeight: { xs: 0 },
-            display: { xs: 'flex', sm: 'block' },
-            flexDirection: { xs: 'column' },
+        <MenuItem
+          onClick={() => {
+            handleCloseListActionsMenu();
+            void handleOpenMealPlanSelection();
           }}
         >
-          <Box
-            sx={{
-              mt: 0,
-              display: { xs: 'flex', sm: 'block' },
-              flexDirection: { xs: 'column' },
-              minHeight: { xs: 0 },
-              flex: { xs: 1, sm: 'initial' },
-            }}
-          >
-            {shoppingListItems.length === 0 ? (
-              <>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  No items in this shopping list yet. Add an item to get started.
-                </Alert>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={handleOpenAddItemEditor}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Add item
-                  </Button>
-                </Box>
-              </>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    mb: 2,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ flex: '1 1 auto', minWidth: 0 }}
-                  >
-                    Tap an item to edit it.
-                  </Typography>
-                  {orderedShoppingItems.checked.length > 0 && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="success"
-                      startIcon={<DoneAll />}
-                      onClick={() => void handleClearCheckedItems()}
-                      sx={{ flex: '0 0 auto' }}
-                    >
-                      Finish Shop
-                    </Button>
-                  )}
-                  <IconButton aria-label="Add item" onClick={handleOpenAddItemEditor} size="small">
-                    <Add />
-                  </IconButton>
-                </Box>
-                <Box
-                  ref={listContainerRef}
-                  sx={{
-                    // Mobile: fill the dialog so no dead space.
-                    // Desktop: keep the prior bounded list height.
-                    flex: { xs: 1, sm: 'initial' },
-                    minHeight: { xs: 0 },
-                    // On desktop, use a fixed list region so the dialog doesn't
-                    // keep growing as items are added; the list itself scrolls.
-                    height: { sm: '60vh' },
-                    maxHeight: { xs: 'none', sm: '60vh' },
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    touchAction: 'pan-y',
-                    overscrollBehaviorX: 'none',
-                    // Desktop-only: sleeker scrollbars. Mobile keeps native look.
-                    // Note: include (pointer:fine) to avoid clobbering MUI's own
-                    // sm breakpoint media query merge (which is also min-width:600px).
-                    '@media (pointer: fine) and (min-width:600px)': {
-                      scrollbarWidth: 'thin', // Firefox
-                      scrollbarColor: (theme) =>
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(255,255,255,0.5) transparent'
-                          : 'rgba(0,0,0,0.35) transparent',
-                      '&::-webkit-scrollbar': {
-                        width: 6,
-                      },
-                      '&::-webkit-scrollbar-track': {
-                        background: 'transparent',
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255,255,255,0.35)'
-                            : 'rgba(0,0,0,0.25)',
-                        borderRadius: 999,
-                        border: '2px solid transparent',
-                        backgroundClip: 'content-box',
-                      },
-                      '&:hover::-webkit-scrollbar-thumb': {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255,255,255,0.5)'
-                            : 'rgba(0,0,0,0.4)',
-                      },
-                    },
-                  }}
-                >
-                  <List sx={{ overflowX: 'hidden' }}>
-                    <DndContext
-                      sensors={dndSensors}
-                      collisionDetection={closestCenter}
-                      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {orderedShoppingItems.unchecked.map((item, index) => (
-                          <SortableShoppingListRow
-                            key={item.foodItemId}
-                            item={item}
-                            isLast={
-                              index === orderedShoppingItems.unchecked.length - 1 &&
-                              orderedShoppingItems.checked.length === 0
-                            }
-                          />
-                        ))}
-                      </SortableContext>
-
-                      {orderedShoppingItems.checked.length > 0 && (
-                        <>
-                          {orderedShoppingItems.unchecked.length > 0 && <Divider />}
-                          {orderedShoppingItems.checked.map((item, index) => (
-                            <Box key={item.foodItemId}>
-                              <ListItem
-                                disableGutters
-                                secondaryAction={
-                                  <IconButton
-                                    edge="end"
-                                    aria-label="Reorder (disabled)"
-                                    size="small"
-                                    disabled
-                                  >
-                                    <DragIndicator fontSize="small" />
-                                  </IconButton>
-                                }
-                                sx={{ px: 1, py: 0.25 }}
-                              >
-                                <ListItemIcon sx={{ minWidth: 40 }}>
-                                  <Checkbox
-                                    checked={item.checked}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void handleToggleItemChecked(item.foodItemId);
-                                    }}
-                                  />
-                                </ListItemIcon>
-                                <ListItemText
-                                  primary={item.name}
-                                  secondary={`${item.quantity} ${
-                                    item.unit && item.unit !== 'each'
-                                      ? getUnitForm(item.unit, item.quantity)
-                                      : item.unit === 'each'
-                                        ? 'each'
-                                        : ''
-                                  }`}
-                                  onClick={() => handleOpenEditItemEditor(item)}
-                                  sx={{
-                                    cursor: 'pointer',
-                                    textDecoration: item.checked ? 'line-through' : 'none',
-                                    opacity: item.checked ? 0.6 : 1,
-                                    pr: 4,
-                                  }}
-                                />
-                              </ListItem>
-                              {index < orderedShoppingItems.checked.length - 1 && <Divider />}
-                            </Box>
-                          ))}
-                        </>
-                      )}
-                    </DndContext>
-                  </List>
-                </Box>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
+          <ListItemIcon>
+            <CalendarMonth fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Add items from meal plans</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={loadingPantryCheck}
+          onClick={() => {
+            handleCloseListActionsMenu();
+            void handleOpenPantryCheck();
+          }}
+        >
+          <ListItemIcon>
+            {loadingPantryCheck ? <CircularProgress size={16} /> : <Kitchen fontSize="small" />}
+          </ListItemIcon>
+          <ListItemText>Pantry check</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleCloseListActionsMenu();
+            if (selectedStore) {
+              void handleOpenHistory(selectedStore);
+            }
+          }}
+        >
+          <ListItemIcon>
+            <History fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Purchase history</ListItemText>
+        </MenuItem>
+      </Menu>
 
       <ItemEditorDialog
         open={itemEditorOpen}
