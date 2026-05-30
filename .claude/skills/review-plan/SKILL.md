@@ -6,7 +6,7 @@ user-invocable: true
 
 # Review Plan
 
-Run a multi-dimensional review on a draft plan or design spec **before any code is written**. The main context is an orchestrator: it locates the target plan, classifies what the design touches, dispatches the same four specialist agents `/review-code` uses (architecture, code, security, test) in parallel against the plan doc instead of a diff, compiles their findings under the `REVIEW.md` rubric, attaches its own point of view to each finding, and runs an interactive tiered approval. This catches architecture pattern-fit issues, testing gaps, security implications of new data flows, and missing migration safety statements **before** they become rework.
+Run a multi-dimensional review on a draft plan or design spec **before any code is written**. The main context is an orchestrator: it locates the target plan, classifies what the design touches, dispatches the same four specialist agents `/review-code` uses (architecture, code, security, test) in parallel against the plan doc instead of a diff, compiles their findings under the `REVIEW.md` rubric, attaches its own point of view to each finding, and revises the plan in place — auto-applying the mechanical fixes it recommends and stopping to ask only about findings it would skip/defer or fixes that involve a judgment call. This catches architecture pattern-fit issues, testing gaps, security implications of new data flows, and missing migration safety statements **before** they become rework.
 
 This skill is a **companion to** superpowers' `writing-plans` skill — not a replacement. `writing-plans` helps you draft a plan; `/review-plan` red-teams the draft. Read `REVIEW.md` for severity calibration and the verification rules every finding must pass; if anything below contradicts `REVIEW.md`, `REVIEW.md` wins.
 
@@ -194,28 +194,30 @@ Write to `$SESSION_DIR/compiled.json`:
 
 Order findings: Critical → Important → Minor → Nit, then by `file` then by `line`.
 
-### 5. Present + Interactive Output
+### 5. Revise Loop
 
-If context was compacted between dispatch and presentation, re-read `$SESSION_DIR/compiled.json` and `$SESSION_DIR/meta.json` to restore state.
+This skill **revises the plan in place** until it passes review. The deliverable is the improved plan document at `$PLAN_PATH`. Findings are **printed in chat each round — never written to a markdown file in the repo.** (The subagent JSON under `$SESSION_DIR` is internal plumbing and stays.)
 
-**Form the orchestrator POV before presenting.** Per REVIEW.md "Orchestrator POV", for each Critical/Important finding read the cited source — the plan section in `$SESSION_DIR/plan.md` and, when the finding references existing code, the cited project file — and form a **Fix / Skip / Defer + one-sentence rationale + High/Low confidence** take. At plan time, "Fix" means revise the plan, "Defer" means it's a real gap the author can address during implementation rather than now, and "Skip" means it's not worth a plan change. This is the coordinator's own judgment from a small targeted read — not a re-review. For batched Minor/Nit, derive the POV from the finding text.
+Initialize `round = 1` and an empty `skip-set` (finding identities the user chose not to act on; identity = `plan-section::normalized-title`). If context was compacted mid-loop, re-read `$SESSION_DIR/meta.json` and the latest `$SESSION_DIR/compiled.json` to restore state, and re-derive the `skip-set` from your chat record.
 
-Open with the verdict banner and the one-line summary, then tier the presentation:
+Each round:
 
-- **Critical and Important — individually** via `AskUserQuestion`. Header includes severity tag, dimension(s), and `file:line`. Body shows the finding text, the suggested fix, and — on its own line — the **POV** (e.g. `→ POV: Defer (High confidence) — real gap, but fine to nail down the test names during implementation`). For findings that propose specific plan text to rewrite, the body includes a `Suggested replacement:` block with the quoted source and the proposed text. Options (keep this neutral order; the POV informs but does not pre-select):
-  - **Approve** — keep at current severity.
-  - **Modify** — open a free-text edit for the finding body before approval.
-  - **Downgrade** — drop one tier (Critical → Important, Important → Minor). Important → Minor is auto-approved at Minor.
-  - **Skip** — exclude entirely.
-- **Minor and Nit — batched, multi-select** via `AskUserQuestion`, batches of 4. Show severity, `file:line`, a 2-3 sentence summary, and a compact POV tag (e.g. `POV: Fix (High)`) per finding. Always offer **Include all** and **Skip all** at the bottom.
+1. **Review.** (Round 1: the four specialists dispatched in §3 have already written `$SESSION_DIR/findings-*.json`.) For round > 1, re-dispatch the four specialists per §3 against the freshly-copied `$SESSION_DIR/plan.md`.
+2. **Compile** per §4 into `$SESSION_DIR/compiled.json` with verdict.
+3. **Effective findings** = `compiled.findings` whose identity is NOT in the `skip-set`.
+4. **Form POV + classification for every effective finding.** Per REVIEW.md "Orchestrator POV", from a targeted read of the cited plan section in `$SESSION_DIR/plan.md` (and any cited project file), emit for each finding a **recommendation** (`Fix` = revise the plan; `Defer` = real gap fine to nail down during implementation; `Skip` = not worth a plan change) + one-sentence rationale + High/Low confidence, and a **classification** (`mechanical` = one obvious plan edit, e.g. adding a named test to the test list; `judgment` = a real choice in wording or design among options).
+5. **Print findings in chat** — grouped by plan section heading, each with its POV line (e.g. `→ POV: Defer (High confidence) — real gap, but fine to nail down the test names during implementation`). Do **not** write these to a file.
+6. **Auto-revise.** For each effective finding where `recommendation == Fix` AND `classification == mechanical`, edit the plan document at `$PLAN_PATH` directly to address it (apply the finding's suggested replacement). Make these edits without asking.
+7. **Interventions.** `present-set` = effective findings where `recommendation` is `Skip` or `Defer`, OR (`recommendation` is `Fix` AND `classification` is `judgment`). If non-empty, present ONE consolidated `AskUserQuestion`: lead with each finding's POV; offer **Apply as suggested** / **Apply with my guidance** (free text) / **Skip** in this neutral order. Apply the user's chosen revisions to `$PLAN_PATH`. Add every `Skip` identity to the `skip-set`.
+8. **Refresh + exit check.** Re-copy the revised plan: `cp "$PLAN_PATH" "$SESSION_DIR/plan.md"`. If any edits were made this round AND one or more Critical/Important findings remain that are not in the `skip-set`, set `round += 1` and repeat from step 1 (re-review the revised plan). Otherwise **EXIT**.
 
-After all findings are reviewed, print a structured terminal report:
+After exit, print a terminal summary in chat:
 
-- Lead with the verdict label in bold.
-- Group approved findings **by plan section heading** (this is the most useful organization at plan-review time — the author can walk through the plan top to bottom and address each section's concerns). Include each finding's POV line.
-- End with a count summary (e.g. `"1 Critical, 3 Important, 2 Minor approved"`).
+- Lead with the final verdict label in bold.
+- List, grouped by plan section heading, the revisions applied (auto + user-approved) and the findings the user chose to skip — each with its POV line.
+- End with a count summary (e.g. `"2 auto-revised, 1 applied with guidance, 1 skipped; final verdict PLAN READY"`).
 
-**Interactive offer at end.** Use `AskUserQuestion` to ask: _"Save annotations to `<plan-stem>-review.md`?"_ with options Yes / No. If Yes, write the approved findings (grouped by plan section, with verdict header) to a sibling file of the plan — `docs/superpowers/specs/my-feature-review.md` for a plan at `docs/superpowers/specs/my-feature.md`. The annotation file is the deliverable the plan author can paste back into their planning flow.
+Nothing else is written to the repo — the revised `$PLAN_PATH` is the deliverable.
 
 ## Plan-Content Requirements (Opinionated)
 
@@ -237,11 +239,11 @@ These are out of scope; agents are told not to flag them in plan-time framing:
 
 ## Common Mistakes
 
-| Mistake                                                                      | Fix                                                                                                                                                     |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Flagging implementation details at plan time                                 | Those are code-time concerns. The plan is allowed to defer "how" as long as "what" and "why" are clear.                                                 |
-| Citing line numbers from the wrong file                                      | Plan-doc citations point at `$SESSION_DIR/plan.md`. Project-file citations point at repo paths. Don't mix them up — readers can't follow the trail.     |
-| Not classifying what the plan touches                                        | Skipping the `touches` classification leads to spurious findings (e.g. UI findings on a backend-only plan). Run the regex heuristics every time.        |
-| Re-running and re-raising the same findings without consulting prior reviews | If a prior `<plan>-review.md` exists, read it before dispatch. Authors shouldn't see the same finding twice without a new technical basis.              |
-| Treating "we'll add tests" as acceptable                                     | Plans must enumerate the test list. "We'll add tests" is a Critical or Important miss depending on what the plan touches.                               |
-| Skipping the all-four specialists rule based on classification               | The `touches` array is informational. All four agents always run — each returns `[]` when there's nothing in its dimension, which is cheap and uniform. |
+| Mistake                                                                     | Fix                                                                                                                                                             |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Flagging implementation details at plan time                                | Those are code-time concerns. The plan is allowed to defer "how" as long as "what" and "why" are clear.                                                         |
+| Citing line numbers from the wrong file                                     | Plan-doc citations point at `$SESSION_DIR/plan.md`. Project-file citations point at repo paths. Don't mix them up — readers can't follow the trail.             |
+| Not classifying what the plan touches                                       | Skipping the `touches` classification leads to spurious findings (e.g. UI findings on a backend-only plan). Run the regex heuristics every time.                |
+| Re-running and re-raising the same findings without consulting prior rounds | Check your `skip-set` and the chat record of prior rounds before raising a finding. Authors shouldn't see the same finding twice without a new technical basis. |
+| Treating "we'll add tests" as acceptable                                    | Plans must enumerate the test list. "We'll add tests" is a Critical or Important miss depending on what the plan touches.                                       |
+| Skipping the all-four specialists rule based on classification              | The `touches` array is informational. All four agents always run — each returns `[]` when there's nothing in its dimension, which is cheap and uniform.         |
