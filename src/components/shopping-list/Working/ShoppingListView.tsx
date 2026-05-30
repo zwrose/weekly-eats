@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Box, ButtonBase, Checkbox, Divider, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
@@ -10,6 +11,8 @@ import type { ActiveUser } from '@/lib/hooks';
 import type { ShoppingListItem } from '@/types/shopping-list';
 import { StoreSidebar, type StoreSidebarStore } from './StoreSidebar';
 import { AddItemRow } from './AddItemRow';
+import { FinishShopBar } from './FinishShopBar';
+import { FinishShopConfirm } from './FinishShopConfirm';
 
 export interface ShoppingListViewProps {
   stores: StoreSidebarStore[];
@@ -23,8 +26,8 @@ export interface ShoppingListViewProps {
   /**
    * View-level handlers/state the page still owns. Currently surfaced through
    * the presence/finish slots (which carry the page's live constructs), so they
-   * are accepted but not consumed directly yet. Tasks 6/7/10 restyle/extract
-   * these (finish-shop, presence pill, actions menu) and will wire them here.
+   * are accepted but not consumed directly yet. Tasks 7/10 restyle/extract
+   * these (presence pill, actions menu) and will wire them here.
    */
   onFinish: () => void;
   onReconnect: () => void;
@@ -36,8 +39,6 @@ export interface ShoppingListViewProps {
   presenceSlot?: ReactNode;
   /** Actions cluster (overflow menu trigger) — page passes its existing construct. */
   actionsSlot?: ReactNode;
-  /** Finish-shop trigger — page passes its existing construct. */
-  finishSlot?: ReactNode;
   /** Replaces the default item rows with the page's DnD list when provided. */
   listSlot?: ReactNode;
 }
@@ -117,17 +118,22 @@ export function ShoppingListView({
   onAddItem,
   onBack,
   onAddStore,
+  onFinish,
   presenceSlot,
   actionsSlot,
-  finishSlot,
   listSlot,
 }: ShoppingListViewProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const isMobile = !isDesktop;
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const activeStore = stores.find((s) => s._id === activeStoreId) ?? null;
   const unchecked = items.filter((i) => !i.checked);
   const checked = items.filter((i) => i.checked);
+  const checkedCount = checked.length;
+  const remainingCount = unchecked.length;
 
   const renderSidebar = (hideLabels: boolean) => (
     <StoreSidebar
@@ -190,9 +196,6 @@ export function ShoppingListView({
         {actionsSlot}
       </Box>
 
-      {/* Finish-shop trigger */}
-      {finishSlot && <Box sx={{ mb: 1.5 }}>{finishSlot}</Box>}
-
       {/* Item list */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         {listSlot ?? (
@@ -229,24 +232,60 @@ export function ShoppingListView({
     </Box>
   );
 
+  const finishBar = (
+    <FinishShopBar boughtCount={checkedCount} onFinish={() => setConfirmOpen(true)} />
+  );
+
+  const finishConfirm = (
+    <FinishShopConfirm
+      open={confirmOpen}
+      variant={isMobile ? 'sheet' : 'dialog'}
+      storeName={activeStore?.name ?? ''}
+      boughtCount={checkedCount}
+      remainingCount={remainingCount}
+      onConfirm={() => {
+        setConfirmOpen(false);
+        onFinish();
+      }}
+      onCancel={() => setConfirmOpen(false)}
+    />
+  );
+
   if (isDesktop) {
     return (
-      <Box sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: 0 }}>
-        {renderSidebar(false)}
-        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, p: 2 }}>{pane}</Box>
-      </Box>
+      <>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: '280px 1fr',
+            minHeight: 0,
+            flexDirection: 'column',
+          }}
+        >
+          {renderSidebar(false)}
+          <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, p: 2 }}>
+            {pane}
+            {finishBar}
+          </Box>
+        </Box>
+        {finishConfirm}
+      </>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {pane}
-      {/* Sidebar kept rendered (off-screen) on mobile for selection parity and
-          deep-link restore; the page's StoreListView is the visible mobile
-          index. Off-screen positioning keeps the rows clickable/queryable. */}
-      <Box aria-hidden={false} sx={{ position: 'absolute', left: -10000, top: 0, width: 280 }}>
-        {renderSidebar(true)}
+    <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {pane}
+        {finishBar}
+        {/* Sidebar kept rendered (off-screen) on mobile for selection parity and
+            deep-link restore; the page's StoreListView is the visible mobile
+            index. Off-screen positioning keeps the rows clickable/queryable. */}
+        <Box aria-hidden={false} sx={{ position: 'absolute', left: -10000, top: 0, width: 280 }}>
+          {renderSidebar(true)}
+        </Box>
       </Box>
-    </Box>
+      {finishConfirm}
+    </>
   );
 }

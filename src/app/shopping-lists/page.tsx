@@ -47,7 +47,6 @@ import {
   Kitchen,
   MoreVert,
   Refresh,
-  DoneAll,
   History,
 } from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
@@ -1424,19 +1423,6 @@ function ShoppingListsPageContent() {
     </IconButton>
   );
 
-  const finishSlot =
-    orderedShoppingItems.checked.length > 0 ? (
-      <Button
-        size="small"
-        variant="outlined"
-        color="success"
-        startIcon={<DoneAll />}
-        onClick={() => void handleClearCheckedItems()}
-      >
-        Finish Shop
-      </Button>
-    ) : undefined;
-
   const workingListSlot =
     shoppingListItems.length === 0 ? (
       <Box>
@@ -1571,7 +1557,6 @@ function ShoppingListsPageContent() {
               activeUsers={activeUsers}
               presenceSlot={presenceSlot}
               actionsSlot={actionsSlot}
-              finishSlot={finishSlot}
               listSlot={workingListSlot}
             />
           ) : (

@@ -917,9 +917,17 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
-    // Finish button appears after the toggle marks the item checked.
+    // Finish bar appears after the toggle marks the item checked.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /finish shop/i })).toBeInTheDocument();
+    });
+
+    // Click the finish bar — it opens the confirm dialog, not the handler directly.
+    await user.click(screen.getByRole('button', { name: /finish shop/i }));
+
+    // Confirm dialog should now be open.
+    await waitFor(() => {
+      expect(screen.getByText('Finish this shop?')).toBeInTheDocument();
     });
 
     // After finishing, the handler calls fetchStores() then a useEffect
@@ -932,7 +940,8 @@ describe('ShoppingListsPage', () => {
     mockFetchStores.mockResolvedValue(clearedStores);
     mockFetchShoppingList.mockResolvedValue({ ...mockStores[0].shoppingList, items: [] } as any);
 
-    await user.click(screen.getByRole('button', { name: /finish shop/i }));
+    // Click "Save trip" in the confirm to actually trigger the finish handler.
+    await user.click(screen.getByRole('button', { name: /save trip/i }));
 
     await waitFor(() => {
       expect(mockFinishShop).toHaveBeenCalled();
