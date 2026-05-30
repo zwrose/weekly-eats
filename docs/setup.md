@@ -15,20 +15,41 @@ This guide covers everything needed to get Weekly Eats running locally, from fir
 
 Create a `.env.local` file in the project root. This file is git-ignored and must never be committed.
 
-| Variable                  | Description                                                                                            | Example                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| `MONGODB_URI`             | MongoDB connection string including database name                                                      | `mongodb://localhost:27017/weekly-eats-dev` |
-| `AUTH_SECRET`             | Random secret for signing session JWTs                                                                 | `openssl rand -base64 33`                   |
-| `AUTH_GOOGLE_ID`          | OAuth 2.0 client ID from Google Cloud Console                                                          | `123456789.apps.googleusercontent.com`      |
-| `AUTH_GOOGLE_SECRET`      | OAuth 2.0 client secret                                                                                | `GOCSPX-xxxxxxxx`                           |
-| `ABLY_API_KEY`            | Ably API key for real-time messaging                                                                   | `xxxxxx.xxxxxx:xxxxxxxxxxxx`                |
-| `AUTH_REDIRECT_PROXY_URL` | OAuth redirect proxy for Vercel preview deploys (set on Preview + Production only; not needed locally) | `https://weekly-eats.vercel.app/api/auth`   |
+| Variable                  | Description                                                                                            | Example                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `MONGODB_URI`             | MongoDB connection string including database name                                                      | `mongodb://localhost:27017/weekly-eats-dev`  |
+| `AUTH_SECRET`             | Random secret for signing session JWTs                                                                 | `openssl rand -base64 33`                    |
+| `AUTH_GOOGLE_ID`          | OAuth 2.0 client ID from Google Cloud Console                                                          | `123456789.apps.googleusercontent.com`       |
+| `AUTH_GOOGLE_SECRET`      | OAuth 2.0 client secret                                                                                | `GOCSPX-xxxxxxxx`                            |
+| `ABLY_API_KEY`            | Ably API key for real-time messaging                                                                   | `xxxxxx.xxxxxx:xxxxxxxxxxxx`                 |
+| `AUTH_REDIRECT_PROXY_URL` | OAuth redirect proxy for Vercel preview deploys (set on Preview + Production only; not needed locally) | `https://weekly-eats.zamilyfam.com/api/auth` |
 
 Generate your `AUTH_SECRET`:
 
 ```bash
 openssl rand -base64 33
 ```
+
+### Copy-paste `.env.local` template
+
+Paste this into `.env.local` and fill in the values. Omit `AUTH_REDIRECT_PROXY_URL` — it is Preview/Production-only and not used locally.
+
+```bash
+MONGODB_URI=mongodb://localhost:27017/weekly-eats-dev
+AUTH_SECRET=               # generate with: openssl rand -base64 33
+AUTH_GOOGLE_ID=            # OAuth client ID from Google Cloud Console
+AUTH_GOOGLE_SECRET=        # OAuth client secret
+ABLY_API_KEY=             # Ably API key
+# PORT=3000               # optional; worktrees set this automatically
+```
+
+**Migrating an existing pre-v5 `.env.local`?** The values are unchanged — only the keys were renamed. Rename `NEXTAUTH_SECRET`→`AUTH_SECRET`, `GOOGLE_CLIENT_ID`→`AUTH_GOOGLE_ID`, `GOOGLE_CLIENT_SECRET`→`AUTH_GOOGLE_SECRET`, and delete `NEXTAUTH_URL` (v5 uses `trustHost`). One-liner:
+
+```bash
+sed -i '' -e 's/^NEXTAUTH_SECRET=/AUTH_SECRET=/' -e 's/^GOOGLE_CLIENT_ID=/AUTH_GOOGLE_ID=/' -e 's/^GOOGLE_CLIENT_SECRET=/AUTH_GOOGLE_SECRET=/' -e '/^NEXTAUTH_URL=/d' .env.local
+```
+
+In a worktree you only need to fix the **main** repo's `.env.local` — `npm run dev` regenerates each worktree's copy from it on startup (via `scripts/setup-worktree.js`). Use `npm run dev:fast` to skip that regeneration.
 
 ## First-Time Setup
 
