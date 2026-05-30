@@ -95,11 +95,11 @@ src/
 
 ### API Routes
 
-- Check auth first: `const session = await getServerSession(authOptions)`
+- Check auth first: `const session = await auth()` (import `auth` from `@/lib/auth`)
 - Return `{ error: AUTH_ERRORS.UNAUTHORIZED }` with 401 if no session
 - Admin routes check `user.isAdmin`, return 403 with `AUTH_ERRORS.FORBIDDEN`
 - Session user has typed `id`, `isAdmin`, `isApproved` properties — never use `as` casts
-- Auth uses JWT strategy; `isAdmin`/`isApproved` are cached in the token (see `src/lib/auth.ts`)
+- Auth uses JWT strategy; `isAdmin`/`isApproved` are cached in the token. Config is split: `src/lib/auth.config.ts` holds the edge-safe callbacks (session/redirect, trustHost), `src/lib/auth.ts` adds the MongoDB adapter + DB-backed jwt callback and exports `handlers`/`auth`/`signIn`/`signOut`.
 - Use error constants from `@/lib/errors` (never hardcode error strings)
 - Log errors with `logError('ContextName', error)`
 - Validate ObjectIds with `ObjectId.isValid(id)` before querying
