@@ -3,6 +3,8 @@ import { getMongoClient } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { AUTH_ERRORS, FOOD_ITEM_ERRORS, API_ERRORS, logError } from '@/lib/errors';
 import { requireApprovedSession } from '@/lib/user-utils';
+import { getFoodItem } from '@/lib/services/food-items';
+import { serviceErrorResponse } from '@/lib/api-error-response';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,29 +16,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (error) return error;
 
     const { id } = await params;
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: API_ERRORS.BAD_REQUEST }, { status: 400 });
-    }
-
-    const client = await getMongoClient();
-    const db = client.db();
-    const foodItemsCollection = db.collection('foodItems');
-
-    const foodItem = await foodItemsCollection.findOne({ _id: new ObjectId(id) });
-    if (!foodItem) {
-      return NextResponse.json({ error: FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND }, { status: 404 });
-    }
-
-    // Users can see global items and their own personal items
-    if (!foodItem.isGlobal && foodItem.createdBy !== session.user.id && !session.user.isAdmin) {
-      return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
-    }
-
+    const foodItem = await getFoodItem(session.user.id, {
+      id,
+      isAdmin: session.user.isAdmin,
+    });
     return NextResponse.json(foodItem);
   } catch (error) {
-    logError('FoodItems GET [id]', error);
-    return NextResponse.json({ error: API_ERRORS.INTERNAL_SERVER_ERROR }, { status: 500 });
+    return serviceErrorResponse('FoodItems GET [id]', error);
   }
 }
 
