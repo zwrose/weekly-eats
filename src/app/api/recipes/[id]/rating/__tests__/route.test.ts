@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock MongoDB
 const findOneMock = vi.fn();
@@ -51,7 +43,7 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 // Convenient access to mocked imports
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const { ObjectId } = await import('mongodb');
 
 // Import the route module after mocks are set up
@@ -68,7 +60,7 @@ const makeParams = (id: string) => ({
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
 });
@@ -83,7 +75,7 @@ describe('api/recipes/[id]/rating route', () => {
 
   describe('POST', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 5 }),
         makeParams(validRecipeId)
@@ -94,7 +86,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 403 when the user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'user-1' }));
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 5 }),
         makeParams(validRecipeId)
@@ -103,7 +95,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 for invalid recipe ID', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       const res = await routes.POST(
         makeRequest('invalid-id', { rating: 5 }),
         makeParams('invalid-id')
@@ -114,7 +106,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 when rating is not a number', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: '5' }),
@@ -126,7 +118,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 when rating is less than 1', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 0 }),
@@ -138,7 +130,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 when rating is greater than 5', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 6 }),
@@ -150,7 +142,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 when rating is not an integer', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 3.5 }),
@@ -162,7 +154,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 404 when recipe does not exist', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(null);
       const res = await routes.POST(
         makeRequest(validRecipeId, { rating: 5 }),
@@ -174,7 +166,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('successfully updates rating', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -209,7 +201,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('accepts valid rating 1', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -223,7 +215,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('accepts valid rating 5', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       findOneMock.mockResolvedValueOnce(mockRecipe);
       updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -239,7 +231,7 @@ describe('api/recipes/[id]/rating route', () => {
 
   describe('DELETE', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.DELETE(makeRequest(validRecipeId), makeParams(validRecipeId));
       expect(res.status).toBe(401);
       const data = await res.json();
@@ -247,7 +239,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 400 for invalid recipe ID', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       const res = await routes.DELETE(makeRequest('invalid-id'), makeParams('invalid-id'));
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -255,7 +247,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('returns 404 when rating does not exist', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       updateOneMock.mockResolvedValueOnce({ matchedCount: 0 });
       const res = await routes.DELETE(makeRequest(validRecipeId), makeParams(validRecipeId));
       expect(res.status).toBe(404);
@@ -264,7 +256,7 @@ describe('api/recipes/[id]/rating route', () => {
     });
 
     it('successfully deletes rating', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'user-1' }));
       updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
 
       const res = await routes.DELETE(makeRequest(validRecipeId), makeParams(validRecipeId));

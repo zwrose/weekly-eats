@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -29,7 +28,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const { ObjectId } = await import('mongodb');
@@ -42,32 +41,32 @@ const makeRequest = (id: string) =>
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   findMock.mockReset();
 });
 
 describe('GET /api/recipes/[id]/user-data', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET(makeRequest(validId), makeParams(validId));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
     const res = await routes.GET(makeRequest(validId), makeParams(validId));
     expect(res.status).toBe(403);
   });
 
   it('returns 400 for invalid recipe ID', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.GET(makeRequest('bad-id'), makeParams('bad-id'));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when recipe is not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     // First findOne call is for recipes collection
     findOneMock.mockResolvedValueOnce(null);
     const res = await routes.GET(makeRequest(validId), makeParams(validId));
@@ -75,7 +74,7 @@ describe('GET /api/recipes/[id]/user-data', () => {
   });
 
   it('returns 200 with tags and rating for an accessible recipe', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     // recipes.findOne — recipe found
     findOneMock.mockResolvedValueOnce({
       _id: ObjectId.createFromHexString(validId),

@@ -47,10 +47,24 @@ export default defineConfig({
       'test/manual/**/*.{test,spec}.ts',
     ],
     css: false,
+    server: {
+      deps: {
+        // Inline next-auth so vite transforms it (instead of Node's native
+        // ESM loader externalizing it). Required for the `next/server` resolve
+        // alias below to apply — next-auth v5's env.js imports `next/server`
+        // with no extension, which Node's ESM resolver rejects.
+        inline: ['next-auth', '@auth/core'],
+      },
+    },
   },
   resolve: {
     alias: {
       '@': new URL('./src', import.meta.url).pathname,
+      // next-auth v5 (next-auth/lib/env.js) imports `next/server` with no
+      // extension; vite's resolver needs the explicit `.js` that Next omits
+      // from its exports map. Without this, importing the real `@/lib/auth`
+      // (which evaluates NextAuth() at module load) fails to resolve.
+      'next/server': new URL('./node_modules/next/server.js', import.meta.url).pathname,
     },
   },
 });

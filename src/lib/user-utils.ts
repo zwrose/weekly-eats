@@ -1,7 +1,6 @@
 import { getMongoClient } from './mongodb';
 import { ObjectId } from 'mongodb';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from './auth';
+import { auth } from './auth';
 import { NextResponse } from 'next/server';
 import type { Session } from 'next-auth';
 import { AUTH_ERRORS } from './errors';
@@ -20,7 +19,7 @@ export const getUserObjectId = async (email: string): Promise<ObjectId | null> =
  * @returns Promise<boolean> indicating if the current user is an admin
  */
 export const getCurrentUserAdminStatus = async (): Promise<boolean> => {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user?.email) return false;
 
   const client = await getMongoClient();
@@ -47,7 +46,7 @@ type RequireApprovedSessionResult =
  *   if (error) return error;
  */
 export const requireApprovedSession = async (): Promise<RequireApprovedSessionResult> => {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: AUTH_ERRORS.UNAUTHORIZED }, { status: 401 }) };
   }

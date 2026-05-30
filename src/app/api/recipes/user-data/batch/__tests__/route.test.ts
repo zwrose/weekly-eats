@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
@@ -39,8 +33,8 @@ vi.mock('@/lib/mongodb', () => ({
 
 let collectionName = '';
 
-const { getServerSession } = await import('next-auth/next');
-const mockedGetSession = vi.mocked(getServerSession);
+const { auth } = await import('@/lib/auth');
+const mockedGetSession = vi.mocked(auth);
 
 const { POST } = await import('../route');
 

@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock mongodb-adapter
 vi.mock('@/lib/mongodb-adapter', () => ({
@@ -31,7 +23,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeRequest = (body: unknown) =>
@@ -41,7 +33,7 @@ const makeRequest = (body: unknown) =>
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
 });
@@ -49,13 +41,13 @@ beforeEach(() => {
 describe('api/admin/users/toggle-admin route', () => {
   describe('Authentication & Authorization', () => {
     it('POST returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(makeRequest({ userId: 'test-id', isAdmin: true }));
       expect(res.status).toBe(401);
     });
 
     it('POST returns 403 when user is not admin', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
       const res = await routes.POST(makeRequest({ userId: 'test-id', isAdmin: true }));
       expect(res.status).toBe(403);
@@ -64,7 +56,7 @@ describe('api/admin/users/toggle-admin route', () => {
 
   describe('Request Parameter Validation', () => {
     it('POST returns 400 when userId is missing', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(makeRequest({ isAdmin: true }));
@@ -74,7 +66,7 @@ describe('api/admin/users/toggle-admin route', () => {
     });
 
     it('POST returns 400 when isAdmin is missing', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(makeRequest({ userId: 'test-id' }));
@@ -84,7 +76,7 @@ describe('api/admin/users/toggle-admin route', () => {
     });
 
     it('POST returns 400 when isAdmin is not a boolean', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(makeRequest({ userId: 'test-id', isAdmin: 'true' }));
@@ -96,7 +88,7 @@ describe('api/admin/users/toggle-admin route', () => {
      * Prevents parameter mismatch bugs similar to the isApproved issue
      */
     it('POST rejects request with "admin" instead of "isAdmin"', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(makeRequest({ userId: 'test-id', admin: true }));
@@ -106,7 +98,7 @@ describe('api/admin/users/toggle-admin route', () => {
     });
 
     it('POST accepts valid request with correct parameter names', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true }) // current user check
         .mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false }); // target user check
@@ -124,7 +116,7 @@ describe('api/admin/users/toggle-admin route', () => {
 
   describe('Admin Toggle Logic', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     });
 
     it('POST grants admin when isAdmin is true', async () => {
@@ -225,7 +217,7 @@ describe('api/admin/users/toggle-admin route', () => {
 
   describe('Error Handling', () => {
     it('POST handles database errors gracefully', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock
         .mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true })
         .mockRejectedValueOnce(new Error('Database connection failed'));
@@ -243,7 +235,7 @@ describe('api/admin/users/toggle-admin route', () => {
     });
 
     it('POST rejects an invalid ObjectId format with 400', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(
