@@ -17,13 +17,13 @@ all phases land.
 
 ## Phase status
 
-| #   | Phase                                                        | Status                      | Plan doc                                                                                                                 | PR test comment                                                                | Done       |
-| --- | ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
-| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | done — code + manual verify | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
-| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | pending                     | — _(own effort; sequence between Ph1 and Ph2)_                                                                           | —                                                                              | —          |
-| 2   | OAuth AS + approval-gated verification + deploy              | pending                     | —                                                                                                                        | —                                                                              | —          |
-| 3   | `recipe-import` skill                                        | pending                     | —                                                                                                                        | —                                                                              | —          |
-| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                     | —                                                                                                                        | —                                                                              | —          |
+| #   | Phase                                                        | Status                                                      | Plan doc                                                                                                                 | PR test comment                                                                | Done       |
+| --- | ------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | **DONE** — code + manual verify + review-code (clean)       | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
+| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | in-progress _(user, own branch `feat/142-auth-v5-upgrade`)_ | — _(own effort)_                                                                                                         | —                                                                              | —          |
+| 2   | OAuth AS + approval-gated verification + deploy              | pending                                                     | —                                                                                                                        | —                                                                              | —          |
+| 3   | `recipe-import` skill                                        | pending                                                     | —                                                                                                                        | —                                                                              | —          |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                                                     | —                                                                                                                        | —                                                                              | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
 `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
@@ -32,11 +32,26 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
-**Phase 1 code is complete and on `feat/mcp` (pushed).** Built 2026-05-30 via
-`writing-plans` → 3-loop `review-plan` (converged clean) → `subagent-driven-development`
-(11 tasks, TDD, one commit each) → `review-code` (1 round, 4 Minor test-hardening findings
-auto-fixed) → `npm run check` green (**1487 tests**, lint 0, build OK). Manual-test data
-seeded for `zwrose@gmail.com` (13 food items, 5 recipes); checklist posted to
+**▶ PHASE 1 IS DONE (2026-05-30).** Pushed to `feat/mcp` (PR #140, HEAD `60e5581`). Built via
+`writing-plans` → 3-loop `review-plan` (clean) → `subagent-driven-development` (11 TDD tasks)
+→ `review-code` (1 round, clean: 0 Critical/Important, security clean, 4 Minor/Nit auto-fixed
+in `57259a7`) → `npm run check` green (**1488 tests**, lint 0, build OK) → synced with `main`
+→ **manual end-to-end verify passed** (all 3 checklist sections). Two bugs found + fixed during
+verify (`cc10ea9`, `920d771`). One Phase-2 carryover noted in spec §6.4 (dev-gate
+`MCP_DEV_USER_ID` trust → replace with the live users-lookup verifier). `/code-review ultra`
+is still recommended but optional — user's call; not blocking the phase.
+
+**▶ CURRENT SEQUENCING (set by user 2026-05-30):** Phase 1.5 (#142 Auth.js v5) is **in progress
+on its own branch** `feat/142-auth-v5-upgrade`, owned by the user. Plan: land/merge #142 to
+`main` first → then **merge `main` into `feat/mcp`** to pull the v5 foundation in → then plan +
+build **Phase 2** (OAuth AS) on top of v5. Do NOT start Phase 2 until #142 is merged and pulled
+into `feat/mcp`. When Phase 2 is planned, re-point the AS login leg at Auth.js v5 (`auth()` +
+redirect proxy) per the open questions below, and resolve the spec §6.4 carryover.
+
+**Historical (Phase 1 build narrative, kept for reference):** Built 2026-05-30 via
+`writing-plans` → `review-plan` → `subagent-driven-development` (11 tasks, TDD) →
+`review-code` → `npm run check`. Manual-test data seeded for `zwrose@gmail.com`
+(13 food items, 5 recipes); checklist on
 [PR #140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
 
 **Manual/end-to-end verification COMPLETE (2026-05-30).** User connected MCP Inspector to
@@ -63,11 +78,9 @@ copy** (`rewriteWorktreeEnv` only rewrites PORT/NEXTAUTH_URL, passes other lines
 `MCP_DEV_TOKEN`/`MCP_DEV_USER_ID` must live in **main's** `.env.local` (`/Users/zwrose/weekly-eats/.env.local`)
 to survive restarts — adding them to the worktree copy gets wiped on the next `npm run dev`.
 
-**Still owed before "done done":** a final `npm run check` re-run capturing the `920d771`
-middleware fix through the build step (the dev server was up during that commit so only lint +
-targeted tests ran locally; CI on PR #140 covers it), plus `/code-review ultra`. **Then:**
-Phase 1.5 (#142 Auth.js v5 — worktree already exists at `feat/142-auth-v5-upgrade`) → Phase 2
-(OAuth AS). Do NOT start 1.5 or 2 without the user.
+Final `npm run check` (build step included, dev server stopped) ran clean — **exit 0, 1488
+tests** — closing the one item that was previously outstanding. See the current-sequencing
+note above for what's next.
 
 Implementation notes worth carrying forward:
 
