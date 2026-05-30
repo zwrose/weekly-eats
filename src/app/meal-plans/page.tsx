@@ -39,8 +39,8 @@ const ShareMealPlansDialog = dynamic(
 const MealPlanCreateDialog = dynamic(() => import('@/components/MealPlanCreateDialog'), {
   ssr: false,
 });
-import { calculateEndDateAsString } from '@/lib/date-utils';
-import { addDays } from 'date-fns';
+import { calculateEndDateAsString, parseLocalDate } from '@/lib/date-utils';
+import { addDays, format } from 'date-fns';
 import {
   checkMealPlanOverlap,
   findNextAvailableMealPlanStartDate,
@@ -61,31 +61,54 @@ import { DialogActions, DialogTitle } from '@/components/ui';
 import { formatDateForAPI } from '@/lib/date-utils';
 import MealPlanBrowser from '../../components/MealPlanBrowser';
 
-// Compact section header used across the index (Current / Shared / Past).
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// Bordered ghost-icon square used for the header actions (settings / share).
+const ghostIconSx = {
+  width: 38,
+  height: 38,
+  borderRadius: `${tokens.radius.lg}px`,
+  border: `1px solid ${tokens.border.subtle}`,
+  color: tokens.text.secondary,
+  '&:hover': {
+    bgcolor: tokens.surface.elevated,
+    borderColor: tokens.border.strong,
+    color: tokens.text.primary,
+  },
+};
+
+// Compact section header used across the index (Current / Shared / Past): uppercase label,
+// a divider rule that fills the row, and an optional accent count on the right.
+function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
+  const labelSx = {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.16em',
+    textTransform: 'uppercase' as const,
+  };
   return (
-    <Box
-      sx={{
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: '0.16em',
-        color: tokens.text.secondary,
-        textTransform: 'uppercase',
-        mb: 1,
-      }}
-    >
-      {children}
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+      <Box sx={{ ...labelSx, color: tokens.text.secondary, whiteSpace: 'nowrap' }}>{children}</Box>
+      <Box sx={{ flex: 1, height: '1px', bgcolor: tokens.border.subtle }} />
+      {count != null && <Box sx={{ ...labelSx, color: 'primary.main' }}>{count}</Box>}
     </Box>
   );
 }
 
 interface PlanRowProps {
   name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent?: boolean;
   onClick: () => void;
 }
 
-// A single clickable plan row that navigates to the detail route.
-function PlanRow({ name, onClick }: PlanRowProps) {
+// A single clickable plan row that navigates to the detail route: accent calendar tile,
+// plan name in the display font, a date-range subtitle, a CURRENT pill + accent glow when
+// it's the active week, and a trailing chevron.
+function PlanRow({ name, startDate, endDate, isCurrent, onClick }: PlanRowProps) {
+  const range =
+    startDate && endDate
+      ? `${format(parseLocalDate(startDate), 'EEE, MMM d')} – ${format(parseLocalDate(endDate), 'EEE, MMM d')}`
+      : null;
   return (
     <Box
       role="button"
@@ -102,16 +125,17 @@ function PlanRow({ name, onClick }: PlanRowProps) {
         alignItems: 'center',
         gap: 1.5,
         px: 2,
-        py: 1.75,
+        py: 1.5,
         mb: 1,
         cursor: 'pointer',
         borderRadius: `${tokens.radius.lg}px`,
         bgcolor: tokens.surface.raised,
-        border: `1px solid ${tokens.border.subtle}`,
+        border: `1px solid ${isCurrent ? `${tokens.section.plans}55` : tokens.border.subtle}`,
+        boxShadow: isCurrent ? tokens.shadow.card : 'none',
         transition: 'background-color 0.15s, border-color 0.15s',
         '&:hover': {
           bgcolor: tokens.surface.elevated,
-          borderColor: tokens.border.strong,
+          borderColor: isCurrent ? `${tokens.section.plans}55` : tokens.border.strong,
         },
         '&:focus-visible': {
           outline: `2px solid ${tokens.section.plans}`,
@@ -119,8 +143,63 @@ function PlanRow({ name, onClick }: PlanRowProps) {
         },
       }}
     >
-      <Icon name="calendar_month" size={22} color={tokens.section.plans} />
-      <Typography sx={{ fontSize: 15, color: tokens.text.primary }}>{name}</Typography>
+      <Box
+        sx={{
+          flexShrink: 0,
+          width: 40,
+          height: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: `${tokens.radius.lg}px`,
+          bgcolor: tokens.accent.muted,
+        }}
+      >
+        <Icon name="calendar_month" size={20} color={tokens.section.plans} />
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            sx={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 16,
+              fontWeight: 700,
+              color: tokens.text.primary,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name}
+          </Typography>
+          {isCurrent && (
+            <Box
+              component="span"
+              sx={{
+                flexShrink: 0,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: tokens.section.plans,
+                bgcolor: tokens.accent.muted,
+                px: 0.75,
+                py: 0.25,
+                borderRadius: `${tokens.radius.pill}px`,
+                lineHeight: 1.5,
+              }}
+            >
+              Current
+            </Box>
+          )}
+        </Box>
+        {range && (
+          <Typography sx={{ fontSize: 12, color: tokens.text.secondary, mt: 0.25 }}>
+            {range}
+          </Typography>
+        )}
+      </Box>
+      <Icon name="chevron_right" size={20} color={tokens.text.muted} />
     </Box>
   );
 }
@@ -540,7 +619,7 @@ function MealPlansPageContent() {
               component="h1"
               sx={{
                 fontFamily: 'var(--font-display)',
-                fontSize: { xs: 26, md: 32 },
+                fontSize: { xs: 26, md: 30 },
                 fontWeight: 700,
                 color: tokens.text.primary,
                 lineHeight: 1.1,
@@ -552,16 +631,16 @@ function MealPlansPageContent() {
               <IconButton
                 aria-label="Template settings"
                 onClick={() => router.push('/meal-plans/template')}
-                sx={{ color: tokens.text.secondary }}
+                sx={ghostIconSx}
               >
-                <Icon name="settings" size={22} />
+                <Icon name="settings" size={20} />
               </IconButton>
               <IconButton
                 aria-label="Share meal plans"
                 onClick={() => shareDialog.openDialog()}
-                sx={{ color: tokens.text.secondary, position: 'relative' }}
+                sx={{ ...ghostIconSx, position: 'relative' }}
               >
-                <Icon name="group" size={22} />
+                <Icon name="group" size={20} />
                 {pendingCount > 0 && (
                   <Box
                     sx={{
@@ -580,7 +659,7 @@ function MealPlansPageContent() {
                 variant="contained"
                 startIcon={<Icon name="add" size={20} />}
                 onClick={handleOpenCreateDialog}
-                sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+                sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', minHeight: 38 }}
               >
                 New plan
               </Button>
@@ -595,17 +674,19 @@ function MealPlansPageContent() {
             <>
               {/* Current */}
               <Box sx={{ mb: 4 }}>
-                <SectionLabel>
-                  Current{' '}
-                  {currentPlans.length > 0 && (
-                    <Box component="span" sx={{ color: 'primary.main' }}>
-                      · {currentPlans.length}
-                    </Box>
-                  )}
+                <SectionLabel count={currentPlans.length > 0 ? currentPlans.length : undefined}>
+                  Current
                 </SectionLabel>
                 {currentPlans.length > 0 ? (
                   currentPlans.map((plan) => (
-                    <PlanRow key={plan._id} name={plan.name} onClick={() => navigateToPlan(plan)} />
+                    <PlanRow
+                      key={plan._id}
+                      name={plan.name}
+                      startDate={plan.startDate}
+                      endDate={plan.endDate}
+                      isCurrent
+                      onClick={() => navigateToPlan(plan)}
+                    />
                   ))
                 ) : (
                   <Box sx={{ fontSize: 14, color: tokens.text.secondary, py: 1 }}>
@@ -647,6 +728,8 @@ function MealPlansPageContent() {
                         <PlanRow
                           key={plan._id}
                           name={plan.name}
+                          startDate={plan.startDate}
+                          endDate={plan.endDate}
                           onClick={() => navigateToPlan(plan)}
                         />
                       ))}
@@ -658,14 +741,15 @@ function MealPlansPageContent() {
               {/* Past · last 6 weeks */}
               {pastPlans.length > 0 && (
                 <Box sx={{ mb: 4 }}>
-                  <SectionLabel>
-                    Past · last 6 weeks{' '}
-                    <Box component="span" sx={{ color: 'primary.main' }}>
-                      · {pastPlans.length}
-                    </Box>
-                  </SectionLabel>
+                  <SectionLabel count={pastPlans.length}>Past · last 6 weeks</SectionLabel>
                   {pastPlans.map((plan) => (
-                    <PlanRow key={plan._id} name={plan.name} onClick={() => navigateToPlan(plan)} />
+                    <PlanRow
+                      key={plan._id}
+                      name={plan.name}
+                      startDate={plan.startDate}
+                      endDate={plan.endDate}
+                      onClick={() => navigateToPlan(plan)}
+                    />
                   ))}
                 </Box>
               )}
