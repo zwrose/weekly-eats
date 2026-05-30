@@ -30,6 +30,7 @@ import { PlanViewDesktop } from './PlanViewDesktop';
 import { PlanViewMobile } from './PlanViewMobile';
 import { MealEditorDialog, type EditableMeal } from './MealEditorDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { RecipeEmojiProvider, useRecipeEmojiMap } from './recipe-emoji';
 
 export interface PlanDetailProps {
   planId: string;
@@ -46,6 +47,7 @@ export function PlanDetail({ planId }: PlanDetailProps) {
   const [editing, setEditing] = useState<{ dow: DayOfWeek; mealType: MealType } | null>(null);
   const [editingStaples, setEditingStaples] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const recipeEmojiById = useRecipeEmojiMap();
 
   useEffect(() => {
     let cancelled = false;
@@ -211,139 +213,141 @@ export function PlanDetail({ planId }: PlanDetailProps) {
   })();
 
   return (
-    <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 1.5, md: 3 } }}>
-      {/* Back */}
-      <Box sx={{ mb: 1.5 }}>{backButton}</Box>
+    <RecipeEmojiProvider value={recipeEmojiById}>
+      <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 1.5, md: 3 } }}>
+        {/* Back */}
+        <Box sx={{ mb: 1.5 }}>{backButton}</Box>
 
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 1.5,
-          mb: 2.5,
-        }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Box
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: tokens.section.plans,
-              mb: 0.5,
-            }}
+        {/* Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 1.5,
+            mb: 2.5,
+          }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Box
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: tokens.section.plans,
+                mb: 0.5,
+              }}
+            >
+              Meal Plan
+            </Box>
+            <Box
+              sx={{
+                fontFamily: 'var(--font-display)',
+                fontSize: { xs: 24, md: 30 },
+                fontWeight: 700,
+                color: tokens.text.primary,
+                lineHeight: 1.1,
+              }}
+            >
+              {plan.name}
+            </Box>
+            <Box sx={{ fontSize: 13, color: tokens.text.secondary, mt: 0.5 }}>
+              {getDateForDay(plan.startDate, daysInOrder[0], startDay)} —{' '}
+              {getDateForDay(plan.startDate, daysInOrder[daysInOrder.length - 1], startDay)}
+            </Box>
+          </Box>
+          <IconButton
+            aria-label="Plan options"
+            onClick={(e) => setMenuAnchor(e.currentTarget)}
+            sx={{ color: tokens.text.secondary }}
           >
-            Meal Plan
-          </Box>
-          <Box
-            sx={{
-              fontFamily: 'var(--font-display)',
-              fontSize: { xs: 24, md: 30 },
-              fontWeight: 700,
-              color: tokens.text.primary,
-              lineHeight: 1.1,
-            }}
+            <Icon name="more_horiz" size={22} />
+          </IconButton>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+            slotProps={{ paper: { sx: { bgcolor: tokens.surface.sheet } } }}
           >
-            {plan.name}
-          </Box>
-          <Box sx={{ fontSize: 13, color: tokens.text.secondary, mt: 0.5 }}>
-            {getDateForDay(plan.startDate, daysInOrder[0], startDay)} —{' '}
-            {getDateForDay(plan.startDate, daysInOrder[daysInOrder.length - 1], startDay)}
-          </Box>
+            <MenuItem
+              onClick={() => {
+                setMenuAnchor(null);
+                setDeleteOpen(true);
+              }}
+              sx={{ color: tokens.state.danger, fontSize: 14 }}
+            >
+              Delete plan
+            </MenuItem>
+          </Menu>
         </Box>
-        <IconButton
-          aria-label="Plan options"
-          onClick={(e) => setMenuAnchor(e.currentTarget)}
-          sx={{ color: tokens.text.secondary }}
-        >
-          <Icon name="more_horiz" size={22} />
-        </IconButton>
-        <Menu
-          anchorEl={menuAnchor}
-          open={Boolean(menuAnchor)}
-          onClose={() => setMenuAnchor(null)}
-          slotProps={{ paper: { sx: { bgcolor: tokens.surface.sheet } } }}
-        >
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              setDeleteOpen(true);
-            }}
-            sx={{ color: tokens.state.danger, fontSize: 14 }}
-          >
-            Delete plan
-          </MenuItem>
-        </Menu>
-      </Box>
 
-      {/* Body */}
-      <StaplesBar staples={staples} onEdit={() => setEditingStaples(true)} />
+        {/* Body */}
+        <StaplesBar staples={staples} onEdit={() => setEditingStaples(true)} />
 
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <PlanViewDesktop
-          mealsByDay={mealsByDay}
-          daysInOrder={daysInOrder}
-          dateLabelForDay={dateLabelForDay}
-          enabledMeals={enabledMeals}
-          todayDow={todayDow}
-          onEditMeal={onEditMeal}
+        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+          <PlanViewDesktop
+            mealsByDay={mealsByDay}
+            daysInOrder={daysInOrder}
+            dateLabelForDay={dateLabelForDay}
+            enabledMeals={enabledMeals}
+            todayDow={todayDow}
+            onEditMeal={onEditMeal}
+          />
+        </Box>
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          <PlanViewMobile
+            mealsByDay={mealsByDay}
+            daysInOrder={daysInOrder}
+            dateLabelForDay={dateLabelForDay}
+            enabledMeals={enabledMeals}
+            todayDow={todayDow}
+            onEditMeal={onEditMeal}
+          />
+        </Box>
+
+        {/* Per-meal editor */}
+        <MealEditorDialog
+          open={!!editing}
+          title={editing ? `${cap(editing.dow)} ${editing.mealType}` : ''}
+          subtitle={editing ? dateLabelForDay(editing.dow) : undefined}
+          meal={editingMeal}
+          onSave={(next) => {
+            if (editing) handleSaveMeal(editing.dow, editing.mealType, next);
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+          onFoodItemAdded={noopFoodItemAdded}
+        />
+
+        {/* Staples editor */}
+        <MealEditorDialog
+          isStaples
+          open={editingStaples}
+          title="Weekly staples"
+          meal={{ items: staples, skipped: false, skipReason: '' }}
+          onSave={(n) => {
+            handleSaveStaples(n.items);
+            setEditingStaples(false);
+          }}
+          onClose={() => setEditingStaples(false)}
+          onFoodItemAdded={noopFoodItemAdded}
+        />
+
+        {/* Delete confirm */}
+        <ConfirmDialog
+          open={deleteOpen}
+          title="Delete this plan?"
+          body={`"${plan.name}" and all its meals will be permanently removed.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            setDeleteOpen(false);
+            handleDelete();
+          }}
+          onCancel={() => setDeleteOpen(false)}
         />
       </Box>
-      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        <PlanViewMobile
-          mealsByDay={mealsByDay}
-          daysInOrder={daysInOrder}
-          dateLabelForDay={dateLabelForDay}
-          enabledMeals={enabledMeals}
-          todayDow={todayDow}
-          onEditMeal={onEditMeal}
-        />
-      </Box>
-
-      {/* Per-meal editor */}
-      <MealEditorDialog
-        open={!!editing}
-        title={editing ? `${cap(editing.dow)} ${editing.mealType}` : ''}
-        subtitle={editing ? dateLabelForDay(editing.dow) : undefined}
-        meal={editingMeal}
-        onSave={(next) => {
-          if (editing) handleSaveMeal(editing.dow, editing.mealType, next);
-          setEditing(null);
-        }}
-        onClose={() => setEditing(null)}
-        onFoodItemAdded={noopFoodItemAdded}
-      />
-
-      {/* Staples editor */}
-      <MealEditorDialog
-        isStaples
-        open={editingStaples}
-        title="Weekly staples"
-        meal={{ items: staples, skipped: false, skipReason: '' }}
-        onSave={(n) => {
-          handleSaveStaples(n.items);
-          setEditingStaples(false);
-        }}
-        onClose={() => setEditingStaples(false)}
-        onFoodItemAdded={noopFoodItemAdded}
-      />
-
-      {/* Delete confirm */}
-      <ConfirmDialog
-        open={deleteOpen}
-        title="Delete this plan?"
-        body={`"${plan.name}" and all its meals will be permanently removed.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={() => {
-          setDeleteOpen(false);
-          handleDelete();
-        }}
-        onCancel={() => setDeleteOpen(false)}
-      />
-    </Box>
+    </RecipeEmojiProvider>
   );
 }

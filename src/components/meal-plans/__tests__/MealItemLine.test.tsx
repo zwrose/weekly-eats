@@ -1,11 +1,22 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { MealItemLine } from '../MealItemLine';
+import { RecipeEmojiProvider } from '../recipe-emoji';
 import type { MealItem } from '@/types/meal-plan';
 
 afterEach(cleanup);
 
 describe('MealItemLine', () => {
+  it('shows the recipe emoji (looked up by id from context) before the name', () => {
+    render(
+      <RecipeEmojiProvider value={{ r1: '🍝' }}>
+        <MealItemLine item={{ type: 'recipe', id: 'r1', name: 'Pasta', quantity: 1 }} />
+      </RecipeEmojiProvider>
+    );
+    expect(screen.getByText('🍝')).toBeInTheDocument();
+    expect(screen.getByText('Pasta')).toBeInTheDocument();
+  });
+
   it('recipe with qty>1 shows the name and a × multiplier (no unit)', () => {
     const item: MealItem = { type: 'recipe', id: 'r1', name: 'Thai coconut curry', quantity: 2 };
     render(<MealItemLine item={item} />);

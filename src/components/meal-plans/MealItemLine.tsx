@@ -4,6 +4,7 @@ import { Box } from '@mui/material';
 import type { MealItem } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
 import { getUnitAbbreviationForm } from '@/lib/food-items-utils';
+import { useRecipeEmoji } from './recipe-emoji';
 
 export interface MealItemLineProps {
   item: MealItem;
@@ -18,12 +19,18 @@ const numSx = { fontVariantNumeric: 'tabular-nums' } as const;
 export function MealItemLine({ item, muted, expandGroup }: MealItemLineProps) {
   const ink = muted ? tokens.text.past : tokens.text.primary;
   const dim = muted ? tokens.text.muted : tokens.text.secondary;
+  const recipeEmoji = useRecipeEmoji(item.type === 'recipe' ? item.id : undefined);
 
   if (item.type === 'recipe') {
     return (
       <Box
         sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, fontSize: 13, lineHeight: 1.4 }}
       >
+        {recipeEmoji && (
+          <Box component="span" sx={{ fontSize: 13, lineHeight: 1 }}>
+            {recipeEmoji}
+          </Box>
+        )}
         <Box
           component="span"
           sx={{

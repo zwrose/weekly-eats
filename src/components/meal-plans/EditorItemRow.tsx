@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/Icon';
 import type { MealItem } from '@/types/meal-plan';
 import { tokens } from '@/lib/design-tokens';
 import { getUnitForm } from '@/lib/food-items-utils';
+import { useRecipeEmoji } from './recipe-emoji';
 
 export interface EditorItemRowProps {
   item: MealItem;
@@ -38,6 +39,7 @@ export function EditorItemRow({
   onRemove,
 }: EditorItemRowProps) {
   const isRecipe = item.type === 'recipe';
+  const emoji = useRecipeEmoji(isRecipe ? item.id : undefined);
   return (
     <Box
       sx={{
@@ -52,21 +54,36 @@ export function EditorItemRow({
         sx={{
           flex: 1,
           minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
           fontSize: 14,
-          // Recipes aren't interactive text — style them as plain content (the "Recipe"
-          // tag marks them), not in the accent color used for links/actions.
+          // Recipes aren't interactive text — style them as plain content (the emoji +
+          // "Recipe" tag mark them), not in the accent color used for links/actions.
           fontWeight: isRecipe ? 500 : 400,
           color: invalid ? tokens.state.warn : tokens.text.primary,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
         }}
       >
-        {item.name || (
-          <Box component="span" sx={{ fontStyle: 'italic', color: tokens.state.warn }}>
-            Pick a food or recipe
+        {emoji && (
+          <Box component="span" sx={{ flexShrink: 0, fontSize: 15, lineHeight: 1 }}>
+            {emoji}
           </Box>
         )}
+        <Box
+          component="span"
+          sx={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {item.name || (
+            <Box component="span" sx={{ fontStyle: 'italic', color: tokens.state.warn }}>
+              Pick a food or recipe
+            </Box>
+          )}
+        </Box>
       </Box>
       {isRecipe && (
         <Box

@@ -2,11 +2,27 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorItemRow } from '../EditorItemRow';
+import { RecipeEmojiProvider } from '../recipe-emoji';
 import type { MealItem } from '@/types/meal-plan';
 
 afterEach(cleanup);
 
 describe('EditorItemRow', () => {
+  it('shows the recipe emoji (looked up by id from context) before the name', () => {
+    render(
+      <RecipeEmojiProvider value={{ r1: '🍝' }}>
+        <EditorItemRow
+          item={{ type: 'recipe', id: 'r1', name: 'Pasta', quantity: 1 }}
+          onQtyClick={vi.fn()}
+          onUnitClick={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </RecipeEmojiProvider>
+    );
+    expect(screen.getByText('🍝')).toBeInTheDocument();
+    expect(screen.getByText('Pasta')).toBeInTheDocument();
+  });
+
   it('food row shows qty + unit chips and remove', async () => {
     const user = userEvent.setup();
     const onQty = vi.fn();
