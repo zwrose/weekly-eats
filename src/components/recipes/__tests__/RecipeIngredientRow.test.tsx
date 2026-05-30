@@ -41,6 +41,17 @@ describe('RecipeIngredientRow', () => {
     expect(screen.queryByRole('button', { name: /unit/i })).not.toBeInTheDocument();
   });
 
+  it('pluralizes the unit button to match the quantity', () => {
+    render(
+      <RecipeIngredientRow
+        ingredient={{ ...base, quantity: 2, unit: 'cup' }}
+        onChange={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('button', { name: /unit/i })).toHaveTextContent('cups');
+  });
+
   it('remove fires onRemove', async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();

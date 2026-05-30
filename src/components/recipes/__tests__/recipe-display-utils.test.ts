@@ -25,9 +25,16 @@ describe('formatIngredientQty', () => {
     expect(formatIngredientQty(2, 'each')).toBe('2');
     expect(formatIngredientQty(3, undefined)).toBe('3');
   });
-  it('renders qty + unit otherwise, keeping fractions', () => {
-    expect(formatIngredientQty(0.5, 'cup')).toBe('0.5 cup');
-    expect(formatIngredientQty(1, 'lb')).toBe('1 lb');
+  it('pluralizes the unit to match the quantity', () => {
+    expect(formatIngredientQty(1, 'cup')).toBe('1 cup');
+    expect(formatIngredientQty(2, 'cup')).toBe('2 cups');
+    expect(formatIngredientQty(3, 'teaspoon')).toBe('3 teaspoons');
+  });
+  it('treats non-singular quantities (fractions, zero) as plural', () => {
+    expect(formatIngredientQty(0.5, 'cup')).toBe('0.5 cups');
+  });
+  it('passes unknown units through unchanged', () => {
+    expect(formatIngredientQty(2, 'splash')).toBe('2 splash');
   });
 });
 

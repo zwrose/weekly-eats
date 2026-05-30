@@ -7,6 +7,7 @@ import { tokens } from '@/lib/design-tokens';
 import { Icon } from '@/components/ui/Icon';
 import { QtyEditor } from '@/components/meal-plans/QtyEditor';
 import { UnitEditor } from '@/components/meal-plans/UnitEditor';
+import { getUnitForm } from '@/lib/food-items-utils';
 import type { RecipeIngredient } from '@/types/recipe';
 
 export interface RecipeIngredientRowProps {
@@ -67,7 +68,7 @@ export function RecipeIngredientRow({ ingredient, onChange, onRemove }: RecipeIn
               borderColor: tokens.border.subtle,
             }}
           >
-            {ingredient.unit || 'unit'}
+            {ingredient.unit ? getUnitForm(ingredient.unit, ingredient.quantity) : 'unit'}
             <Box component="span" sx={{ fontSize: 9, color: tokens.text.muted }}>
               ▾
             </Box>

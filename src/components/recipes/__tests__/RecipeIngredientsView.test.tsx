@@ -10,7 +10,7 @@ const grouped: RecipeIngredientList[] = [
   {
     title: 'Pasta',
     ingredients: [
-      { type: 'foodItem', id: 'a', quantity: 1, unit: 'lb', name: 'spaghetti' },
+      { type: 'foodItem', id: 'a', quantity: 2, unit: 'cup', name: 'spaghetti' },
       {
         type: 'foodItem',
         id: 'b',
@@ -27,7 +27,7 @@ describe('RecipeIngredientsView', () => {
   it('renders group titles, qty+unit, names, and prep', () => {
     render(<RecipeIngredientsView ingredients={grouped} />);
     expect(screen.getByText('Pasta')).toBeInTheDocument();
-    expect(screen.getByText('1 lb')).toBeInTheDocument();
+    expect(screen.getByText('2 cups')).toBeInTheDocument(); // unit pluralized to match qty
     expect(screen.getByText('spaghetti')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument(); // 'each' unit omitted
     expect(screen.getByText(/zest \+ juice/)).toBeInTheDocument();

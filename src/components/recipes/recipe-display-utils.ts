@@ -1,4 +1,5 @@
 import { tokens } from '@/lib/design-tokens';
+import { getUnitForm } from '@/lib/food-items-utils';
 import type { RecipeIngredientList } from '@/types/recipe';
 
 export type AccessLevel = 'private' | 'shared-by-you' | 'shared-by-others';
@@ -23,10 +24,14 @@ export function accessLevelMeta(access: AccessLevel): { label: string; color: st
   }
 }
 
-/** Quantity + unit for an ingredient row; "each"/missing units render bare (matches the artboard). */
+/**
+ * Quantity + unit for an ingredient row; "each"/missing units render bare (matches the artboard).
+ * The unit is pluralized to match the quantity ("2 cup" → "2 cups", "1 cup" → "1 cup") via the
+ * same `getUnitForm` helper the editor and meal-plan rows use; unknown units pass through as-is.
+ */
 export function formatIngredientQty(qty: number, unit?: string): string {
   if (!unit || unit === 'each') return String(qty);
-  return `${qty} ${unit}`;
+  return `${qty} ${getUnitForm(unit, qty)}`;
 }
 
 /** Total ingredient count across all groups/lists. */
