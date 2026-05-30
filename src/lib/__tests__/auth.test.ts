@@ -42,7 +42,11 @@ describe('redirect callback', () => {
     const url = `${PREVIEW}/meal-plans`;
     expect(redirect({ url, baseUrl })).toBe(url);
   });
-  it('accepts the production origin', () => {
+  it('accepts the production custom domain origin', () => {
+    const url = 'https://weekly-eats.zamilyfam.com/recipes';
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
+  it('accepts the production .vercel.app origin', () => {
     const url = 'https://weekly-eats.vercel.app/recipes';
     expect(redirect({ url, baseUrl })).toBe(url);
   });

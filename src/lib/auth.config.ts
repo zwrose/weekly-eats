@@ -5,11 +5,12 @@ import Google from 'next-auth/providers/google';
 
 // Preview-origin allowlist (defense-in-depth beyond the signed OAuth state).
 // Match on the EXTRACTED origin, never the raw url — see the redirect callback.
-const PROD_ORIGIN = 'https://weekly-eats.vercel.app';
+// Production is reachable at the custom domain (canonical) and the .vercel.app alias.
+const PROD_ORIGINS = ['https://weekly-eats.zamilyfam.com', 'https://weekly-eats.vercel.app'];
 const PREVIEW_ORIGIN = /^https:\/\/weekly-eats-[a-z0-9-]+-zach-roses-projects\.vercel\.app$/;
 
 function isAllowedOrigin(origin: string, baseUrl: string): boolean {
-  return origin === baseUrl || origin === PROD_ORIGIN || PREVIEW_ORIGIN.test(origin);
+  return origin === baseUrl || PROD_ORIGINS.includes(origin) || PREVIEW_ORIGIN.test(origin);
 }
 
 // Edge-safe config shared by auth.ts (full, Node runtime) and middleware.ts.
