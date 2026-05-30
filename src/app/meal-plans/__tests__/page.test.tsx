@@ -174,6 +174,16 @@ describe('MealPlansPage - index navigation', () => {
       expect(screen.getByRole('heading', { name: /your plans/i })).toBeInTheDocument();
     });
   });
+
+  it('the Template settings button navigates to the template route', async () => {
+    const user = userEvent.setup();
+    render(<MealPlansPage />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /template settings/i })).toBeInTheDocument()
+    );
+    await user.click(screen.getByRole('button', { name: /template settings/i }));
+    expect(push).toHaveBeenCalledWith('/meal-plans/template');
+  });
 });
 
 describe('MealPlansPage - Past (last 6 weeks)', () => {
@@ -260,13 +270,13 @@ describe('MealPlansPage - View older reveal', () => {
 describe('MealPlansPage - Auto-focus', () => {
   it('auto-focuses Email Address field when share meal plans dialog opens', async () => {
     const { useDialog } = await import('@/lib/hooks');
-    // useDialog is called: createDialog, templateDialog, staplesEditorDialog, shareDialog.
-    // shareDialog is the 4th call — open it.
+    // useDialog is called: createDialog, shareDialog (template editing moved to its own route).
+    // shareDialog is the 2nd call — open it.
     let callCount = 0;
     (useDialog as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
-      const index = callCount % 4;
+      const index = callCount % 2;
       callCount++;
-      if (index === 3) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };
+      if (index === 1) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };
       return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
     });
 

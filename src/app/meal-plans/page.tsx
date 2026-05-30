@@ -7,10 +7,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
   Alert,
   IconButton,
@@ -19,7 +15,6 @@ import {
   ListItem,
   ListItemText,
   TextField,
-  Divider,
 } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
@@ -31,21 +26,16 @@ import {
   MealPlanWithTemplate,
   MealPlanTemplate,
   CreateMealPlanRequest,
-  DayOfWeek,
-  MealType,
-  MealItem,
 } from '../../types/meal-plan';
 
 import {
   fetchMealPlans,
   createMealPlan,
   fetchMealPlanTemplate,
-  updateMealPlanTemplate,
   DEFAULT_TEMPLATE,
 } from '../../lib/meal-plan-utils';
 import dynamic from 'next/dynamic';
 import AddFoodItemDialog from '../../components/AddFoodItemDialog';
-import { MealEditorDialog } from '@/components/meal-plans/MealEditorDialog';
 const MealPlanCreateDialog = dynamic(() => import('@/components/MealPlanCreateDialog'), {
   ssr: false,
 });
@@ -144,8 +134,6 @@ function MealPlansPageContent() {
   const [pastPlans, setPastPlans] = useState<MealPlanWithTemplate[]>([]);
   const [template, setTemplate] = useState<MealPlanTemplate | null>(null);
   const createDialog = useDialog();
-  const templateDialog = useDialog();
-  const staplesEditorDialog = useDialog();
 
   // State for adding food items (legacy AddFoodItemDialog path)
   const [addFoodItemDialogOpen, setAddFoodItemDialogOpen] = useState(false);
@@ -196,22 +184,6 @@ function MealPlansPageContent() {
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
-
-  // Template form state
-  const [templateForm, setTemplateForm] = useState<{
-    startDay: DayOfWeek;
-    meals: {
-      [key in MealType]: boolean;
-    };
-    weeklyStaples: MealItem[];
-  }>({
-    startDay: DEFAULT_TEMPLATE.startDay,
-    meals: {
-      ...DEFAULT_TEMPLATE.meals,
-      staples: false, // Staples are managed separately
-    },
-    weeklyStaples: [],
-  });
 
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
@@ -277,20 +249,6 @@ function MealPlansPageContent() {
       setSharedUsers(invitedUsers);
       setMealPlanOwners(owners);
       setUserSettings(settingsResponse.settings || null);
-
-      // Initialize template form with current template values
-      if (userTemplate) {
-        setTemplateForm({
-          startDay: userTemplate.startDay,
-          meals: {
-            breakfast: userTemplate.meals.breakfast ?? true,
-            lunch: userTemplate.meals.lunch ?? true,
-            dinner: userTemplate.meals.dinner ?? true,
-            staples: false, // Staples are managed separately
-          },
-          weeklyStaples: userTemplate.weeklyStaples || [],
-        });
-      }
     } catch (error) {
       console.error('Error loading meal plans:', error);
     } finally {
@@ -421,17 +379,6 @@ function MealPlansPageContent() {
     setSelectedOwner(null);
   };
 
-  const handleUpdateTemplate = async () => {
-    try {
-      await updateMealPlanTemplate(templateForm);
-      templateDialog.closeDialog();
-      loadData();
-    } catch (error) {
-      console.error('Error updating template:', error);
-      showSnackbar('Failed to update template', 'error');
-    }
-  };
-
   const handleAddFoodItem = async (
     foodItemData:
       | {
@@ -500,10 +447,6 @@ function MealPlansPageContent() {
       showSnackbar('Failed to add food item', 'error');
     }
   };
-
-  // MealEditorDialog requires a FoodItem-shaped callback; the staples editor only
-  // needs items to land in the draft, so this is a no-op (matches PlanDetail).
-  const noopFoodItemAdded = useCallback(async () => {}, []);
 
   // Check for overlapping meal plans
   const checkForOverlaps = useCallback(
@@ -609,7 +552,7 @@ function MealPlansPageContent() {
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <IconButton
                 aria-label="Template settings"
-                onClick={() => templateDialog.openDialog()}
+                onClick={() => router.push('/meal-plans/template')}
                 sx={{ color: tokens.text.secondary }}
               >
                 <Icon name="settings" size={22} />
@@ -813,135 +756,6 @@ function MealPlansPageContent() {
             skippedDefault={skippedDefault}
             template={template}
             onSubmit={handleCreateMealPlan}
-          />
-
-          {/* Template Settings Dialog */}
-          <Dialog
-            open={templateDialog.open}
-            onClose={templateDialog.closeDialog}
-            maxWidth="sm"
-            fullWidth
-            sx={responsiveDialogStyle}
-          >
-            <DialogTitle onClose={templateDialog.closeDialog}>Template Settings</DialogTitle>
-            <DialogContent>
-              <Box sx={{ pt: 2 }}>
-                {mealPlanOwners.length > 0 && (
-                  <Alert severity="info" sx={{ mb: 3 }}>
-                    <Typography variant="body2">
-                      Editing your own template. To edit a shared user&apos;s template, create or
-                      edit one of their meal plans.
-                    </Typography>
-                  </Alert>
-                )}
-
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel>Start Day</InputLabel>
-                  <Select
-                    value={templateForm.startDay}
-                    label="Start Day"
-                    onChange={(e) =>
-                      setTemplateForm({ ...templateForm, startDay: e.target.value as DayOfWeek })
-                    }
-                  >
-                    <MenuItem value="monday">Monday</MenuItem>
-                    <MenuItem value="tuesday">Tuesday</MenuItem>
-                    <MenuItem value="wednesday">Wednesday</MenuItem>
-                    <MenuItem value="thursday">Thursday</MenuItem>
-                    <MenuItem value="friday">Friday</MenuItem>
-                    <MenuItem value="saturday">Saturday</MenuItem>
-                    <MenuItem value="sunday">Sunday</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <Typography variant="subtitle2" gutterBottom>
-                  Meals to Include:
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
-                  {(['breakfast', 'lunch', 'dinner'] as MealType[]).map((meal) => (
-                    <Box key={meal} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <input
-                        type="checkbox"
-                        id={meal}
-                        checked={templateForm.meals?.[meal] || false}
-                        onChange={(e) =>
-                          setTemplateForm({
-                            ...templateForm,
-                            meals: { ...templateForm.meals, [meal]: e.target.checked },
-                          })
-                        }
-                      />
-                      <label htmlFor={meal} style={{ marginLeft: 8, textTransform: 'capitalize' }}>
-                        {meal}
-                      </label>
-                    </Box>
-                  ))}
-                </Box>
-
-                <Divider sx={{ my: 3 }} />
-
-                <Typography variant="subtitle2" gutterBottom>
-                  Weekly Staples (Optional):
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  These items will be automatically added once to new meal plans.
-                </Typography>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 2,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: tokens.text.secondary }}>
-                    {templateForm.weeklyStaples.length === 0
-                      ? 'No staples yet'
-                      : `${templateForm.weeklyStaples.length} ${
-                          templateForm.weeklyStaples.length === 1 ? 'item' : 'items'
-                        }`}
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => staplesEditorDialog.openDialog()}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Edit staples
-                  </Button>
-                </Box>
-              </Box>
-
-              <DialogActions primaryButtonIndex={1}>
-                <Button
-                  onClick={templateDialog.closeDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateTemplate}
-                  variant="contained"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Save Settings
-                </Button>
-              </DialogActions>
-            </DialogContent>
-          </Dialog>
-
-          {/* Staples Editor (nested in template flow) */}
-          <MealEditorDialog
-            isStaples
-            open={staplesEditorDialog.open}
-            title="Weekly staples"
-            meal={{ items: templateForm.weeklyStaples, skipped: false, skipReason: '' }}
-            onSave={(next) => {
-              setTemplateForm({ ...templateForm, weeklyStaples: next.items });
-              staplesEditorDialog.closeDialog();
-            }}
-            onClose={() => staplesEditorDialog.closeDialog()}
-            onFoodItemAdded={noopFoodItemAdded}
           />
 
           {/* Leave Sharing Confirmation Dialog */}
