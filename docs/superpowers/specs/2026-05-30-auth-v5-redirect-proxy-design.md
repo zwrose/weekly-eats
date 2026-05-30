@@ -254,7 +254,23 @@ vector the issue calls out.
   assert against that. Preserve all existing gate cases (401/403 JSON for API, 307
   redirect to `/pending-approval`, **fail-closed `!== true`** on missing
   `isApproved`, admin bypass, exempt paths).
+- **`src/components/__tests__/BottomNav.test.tsx`** — the only client-component
+  test that asserts on the renamed option shape. Update the assertion (`line 353`:
+  `toHaveBeenCalledWith({ callbackUrl: '/' })` → `{ redirectTo: '/' }`) and the mock
+  option type (`line 11`: `{ callbackUrl?: string }` → `{ redirectTo?: string }`).
 - **`rewriteWorktreeEnv` unit test** — update for the dropped `NEXTAUTH_URL` line.
+
+> **Test-impact set is grep-verified exhaustive.** All test files were grepped for
+> `next-auth/next`, `next-auth/jwt`, `getServerSession`, `getToken`, `authOptions`,
+> `next-auth/react`, `vi.mock('@/lib/auth'…)`, and the `callbackUrl`/`signOut` call
+> shape. The bullets above are the complete set that the migration touches. Notably
+> unaffected: `SignInButton.test.tsx` (ignores `signIn` args, asserts only
+> `toHaveBeenCalled()`); `api/ably/token` and `api/user/settings` route tests (mock
+> the `requireApprovedSession` chokepoint, whose signature is preserved); the
+> page-level `next-auth/react` mocks (`useSession`/`SessionProvider` only); and
+> `middleware.test.ts:83`, whose `?callbackUrl=…` assertion targets the app-owned
+> query param that deliberately keeps its name. `Header.tsx` and
+> `pending-approval/page.tsx` have no test files.
 
 ## Docs
 
