@@ -126,6 +126,16 @@ at the Protected Resource Metadata URL.
   a TTL/last-used cleanup policy (see §9). Registration is open per RFC 7591 but
   bounded by the rate limit; restricting to Claude's known client metadata is an option
   if abuse appears.
+- **`redirect_uri` validation (S2):** `/register` rejects non-HTTPS `redirect_uris`
+  (except `http://localhost`/`127.0.0.1` per RFC 8252). The AS stores them verbatim and
+  matches **byte-for-byte** at `/authorize` — no prefix or wildcard matching. Without
+  this, open registration lets an attacker register `redirect_uri=https://attacker.com`
+  and exfiltrate a victim's auth code (RFC 7591 §5 open-redirector risk).
+- **Auth-code single-use (MA):** `/token` consumes the auth code with an **atomic**
+  `findOneAndDelete` (delete-on-exchange) so two concurrent exchanges of one code cannot
+  both succeed on serverless. If an already-consumed code is presented again → `400`
+  **and** revoke the access + refresh tokens issued from the first exchange (RFC 6749
+  §4.1.2).
 
 **Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
 every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
@@ -151,8 +161,9 @@ Pure, transport-agnostic functions, one module per domain
 (`recipes.ts`, `food-items.ts`, `meal-plans.ts`, `pantry.ts`, `shopping-lists.ts`).
 
 - Signature shape: `(userId: string, input: …) => Promise<Result>`.
-- Encapsulate validation, ownership checks, user-scoping, and Mongo access.
-- Throw typed domain errors from **`src/lib/service-errors.ts`** (see §8) — a new
+- Encapsulate validation — **including `ObjectId.isValid(id)` for id parameters (ME)**,
+  per the project convention — plus ownership checks, user-scoping, and Mongo access.
+- Throw typed domain errors from **`src/lib/service-errors.ts`** (see §8a) — a new
   Phase 1 deliverable, since `src/lib/errors.ts` today exports only string constants,
   not throwable classes.
 - Existing route handlers are refactored to call these (behavior-preserving).
@@ -183,10 +194,16 @@ errors. Initial (Phase set, §11):
 
 **Ownership-bearing fields (I3):** `food_items.create` via MCP **always forces
 `isGlobal: false`** (personal items only). The existing HTTP route persists a
-caller-supplied `isGlobal` with no admin gate (`food-items/route.ts`), so an agent
+caller-supplied `isGlobal` with no admin gate (`food-items/route.ts:162`), so an agent
 could otherwise publish globally-visible items into every user's catalog during import.
 If admin-created globals are ever wanted, that path must re-check `isAdmin` from the MCP
-auth context explicitly. Tool tests verify the forced `isGlobal: false` (see §8).
+auth context explicitly. Tool tests verify the forced `isGlobal: false` (see §8a).
+
+**Override layer (A1):** to keep "routes and tools call identical service functions"
+(§6.3) true, the `createFoodItem` **service** keeps accepting an `isGlobal` parameter
+(preserving the HTTP route's current behavior). The **MCP tool wrapper** is what passes
+`isGlobal: false` — the restriction lives in the tool, not the service. This avoids
+silently changing the HTTP create path while still constraining the agent surface.
 
 ### 6.6 `recipe-import` skill
 
@@ -241,8 +258,8 @@ pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
 - **Service layer (Phase 1)** — unit tests per function: happy path; `userId` scoping
   (never returns/ mutates another user's docs); ownership rejection → `ForbiddenError`;
   validation rejection → `ValidationError` with the right `@/lib/errors` constant;
-  unknown id → `NotFoundError`. Plus: existing route-handler tests still pass after the
-  refactor (behavior-preserving).
+  **malformed (non-ObjectId) id → `ValidationError` (ME)**; unknown id → `NotFoundError`.
+  Plus: existing route-handler tests still pass after the refactor (behavior-preserving).
 - **MCP tools (Phase 1)** — mock `@/lib/services/*` (not Mongo): correct service called
   with the authed `userId` from `extra.authInfo`; domain errors mapped to `isError`
   responses; zod input rejection produces a readable MCP error; `food_items.create`
@@ -251,14 +268,27 @@ pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
   expired token → `undefined`; revoked token (`revokedAt` set) → `undefined`;
   unapproved + non-admin → `undefined`; admin bypasses approval; malformed/forged
   bearer → `undefined`; resource-indicator mismatch → `undefined`.
+  **Hashed-bearer lookup (T1):** a record keyed on `SHA-256(T)` matches raw bearer `T`,
+  and submitting `SHA-256(T)` as the bearer does **not** match — proves the hash step is
+  live, not just documented. **Post-issuance revocation (T3):** with the `mcpTokens`
+  record still valid (non-expired, non-revoked) but the **live `users` lookup** returning
+  `isApproved: false`, `verifyToken` → `undefined` — proves the live lookup governs, not
+  a value cached in the token (the M1 guarantee).
 - **OAuth AS endpoints (Phase 2)** — `/token`: successful PKCE code exchange;
   `code_verifier` mismatch → 400; missing verifier → 400; expired auth code → 400;
-  replayed (single-use) code → 400; successful refresh **with** approval re-check;
-  refresh by a now-unapproved user → 401 + token deleted; rotated-token replay revokes
-  the chain. `/authorize`: missing `code_challenge` → 400; missing/!verified `state` →
-  400; `redirect_uri` mismatch → 400; unapproved user cannot obtain a code. `/revoke`:
-  valid revocation succeeds; unknown token succeeds silently (RFC 7009 §2.2);
-  unauthenticated → 401. `/register`: rate-limit enforced.
+  replayed (single-use) code → 400 **and tokens from the first exchange are revoked
+  (MA)**; successful refresh **with** approval re-check; refresh by a now-unapproved user
+  → 401 + token deleted; rotated-token replay revokes the chain. **Idle/sliding TTL
+  (T2):** a successful refresh sets the replacement token's expiry relative to the
+  exchange time; a token left unused past its idle window is rejected even if the
+  absolute time since first issuance is short. `/authorize`: missing `code_challenge` →
+  400; missing/!verified `state` → 400; **`state` cross-session isolation (MC)** — a
+  valid `state` value generated in session A is rejected when replayed in session B;
+  `redirect_uri` mismatch → 400; unapproved user cannot obtain a code; **happy path (MD)**
+  — valid `code_challenge` + matching `state` + approved user → code issued, `state`
+  single-use. `/register`: rate-limit enforced; **non-HTTPS `redirect_uri` (non-localhost)
+  → 400 (S2)**. `/revoke`: valid revocation succeeds; unknown token succeeds silently
+  (RFC 7009 §2.2); unauthenticated → 401.
 - **Phase 1 dev-token gate (Phase 2)** — integration test asserting the production
   configuration rejects the static dev token (see §11, C1).
 - **Skill (Phase 3)** — validated manually.
@@ -269,14 +299,19 @@ No changes to existing collections. New collections for the AS:
 
 - `mcpClients` — registered OAuth clients (from DCR). Carries a `lastUsedAt`/TTL
   cleanup policy so abandoned registrations are reaped (I6).
-- `mcpAuthCodes` — short-lived PKCE-bound authorization codes (single-use).
+- `mcpAuthCodes` — short-lived PKCE-bound authorization codes. **Single-use enforced
+  via an atomic `findOneAndDelete` on exchange (MA)** — not a read-then-delete — so
+  concurrent serverless exchanges of one code cannot both succeed.
 - `mcpTokens` — access + refresh tokens bound to `userId`, with expiry and a
   `revokedAt` field. Refresh tokens use rotation (a `replacedBy`/chain reference) for
   reuse detection and an idle/sliding TTL (§6.2).
 
-**Storage format (M2):** access tokens and auth codes are persisted as **SHA-256
-hashes**, never plaintext — the raw secret is returned to the client once at issuance
-and never stored. A database read therefore cannot impersonate a user.
+**Storage format (M2 + S1):** access tokens, **refresh tokens**, and auth codes are all
+persisted as **SHA-256 hashes**, never plaintext — the raw secret is returned to the
+client once at issuance and never stored. The token endpoint hashes an incoming refresh
+token before lookup and stores its rotated replacement as a hash. A database read
+therefore cannot impersonate a user or mint new tokens (refresh tokens are the
+long-lived secret, so hashing them is as important as hashing access tokens).
 
 **Revocation (M3):** `/revoke` (and refresh-rotation/approval-loss) sets `revokedAt`
 rather than deleting the document, so `verifyToken` and the token endpoint **must check
@@ -285,7 +320,9 @@ rather than deleting the document, so `verifyToken` and the token endpoint **mus
 revocation check.
 
 Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`
-expiry; `mcpClients` cleanup; lookup indexes on the hashed-token fields).
+expiry; `mcpClients` cleanup; lookup indexes on the hashed-token fields). **Also add
+the three `mcp*` collections to the hardcoded list in `dropAllIndexes()`
+(`database-indexes.ts:155`) (MB)**, or dev/test resets leave stale `mcp*` indexes behind.
 
 ## 10. Security considerations
 
@@ -349,6 +386,15 @@ OAuth AS now specifies `state`/CSRF (I4), refresh re-approval + rotation + idle 
 `revokedAt`-based revocation (M3), and live approval re-check (M1); the spec adds a
 Testing strategy (§8a, I1), a `service-errors.ts` deliverable (I2), the
 `food_items.create` `isGlobal: false` rule (I3), and the Phase 1 dev-token gate (C1).
+
+Resolved during plan review loop 2 (see the same review file): refresh tokens are now
+hashed too (S1); `/register` validates `redirect_uri` (HTTPS + byte-match, S2); the
+`isGlobal: false` override is pinned to the tool layer (A1); auth codes are single-use
+via atomic `findOneAndDelete` + revoke-on-replay (MA); `dropAllIndexes()` must include
+the `mcp*` collections (MB); §6.3 calls out `ObjectId.isValid` (ME); and §8a gains test
+cases for hashed-bearer lookup (T1), idle TTL (T2), post-issuance live revocation (T3),
+`state` cross-session isolation (MC), the `/authorize` happy path (MD), and malformed
+ids (ME).
 
 Remaining:
 
