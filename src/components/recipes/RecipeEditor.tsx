@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Box, Button, ButtonBase, InputBase, TextField } from '@mui/material';
+import { Box, Button, ButtonBase, InputBase, Menu, MenuItem, TextField } from '@mui/material';
 import { tokens } from '@/lib/design-tokens';
 import { Icon } from '@/components/ui/Icon';
 import { createRecipe, updateRecipe, deleteRecipe } from '@/lib/recipe-utils';
@@ -102,6 +102,7 @@ export function RecipeEditor({
   const [discardOpen, setDiscardOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const ingredientsRef = useRef<RecipeIngredientsEditorHandle>(null);
 
   const valid = draft.title.trim() !== '' && validateRecipeIngredients(draft.ingredients);
@@ -192,6 +193,28 @@ export function RecipeEditor({
     );
   };
 
+  // ⋯ overflow button (edit mode) — houses Delete.
+  const moreButton = (
+    <ButtonBase
+      aria-label="More options"
+      onClick={(e) => setMenuAnchor(e.currentTarget)}
+      sx={{
+        width: 34,
+        height: 34,
+        borderRadius: `${tokens.radius.md}px`,
+        border: `1px solid ${tokens.border.subtle}`,
+        color: tokens.text.secondary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        '&:hover': { color: tokens.text.primary, bgcolor: tokens.surface.elevated },
+      }}
+    >
+      <Icon name="more_horiz" size={18} />
+    </ButtonBase>
+  );
+
   return (
     <Box
       sx={{
@@ -272,20 +295,23 @@ export function RecipeEditor({
           {mobileTitle}
         </Box>
 
-        {/* Mobile: Save (amber text) */}
-        <ButtonBase
-          onClick={save}
-          disabled={!valid || saving}
-          sx={{
-            display: { xs: 'inline-flex', md: 'none' },
-            ml: 'auto',
-            fontSize: 14,
-            fontWeight: 600,
-            color: valid && !saving ? tokens.section.recipes : tokens.text.muted,
-          }}
+        {/* Mobile: Save (amber text) + ⋯ */}
+        <Box
+          sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, ml: 'auto' }}
         >
-          Save
-        </ButtonBase>
+          <ButtonBase
+            onClick={save}
+            disabled={!valid || saving}
+            sx={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: valid && !saving ? tokens.section.recipes : tokens.text.muted,
+            }}
+          >
+            Save
+          </ButtonBase>
+          {mode === 'edit' && moreButton}
+        </Box>
 
         {/* Desktop: Cancel (ghost) + Save (filled pill) */}
         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, ml: 'auto' }}>
@@ -322,8 +348,43 @@ export function RecipeEditor({
           >
             Save
           </Button>
+          {mode === 'edit' && moreButton}
         </Box>
       </Box>
+
+      {/* ── ⋯ menu (Delete) ── */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.elevated,
+              border: `1px solid ${tokens.border.subtle}`,
+              color: tokens.text.primary,
+              minWidth: 160,
+              mt: 0.75,
+              borderRadius: `${tokens.radius.lg}px`,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+              '& .MuiList-root': { py: 0.5 },
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setDeleteOpen(true);
+          }}
+          sx={{ color: tokens.state.danger, fontSize: 14, minHeight: 0, py: 1, px: 1.5, gap: 1 }}
+        >
+          <Icon name="delete" size={16} color={tokens.state.danger} />
+          Delete recipe
+        </MenuItem>
+      </Menu>
 
       {/* ── Body ── */}
       <Box
@@ -385,8 +446,14 @@ export function RecipeEditor({
         </Box>
 
         {/* Access + Rating (side by side on desktop) */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-          <Box sx={{ flex: { md: 1 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 3, md: 4 },
+          }}
+        >
+          <Box sx={{ width: { md: 420 }, flexShrink: 0 }}>
             <FieldLabel>Access</FieldLabel>
             <Box sx={{ display: 'flex', gap: 1 }}>
               {accessOption('personal', 'Personal')}
@@ -490,32 +557,6 @@ export function RecipeEditor({
             />
           </Box>
         </Box>
-
-        {/* Delete button (edit mode only) */}
-        {mode === 'edit' && (
-          <Box sx={{ pt: 2, borderTop: `1px solid ${tokens.border.subtle}` }}>
-            <Button
-              onClick={() => setDeleteOpen(true)}
-              sx={{
-                width: { xs: '100%', md: 'auto' },
-                height: { xs: 40, md: 38 },
-                color: tokens.state.danger,
-                border: `1px solid ${tokens.state.danger}55`,
-                borderRadius: `${tokens.radius.lg}px`,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: 14,
-                px: 2,
-                '&:hover': { bgcolor: tokens.state.dangerMuted },
-              }}
-            >
-              <Icon name="delete" size={16} color={tokens.state.danger} />
-              <Box component="span" sx={{ ml: 1 }}>
-                Delete recipe
-              </Box>
-            </Button>
-          </Box>
-        )}
       </Box>
 
       {/* ── Emoji Picker ── */}

@@ -115,7 +115,9 @@ describe('RecipeEditor', () => {
         onDeleted={onDeleted}
       />
     );
-    await user.click(screen.getByRole('button', { name: /delete recipe/i }));
+    // Delete now lives in the header ⋯ menu (mobile + desktop each render one).
+    await user.click(screen.getAllByRole('button', { name: /more options/i })[0]);
+    await user.click(screen.getByRole('menuitem', { name: /delete recipe/i }));
     await user.click(screen.getByRole('button', { name: /^delete$/i })); // confirm
     await waitFor(() => expect(deleteRecipe).toHaveBeenCalledWith('r1'));
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
