@@ -746,7 +746,10 @@ Replace `const { getServerSession } = await import('next-auth/next');` with `con
 
 - [ ] **Step 4: Replace every mock-set call**
 
-`(getServerSession as any).mockResolvedValueOnce(...)` → `(auth as any).mockResolvedValueOnce(...)`, and `(getServerSession as any).mockReset()` → `(auth as any).mockReset()`. (Some files use `.mockResolvedValue`; rename the handle the same way regardless of method.) Per-file variation: a few tests import the handle at the top rather than via `await import` — in those, rename the import source `next-auth/next` → `@/lib/auth` and the symbol `getServerSession` → `auth`.
+`(getServerSession as any).mockResolvedValueOnce(...)` → `(auth as any).mockResolvedValueOnce(...)`, and `(getServerSession as any).mockReset()` → `(auth as any).mockReset()`. (Some files use `.mockResolvedValue`; rename the handle the same way regardless of method.) Per-file variations to watch for:
+
+- A few tests import the handle at the top rather than via `await import` — rename the import source `next-auth/next` → `@/lib/auth` and the symbol `getServerSession` → `auth`.
+- **`src/app/api/recipes/user-data/batch/__tests__/route.test.ts:43`** uses a `vi.mocked()` alias: `const mockedGetSession = vi.mocked(getServerSession)`. After Step 3 renames the import to `auth`, update this line to `const mockedGetSession = vi.mocked(auth)` (the 8 `mockedGetSession.…` call sites below it then need no further change). This is the only file using this alias form.
 
 - [ ] **Step 5: Run the full route-test suite**
 
@@ -970,7 +973,7 @@ With `trustHost: true`, worktrees on different ports no longer need `NEXTAUTH_UR
 
 - [ ] **Step 1: Update the test first (red)**
 
-Rewrite `test/manual/__tests__/setup-worktree.test.ts`:
+Rewrite `test/manual/__tests__/setup-worktree.test.ts`. Note the last case is the genuine red-green guard for this task's behavior change — it feeds a stray `NEXTAUTH_URL` line and asserts the function leaves it **verbatim** (no port rewrite):
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -996,10 +999,15 @@ describe('rewriteWorktreeEnv', () => {
     expect(out.match(/^PORT=/gm)?.length).toBe(1);
     expect(out).toMatch(/^PORT=3456$/m);
   });
+
+  it('no longer rewrites a NEXTAUTH_URL port (trustHost handles the host)', () => {
+    const out = rewriteWorktreeEnv(main + '\nNEXTAUTH_URL=http://localhost:3000', { port: 3456 });
+    expect(out).toContain('NEXTAUTH_URL=http://localhost:3000'); // left verbatim, NOT rewritten to :3456
+  });
 });
 ```
 
-- [ ] **Step 2: Run it — expect FAIL** (the function still references `NEXTAUTH_URL`, but more importantly the old test asserted on it)
+- [ ] **Step 2: Run it — expect the new case to FAIL (red)**
 
 Run:
 
@@ -1007,7 +1015,7 @@ Run:
 MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run test/manual/__tests__/setup-worktree.test.ts
 ```
 
-Expected: still passes structurally (the new test doesn't assert NEXTAUTH_URL), but proceed to update the function so the dead rewrite line is removed.
+Expected: the first three cases PASS, and the new `no longer rewrites a NEXTAUTH_URL port` case FAILS against current code — the existing rewrite turns `:3000` into `:3456`, so `toContain('…:3000')` fails. This is the red that proves the test guards the behavior change. Proceed to Step 3 to make it green.
 
 - [ ] **Step 3: Update `rewriteWorktreeEnv`**
 
