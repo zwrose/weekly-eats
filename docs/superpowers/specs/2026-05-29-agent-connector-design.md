@@ -151,21 +151,32 @@ at the Protected Resource Metadata URL.
   equals the code's issuing `clientId` and the `redirect_uri` matches the authorization
   request's (both stored on `mcpAuthCodes`, §9) — OAuth 2.1 §4.1.3, so a different
   registered client cannot redeem another client's code.
-- **Explicit user consent (CS1):** after Google login and **before** issuing an auth
-  code, `/authorize` renders a consent screen naming the requesting client and the access
-  it will receive ("Allow _\<client_name\>_ to read and modify your Weekly Eats recipes,
-  food items, meal plans, pantry, and shopping lists?") with Allow / Deny. A code is
-  issued **only** on explicit Allow; Deny redirects back with `error=access_denied`.
-  Consent is **never auto-skipped just because a Google/NextAuth session already exists**
-  — this is the defense against the confused-deputy / silent-authorization attack, where
-  open DCR lets an attacker register a client and an already-logged-in victim would
-  otherwise be silently authorized. Consent is recorded per `(userId, clientId)` (see
-  §9, `mcpConsents`) and **may** be skipped on subsequent authorizations for that exact
-  pair (same client, same-or-narrower scope); a new or unrecognized `clientId` always
-  re-prompts. This is the one new piece of connector UI (a minimal server-rendered
-  page); it does not change how browser users authenticate to the web app. CSRF: the
-  consent form's submit is protected by the same server-side `state`/session binding as
-  the rest of the flow (the Allow action must carry the verified `state`).
+- **Explicit user consent (CS1) — defense-in-depth, kept by choice:** after Google login
+  and **before** issuing an auth code, `/authorize` renders a consent screen naming the
+  requesting client and the access it will receive ("Allow _\<client_name\>_ to read and
+  modify your Weekly Eats recipes, food items, meal plans, pantry, and shopping lists?")
+  with Allow / Deny. A code is issued **only** on explicit Allow; Deny redirects back with
+  `error=access_denied`. Consent is **not auto-skipped for an unrecognized client** just
+  because a Google/NextAuth session exists. Recorded per `(userId, clientId)` (§9,
+  `mcpConsents`); skipped only on an exact match (same client, same-or-narrower scope); a
+  new/unrecognized `clientId` re-prompts. One new piece of connector UI (a minimal,
+  responsive server-rendered page); does not change how browser users authenticate.
+  CSRF: the Allow submit carries the same server-verified `state` as the rest of the flow.
+
+  **Accurate threat framing (corrected):** the MCP Security BCP's consent requirement is
+  **conditional** — it targets proxies that authenticate to the _upstream_ IdP with a
+  **static client ID shared across all users** _and_ rely on a replayable upstream consent
+  cookie ("MCP proxy servers using static client IDs MUST obtain user consent for each
+  dynamically registered client"). Whether we meet that precondition depends on how the
+  NextAuth→Google leg is wired (resolve in Phase 2). Regardless, the **primary**
+  authorization boundary here is the **`isApproved`/`isAdmin` allowlist** (M1) plus
+  per-user data scoping: even if a victim were walked through the flow, no token is usable
+  unless they are approved, and it is scoped to _their own_ data only — no cross-user
+  access or privilege escalation. So CS1 is **not** the load-bearing control and should
+  not be read as a Critical "silent-authorization" fix; it is BCP-recommended
+  defense-in-depth and good consent UX, kept by explicit decision. (An earlier draft
+  overstated this as a critical confused-deputy fix; corrected here.)
+
 - **Issuer identification — `iss` (R1, RFC 9207):** every authorization response —
   **including error redirects** — carries an `iss` parameter equal to the AS's `issuer`
   in the metadata document. This is the recommended mix-up-attack countermeasure (RFC 9700) and matters because Claude talks to many connectors at once; the easy-to-miss
@@ -466,10 +477,11 @@ fields). **Also add the five `mcp*` collections (`mcpClients`, `mcpAuthCodes`,
   (RFC 8707).
 - **PKCE + `state` required** on the authorization code flow (I4, §6.2); DCR endpoint
   is rate limited (I6, §6.2).
-- **Explicit consent (CS1):** `/authorize` requires user approval on a consent screen
-  before issuing a code and never auto-skips on an existing Google session for an
-  unrecognized client — the defense against confused-deputy / silent authorization that
-  open DCR otherwise enables (§6.2).
+- **Explicit consent (CS1) — defense-in-depth:** `/authorize` requires user approval
+  before issuing a code and doesn't auto-skip for an unrecognized client. This is the
+  BCP-recommended (conditionally-required) consent control, **not** the primary boundary
+  — the `isApproved` allowlist + per-user scoping is what actually prevents cross-user
+  access (see corrected framing in §6.2).
 - **Token passthrough is prohibited (R3):** only tokens this server minted (correct
   `resource`/audience) are accepted; client-supplied tokens are never forwarded upstream.
   Audience binding is enforced in `verifyToken`, independent of consent (§6.2, §6.4).
