@@ -87,12 +87,12 @@ handler. Middleware reads the already-baked claims off the decoded token.
 
 ### Server-side consumers
 
-| File                                                                       | Change                                                                                                                                                                                                                                                                                                                             |
-| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/app/api/auth/[...nextauth]/route.ts`                                  | `import { handlers } from '@/lib/auth'; export const { GET, POST } = handlers;`                                                                                                                                                                                                                                                    |
-| `src/middleware.ts`                                                        | `import authConfig from '@/lib/auth.config'; const { auth } = NextAuth(authConfig); export default auth((req) => { … })`. Same approval-gate logic, reading `req.auth?.user?.isApproved` / `isAdmin` instead of `token.*`. Drops explicit `secret` param and the `NEXTAUTH_SECRET` reference. Keeps the existing `config.matcher`. |
-| `src/lib/user-utils.ts`                                                    | `getServerSession(authOptions)` → `await auth()` (import from `@/lib/auth`). Drop the `next-auth/next` + `authOptions` imports.                                                                                                                                                                                                    |
-| ~6 production API routes (`api/admin/users/*`, `api/user/approval-status`) | Same `getServerSession(authOptions)` → `await auth()` swap.                                                                                                                                                                                                                                                                        |
+| File                                                                                           | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/api/auth/[...nextauth]/route.ts`                                                      | `import { handlers } from '@/lib/auth'; export const { GET, POST } = handlers;`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `src/middleware.ts`                                                                            | `import authConfig from '@/lib/auth.config'; const { auth } = NextAuth(authConfig);` then **`export const middleware = auth((req) => { … })`** — a named export (Next.js accepts a `middleware` named export, so no default-export exception to the named-exports-only rule). Same approval-gate logic, reading `req.auth?.user?.isApproved` / `isAdmin` instead of `token.*`. Drops the explicit `secret` param and the `NEXTAUTH_SECRET` reference. Keeps the existing `config.matcher`. |
+| `src/lib/user-utils.ts`                                                                        | The auth **chokepoint**: `getServerSession(authOptions)` → `await auth()` at both call sites (lines 23 and 50); drop the `next-auth/next` + `authOptions` imports. `requireApprovedSession` / `getCurrentUserAdminStatus` here transitively cover ~37 production routes, so most routes need no direct edit.                                                                                                                                                                               |
+| 5 routes calling `getServerSession` directly (`api/admin/users/*`, `api/user/approval-status`) | Same `getServerSession(authOptions)` → `await auth()` swap.                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ### Client components (minimal change)
 
@@ -100,11 +100,17 @@ handler. Middleware reads the already-baked claims off the decoded token.
 `signOut` in v5. Unchanged: `Providers`, `SessionWrapper`, `Header`, `BottomNav`,
 `AdminOnly`, `theme-context`, `use-approval-status`, the feature pages.
 
-Only the `callbackUrl` option was renamed to `redirectTo`:
+Only the `next-auth` **`signIn`/`signOut` option key** was renamed `callbackUrl` → `redirectTo`:
 
 - `src/components/SignInButton.tsx` — `signIn('google', { callbackUrl })` → `{ redirectTo: callbackUrl }`.
 - `src/components/Header.tsx`, `src/components/BottomNav.tsx`,
   `src/app/pending-approval/page.tsx` — `signOut({ callbackUrl: '/' })` → `signOut({ redirectTo: '/' })`.
+
+> The rename applies **only** to the next-auth option key. The app's own
+> `callbackUrl` **query param** — written by the middleware (`middleware.ts:36`)
+> and read by `SignInButton` (`SignInButton.tsx:9`) to preserve the post-login
+> destination — must stay named `callbackUrl`. Renaming it would break the
+> post-login redirect.
 
 ### Types
 
@@ -130,16 +136,38 @@ stable host, Auth.js verifies the signed state and redirects to the preview.
 On production the request origin equals the proxy origin, so Auth.js behaves
 normally (no proxying). On a preview the origins differ, so it proxies.
 
+> **Shared-secret trust assumption.** Preview and Production share one
+> `AUTH_SECRET`, so a compromised Preview environment yields the key that signs
+> Production session JWTs (forgeable admin sessions). Blast radius is small for
+> this single-collaborator personal app, and the redirect proxy requires the
+> shared secret — but the assumption is stated here deliberately.
+
 **Allowlist (`redirect` callback, defense-in-depth beyond the signed state).**
-Permit only:
+The v5 `redirect` callback receives a **full URL** (path + query), not a bare
+origin. The callback must extract the origin with `new URL(url).origin` (mirroring
+the existing v4 branch at `auth.ts:54`) and match that origin string — **never the
+raw `url`** — against the anchored patterns, then return the validated `url`.
+Matching the raw `url` against an `^…$`-anchored pattern would reject every
+legitimate preview redirect that carries a path; dropping the anchors to
+compensate would admit suffix attacks like `…vercel.app.evil.com`.
+
+Permit only (matching on the extracted origin):
 
 - relative URLs (`url.startsWith('/')`),
 - same origin as `baseUrl`,
-- the production host `https://weekly-eats.vercel.app`,
+- the production origin `https://weekly-eats.vercel.app`,
 - origins matching `^https://weekly-eats-[a-z0-9-]+-zach-roses-projects\.vercel\.app$`.
 
 Anything else returns `baseUrl`. This closes the open-redirect / token-leak
 vector the issue calls out.
+
+> **Notes.** (1) The production-origin entry is redundant with the same-origin
+> branch when running on production; it matters only when a preview redirects to
+> the stable host. Confirm there is exactly **one** production hostname (no custom
+> domain today) so nothing silently falls through. (2) The `session` callback that
+> surfaces `isAdmin`/`isApproved` lives in the edge-safe `auth.config.ts`, so
+> `req.auth.user` carries those claims in middleware; the reworked middleware test
+> must keep asserting the **fail-closed `!== true`** form on missing claims.
 
 ## Environment variables & scripts
 
@@ -190,13 +218,34 @@ vector the issue calls out.
   `vi.mock('@/lib/auth', () => ({ authOptions: {} }))` with
   `vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))`, and
   `getServerSession.mockResolvedValue(...)` → `vi.mocked(auth).mockResolvedValue(...)`.
+  **Keep** the existing `vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }))`
+  in every file — importing `@/lib/auth` still loads the adapter at module init.
   `src/test-utils/session.ts` helpers (`approvedSession` / `unapprovedSession`)
   stay as-is; the `Session` type import still resolves.
-- **`src/__tests__/middleware.test.ts`** — reworked: instead of mocking
-  `next-auth/jwt` `getToken`, mock the `auth` wrapper so the handler receives a
-  `req.auth` shaped like the decoded session. Preserve all existing gate cases
-  (401/403 JSON for API, 307 redirect to `/pending-approval`, fail-closed on
-  missing `isApproved`, admin bypass, exempt paths).
+- **`src/lib/__tests__/auth.test.ts`** (existing) — **must be re-homed.** It
+  currently does `const { authOptions } = await import('../auth')` and tests
+  `authOptions.callbacks.redirect` / `.session` / `.jwt` (auth.test.ts:16-18).
+  The split deletes `authOptions`, so update it to import the `session`/`redirect`
+  callbacks from `auth.config.ts` and the `jwt` callback from `auth.ts`. Preserve
+  the existing three redirect cases (relative / same-origin / foreign), the
+  session-mapping case, and all jwt cases.
+- **New: preview-origin allowlist cases** (added to the re-homed redirect tests) —
+  this is new security-critical logic and needs explicit coverage:
+  - **accept** a valid preview origin (`https://weekly-eats-feat-x-zach-roses-projects.vercel.app`, with and without a path),
+  - **accept** the production origin,
+  - **reject** a foreign origin (→ `baseUrl`),
+  - **reject** a look-alike / suffix-attack host (e.g. `…vercel.app.evil.com`, `https://weekly-eats-x-zach-roses-projects.vercel.app.evil.com`).
+- **New: config-wiring assertion** — a cheap unit check on the assembled config
+  (`trustHost === true`, `redirectProxyUrl` resolves from `AUTH_REDIRECT_PROXY_URL`)
+  to catch a typo'd env var name without a deploy.
+- **`src/__tests__/middleware.test.ts`** — reworked. The handler shifts from a bare
+  `middleware(request)` call to `export const middleware = auth((req) => …)`, and the
+  no-token case changes from `getToken === null` to `req.auth === null`. Mocking
+  approach: mock `@/lib/auth.config` so `NextAuth(authConfig).auth` returns a
+  pass-through that invokes the handler with a synthetic `req.auth` (or `null`);
+  assert against that. Preserve all existing gate cases (401/403 JSON for API, 307
+  redirect to `/pending-approval`, **fail-closed `!== true`** on missing
+  `isApproved`, admin bypass, exempt paths).
 - **`rewriteWorktreeEnv` unit test** — update for the dropped `NEXTAUTH_URL` line.
 
 ## Docs
