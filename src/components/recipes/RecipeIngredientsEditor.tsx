@@ -1,7 +1,7 @@
 // src/components/recipes/RecipeIngredientsEditor.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Box, ButtonBase, InputBase } from '@mui/material';
 import { tokens } from '@/lib/design-tokens';
@@ -339,9 +339,12 @@ export function RecipeIngredientsEditor({
   onChange,
   currentRecipeId,
 }: RecipeIngredientsEditorProps) {
-  // Active group index for the add-ingredient search (each group has its own
-  // search bar, but we track which one is "active" for dedup purposes).
-  // (Each group renders its own AddIngredientSearch; no shared state needed.)
+  // Each group renders its own AddIngredientSearch with local focus/draft/activeIndex state.
+  // Using array-index keys causes that state to be misattributed when a middle group is
+  // deleted (indices shift). Instead, assign each group a stable monotonic id on mount and
+  // keep that array in lock-step with every add/delete operation.
+  const groupKeyCounter = useRef(0);
+  const groupIdsRef = useRef<number[]>(value.map(() => groupKeyCounter.current++));
 
   const grouped = isGroupedMode(value);
 
@@ -350,14 +353,18 @@ export function RecipeIngredientsEditor({
   // ------------------------------------------------------------------
   const handleAddGroup = () => {
     if (!grouped) {
-      // Convert the single standalone list to a titled group + new empty group
+      // Convert-OR-append: standalone → exactly 1 grouped list (drop isStandalone, keep
+      // ingredients). Do NOT append a second empty group; the user gets one titled group.
       const converted = value.map((l) => ({
         title: l.title ?? '',
         ingredients: l.ingredients,
-        // drop isStandalone
+        // isStandalone intentionally omitted
       }));
-      onChange([...converted, { title: '', ingredients: [] }]);
+      // groupIdsRef already has one slot (from init) — list count stays 1, no push needed.
+      onChange(converted);
     } else {
+      // Already grouped: append a new empty group.
+      groupIdsRef.current.push(groupKeyCounter.current++);
       onChange([...value, { title: '', ingredients: [] }]);
     }
   };
@@ -371,9 +378,12 @@ export function RecipeIngredientsEditor({
   };
 
   const handleDeleteGroup = (groupIdx: number) => {
+    // Keep groupIdsRef in lock-step: splice the id at the deleted index.
+    groupIdsRef.current.splice(groupIdx, 1);
     const next = value.filter((_, i) => i !== groupIdx);
     if (next.length === 0) {
-      // Fall back to a single empty standalone list
+      // Fall back to a single empty standalone list; reset ids to match.
+      groupIdsRef.current = [groupKeyCounter.current++];
       onChange([{ isStandalone: true, ingredients: [] }]);
     } else {
       onChange(next);
@@ -427,7 +437,7 @@ export function RecipeIngredientsEditor({
 
         return (
           <Box
-            key={gi}
+            key={groupIdsRef.current[gi] ?? gi}
             sx={{
               bgcolor: tokens.surface.raised,
               border: `1px solid ${titleInvalid ? tokens.state.danger : tokens.border.subtle}`,
