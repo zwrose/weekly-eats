@@ -74,7 +74,7 @@
     "typescript": "^5",
     "vite": "^7.1.1",
     "vitest": "^3.2.4",
-    "zod": "3.25.76"
+    "zod": "4.4.3"
   },
   "overrides": {
     "postcss": "^8.5.10",
