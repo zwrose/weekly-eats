@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ObjectId } from 'mongodb';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock mongodb-adapter
 vi.mock('@/lib/mongodb-adapter', () => ({
@@ -31,7 +23,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeRequest = (body: unknown) =>
@@ -41,7 +33,7 @@ const makeRequest = (body: unknown) =>
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
 });
@@ -49,13 +41,13 @@ beforeEach(() => {
 describe('api/admin/users/approve route', () => {
   describe('Authentication & Authorization', () => {
     it('POST returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(makeRequest({ userId: 'test-id', isApproved: true }));
       expect(res.status).toBe(401);
     });
 
     it('POST returns 403 when user is not admin', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
       const res = await routes.POST(makeRequest({ userId: 'test-id', isApproved: true }));
       expect(res.status).toBe(403);
@@ -64,7 +56,7 @@ describe('api/admin/users/approve route', () => {
 
   describe('Request Parameter Validation', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     });
 
@@ -114,7 +106,7 @@ describe('api/admin/users/approve route', () => {
 
   describe('User Approval Logic', () => {
     beforeEach(() => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     });
 
@@ -186,7 +178,7 @@ describe('api/admin/users/approve route', () => {
 
   describe('Error Handling', () => {
     it('POST handles database errors gracefully', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
       updateOneMock.mockRejectedValueOnce(new Error('Database connection failed'));
 
@@ -203,7 +195,7 @@ describe('api/admin/users/approve route', () => {
     });
 
     it('POST rejects an invalid ObjectId format with 400', async () => {
-      (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+      (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
       findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
       const res = await routes.POST(

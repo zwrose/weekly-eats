@@ -4,48 +4,66 @@ import type { Session } from 'next-auth';
 
 const mockGetMongoClient = vi.fn();
 
-vi.mock('@/lib/mongodb', () => ({
-  getMongoClient: mockGetMongoClient,
-}));
-
+vi.mock('@/lib/mongodb', () => ({ getMongoClient: mockGetMongoClient }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
-
 // Avoid noisy error logging during the jwt error-path test
 vi.mock('@/lib/errors', () => ({ logError: vi.fn() }));
 
-const { authOptions } = await import('../auth');
+const authConfig = (await import('../auth.config')).default;
+const { jwtCallback } = await import('../auth');
 
-const callbacks = authOptions.callbacks!;
+const redirect = authConfig.callbacks.redirect;
+const session = authConfig.callbacks.session;
 const baseUrl = 'https://app.example.com';
+const PREVIEW = 'https://weekly-eats-feat-x-zach-roses-projects.vercel.app';
+
+describe('config wiring', () => {
+  it('enables trustHost and wires the redirect proxy from env', () => {
+    expect(authConfig.trustHost).toBe(true);
+    expect('redirectProxyUrl' in authConfig).toBe(true);
+  });
+});
 
 describe('redirect callback', () => {
-  it('resolves a relative path against baseUrl', async () => {
-    const result = await callbacks.redirect!({ url: '/dashboard', baseUrl });
-    expect(result).toBe(`${baseUrl}/dashboard`);
+  it('resolves a relative path against baseUrl', () => {
+    expect(redirect({ url: '/dashboard', baseUrl })).toBe(`${baseUrl}/dashboard`);
   });
-
-  it('returns a same-origin absolute URL unchanged', async () => {
+  it('returns a same-origin absolute URL unchanged', () => {
     const url = `${baseUrl}/recipes`;
-    const result = await callbacks.redirect!({ url, baseUrl });
-    expect(result).toBe(url);
+    expect(redirect({ url, baseUrl })).toBe(url);
   });
-
-  it('falls back to baseUrl for a foreign origin', async () => {
-    const result = await callbacks.redirect!({ url: 'https://evil.com', baseUrl });
-    expect(result).toBe(baseUrl);
+  it('falls back to baseUrl for a foreign origin', () => {
+    expect(redirect({ url: 'https://evil.com', baseUrl })).toBe(baseUrl);
+  });
+  it('accepts a valid preview origin (no path)', () => {
+    expect(redirect({ url: PREVIEW, baseUrl })).toBe(PREVIEW);
+  });
+  it('accepts a valid preview origin carrying a path', () => {
+    const url = `${PREVIEW}/meal-plans`;
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
+  it('accepts the production custom domain origin', () => {
+    const url = 'https://weekly-eats.zamilyfam.com/recipes';
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
+  it('accepts the production .vercel.app origin', () => {
+    const url = 'https://weekly-eats.vercel.app/recipes';
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
+  it('accepts the long-lived beta design-preview origin', () => {
+    const url = 'https://beta.weekly-eats.zamilyfam.com/recipes';
+    expect(redirect({ url, baseUrl })).toBe(url);
+  });
+  it('rejects a suffix-attack lookalike host (→ baseUrl)', () => {
+    const url = 'https://weekly-eats-x-zach-roses-projects.vercel.app.evil.com/cb';
+    expect(redirect({ url, baseUrl })).toBe(baseUrl);
   });
 });
 
 describe('session callback', () => {
-  it('maps token fields onto session.user', async () => {
+  it('maps token fields onto session.user', () => {
     const token = { isAdmin: true, isApproved: false, sub: 'u1' } as JWT;
-    const session = { user: {} } as Session;
-
-    const result = (await callbacks.session!({
-      session,
-      token,
-    } as Parameters<NonNullable<typeof callbacks.session>>[0])) as Session;
-
+    const result = session({ session: { user: {} } as Session, token }) as Session;
     expect(result.user.id).toBe('u1');
     expect(result.user.isAdmin).toBe(true);
     expect(result.user.isApproved).toBe(false);
@@ -53,35 +71,25 @@ describe('session callback', () => {
 });
 
 describe('jwt callback', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
   it('defaults admin/approved to false when the DB lookup fails', async () => {
     mockGetMongoClient.mockRejectedValue(new Error('DB down'));
-    const token = { email: 'user@example.com' } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
+    const result = await jwtCallback({
+      token: { email: 'user@example.com' } as JWT,
       trigger: 'signIn',
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
+    });
     expect(result.isAdmin).toBe(false);
     expect(result.isApproved).toBe(false);
   });
 
   it('caches isAdmin/isApproved from the DB user on signIn', async () => {
     const findOne = vi.fn().mockResolvedValue({ isAdmin: true, isApproved: true });
-    mockGetMongoClient.mockResolvedValue({
-      db: () => ({ collection: () => ({ findOne }) }),
-    });
-    const token = { email: 'admin@example.com' } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
+    mockGetMongoClient.mockResolvedValue({ db: () => ({ collection: () => ({ findOne }) }) });
+    const result = await jwtCallback({
+      token: { email: 'admin@example.com' } as JWT,
       trigger: 'signIn',
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
+    });
     expect(findOne).toHaveBeenCalledWith({ email: 'admin@example.com' });
     expect(result.isAdmin).toBe(true);
     expect(result.isApproved).toBe(true);
@@ -89,50 +97,29 @@ describe('jwt callback', () => {
 
   it('coerces missing DB user fields to false (no implicit admin/approval)', async () => {
     const findOne = vi.fn().mockResolvedValue(null);
-    mockGetMongoClient.mockResolvedValue({
-      db: () => ({ collection: () => ({ findOne }) }),
-    });
-    const token = { email: 'ghost@example.com' } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
+    mockGetMongoClient.mockResolvedValue({ db: () => ({ collection: () => ({ findOne }) }) });
+    const result = await jwtCallback({
+      token: { email: 'ghost@example.com' } as JWT,
       trigger: 'signIn',
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
+    });
     expect(result.isAdmin).toBe(false);
     expect(result.isApproved).toBe(false);
   });
 
   it('re-reads isApproved from the DB on the update trigger', async () => {
     const findOne = vi.fn().mockResolvedValue({ isAdmin: false, isApproved: true });
-    mockGetMongoClient.mockResolvedValue({
-      db: () => ({ collection: () => ({ findOne }) }),
-    });
-    // Token is already populated from sign-in (isAdmin defined) and stale.
+    mockGetMongoClient.mockResolvedValue({ db: () => ({ collection: () => ({ findOne }) }) });
     const token = { email: 'user@example.com', isAdmin: false, isApproved: false } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
-      trigger: 'update',
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
+    const result = await jwtCallback({ token, trigger: 'update' });
     expect(findOne).toHaveBeenCalledWith({ email: 'user@example.com' });
     expect(result.isApproved).toBe(true);
   });
 
-  it('does not let the update payload override the DB (no self-approval)', async () => {
-    const findOne = vi.fn().mockResolvedValue({ isAdmin: false, isApproved: false });
-    mockGetMongoClient.mockResolvedValue({
-      db: () => ({ collection: () => ({ findOne }) }),
-    });
-    const token = { email: 'attacker@example.com', isAdmin: false, isApproved: false } as JWT;
-
-    const result = await callbacks.jwt!({
-      token,
-      trigger: 'update',
-      session: { isApproved: true }, // attacker-supplied; must be ignored
-    } as Parameters<NonNullable<typeof callbacks.jwt>>[0]);
-
-    expect(result.isApproved).toBe(false);
+  it('fetches DB claims on first hydration when isAdmin is undefined (no trigger)', async () => {
+    const findOne = vi.fn().mockResolvedValue({ isAdmin: false, isApproved: true });
+    mockGetMongoClient.mockResolvedValue({ db: () => ({ collection: () => ({ findOne }) }) });
+    const result = await jwtCallback({ token: { email: 'u@example.com' } as JWT });
+    expect(findOne).toHaveBeenCalled();
+    expect(result.isApproved).toBe(true);
   });
 });

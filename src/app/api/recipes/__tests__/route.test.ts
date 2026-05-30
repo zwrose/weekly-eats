@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const toArrayMock = vi.fn();
@@ -62,7 +61,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
@@ -71,7 +70,7 @@ const mockSession = approvedSession({ id: 'user1' });
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findMock.mockReset();
   sortMock.mockReset();
   skipMock.mockReset();
@@ -86,7 +85,7 @@ beforeEach(() => {
 
 describe('GET /api/recipes', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET(makeReq('http://localhost/api/recipes'));
     expect(res.status).toBe(401);
     const data = await res.json();
@@ -94,13 +93,13 @@ describe('GET /api/recipes', () => {
   });
 
   it('returns 403 when the user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
     const res = await routes.GET(makeReq('http://localhost/api/recipes'));
     expect(res.status).toBe(403);
   });
 
   it('returns paginated response with defaults', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const recipes = [
       { _id: 'r1', title: 'Pizza', createdBy: 'user1', isGlobal: false },
       { _id: 'r2', title: 'Pasta', createdBy: 'other', isGlobal: true },
@@ -120,7 +119,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('computes accessLevel for each recipe', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const recipes = [
       { _id: 'r1', title: 'Personal', createdBy: 'user1', isGlobal: false },
       { _id: 'r2', title: 'Shared', createdBy: 'user1', isGlobal: true },
@@ -138,7 +137,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('accepts page and limit params', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(50);
 
@@ -152,7 +151,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('accepts sortBy and sortOrder params', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -162,7 +161,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('filters by text query', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -174,7 +173,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('filters by accessLevel=private', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -188,7 +187,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('filters by accessLevel=shared-by-you', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -202,7 +201,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('filters by accessLevel=shared-by-others', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -215,7 +214,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('returns unified view (all accessible recipes) when no accessLevel', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     toArrayMock.mockResolvedValue([]);
     countDocumentsMock.mockResolvedValue(0);
 
@@ -228,7 +227,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('uses aggregation pipeline when tags param is provided', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
       {
         total: 1,
@@ -253,7 +252,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('uses aggregation pipeline when ratings param is provided', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([
       {
         total: 1,
@@ -277,7 +276,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('filters by multiple tags (comma-separated)', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
     await routes.GET(makeReq('http://localhost/api/recipes?tags=italian,quick'));
@@ -289,7 +288,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('combines tags, ratings, and accessLevel filters', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
     await routes.GET(
@@ -304,7 +303,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('returns empty aggregation results correctly', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([]);
 
     const res = await routes.GET(makeReq('http://localhost/api/recipes?tags=nonexistent'));
@@ -316,7 +315,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('sorts by rating when sortBy=rating with aggregation', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     aggregateToArrayMock.mockResolvedValue([{ total: 0, data: [] }]);
 
     await routes.GET(makeReq('http://localhost/api/recipes?tags=any&sortBy=rating&sortOrder=desc'));
@@ -327,7 +326,7 @@ describe('GET /api/recipes', () => {
   });
 
   it('handles server errors', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     findMock.mockImplementation(() => {
       throw new Error('DB error');
     });
@@ -339,19 +338,19 @@ describe('GET /api/recipes', () => {
 
 describe('POST /api/recipes', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.POST(makeReq('http://localhost/api/recipes', {}));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'user1' }));
     const res = await routes.POST(makeReq('http://localhost/api/recipes', {}));
     expect(res.status).toBe(403);
   });
 
   it('validates required fields', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const body = { title: '', instructions: '', ingredients: [] };
     const res = await routes.POST(makeReq('http://localhost/api/recipes', body));
     expect(res.status).toBe(400);
@@ -360,7 +359,7 @@ describe('POST /api/recipes', () => {
   });
 
   it('inserts new recipe and returns 201', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     insertOneMock.mockResolvedValueOnce({ insertedId: 'new-id' });
     const valid = {
       title: 'My Recipe',

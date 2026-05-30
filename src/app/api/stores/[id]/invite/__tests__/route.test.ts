@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const storesFindOne = vi.fn();
@@ -23,14 +22,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const VALID_ID = '64b7f8c2a2b7c2f1a2b7c2f1';
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   storesFindOne.mockReset();
   storesUpdateOne.mockReset();
   usersFindOne.mockReset();
@@ -39,7 +38,7 @@ beforeEach(() => {
 describe('api/stores/[id]/invite route', () => {
   describe('POST', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(
         makeReq(`http://localhost/api/stores/${VALID_ID}/invite`, { email: 'a@b.com' }),
         { params: Promise.resolve({ id: VALID_ID }) } as any
@@ -48,7 +47,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         unapprovedSession({ id: 'u1', email: 'me@x.com' })
       );
       const res = await routes.POST(
@@ -59,7 +58,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 400 for invalid ObjectId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       const res = await routes.POST(
@@ -70,7 +69,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 400 for invalid email', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       const res = await routes.POST(
@@ -81,7 +80,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 400 for self-invitation', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       const res = await routes.POST(
@@ -92,7 +91,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 404 when store not owned/found', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       storesFindOne.mockResolvedValueOnce(null);
@@ -104,7 +103,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 404 when invited user not found', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       storesFindOne.mockResolvedValueOnce({ _id: VALID_ID, userId: 'u1' });
@@ -117,7 +116,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('creates invitation on success (201)', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       storesFindOne.mockResolvedValueOnce({ _id: VALID_ID, userId: 'u1' });
@@ -135,7 +134,7 @@ describe('api/stores/[id]/invite route', () => {
     });
 
     it('returns 500 when DB throws', async () => {
-      (getServerSession as any).mockResolvedValueOnce(
+      (auth as any).mockResolvedValueOnce(
         approvedSession({ id: 'u1', email: 'me@x.com' })
       );
       storesFindOne.mockRejectedValueOnce(new Error('db down'));

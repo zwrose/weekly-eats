@@ -57,7 +57,7 @@ export default function Header() {
   }, []);
 
   const handleSignOut = useCallback(() => {
-    signOut({ callbackUrl: '/' });
+    signOut({ redirectTo: '/' });
     setAnchorEl(null);
   }, []);
 

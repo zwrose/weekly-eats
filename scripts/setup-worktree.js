@@ -66,12 +66,12 @@ function portFromBranchName(branchName) {
 }
 
 /**
- * Pure env-rewrite: keep MONGODB_URI verbatim (shared DB), rewrite only the
- * NEXTAUTH_URL port and PORT. Exported for unit testing.
+ * Pure env-rewrite: keep MONGODB_URI verbatim (shared DB), rewrite only PORT.
+ * Auth.js v5 trustHost handles the per-port host, so NEXTAUTH_URL is gone.
+ * Exported for unit testing.
  */
 export function rewriteWorktreeEnv(content, { port }) {
   let env = content;
-  env = env.replace(/NEXTAUTH_URL=http:\/\/localhost:\d+/, 'NEXTAUTH_URL=http://localhost:' + port);
   env = env.replace(/^PORT=.*\n?/m, '');
   env = env.trimEnd() + '\nPORT=' + port + '\n';
   return env;

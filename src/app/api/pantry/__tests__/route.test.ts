@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 vi.mock('@/lib/errors', () => ({
@@ -57,14 +56,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   aggregateToArrayMock.mockReset();
   aggregatePipelines.length = 0;
   insertOneMock.mockReset();
@@ -76,13 +75,13 @@ beforeEach(() => {
 describe('api/pantry route', () => {
   describe('GET - authentication', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.GET(makeReq('http://localhost/api/pantry'));
       expect(res.status).toBe(401);
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.GET(makeReq('http://localhost/api/pantry'));
       expect(res.status).toBe(403);
     });
@@ -90,7 +89,7 @@ describe('api/pantry route', () => {
 
   describe('GET - server-side pagination', () => {
     it('returns paginated response with defaults', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       // First aggregate call: count pipeline
       aggregateToArrayMock.mockResolvedValueOnce([{ total: 1 }]);
@@ -124,7 +123,7 @@ describe('api/pantry route', () => {
     });
 
     it('passes page and limit params', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       aggregateToArrayMock.mockResolvedValueOnce([{ total: 15 }]);
       aggregateToArrayMock.mockResolvedValueOnce([]);
@@ -147,7 +146,7 @@ describe('api/pantry route', () => {
     });
 
     it('filters by search query on food item names', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       aggregateToArrayMock.mockResolvedValueOnce([{ total: 1 }]);
       aggregateToArrayMock.mockResolvedValueOnce([
@@ -185,7 +184,7 @@ describe('api/pantry route', () => {
     });
 
     it('sorts by food item name by default', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       aggregateToArrayMock.mockResolvedValueOnce([{ total: 0 }]);
       aggregateToArrayMock.mockResolvedValueOnce([]);
@@ -199,7 +198,7 @@ describe('api/pantry route', () => {
     });
 
     it('returns empty results when total is 0', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       aggregateToArrayMock.mockResolvedValueOnce([]); // count returns empty
       aggregateToArrayMock.mockResolvedValueOnce([]);
@@ -213,7 +212,7 @@ describe('api/pantry route', () => {
     });
 
     it('clamps limit to max 100', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
 
       aggregateToArrayMock.mockResolvedValueOnce([{ total: 0 }]);
       aggregateToArrayMock.mockResolvedValueOnce([]);
@@ -227,7 +226,7 @@ describe('api/pantry route', () => {
 
   describe('POST', () => {
     it('validates and creates pantry item', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const validFoodItemId = '64b7f8c2a2b7c2f1a2b7c2f1';
       findOneMock.mockResolvedValueOnce({
         _id: validFoodItemId,
@@ -253,19 +252,19 @@ describe('api/pantry route', () => {
     });
 
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.POST(makeReq('http://localhost/api/pantry', { foodItemId: 'f1' }));
       expect(res.status).toBe(401);
     });
 
     it('returns 400 for missing foodItemId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(makeReq('http://localhost/api/pantry', {}));
       expect(res.status).toBe(400);
     });
 
     it('returns 400 for invalid ObjectId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.POST(
         makeReq('http://localhost/api/pantry', { foodItemId: 'invalid' })
       );
@@ -273,7 +272,7 @@ describe('api/pantry route', () => {
     });
 
     it('returns 409 for duplicate pantry item', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const validFoodItemId = '64b7f8c2a2b7c2f1a2b7c2f1';
       findOneMock.mockResolvedValueOnce({ _id: validFoodItemId, name: 'Apple' }); // food item exists
       findOneMock.mockResolvedValueOnce({ _id: 'p1' }); // already in pantry
@@ -286,26 +285,26 @@ describe('api/pantry route', () => {
 
   describe('DELETE', () => {
     it('removes a pantry item', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       deleteOneMock.mockResolvedValueOnce({ deletedCount: 1 });
       const res = await routes.DELETE(makeReq('http://localhost/api/pantry?foodItemId=f1'));
       expect(res.status).toBe(200);
     });
 
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.DELETE(makeReq('http://localhost/api/pantry?foodItemId=f1'));
       expect(res.status).toBe(401);
     });
 
     it('returns 400 for missing foodItemId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.DELETE(makeReq('http://localhost/api/pantry'));
       expect(res.status).toBe(400);
     });
 
     it('returns 404 for non-existent pantry item', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       deleteOneMock.mockResolvedValueOnce({ deletedCount: 0 });
       const res = await routes.DELETE(makeReq('http://localhost/api/pantry?foodItemId=f1'));
       expect(res.status).toBe(404);

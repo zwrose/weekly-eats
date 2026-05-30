@@ -4,11 +4,10 @@ import { approvedSession, unapprovedSession } from '@/test-utils/session';
 import { GET, POST } from '../route';
 
 // Mock dependencies
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb', () => ({ getMongoClient: vi.fn() }));
 
-import { getServerSession } from 'next-auth/next';
+import { auth } from '@/lib/auth';
 import { getMongoClient } from '@/lib/mongodb';
 
 describe('Stores API', () => {
@@ -42,7 +41,7 @@ describe('Stores API', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (getServerSession as any).mockResolvedValue(mockSession);
+    (auth as any).mockResolvedValue(mockSession);
   });
 
   describe('GET', () => {
@@ -187,7 +186,7 @@ describe('Stores API', () => {
     });
 
     it('returns 401 if not authenticated', async () => {
-      (getServerSession as any).mockResolvedValue(null);
+      (auth as any).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/stores');
       const response = await GET(request);
@@ -196,7 +195,7 @@ describe('Stores API', () => {
     });
 
     it('returns 403 if user is not approved', async () => {
-      (getServerSession as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
+      (auth as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
 
       const request = new NextRequest('http://localhost:3000/api/stores');
       const response = await GET(request);
@@ -279,7 +278,7 @@ describe('Stores API', () => {
     });
 
     it('returns 401 if not authenticated', async () => {
-      (getServerSession as any).mockResolvedValue(null);
+      (auth as any).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',
@@ -292,7 +291,7 @@ describe('Stores API', () => {
     });
 
     it('returns 403 if user is not approved', async () => {
-      (getServerSession as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
+      (auth as any).mockResolvedValue(unapprovedSession({ id: 'user-123' }));
 
       const request = new NextRequest('http://localhost:3000/api/stores', {
         method: 'POST',

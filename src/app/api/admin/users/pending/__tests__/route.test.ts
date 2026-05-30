@@ -1,14 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock mongodb-adapter
 vi.mock('@/lib/mongodb-adapter', () => ({
@@ -46,12 +38,12 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findMock.mockReset();
   toArrayMock.mockReset();
   findOneMock.mockReset();
@@ -61,20 +53,20 @@ beforeEach(() => {
 
 describe('api/admin/users/pending route', () => {
   it('GET returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(401);
   });
 
   it('GET returns 403 when user is not admin', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'user@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'user@test.com', isAdmin: false });
     const res = await routes.GET();
     expect(res.status).toBe(403);
   });
 
   it('GET returns pending users with correct response format', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
     const mockUsers = [
@@ -107,7 +99,7 @@ describe('api/admin/users/pending route', () => {
   });
 
   it('GET filters by unapproved non-admin users', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
 
@@ -124,7 +116,7 @@ describe('api/admin/users/pending route', () => {
   });
 
   it('GET sorts by _id descending (newest first)', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
 
@@ -134,7 +126,7 @@ describe('api/admin/users/pending route', () => {
   });
 
   it('GET limits results to 100 users', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
 
@@ -144,7 +136,7 @@ describe('api/admin/users/pending route', () => {
   });
 
   it('GET returns only specified fields in projection', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
     toArrayMock.mockResolvedValueOnce([]);
 
@@ -162,7 +154,7 @@ describe('api/admin/users/pending route', () => {
   });
 
   it('Response format matches approved users endpoint format', async () => {
-    (getServerSession as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
+    (auth as any).mockResolvedValueOnce({ user: { email: 'admin@test.com' } });
     findOneMock.mockResolvedValueOnce({ email: 'admin@test.com', isAdmin: true });
 
     const mockUsers = [

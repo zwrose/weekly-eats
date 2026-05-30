@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -71,14 +70,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
   deleteOneMock.mockReset();
@@ -86,7 +85,7 @@ beforeEach(() => {
 
 describe('api/meal-plans/[id] route', () => {
   it('GET returns 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans/bad'), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -94,7 +93,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('PUT returns 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.PUT(makeReq('http://localhost/api/meal-plans/bad', { name: 'X' }), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -102,7 +101,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('DELETE returns 400 for invalid ObjectId', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     const res = await routes.DELETE(makeReq('http://localhost/api/meal-plans/bad'), {
       params: Promise.resolve({ id: 'bad' }),
     } as any);
@@ -110,7 +109,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('GET returns 404 when not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null);
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans/x'), {
       params: Promise.resolve({ id: '64b7f8c2a2b7c2f1a2b7c2f1' }),
@@ -119,7 +118,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('PUT updates meal plan when valid', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({
       _id: 'p1',
       userId: 'u1',
@@ -149,7 +148,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('DELETE requires auth', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.DELETE(makeReq('http://localhost/api/meal-plans/p1'), {
       params: Promise.resolve({ id: '64b7f8c2a2b7c2f1a2b7c2f1' }),
     } as any);
@@ -157,7 +156,7 @@ describe('api/meal-plans/[id] route', () => {
   });
 
   it('returns 403 when the user is not approved (GET)', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
     const res = await routes.GET(makeReq('http://localhost/api/meal-plans/p1'), {
       params: Promise.resolve({ id: '64b7f8c2a2b7c2f1a2b7c2f1' }),
     } as any);
@@ -166,7 +165,7 @@ describe('api/meal-plans/[id] route', () => {
 
   it('GET populates food item names in meal plan', async () => {
     const validMealPlanId = '64b7f8c2a2b7c2f1a2b7c2f1';
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({
       _id: validMealPlanId,
       userId: 'u1',
@@ -198,7 +197,7 @@ describe('api/meal-plans/[id] route', () => {
 
   it('GET populates recipe names in meal plan', async () => {
     const validMealPlanId = '64b7f8c2a2b7c2f1a2b7c2f2';
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({
       _id: validMealPlanId,
       userId: 'u1',
@@ -230,7 +229,7 @@ describe('api/meal-plans/[id] route', () => {
 
   it('GET populates ingredient group names in meal plan', async () => {
     const validMealPlanId = '64b7f8c2a2b7c2f1a2b7c2f3';
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({
       _id: validMealPlanId,
       userId: 'u1',
@@ -285,7 +284,7 @@ describe('api/meal-plans/[id] route', () => {
 
   it('GET populates staples names in meal plan', async () => {
     const validMealPlanId = '64b7f8c2a2b7c2f1a2b7c2f4';
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({
       _id: validMealPlanId,
       userId: 'u1',

@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import NextAuth from 'next-auth';
+import { NextResponse } from 'next/server';
+import authConfig from '@/lib/auth.config';
 import { AUTH_ERRORS } from '@/lib/errors';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const { auth } = NextAuth(authConfig);
 
-  // Allow access to:
-  // - Home page (login page)
-  // - Auth API routes
-  // - The MCP endpoint (self-authenticates via Bearer token in withMcpAuth, not
-  //   a NextAuth session cookie — so this session middleware must not shadow it)
-  // - Static files and Next.js internals
-  // - Public assets (manifest, icons, images)
+export const middleware = auth((req) => {
+  const { pathname } = req.nextUrl;
+
+  // Allow: home/login, auth API, Next internals, static/public assets, and the
+  // MCP endpoint. /api/mcp self-authenticates via a Bearer token in withMcpAuth
+  // (not a NextAuth session cookie), so this session middleware must not shadow
+  // it — without the exemption, MCP clients get a 307 to the HTML login page.
   if (
     pathname === '/' ||
     pathname.startsWith('/api/auth/') ||
@@ -19,63 +19,44 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/static/') ||
     pathname === '/manifest.json' ||
-    pathname.includes('.') // files with extensions (favicon, images, etc.)
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // Check if user is authenticated
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
-  // If not authenticated, redirect to home page (login)
-  if (!token) {
-    const url = request.nextUrl.clone();
+  // Not authenticated → redirect to home (login), preserving the destination.
+  if (!req.auth) {
+    const url = req.nextUrl.clone();
     url.pathname = '/';
-    // Preserve the original URL as a callback parameter if needed
     if (pathname !== '/') {
       url.searchParams.set('callbackUrl', pathname);
     }
     return NextResponse.redirect(url);
   }
 
-  // Approval gate: a signed-in but unapproved user may only reach the
-  // pending-approval screen and the endpoints that keep it functional.
-  // (/api/auth/* is already allowed by the exempt short-circuit above, so
-  // sign-out keeps working.)
+  // Approval gate. /api/auth/* is already exempt above (keeps sign-out working).
   const isApprovalExempt =
     pathname === '/pending-approval' ||
     pathname === '/api/user/approval-status' ||
     pathname === '/api/avatar';
 
-  // Admins bypass approval (isAdmin and isApproved are independent flags; an
-  // unapproved admin must still reach /user-management to approve users).
-  if (token.isApproved !== true && token.isAdmin !== true && !isApprovalExempt) {
+  // Admins bypass approval (isAdmin and isApproved are independent flags).
+  // Fail-closed: anything other than `true` is treated as not-approved.
+  if (req.auth.user?.isApproved !== true && req.auth.user?.isAdmin !== true && !isApprovalExempt) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: AUTH_ERRORS.FORBIDDEN }, { status: 403 });
     }
-    const url = request.nextUrl.clone();
+    const url = req.nextUrl.clone();
     url.pathname = '/pending-approval';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
-  // User is authenticated and approved (or exempt), allow access
   return NextResponse.next();
-}
+});
 
-// Configure which routes the middleware should run on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (manifest.json, etc.)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

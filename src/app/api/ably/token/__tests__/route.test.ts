@@ -35,9 +35,9 @@ beforeEach(() => {
   createTokenRequestMock.mockReset();
   storesFindMock.mockReset();
   process.env.ABLY_API_KEY = 'test-key';
-  // Resolve the token request callback with a fake token echoing the capability.
-  createTokenRequestMock.mockImplementation((opts: any, cb: any) =>
-    cb(null, { token: 'fake-token', capability: opts.capability })
+  // ably-js v2 createTokenRequest is Promise-based (no callback).
+  createTokenRequestMock.mockImplementation((opts: any) =>
+    Promise.resolve({ token: 'fake-token', capability: opts.capability })
   );
 });
 

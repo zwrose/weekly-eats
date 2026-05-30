@@ -59,7 +59,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [lastConnectionError, setLastConnectionError] = useState<string | null>(null);
   const clientRef = useRef<Ably.Realtime | null>(null);
-  const channelRef = useRef<Ably.Types.RealtimeChannelCallbacks | null>(null);
+  const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const presenceUserRef = useRef<ActiveUser | null>(presenceUser ?? null);
   const channelNameRef = useRef<string | null>(null);
 
@@ -73,7 +73,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     connecting?: () => void;
     disconnected?: () => void;
     suspended?: () => void;
-    failed?: (stateChange: Ably.Types.ConnectionStateChange) => void;
+    failed?: (stateChange: Ably.ConnectionStateChange) => void;
     closed?: () => void;
   }>({});
 
@@ -180,7 +180,7 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
         setActiveUsers([]);
         scheduleReconnect('suspended');
       };
-      const handleFailed = (stateChange: Ably.Types.ConnectionStateChange) => {
+      const handleFailed = (stateChange: Ably.ConnectionStateChange) => {
         setConnectionState('failed');
         setIsConnected(false);
         setActiveUsers([]);
@@ -214,14 +214,10 @@ export function useShoppingSync(options: UseShoppingSyncOptions) {
     [scheduleReconnect]
   );
 
-  const refreshPresenceUsers = async (channel: Ably.Types.RealtimeChannelCallbacks) => {
+  const refreshPresenceUsers = async (channel: Ably.RealtimeChannel) => {
     try {
-      const members = await new Promise<Ably.Types.PresenceMessage[]>((resolve, reject) => {
-        channel.presence.get((err, result) => {
-          if (err) return reject(err);
-          resolve(result || []);
-        });
-      });
+      // ably-js v2 is Promise-only — presence.get() no longer takes a callback.
+      const members = (await channel.presence.get()) ?? [];
 
       const users: ActiveUser[] = members
         .map((m) => m.data as ActiveUser)
