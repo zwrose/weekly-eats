@@ -36,17 +36,10 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   ShoppingCart,
-  DragIndicator,
   Edit,
   Delete,
   Share,
@@ -98,6 +91,8 @@ import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
 import { ShoppingListView } from '@/components/shopping-list/Working/ShoppingListView';
+import { ShoppingItemRow } from '@/components/shopping-list/Working/ShoppingItemRow';
+import { AddItemRow } from '@/components/shopping-list/Working/AddItemRow';
 import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
@@ -1339,77 +1334,6 @@ function ShoppingListsPageContent() {
     return { unchecked, checked };
   }, [shoppingListItems]);
 
-  const SortableShoppingListRow = ({
-    item,
-    isLast,
-  }: {
-    item: ShoppingListItem;
-    isLast: boolean;
-  }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: item.foodItemId,
-    });
-
-    return (
-      <Box>
-        <ListItem
-          ref={setNodeRef}
-          disableGutters
-          secondaryAction={
-            <IconButton
-              edge="end"
-              aria-label="Reorder"
-              size="small"
-              {...attributes}
-              {...listeners}
-              sx={{ touchAction: 'none' }}
-            >
-              <DragIndicator fontSize="small" />
-            </IconButton>
-          }
-          sx={{
-            px: 1,
-            py: 0.25,
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.6 : 1,
-            width: '100%',
-            maxWidth: '100%',
-            overflowX: 'hidden',
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <Checkbox
-              checked={item.checked}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleItemChecked(item.foodItemId);
-              }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primary={item.name}
-            secondary={`${item.quantity} ${
-              item.unit && item.unit !== 'each'
-                ? getUnitForm(item.unit, item.quantity)
-                : item.unit === 'each'
-                  ? 'each'
-                  : ''
-            }`}
-            onClick={() => handleOpenEditItemEditor(item)}
-            sx={{
-              cursor: 'pointer',
-              textDecoration: item.checked ? 'line-through' : 'none',
-              opacity: item.checked ? 0.6 : 1,
-              pr: 4,
-            }}
-          />
-        </ListItem>
-        {!isLast && <Divider />}
-      </Box>
-    );
-  };
-
   // ── Working-view slots (presence / actions / finish / list) ──────────────
   // These reuse the existing handlers/JSX, lifted out of the former modal into
   // the in-page ShoppingListView via slots. The page keeps owning all state,
@@ -1563,14 +1487,12 @@ function ShoppingListsPageContent() {
               items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
               strategy={verticalListSortingStrategy}
             >
-              {orderedShoppingItems.unchecked.map((item, index) => (
-                <SortableShoppingListRow
+              {orderedShoppingItems.unchecked.map((item) => (
+                <ShoppingItemRow
                   key={item.foodItemId}
                   item={item}
-                  isLast={
-                    index === orderedShoppingItems.unchecked.length - 1 &&
-                    orderedShoppingItems.checked.length === 0
-                  }
+                  onToggle={(id) => void handleToggleItemChecked(id)}
+                  onEdit={handleOpenEditItemEditor}
                 />
               ))}
             </SortableContext>
@@ -1578,51 +1500,13 @@ function ShoppingListsPageContent() {
             {orderedShoppingItems.checked.length > 0 && (
               <>
                 {orderedShoppingItems.unchecked.length > 0 && <Divider />}
-                {orderedShoppingItems.checked.map((item, index) => (
-                  <Box key={item.foodItemId}>
-                    <ListItem
-                      disableGutters
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label="Reorder (disabled)"
-                          size="small"
-                          disabled
-                        >
-                          <DragIndicator fontSize="small" />
-                        </IconButton>
-                      }
-                      sx={{ px: 1, py: 0.25 }}
-                    >
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        <Checkbox
-                          checked={item.checked}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleToggleItemChecked(item.foodItemId);
-                          }}
-                        />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={item.name}
-                        secondary={`${item.quantity} ${
-                          item.unit && item.unit !== 'each'
-                            ? getUnitForm(item.unit, item.quantity)
-                            : item.unit === 'each'
-                              ? 'each'
-                              : ''
-                        }`}
-                        onClick={() => handleOpenEditItemEditor(item)}
-                        sx={{
-                          cursor: 'pointer',
-                          textDecoration: item.checked ? 'line-through' : 'none',
-                          opacity: item.checked ? 0.6 : 1,
-                          pr: 4,
-                        }}
-                      />
-                    </ListItem>
-                    {index < orderedShoppingItems.checked.length - 1 && <Divider />}
-                  </Box>
+                {orderedShoppingItems.checked.map((item) => (
+                  <ShoppingItemRow
+                    key={item.foodItemId}
+                    item={item}
+                    onToggle={(id) => void handleToggleItemChecked(id)}
+                    onEdit={handleOpenEditItemEditor}
+                  />
                 ))}
               </>
             )}

@@ -9,6 +9,7 @@ import { getUnitForm } from '@/lib/food-items-utils';
 import type { ActiveUser } from '@/lib/hooks';
 import type { ShoppingListItem } from '@/types/shopping-list';
 import { StoreSidebar, type StoreSidebarStore } from './StoreSidebar';
+import { AddItemRow } from './AddItemRow';
 
 export interface ShoppingListViewProps {
   stores: StoreSidebarStore[];
@@ -222,26 +223,9 @@ export function ShoppingListView({
       </Box>
 
       {/* Add-item row */}
-      <ButtonBase
-        onClick={onAddItem}
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 0.75,
-          alignSelf: 'flex-start',
-          mt: 1.5,
-          px: 1,
-          py: 0.75,
-          color: theme.palette.primary.main,
-          fontSize: 14,
-          fontWeight: 600,
-          borderRadius: `${tokens.radius.md}px`,
-          '&:hover': { bgcolor: tokens.surface.elevated },
-        }}
-      >
-        <Icon name="add" size={18} />
-        Add item
-      </ButtonBase>
+      <Box sx={{ mt: 1.5 }}>
+        <AddItemRow onClick={onAddItem} />
+      </Box>
     </Box>
   );
 
