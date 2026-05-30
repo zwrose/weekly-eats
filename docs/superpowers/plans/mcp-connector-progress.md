@@ -6,7 +6,7 @@ things stand. Git is the objective truth; this is the readable narrative.
 
 - **Spec (roadmap):** `docs/superpowers/specs/2026-05-29-agent-connector-design.md`
 - **Plan review:** `docs/superpowers/specs/2026-05-29-agent-connector-design-review.md` (7 loops + dedicated OAuth-AS research; converged 11→11→4→5→3→1→0 → PLAN READY)
-- **Branch:** `feat/mcp` · **Draft PR:** _TBD (long-lived, opened docs-only)_
+- **Branch:** `feat/mcp` · **Draft PR:** [#140](https://github.com/zwrose/weekly-eats/pull/140) (long-lived, opened docs-only 2026-05-30)
 - **Related issues:** #72 (MCP), #56 (recipe import skill — closed by Phase 3)
 
 What this is: a self-serve **Claude Connector** (remote MCP server + hand-rolled OAuth 2.1
