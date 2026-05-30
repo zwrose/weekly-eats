@@ -11,6 +11,7 @@ import { fetchRecipe, deleteRecipe } from '@/lib/recipe-utils';
 import { fetchRecipeUserData, fetchUserTags } from '@/lib/recipe-user-data-utils';
 import { Stars } from './Stars';
 import { TagChip, AccessChip } from './TagChip';
+import { SectionLabel } from './SectionLabel';
 import { RecipeIngredientsView } from './RecipeIngredientsView';
 import { RecipeInstructionsView } from './RecipeInstructionsView';
 import dynamic from 'next/dynamic';
@@ -128,229 +129,269 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
   }
 
   const sharedRatings = userData?.sharedRatings;
+  const tags = userData?.tags ?? [];
+
+  // Shared "‹ Recipes" back link.
+  const backLink = (sx: object) => (
+    <ButtonBase
+      aria-label="Back to recipes"
+      onClick={() => router.push('/recipes')}
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.25,
+        color: tokens.section.recipes,
+        fontSize: 14,
+        '&:hover': { opacity: 0.85 },
+        ...sx,
+      }}
+    >
+      <Icon name="chevron_left" size={18} />
+      Recipes
+    </ButtonBase>
+  );
+
+  // Shared ⋯ more-menu (Delete). Kept on both breakpoints per product call.
+  const moreButton = (size: number) => (
+    <ButtonBase
+      aria-label="More options"
+      onClick={(e) => setMenuAnchor(e.currentTarget)}
+      sx={{
+        width: size,
+        height: size,
+        borderRadius: `${tokens.radius.md}px`,
+        border: `1px solid ${tokens.border.subtle}`,
+        color: tokens.text.secondary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        '&:hover': { color: tokens.text.primary, bgcolor: tokens.surface.elevated },
+      }}
+    >
+      <Icon name="more_horiz" size={18} />
+    </ButtonBase>
+  );
+
+  // Section content wrapper: a borderless raised card on mobile, flat-on-page on desktop.
+  const sectionCardSx = {
+    bgcolor: { xs: tokens.surface.raised, md: 'transparent' },
+    borderRadius: { xs: `${tokens.radius.xl}px`, md: 0 },
+    p: { xs: 2, md: 0 },
+  } as const;
 
   return (
     <Box sx={{ color: tokens.text.primary }}>
-      {/* Back link */}
-      <ButtonBase
-        aria-label="Back to recipes"
-        onClick={() => router.push('/recipes')}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.5,
-          color: tokens.text.secondary,
-          fontSize: 13,
-          px: 1,
-          py: 0.5,
-          borderRadius: `${tokens.radius.sm}px`,
-          mb: 2,
-          '&:hover': { color: tokens.text.primary },
-        }}
-      >
-        <Icon name="arrow_back_ios" size={13} />
-        Recipes
-      </ButtonBase>
-
-      {/* Header */}
+      {/* ── Mobile top app-bar ── */}
       <Box
         sx={{
-          bgcolor: tokens.surface.raised,
-          borderRadius: `${tokens.radius.xl}px`,
-          border: `1px solid ${tokens.border.subtle}`,
-          p: { xs: 2, md: 3 },
+          display: { xs: 'flex', md: 'none' },
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          py: 1.25,
+          borderBottom: `1px solid ${tokens.border.subtle}`,
           mb: 2,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-          {/* Emoji tile — always rendered; falls back to 🍽️ for emoji-less recipes */}
-          {
-            <Box
+        {backLink({ ml: -0.5 })}
+        {canEdit && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ButtonBase
+              aria-label="Edit recipe"
+              onClick={() => setEditing(true)}
               sx={{
-                width: 56,
-                height: 56,
-                flexShrink: 0,
-                borderRadius: `${tokens.radius.lg}px`,
-                bgcolor: tokens.surface.elevated,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 28,
-              }}
-            >
-              {recipe.emoji || '🍽️'}
-            </Box>
-          }
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            {/* Eyebrow */}
-            <Box
-              sx={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
                 color: tokens.section.recipes,
-                mb: 0.25,
+                fontSize: 14,
+                fontWeight: 600,
+                '&:hover': { opacity: 0.85 },
               }}
             >
-              RECIPE
-            </Box>
+              Edit
+            </ButtonBase>
+            {moreButton(30)}
+          </Box>
+        )}
+      </Box>
 
-            {/* Title */}
-            <Box
-              sx={{
-                fontSize: { xs: 20, md: 24 },
-                fontWeight: 700,
-                fontFamily: 'var(--font-bricolage, inherit)',
-                color: tokens.text.primary,
-                mb: 0.5,
-                lineHeight: 1.2,
-              }}
-            >
-              {recipe.title}
-            </Box>
+      {/* ── Desktop back link ── */}
+      {backLink({ display: { xs: 'none', md: 'inline-flex' }, pt: 2.5, pb: 1 })}
 
-            {/* Stars + access + tags row */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mt: 0.75 }}>
-              {userData?.rating !== undefined && (
-                <Stars rating={userData.rating} sharedRatings={sharedRatings} />
-              )}
-              <AccessChip access={accessLevel} />
-              {userData?.tags?.map((tag) => (
-                <TagChip key={tag}>{tag}</TagChip>
+      {/* ── Header (flat; desktop has a bottom divider) ── */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: { xs: 1.75, md: 2 },
+          borderBottom: { xs: 'none', md: `1px solid ${tokens.border.subtle}` },
+          pb: { xs: 0, md: 2.75 },
+          mb: { xs: 2.25, md: 2.75 },
+        }}
+      >
+        {/* Emoji tile — falls back to 🍽️ for emoji-less recipes */}
+        <Box
+          sx={{
+            width: { xs: 56, md: 72 },
+            height: { xs: 56, md: 72 },
+            flexShrink: 0,
+            borderRadius: { xs: '14px', md: '16px' },
+            bgcolor: tokens.surface.elevated,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: { xs: 32, md: 42 },
+          }}
+        >
+          {recipe.emoji || '🍽️'}
+        </Box>
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Eyebrow — desktop only */}
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: tokens.section.recipes,
+              mb: 0.25,
+            }}
+          >
+            Recipe
+          </Box>
+
+          {/* Title */}
+          <Box
+            sx={{
+              fontSize: { xs: 22, md: 34 },
+              fontWeight: 700,
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '-0.02em',
+              color: tokens.text.primary,
+              lineHeight: { xs: 1.1, md: 1.05 },
+            }}
+          >
+            {recipe.title}
+          </Box>
+
+          {/* Meta row: stars + access + (desktop-inline tags) */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: { xs: 1, md: 1.5 },
+              mt: { xs: 0.75, md: 1 },
+            }}
+          >
+            {userData?.rating !== undefined && (
+              <>
+                <Box sx={{ display: { xs: 'inline-flex', md: 'none' } }}>
+                  <Stars rating={userData.rating} sharedRatings={sharedRatings} size={13} />
+                </Box>
+                <Box sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+                  <Stars rating={userData.rating} sharedRatings={sharedRatings} size={16} />
+                </Box>
+              </>
+            )}
+            <AccessChip access={accessLevel} />
+            {/* Desktop: tags inline (small) */}
+            <Box sx={{ display: { xs: 'none', md: 'inline-flex' }, flexWrap: 'wrap', gap: 1 }}>
+              {tags.map((tag) => (
+                <TagChip key={tag} small>
+                  {tag}
+                </TagChip>
               ))}
             </Box>
           </Box>
-
-          {/* Actions (creator only) */}
-          {canEdit && (
-            <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-              {/* Edit button */}
-              <ButtonBase
-                aria-label="Edit recipe"
-                onClick={() => setEditing(true)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1.25,
-                  py: 0.75,
-                  borderRadius: `${tokens.radius.md}px`,
-                  border: `1px solid ${tokens.border.strong}`,
-                  color: tokens.text.secondary,
-                  fontSize: 13,
-                  '&:hover': { color: tokens.text.primary, bgcolor: tokens.surface.elevated },
-                }}
-              >
-                <Icon name="edit" size={15} />
-                Edit
-              </ButtonBase>
-
-              {/* ⋯ more menu */}
-              <ButtonBase
-                aria-label="More options"
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: `${tokens.radius.md}px`,
-                  border: `1px solid ${tokens.border.subtle}`,
-                  color: tokens.text.secondary,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  '&:hover': { color: tokens.text.primary, bgcolor: tokens.surface.elevated },
-                }}
-              >
-                <Icon name="more_horiz" size={18} />
-              </ButtonBase>
-
-              <Menu
-                anchorEl={menuAnchor}
-                open={Boolean(menuAnchor)}
-                onClose={() => setMenuAnchor(null)}
-                PaperProps={{
-                  sx: {
-                    bgcolor: tokens.surface.elevated,
-                    border: `1px solid ${tokens.border.subtle}`,
-                    color: tokens.text.primary,
-                    minWidth: 140,
-                  },
-                }}
-              >
-                <MenuItem
-                  onClick={() => {
-                    setMenuAnchor(null);
-                    setDeleteOpen(true);
-                  }}
-                  sx={{ color: tokens.state.danger, fontSize: 14 }}
-                >
-                  <Icon name="delete" size={16} color={tokens.state.danger} />
-                  <Box component="span" sx={{ ml: 1 }}>
-                    Delete
-                  </Box>
-                </MenuItem>
-              </Menu>
-            </Box>
-          )}
         </Box>
+
+        {/* Desktop actions */}
+        {canEdit && (
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, flexShrink: 0 }}>
+            <ButtonBase
+              aria-label="Edit recipe"
+              onClick={() => setEditing(true)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1.5,
+                py: 0.875,
+                borderRadius: `${tokens.radius.md}px`,
+                border: `1px solid ${tokens.border.strong}`,
+                color: tokens.text.secondary,
+                fontSize: 14,
+                '&:hover': { color: tokens.text.primary, bgcolor: tokens.surface.elevated },
+              }}
+            >
+              <Icon name="edit" size={16} />
+              Edit
+            </ButtonBase>
+            {moreButton(38)}
+          </Box>
+        )}
       </Box>
 
-      {/* Body: two-column on md+, stacked on xs */}
+      {/* ── Mobile tags row (full-size chips) ── */}
+      {tags.length > 0 && (
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexWrap: 'wrap', gap: 0.75, mb: 2.25 }}>
+          {tags.map((tag) => (
+            <TagChip key={tag}>{tag}</TagChip>
+          ))}
+        </Box>
+      )}
+
+      {/* ── Shared ⋯ menu ── */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            bgcolor: tokens.surface.elevated,
+            border: `1px solid ${tokens.border.subtle}`,
+            color: tokens.text.primary,
+            minWidth: 140,
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setDeleteOpen(true);
+          }}
+          sx={{ color: tokens.state.danger, fontSize: 14 }}
+        >
+          <Icon name="delete" size={16} color={tokens.state.danger} />
+          <Box component="span" sx={{ ml: 1 }}>
+            Delete
+          </Box>
+        </MenuItem>
+      </Menu>
+
+      {/* ── Body: flat two-column on desktop, stacked borderless cards on mobile ── */}
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: 2,
+          display: { xs: 'block', md: 'grid' },
+          gridTemplateColumns: { md: 'minmax(320px, 420px) 1fr' },
+          gap: { xs: 0, md: 4 },
+          alignItems: 'flex-start',
         }}
       >
         {/* Ingredients */}
-        <Box
-          sx={{
-            bgcolor: tokens.surface.raised,
-            borderRadius: `${tokens.radius.xl}px`,
-            border: `1px solid ${tokens.border.subtle}`,
-            p: { xs: 2, md: 3 },
-          }}
-        >
-          <Box
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: tokens.text.secondary,
-              mb: 2,
-            }}
-          >
-            Ingredients
+        <Box sx={{ mb: { xs: 2.25, md: 0 } }}>
+          <SectionLabel>Ingredients</SectionLabel>
+          <Box sx={sectionCardSx}>
+            <RecipeIngredientsView ingredients={recipe.ingredients} />
           </Box>
-          <RecipeIngredientsView ingredients={recipe.ingredients} />
         </Box>
 
         {/* Instructions */}
-        <Box
-          sx={{
-            bgcolor: tokens.surface.raised,
-            borderRadius: `${tokens.radius.xl}px`,
-            border: `1px solid ${tokens.border.subtle}`,
-            p: { xs: 2, md: 3 },
-          }}
-        >
-          <Box
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: tokens.text.secondary,
-              mb: 2,
-            }}
-          >
-            Instructions
+        <Box>
+          <SectionLabel>Instructions</SectionLabel>
+          <Box sx={sectionCardSx}>
+            <RecipeInstructionsView instructions={recipe.instructions} />
           </Box>
-          <RecipeInstructionsView instructions={recipe.instructions} />
         </Box>
       </Box>
 

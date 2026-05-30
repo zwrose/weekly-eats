@@ -47,14 +47,16 @@ describe('RecipeDetail', () => {
     await waitFor(() => expect(screen.getByText('Lemon pasta')).toBeInTheDocument());
     expect(screen.getByText('spaghetti')).toBeInTheDocument();
     expect(screen.getByText('Boil the pasta.')).toBeInTheDocument();
-    expect(screen.getByText('italian')).toBeInTheDocument();
+    // Tags render in both the mobile row and the desktop-inline row (responsive variants).
+    expect(screen.getAllByText('italian').length).toBeGreaterThan(0);
   });
 
   it('back link navigates to the list', async () => {
     const user = userEvent.setup();
     render(<RecipeDetail recipeId="r1" />);
     await waitFor(() => screen.getByText('Lemon pasta'));
-    await user.click(screen.getByRole('button', { name: /recipes/i }));
+    // Mobile and desktop each render a back control; clicking either navigates.
+    await user.click(screen.getAllByRole('button', { name: /back to recipes/i })[0]);
     expect(push).toHaveBeenCalledWith('/recipes');
   });
 
@@ -62,7 +64,7 @@ describe('RecipeDetail', () => {
     const user = userEvent.setup();
     render(<RecipeDetail recipeId="r1" />);
     await waitFor(() => screen.getByText('Lemon pasta'));
-    await user.click(screen.getByRole('button', { name: /edit/i }));
+    await user.click(screen.getAllByRole('button', { name: /edit recipe/i })[0]);
     expect(screen.getByTestId('recipe-editor')).toBeInTheDocument();
   });
 
@@ -71,8 +73,8 @@ describe('RecipeDetail', () => {
     render(<RecipeDetail recipeId="r1" />);
     await waitFor(() => screen.getByText('Lemon pasta'));
 
-    // Open the ⋯ more menu
-    await user.click(screen.getByRole('button', { name: /more options/i }));
+    // Open the ⋯ more menu (mobile + desktop each render one; either opens the shared menu)
+    await user.click(screen.getAllByRole('button', { name: /more options/i })[0]);
     // Click Delete in the menu
     await user.click(screen.getByRole('menuitem', { name: /delete/i }));
     // ConfirmDialog should appear — click the confirm button

@@ -19,7 +19,7 @@ export function RecipeIngredientsView({ ingredients }: { ingredients: RecipeIngr
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
                 color: tokens.text.secondary,
-                mb: 1.25,
+                mb: { xs: 1, md: 1.25 },
               }}
             >
               {group.title}
@@ -28,12 +28,18 @@ export function RecipeIngredientsView({ ingredients }: { ingredients: RecipeIngr
           {group.ingredients.map((it, ii) => (
             <Box
               key={ii}
-              sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, py: '6px', fontSize: 15 }}
+              sx={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: { xs: 1, md: 1.25 },
+                py: { xs: '5px', md: '6px' },
+                fontSize: { xs: 14, md: 15 },
+              }}
             >
               <Box
                 component="span"
                 sx={{
-                  width: 80,
+                  width: { xs: 72, md: 80 },
                   flexShrink: 0,
                   color: tokens.text.secondary,
                   fontVariantNumeric: 'tabular-nums',
