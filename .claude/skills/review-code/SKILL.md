@@ -55,8 +55,8 @@ Files written during the review. **Per-round artifacts live under `$SESSION_DIR/
 | `$SESSION_DIR/round-<N>/findings-security.json`     | sec agent      | Security-reviewer findings array                                                            |
 | `$SESSION_DIR/round-<N>/findings-test.json`         | test agent     | Test-reviewer findings array                                                                |
 | `$SESSION_DIR/round-<N>/compiled.json`              | orchestrator   | Deduplicated, verified findings + summary + verdict (read by `circuit-breaker.ts`)          |
-| `$SESSION_DIR/round-<N>/triage.json`                | triage agent   | Per-finding `auto_fix`/`needs_user` classification (loop only)                              |
-| `$SESSION_DIR/round-<N>/resolutions.json`           | orchestrator   | User decisions on `needs_user` findings (loop only; read by `circuit-breaker.ts`)           |
+| `$SESSION_DIR/round-<N>/triage.json`                | triage agent   | Per-finding `mechanical`/`judgment` classification + POV for every finding (loop only)      |
+| `$SESSION_DIR/round-<N>/resolutions.json`           | orchestrator   | User decisions on `present-set` findings (loop only; read by `circuit-breaker.ts`)          |
 | `$SESSION_DIR/round-<N>/fix-batch.json`             | orchestrator   | Findings handed to the fixer this round (loop only)                                         |
 | `$SESSION_DIR/round-<N>/review.json`                | orchestrator   | `--post` only: review body + approved comments (pre-resolve)                                |
 | `$SESSION_DIR/round-<N>/review-resolved.json`       | resolve script | `--post` only: comments after line-anchor resolution                                        |
@@ -310,21 +310,21 @@ Each round:
 4. **Effective findings** = `compiled.findings` whose identity is NOT in the skip-set.
 5. If `effective` is empty → **EXIT SUCCESS** (jump to End-of-Loop Summary).
 6. **Triage.** Dispatch the triage subagent (template below) over `effective`, writing `round-<round>/triage.json`.
-7. **Interventions.** `needs_user` = effective findings classified `needs_user`.
-   - If non-empty: present ONE consolidated `AskUserQuestion`. For each deferred finding, **lead with the orchestrator POV** from `triage.json` (per REVIEW.md "Orchestrator POV") — show the recommendation, rationale, and confidence right under the finding, e.g. `→ POV: Skip (Low confidence) — correct in theory but this path is single-user and never hit concurrently`. Then offer **Fix as suggested** / **Fix with my guidance** (free text) / **Skip** — keep the options in this neutral order regardless of the POV; the POV informs, it does not pre-select. List the `auto_fix` findings in the same prompt as an FYI (no per-item action; their POV is implicitly Fix). Write `round-<round>/resolutions.json`:
+7. **Interventions.** `present-set` = effective findings where `recommendation` is `Skip` or `Defer`, OR (`recommendation` is `Fix` AND `classification` is `judgment`). These are the only findings with a genuine decision left for the user; everything the agent recommends fixing mechanically is handled in step 8 without asking.
+   - If non-empty: present ONE consolidated `AskUserQuestion`. For each finding, **lead with the orchestrator POV** from `triage.json` (per REVIEW.md "Orchestrator POV") — show the recommendation, rationale, and confidence right under the finding, e.g. `→ POV: Skip (Low confidence) — correct in theory but this path is single-user and never hit concurrently`. Then offer **Fix as suggested** / **Fix with my guidance** (free text) / **Skip** — keep the options in this neutral order regardless of the POV; the POV informs, it does not pre-select. List the auto-fix findings (`recommendation` Fix AND `classification` mechanical) in the same prompt as an FYI (no per-item action; they are fixed automatically). Write `round-<round>/resolutions.json`:
      ```json
      { "round": <N>, "resolutions": [
        { "id": "<finding id>", "file": "<file>", "title": "<title>", "severity": "<severity>", "action": "fix" | "fix-with-guidance" | "skip", "guidance": "<text or omitted>" }
      ] }
      ```
-     Add every `skip` identity to the skip-set; if a skipped finding is Critical or Important, also remember it as a **skipped-blocking** finding (its `severity` is recorded in `resolutions.json` so this survives compaction). `approved` = entries with action `fix`/`fix-with-guidance` (carry `guidance`).
+     Add every `skip` identity to the skip-set; if a skipped finding is Critical or Important, also remember it as a **skipped-blocking** finding (its `severity` is recorded in `resolutions.json` so this survives compaction). `approved` = `present-set` entries with action `fix`/`fix-with-guidance` (carry `guidance`).
    - If empty: `approved = []`, write no resolutions file.
-8. **Fix batch.** `auto_fix` = effective findings classified `auto_fix`. `fix-batch` = `auto_fix ∪ approved`. Write `round-<round>/fix-batch.json` (full finding objects; attach `userGuidance` to any with guidance).
+8. **Fix batch.** `auto-fix-set` = effective findings where `recommendation` is `Fix` AND `classification` is `mechanical`. `fix-batch` = `auto-fix-set ∪ approved`. Write `round-<round>/fix-batch.json` (full finding objects; attach `userGuidance` to any with guidance).
 9. **Blocking-to-fix** = count of `fix-batch` findings with severity Critical or Important.
 10. If `fix-batch` is empty (everything this round was skipped) → **EXIT** with a "remaining findings deliberately skipped" note (list them).
 11. **Fix.** Dispatch the fixer subagent (template below) with `fix-batch.json`.
     - Status `CHECK_FAILED` → **HALT**; surface the failing `npm run check` output.
-    - Status `ESCALATED` → for each escalated finding, present it as a `needs_user` intervention now (same prompt shape as step 7), then re-dispatch the fixer with the user's decisions folded in. The follow-up dispatch uses this same `CHECK_FAILED`/`ESCALATED` contract; a finding the user has already decided on is no longer eligible to escalate, so it cannot ping-pong. Do NOT add an escalated finding to the skip-set unless the user skips it. After escalation handling resolves the final `fix-batch`, recompute **blocking-to-fix** (step 9) before evaluating step 14.
+    - Status `ESCALATED` → for each escalated finding, present it as a `present-set` intervention now (same prompt shape as step 7), then re-dispatch the fixer with the user's decisions folded in. The follow-up dispatch uses this same `CHECK_FAILED`/`ESCALATED` contract; a finding the user has already decided on is no longer eligible to escalate, so it cannot ping-pong. Do NOT add an escalated finding to the skip-set unless the user skips it. After escalation handling resolves the final `fix-batch`, recompute **blocking-to-fix** (step 9) before evaluating step 14.
 12. **Verify.** Orchestrator independently runs `npm run check`. Fail → **HALT**; surface output. (Do not re-review on a broken tree.)
 13. **Circuit breaker.** Run `npx tsx .claude/skills/review-code/circuit-breaker.ts "$SESSION_DIR" 7`. Parse its JSON. If `halt: true` → **HALT**; surface `reason` + `detail` + still-open findings + the commit range (`git log <baseRef>..HEAD --oneline`). Do NOT read or `cat` the diff into the orchestrator context.
 14. If `blocking-to-fix > 0` → `round += 1` and repeat from step 1. If `blocking-to-fix == 0`:
@@ -345,24 +345,25 @@ You are triaging code-review findings for one round of an auto-fix loop.
   whether a fix is mechanical or a judgment call)
 
 ## Your job
-Classify EACH listed finding as "auto_fix" or "needs_user" per the rubric.
-Bias hard toward auto_fix. Mark needs_user ONLY when the FIX involves judgment:
-- finding.tradeoff === true  → always needs_user
+For EACH listed finding, emit TWO things — a fix-complexity classification AND an
+orchestrator POV. Read the cited file before deciding; use what you read for both.
+
+### 1. classification: "mechanical" or "judgment"
+This is about the FIX, not whether to fix. Mark "judgment" ONLY when applying the
+fix involves a real choice:
+- finding.tradeoff === true  → judgment
 - UX judgment call (copy, layout, interaction model, empty/error-state design)
-  AND more than one reasonable design exists → needs_user
+  AND more than one reasonable design exists → judgment
 - the fix would change established product behavior the user may have an
-  opinion on → needs_user
-Everything else (mechanical/determinate fix) → auto_fix.
+  opinion on → judgment
+Everything else (one determinate, obviously-correct fix) → mechanical. Bias hard
+toward mechanical. "Replace the hardcoded 'Not found' string with
+FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND" = mechanical. "This empty-state needs copy
+and a layout decision" = judgment.
 
-Read the cited file before deciding. "Replace the hardcoded 'Not found'
-string with FOOD_ITEM_ERRORS.FOOD_ITEM_NOT_FOUND" = mechanical = auto_fix.
-"This empty-state needs copy and a layout decision" = judgment = needs_user.
-
-## Orchestrator POV (needs_user findings only)
-For EACH finding you classify "needs_user", also emit the orchestrator's point
-of view — this is what the user will see when the loop stops to ask them. You
-already read the cited code to classify; use it. Per REVIEW.md "Orchestrator
-POV", emit:
+### 2. recommendation (orchestrator POV) — EVERY finding
+Per REVIEW.md "Orchestrator POV", emit for every finding (this drives whether the
+loop fixes it silently or stops to ask the user):
 - recommendation: "Fix" | "Skip" | "Defer"
   - Fix = correct and worth the change here.
   - Skip = good reason not to (correct-but-not-worth-it in this single-user
@@ -370,13 +371,12 @@ POV", emit:
   - Defer = real but not now/not here (big-job, out of scope for this change).
 - rationale: one sentence saying why.
 - confidence: "High" | "Low" (Low = genuinely unsure; flags it for scrutiny).
-Omit these three fields for auto_fix findings (their POV is implicitly Fix).
 
 ## Output
 Write $SESSION_DIR/round-<N>/triage.json — every listed finding id exactly once:
-[ { "id": "<id>", "classification": "auto_fix" | "needs_user", "reason": "<one sentence>",
+[ { "id": "<id>", "classification": "mechanical" | "judgment", "reason": "<one sentence>",
     "recommendation": "Fix" | "Skip" | "Defer", "rationale": "<one sentence>", "confidence": "High" | "Low" } ]
-(recommendation/rationale/confidence present only on needs_user entries.)
+(All four POV-related fields are present on EVERY entry.)
 ```
 
 ### Fixer subagent prompt
@@ -432,22 +432,24 @@ After the single pass, run the interactive tiered presentation and a terminal re
 
 **Form the orchestrator POV before presenting.** Per REVIEW.md "Orchestrator POV", for each Critical/Important finding open the cited file at the cited line (in `$SESSION_DIR/repo/` for the PR path, working tree otherwise) and form a **Fix / Skip / Defer + one-sentence rationale + High/Low confidence** take. This is the coordinator's own judgment from a small targeted read — not a re-review. For batched Minor/Nit, derive the POV from the finding text (read the file only if the text is insufficient).
 
-Open with the verdict banner and the one-line summary, then run the tiered presentation:
+**Apply the review gate.** Partition findings by POV: `auto-include` = `recommendation == Fix` (these enter the report without asking); `ask-set` = `recommendation` is `Skip` or `Defer` (these need your call). Only the `ask-set` is presented below; the `auto-include` set is added to the approved findings silently.
 
-- **Critical and Important findings — individually.** For each, use `AskUserQuestion`. Header includes severity tag, dimension(s), and `file:line`. Body shows the finding text, the suggested fix, and — on its own line — the **POV**: e.g. `→ POV: Skip (Low confidence) — correct in theory but this path is single-user and never hit concurrently`. Options (keep this neutral order; the POV informs but does not pre-select):
+Open with the verdict banner and the one-line summary. If the `ask-set` is empty, skip straight to the report. Otherwise run the tiered presentation over the `ask-set` only:
+
+- **Critical and Important findings (ask-set) — individually.** For each, use `AskUserQuestion`. Header includes severity tag, dimension(s), and `file:line`. Body shows the finding text, the suggested fix, and — on its own line — the **POV**: e.g. `→ POV: Skip (Low confidence) — correct in theory but this path is single-user and never hit concurrently`. Options (keep this neutral order; the POV informs but does not pre-select):
   - **Approve** — include at current severity.
   - **Modify** — open a free-text edit for the comment body before approval.
   - **Downgrade** — drop one severity tier (Critical → Important, Important → Minor). A downgraded Important → Minor is **auto-approved at Minor** and not re-presented in the Minor batch.
   - **Skip** — exclude entirely.
   - The user may use "Other" to push back, ask a clarifying question, or request a targeted re-verification. Engage. If they question a specific finding, read the relevant file from `$SESSION_DIR/repo/` (or working tree) to re-check that one location — this is a small, targeted read, not loading the full diff.
 
-- **Minor and Nit findings — batched, multi-select.** Present in batches of 4 via `AskUserQuestion` with multi-select. For each finding, show severity, `file:line`, a 2-3 sentence summary, and a compact POV tag (e.g. `POV: Fix (High)`). Always offer **Include all** and **Skip all** as alternatives at the bottom of the batch.
+- **Minor and Nit findings (ask-set) — batched, multi-select.** Present in batches of 4 via `AskUserQuestion` with multi-select. For each finding, show severity, `file:line`, a 2-3 sentence summary, and a compact POV tag (e.g. `POV: Skip (Low)`). Always offer **Include all** and **Skip all** as alternatives at the bottom of the batch.
 
-After the last batch, summarize how many of each severity were approved, then print a terminal report grouped by severity. Lead with the verdict label in bold. For each approved finding: severity tag, `file:line`, title, body, and the orchestrator POV line. End with the count summary (e.g. `"3 Critical, 5 Important, 2 Minor approved"`). Save nothing else to disk — `compiled.json` already has the full record.
+The approved set = `auto-include` ∪ the findings approved from the `ask-set`. After the last batch, summarize how many of each severity were approved, then print a terminal report grouped by severity. Lead with the verdict label in bold. For each approved finding: severity tag, `file:line`, title, body, and the orchestrator POV line. End with the count summary (e.g. `"3 Critical, 5 Important, 2 Minor approved"`). Save nothing else to disk — `compiled.json` already has the full record.
 
 ### `--post`
 
-After the single pass (PR mode only), post approved findings to GitHub. No triage, no fix, no loop, no commits to the tree. Run the interactive tiered presentation above to select which findings to post — the orchestrator POV is shown to **you** during selection, but is **not** included in the posted comment body (the public comment stays the finding + suggestion). Then ask the user the review event type via `AskUserQuestion`:
+After the single pass (PR mode only), post approved findings to GitHub. No triage, no fix, no loop, no commits to the tree. Run the interactive tiered presentation above (including its **review gate**) to select which findings to post: `recommendation == Fix` findings are auto-selected for posting, and only `Skip`/`Defer` findings are presented for your call. The orchestrator POV is shown to **you** during selection, but is **not** included in the posted comment body (the public comment stays the finding + suggestion). Then ask the user the review event type via `AskUserQuestion`:
 
 - **COMMENT** — findings without approval/rejection
 - **REQUEST_CHANGES** — blocks merge until resolved
