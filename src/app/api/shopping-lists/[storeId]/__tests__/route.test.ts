@@ -3,8 +3,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 vi.mock('@/lib/realtime/ably-server', () => ({
@@ -42,7 +41,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const VALID_STORE_ID = '507f1f77bcf86cd799439011';
@@ -63,7 +62,7 @@ function makePutRequest(body: unknown): NextRequest {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   storesFindOne.mockReset();
   shoppingListsFindOne.mockReset();
   shoppingListsInsertOne.mockReset();
@@ -75,7 +74,7 @@ beforeEach(() => {
 describe('GET /api/shopping-lists/[storeId]', () => {
   describe('Authentication & Authorization', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.GET(makeGetRequest(), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
       });
@@ -83,7 +82,7 @@ describe('GET /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.GET(makeGetRequest(), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
       });
@@ -91,7 +90,7 @@ describe('GET /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.GET(makeGetRequest(), {
         params: Promise.resolve({ storeId: 'bad' }),
       });
@@ -99,7 +98,7 @@ describe('GET /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 404 when store not found or user has no access', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce(null);
       const res = await routes.GET(makeGetRequest(), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
@@ -110,7 +109,7 @@ describe('GET /api/shopping-lists/[storeId]', () => {
 
   describe('Approved path', () => {
     it('returns the existing shopping list for an approved user', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(VALID_STORE_ID),
         userId: 'u1',
@@ -138,7 +137,7 @@ describe('GET /api/shopping-lists/[storeId]', () => {
 describe('PUT /api/shopping-lists/[storeId]', () => {
   describe('Authentication & Authorization', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.PUT(makePutRequest({ items: [] }), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
       });
@@ -146,7 +145,7 @@ describe('PUT /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.PUT(makePutRequest({ items: [] }), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
       });
@@ -154,7 +153,7 @@ describe('PUT /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 400 for invalid storeId', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const res = await routes.PUT(makePutRequest({ items: [] }), {
         params: Promise.resolve({ storeId: 'bad' }),
       });
@@ -162,7 +161,7 @@ describe('PUT /api/shopping-lists/[storeId]', () => {
     });
 
     it('returns 404 when store not found or user has no access', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce(null);
       const res = await routes.PUT(makePutRequest({ items: [] }), {
         params: Promise.resolve({ storeId: VALID_STORE_ID }),
@@ -173,7 +172,7 @@ describe('PUT /api/shopping-lists/[storeId]', () => {
 
   describe('Approved path', () => {
     it('upserts and returns the shopping list for an approved user', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       storesFindOne.mockResolvedValueOnce({
         _id: ObjectId.createFromHexString(VALID_STORE_ID),
         userId: 'u1',

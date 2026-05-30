@@ -29,8 +29,9 @@ jobs:
         run: npm run test:coverage
         env:
           MONGODB_URI: mongodb://localhost:27017/fake
-          GOOGLE_CLIENT_ID: fake
-          GOOGLE_CLIENT_SECRET: fake
+          AUTH_SECRET: fake-secret-for-ci
+          AUTH_GOOGLE_ID: fake
+          AUTH_GOOGLE_SECRET: fake
           NODE_ENV: test
           CI: true
           SKIP_DB_SETUP: true

@@ -200,12 +200,11 @@ describe('useShoppingSync (Ably-based shopping sync hook)', () => {
     const onPresenceUpdate = vi.fn();
 
     mockPresenceGet.mockImplementation(
-      (cb: (err: Error | null, result?: Array<{ data: ActiveUser | null }> | null) => void) => {
-        cb(null, [
+      () =>
+        Promise.resolve([
           { data: { email: 'a@example.com', name: 'User A' } },
           { data: { email: '', name: 'Missing Email' } },
-        ] as any);
-      }
+        ]) as any
     );
 
     render(

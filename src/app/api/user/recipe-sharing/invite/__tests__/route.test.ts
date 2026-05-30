@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 // Mock MongoDB
 const findOneMock = vi.fn();
@@ -49,7 +41,7 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 // Convenient access to mocked imports
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const { ObjectId } = await import('mongodb');
 
 // Import the route module after mocks are set up
@@ -62,7 +54,7 @@ const makeRequest = (body: unknown) =>
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   updateOneMock.mockReset();
 });
@@ -88,7 +80,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   };
 
   it('POST returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.POST(
       makeRequest({ email: 'user2@example.com', sharingTypes: ['tags'] })
     );
@@ -98,7 +90,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 403 when user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(
+    (auth as any).mockResolvedValueOnce(
       unapprovedSession({ id: 'user-1', email: 'user1@example.com' })
     );
     const res = await routes.POST(
@@ -108,7 +100,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 400 for invalid email', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const res = await routes.POST(makeRequest({ email: 'invalid-email', sharingTypes: ['tags'] }));
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -116,7 +108,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 400 for empty sharing types', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const res = await routes.POST(makeRequest({ email: 'user2@example.com', sharingTypes: [] }));
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -124,7 +116,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 400 for invalid sharing types', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const res = await routes.POST(
       makeRequest({ email: 'user2@example.com', sharingTypes: ['invalid'] })
     );
@@ -134,7 +126,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 400 for self-invitation', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const res = await routes.POST(
       makeRequest({ email: 'user1@example.com', sharingTypes: ['tags'] })
     );
@@ -144,7 +136,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST returns 404 when user not found', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     findOneMock.mockResolvedValueOnce(null); // User not found
     const res = await routes.POST(
       makeRequest({ email: 'nonexistent@example.com', sharingTypes: ['tags'] })
@@ -155,7 +147,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST successfully creates invitation for tags', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     findOneMock
       .mockResolvedValueOnce(mockInvitedUser) // Find invited user
       .mockResolvedValueOnce(mockCurrentUser); // Find current user
@@ -180,7 +172,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST successfully creates invitation for ratings', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     findOneMock.mockResolvedValueOnce(mockInvitedUser).mockResolvedValueOnce(mockCurrentUser);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -193,7 +185,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST successfully creates invitation for both tags and ratings', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     findOneMock.mockResolvedValueOnce(mockInvitedUser).mockResolvedValueOnce(mockCurrentUser);
     updateOneMock.mockResolvedValueOnce({ acknowledged: true });
 
@@ -206,7 +198,7 @@ describe('api/user/recipe-sharing/invite route', () => {
   });
 
   it('POST replaces existing invitation for same user', async () => {
-    (getServerSession as any).mockResolvedValueOnce(mockSession);
+    (auth as any).mockResolvedValueOnce(mockSession);
     const existingUser = {
       ...mockCurrentUser,
       settings: {

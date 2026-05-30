@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-// Mock next-auth session
-vi.mock('next-auth/next', () => ({
-  getServerSession: vi.fn(),
-}));
-
-// Mock authOptions to avoid importing real adapter
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 vi.mock('@/lib/mongodb-adapter', () => ({
   default: Promise.resolve({}),
@@ -67,14 +59,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeRequest = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findMock.mockReset();
   toArrayMock.mockReset();
   insertOneMock.mockReset();
@@ -95,13 +87,13 @@ beforeEach(() => {
 describe('api/food-items route', () => {
   describe('GET - authentication', () => {
     it('returns 401 when unauthenticated', async () => {
-      (getServerSession as any).mockResolvedValueOnce(null);
+      (auth as any).mockResolvedValueOnce(null);
       const res = await routes.GET(makeRequest('http://localhost/api/food-items'));
       expect(res.status).toBe(401);
     });
 
     it('returns 403 when user is not approved', async () => {
-      (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
       const res = await routes.GET(makeRequest('http://localhost/api/food-items'));
       expect(res.status).toBe(403);
     });
@@ -109,7 +101,7 @@ describe('api/food-items route', () => {
 
   describe('GET - server-side pagination', () => {
     it('returns paginated response with defaults', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
@@ -131,7 +123,7 @@ describe('api/food-items route', () => {
     });
 
     it('passes pagination params from URL', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockParsePaginationParams.mockReturnValue({
         page: 2,
         limit: 10,
@@ -160,7 +152,7 @@ describe('api/food-items route', () => {
 
   describe('GET - unified query with accessLevel', () => {
     it('returns all accessible items by default (personal + global)', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [
           { _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' },
@@ -187,7 +179,7 @@ describe('api/food-items route', () => {
     });
 
     it('filters by accessLevel=private', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
@@ -208,7 +200,7 @@ describe('api/food-items route', () => {
     });
 
     it('filters by accessLevel=shared-by-others', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' }],
         total: 1,
@@ -229,7 +221,7 @@ describe('api/food-items route', () => {
     });
 
     it('filters by accessLevel=shared-by-you', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f3', name: 'Shared Salt', isGlobal: true, createdBy: 'u1' }],
         total: 1,
@@ -252,7 +244,7 @@ describe('api/food-items route', () => {
 
   describe('GET - search filtering', () => {
     it('filters by query string (name search)', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f1', name: 'Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
@@ -279,7 +271,7 @@ describe('api/food-items route', () => {
 
   describe('GET - backward compatibility', () => {
     it('supports legacy userOnly param', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f1', name: 'My Flour', isGlobal: false, createdBy: 'u1' }],
         total: 1,
@@ -296,7 +288,7 @@ describe('api/food-items route', () => {
     });
 
     it('supports legacy globalOnly param', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       mockPaginatedResponse.mockResolvedValueOnce({
         data: [{ _id: 'f2', name: 'Global Sugar', isGlobal: true, createdBy: 'other' }],
         total: 1,
@@ -318,14 +310,14 @@ describe('api/food-items route', () => {
 
   describe('POST', () => {
     it('validates required fields', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       const body = { name: '', singularName: '', pluralName: '', unit: '', isGlobal: false };
       const res = await routes.POST(makeRequest('http://localhost/api/food-items', body));
       expect(res.status).toBe(400);
     });
 
     it('creates food item', async () => {
-      (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+      (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
       insertOneMock.mockResolvedValueOnce({ insertedId: 'new-food-id' });
       findOneMock
         .mockResolvedValueOnce(null)

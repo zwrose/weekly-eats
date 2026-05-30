@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -23,7 +22,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 // Route calls ObjectId.createFromHexString on the session user id, so it must be valid hex.
@@ -32,7 +31,7 @@ const SHARED_ID = '507f1f77bcf86cd799439012';
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   findMock.mockReset();
   toArrayMock.mockReset();
@@ -40,19 +39,19 @@ beforeEach(() => {
 
 describe('api/user/meal-plan-sharing/shared-users GET', () => {
   it('returns 401 when unauthenticated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: VALID_ID }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: VALID_ID }));
     const res = await routes.GET();
     expect(res.status).toBe(403);
   });
 
   it('returns an empty array (no lookup) when there are no pending/accepted invitations', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
     findOneMock.mockResolvedValueOnce({
       _id: VALID_ID,
       settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'rejected' }] } },
@@ -67,7 +66,7 @@ describe('api/user/meal-plan-sharing/shared-users GET', () => {
   });
 
   it('returns shared user info + status for accepted invitations', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
     findOneMock.mockResolvedValueOnce({
       _id: VALID_ID,
       settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'accepted' }] } },
@@ -87,7 +86,7 @@ describe('api/user/meal-plan-sharing/shared-users GET', () => {
   });
 
   it('includes pending invitees with a pending status', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
     findOneMock.mockResolvedValueOnce({
       _id: VALID_ID,
       settings: { mealPlanSharing: { invitations: [{ userId: SHARED_ID, status: 'pending' }] } },
@@ -105,7 +104,7 @@ describe('api/user/meal-plan-sharing/shared-users GET', () => {
   });
 
   it('returns 500 when the DB throws', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: VALID_ID }));
     findOneMock.mockRejectedValueOnce(new Error('db down'));
     const res = await routes.GET();
     expect(res.status).toBe(500);

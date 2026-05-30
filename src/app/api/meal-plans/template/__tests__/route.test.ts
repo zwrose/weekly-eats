@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { approvedSession, unapprovedSession } from '@/test-utils/session';
 
-vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/mongodb-adapter', () => ({ default: Promise.resolve({}) }));
 
 const findOneMock = vi.fn();
@@ -21,14 +20,14 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
-const { getServerSession } = await import('next-auth/next');
+const { auth } = await import('@/lib/auth');
 const routes = await import('../route');
 
 const makeReq = (url: string, body?: unknown) => ({ url, json: async () => body }) as any;
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  (getServerSession as any).mockReset();
+  (auth as any).mockReset();
   findOneMock.mockReset();
   insertOneMock.mockReset();
   updateOneMock.mockReset();
@@ -36,19 +35,19 @@ beforeEach(() => {
 
 describe('api/meal-plans/template route', () => {
   it('GET requires auth', async () => {
-    (getServerSession as any).mockResolvedValueOnce(null);
+    (auth as any).mockResolvedValueOnce(null);
     const res = await routes.GET();
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when the user is not approved (GET)', async () => {
-    (getServerSession as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(unapprovedSession({ id: 'u1' }));
     const res = await routes.GET();
     expect(res.status).toBe(403);
   });
 
   it('POST creates template when none exists', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce(null); // existing template
     insertOneMock.mockResolvedValueOnce({ insertedId: 't1' });
     findOneMock.mockResolvedValueOnce({
@@ -67,7 +66,7 @@ describe('api/meal-plans/template route', () => {
   });
 
   it('PUT upserts template and returns updated', async () => {
-    (getServerSession as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
+    (auth as any).mockResolvedValueOnce(approvedSession({ id: 'u1' }));
     findOneMock.mockResolvedValueOnce({ _id: 't1', userId: 'u1' }); // existing
     updateOneMock.mockResolvedValueOnce({ matchedCount: 1 });
     findOneMock.mockResolvedValueOnce({
