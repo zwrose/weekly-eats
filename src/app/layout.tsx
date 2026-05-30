@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Figtree } from 'next/font/google';
 import { cookies } from 'next/headers';
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import './globals.css';
 import Providers from '../components/Providers';
 import type { ThemeMode } from '../lib/user-settings';

@@ -80,7 +80,7 @@ function computeStartDate(startDay: DayOfWeek, weeksOut: number): string {
   today.setHours(0, 0, 0, 0);
   const todayJs = today.getDay(); // 0=Sun
 
-  let daysUntil = (jsDayIndex - todayJs + 7) % 7;
+  const daysUntil = (jsDayIndex - todayJs + 7) % 7;
   // If today is already that day, use today (daysUntil=0)
   const start = new Date(today);
   start.setDate(today.getDate() + daysUntil + weeksOut * 7);
