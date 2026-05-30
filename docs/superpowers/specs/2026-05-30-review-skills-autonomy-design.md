@@ -144,11 +144,16 @@ After:
 - **Never edits code.** No fixer subagent, no commits, no working-tree changes.
   Remove any fix/commit/code-edit language. (`audit-debt` has none today beyond
   the shared templates — verify nothing fix-oriented leaks in.)
-- **Consolidate at the end:** roll the surviving Critical/Important findings into
-  a **proposed set of GitHub issues**, applying the Change B gate (auto-include
-  POV=Fix and POV=Defer; ask only about Skip/borderline). Present the proposed
-  set, then `gh issue create` the approved ones (existing title/body format and
-  the `_Surfaced by /audit-debt_` footer are kept).
+- **Consolidate at the end:** roll the surviving findings — **across all tiers,
+  including Minor and Nit** — into a **proposed set of GitHub issues**. For
+  Critical/Important, apply the Change B gate (auto-include POV=Fix and POV=Defer;
+  ask only about Skip/borderline). Minor/Nit carry no POV today, so include them
+  by default. **Do not mix tiers within a single issue** — a Critical/Important
+  finding gets its own issue (or is grouped only with closely-related same-tier
+  findings), and Minor/Nit findings are consolidated into their own separate
+  lower-tier issue(s) rather than folded into a higher-tier one. Present the
+  proposed set, then `gh issue create` the approved ones (existing title/body
+  format and the `_Surfaced by /audit-debt_` footer are kept).
 - The opt-in **"save report to a file?"** offer is **kept** (it's a deliberate,
   user-initiated save, not auto-pollution).
 - `audit-debt`'s `$SESSION_DIR` artifacts are kept (resumable long loop).
