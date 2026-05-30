@@ -1,70 +1,75 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { verifyToken } from '@/lib/mcp/verify-token';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const req = new Request('http://localhost/api/mcp');
+const { findValidAccessToken } = vi.hoisted(() => ({ findValidAccessToken: vi.fn() }));
+vi.mock('@/lib/mcp/oauth/stores/tokens', () => ({ findValidAccessToken }));
+const { lookupApproval } = vi.hoisted(() => ({ lookupApproval: vi.fn() }));
+vi.mock('@/lib/mcp/oauth/approval', () => ({ lookupApproval }));
 
-// Use Vitest's env stubbing (auto-tracked + restored) rather than mutating
-// process.env directly — direct reassignment is fragile under the project's
-// singleFork vitest pool and can bleed into other test files. `vi.stubEnv`
-// sets the value live; `vi.unstubAllEnvs` in afterEach restores everything.
+import { verifyToken } from '../verify-token';
+
+const RESOURCE = 'https://app.test/api/mcp';
+function req() {
+  return new Request('https://app.test/api/mcp', {
+    headers: { 'x-forwarded-host': 'app.test', 'x-forwarded-proto': 'https' },
+  });
+}
+const tokenDoc = {
+  userId: 'u1',
+  clientId: 'c1',
+  resource: RESOURCE,
+  scope: 'weekly-eats:rw',
+  tokenType: 'access' as const,
+};
+
 beforeEach(() => {
-  vi.stubEnv('NODE_ENV', 'test');
-  // Default both to unset; each test stubs what it needs.
-  vi.stubEnv('MCP_DEV_TOKEN', '');
-  vi.stubEnv('MCP_DEV_USER_ID', '');
+  findValidAccessToken.mockReset().mockResolvedValue(tokenDoc);
+  lookupApproval.mockReset().mockResolvedValue({ isApproved: true, isAdmin: false });
 });
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe('verifyToken (Phase 1 dev-token gate)', () => {
-  it('returns AuthInfo for the correct dev token in a non-production env', async () => {
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    const info = await verifyToken(req, 'secret-dev-token');
-    expect(info).toBeDefined();
-    expect(info?.extra?.userId).toBe('dev-user-id');
-    expect(info?.token).toBe('secret-dev-token');
-    expect(info?.clientId).toBe('mcp-dev');
+describe('verifyToken (OAuth verifier)', () => {
+  it('valid access token + approved user → AuthInfo with userId/flags', async () => {
+    const info = await verifyToken(req(), 'AT');
+    expect(info?.extra).toMatchObject({ userId: 'u1', isApproved: true, isAdmin: false });
+    expect(info?.clientId).toBe('c1');
+    expect(info?.scopes).toEqual(['weekly-eats:rw']);
   });
 
-  it('returns undefined for a wrong token', async () => {
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    expect(await verifyToken(req, 'wrong')).toBeUndefined();
+  it('no bearer → undefined', async () => {
+    expect(await verifyToken(req(), undefined)).toBeUndefined();
   });
 
-  it('returns undefined for a same-length wrong token (exercises the constant-time path)', async () => {
-    // 'secret-dev-token' and 'secret-dev-tokeX' are both 16 chars, so safeEqual
-    // passes the length check and reaches timingSafeEqual — proving the
-    // constant-time comparison itself rejects a mismatch.
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    expect(await verifyToken(req, 'secret-dev-tokeX')).toBeUndefined();
+  it('unknown/expired/revoked token (store returns null) → undefined (T1/R6/M3)', async () => {
+    findValidAccessToken.mockResolvedValue(null);
+    expect(await verifyToken(req(), 'AT')).toBeUndefined();
   });
 
-  it('returns undefined when no bearer token is supplied', async () => {
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    expect(await verifyToken(req, undefined)).toBeUndefined();
+  it('resource/audience mismatch → undefined (R3)', async () => {
+    findValidAccessToken.mockResolvedValue({ ...tokenDoc, resource: 'https://evil/api/mcp' });
+    expect(await verifyToken(req(), 'AT')).toBeUndefined();
   });
 
-  it('returns undefined when MCP_DEV_TOKEN is not configured', async () => {
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    expect(await verifyToken(req, 'anything')).toBeUndefined();
+  it('live lookup says unapproved → undefined even though token is valid (T3/M1)', async () => {
+    lookupApproval.mockResolvedValue({ isApproved: false, isAdmin: false });
+    expect(await verifyToken(req(), 'AT')).toBeUndefined();
   });
 
-  it('returns undefined when MCP_DEV_USER_ID is not configured', async () => {
-    // Token present, user id absent → gate must still reject (C1: both required).
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    expect(await verifyToken(req, 'secret-dev-token')).toBeUndefined();
+  it('admin bypasses approval (M1 parity with requireApprovedSession)', async () => {
+    lookupApproval.mockResolvedValue({ isApproved: false, isAdmin: true });
+    const info = await verifyToken(req(), 'AT');
+    expect(info?.extra).toMatchObject({ isAdmin: true });
   });
 
-  it('is inert in production even with the correct token (C1)', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    vi.stubEnv('MCP_DEV_TOKEN', 'secret-dev-token');
-    vi.stubEnv('MCP_DEV_USER_ID', 'dev-user-id');
-    expect(await verifyToken(req, 'secret-dev-token')).toBeUndefined();
+  it('user vanished from users (lookup null) → undefined', async () => {
+    lookupApproval.mockResolvedValue(null);
+    expect(await verifyToken(req(), 'AT')).toBeUndefined();
+  });
+
+  it('the old MCP_DEV_TOKEN no longer authenticates (C1 — dev path removed)', async () => {
+    // No special-casing: a dev token is just an unknown bearer now.
+    findValidAccessToken.mockResolvedValue(null);
+    vi.stubEnv('MCP_DEV_TOKEN', 'dev-secret');
+    vi.stubEnv('MCP_DEV_USER_ID', 'u1');
+    expect(await verifyToken(req(), 'dev-secret')).toBeUndefined();
+    vi.unstubAllEnvs();
   });
 });
