@@ -378,6 +378,16 @@ clientId, scope)` match in `mcpConsents` issues a code without re-prompting, but
   consent → code issued, `state` single-use. `/register`: rate-limit enforced;
   **non-HTTPS `redirect_uri` (non-localhost) → 400 (S2)**. `/revoke`: valid revocation succeeds; unknown token succeeds silently
   (RFC 7009 §2.2); unauthenticated → 401.
+- **OAuth-AS research cases (Phase 2)** — `iss` present on `/authorize` **success and
+  error** responses, equal to AS issuer (R1); PKCE downgrade — stored `code_challenge`
+  but token request omits `code_verifier` → 400, and a `code_verifier` with no stored
+  challenge → 400 (R2); token-passthrough/audience — a token whose bound `resource` is
+  not this server (incl. a raw upstream/Google token) → `verifyToken` `undefined` (R3);
+  at-use expiry — a code/token/state with past `expiresAt` but still-present document
+  (mock store to simulate ≤60s TTL-reaper lag) → rejected by the app-code expiry check
+  (R6); discovery — unauthenticated MCP request → `401` with `WWW-Authenticate` carrying
+  `resource_metadata="<PRM URL>"`, and the RFC 9728 PRM + RFC 8414 AS-metadata documents
+  are served and well-formed (R4).
 - **Phase 1 dev-token gate (Phase 2)** — integration test asserting the production
   configuration rejects the static dev token (see §11, C1).
 - **Skill (Phase 3)** — validated manually.
