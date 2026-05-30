@@ -1,7 +1,7 @@
 // src/components/recipes/RecipeIngredientsEditor.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import dynamic from 'next/dynamic';
 import { Box, ButtonBase, InputBase } from '@mui/material';
 import { tokens } from '@/lib/design-tokens';
@@ -31,6 +31,13 @@ export interface RecipeIngredientsEditorProps {
   value: RecipeIngredientList[];
   onChange: (next: RecipeIngredientList[]) => void;
   currentRecipeId?: string;
+  /** Hide the built-in "+ Group" button (RecipeEditor renders it in the section header instead). */
+  hideAddGroup?: boolean;
+}
+
+/** Imperative handle so a parent can trigger "+ Group" from outside (e.g. a section header). */
+export interface RecipeIngredientsEditorHandle {
+  addGroup: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,11 +341,10 @@ function getAllIds(lists: RecipeIngredientList[]): string[] {
   return lists.flatMap((l) => l.ingredients.map((i) => i.id).filter(Boolean));
 }
 
-export function RecipeIngredientsEditor({
-  value,
-  onChange,
-  currentRecipeId,
-}: RecipeIngredientsEditorProps) {
+export const RecipeIngredientsEditor = forwardRef<
+  RecipeIngredientsEditorHandle,
+  RecipeIngredientsEditorProps
+>(function RecipeIngredientsEditor({ value, onChange, currentRecipeId, hideAddGroup }, ref) {
   // Each group renders its own AddIngredientSearch with local focus/draft/activeIndex state.
   // Using array-index keys causes that state to be misattributed when a middle group is
   // deleted (indices shift). Instead, assign each group a stable monotonic id on mount and
@@ -426,6 +432,10 @@ export function RecipeIngredientsEditor({
     /* intentionally empty */
   };
 
+  // Expose "+ Group" to a parent (RecipeEditor renders the trigger in the section header).
+  // No deps array: re-bind every render so the closure over `grouped`/`value` stays fresh.
+  useImperativeHandle(ref, () => ({ addGroup: handleAddGroup }));
+
   // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
@@ -440,7 +450,8 @@ export function RecipeIngredientsEditor({
             key={groupIdsRef.current[gi] ?? gi}
             sx={{
               bgcolor: tokens.surface.raised,
-              border: `1px solid ${titleInvalid ? tokens.state.danger : tokens.border.subtle}`,
+              // Borderless when valid (matches the artboard); only the invalid state shows a rule.
+              border: `1px solid ${titleInvalid ? tokens.state.danger : 'transparent'}`,
               borderRadius: `${tokens.radius.xl}px`,
               p: 1.5,
               mb: 1.5,
@@ -516,30 +527,32 @@ export function RecipeIngredientsEditor({
         );
       })}
 
-      {/* + Group button */}
-      <ButtonBase
-        role="button"
-        aria-label="+ Group"
-        onClick={handleAddGroup}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.75,
-          fontSize: 13,
-          fontWeight: 600,
-          color: tokens.section.recipes,
-          border: `1px dashed ${tokens.section.recipes}66`,
-          borderRadius: `${tokens.radius.lg}px`,
-          px: 1.5,
-          py: 0.875,
-          mt: 0.5,
-        }}
-      >
-        <Box component="span" sx={{ fontSize: 16, lineHeight: 1 }}>
-          +
-        </Box>
-        Group
-      </ButtonBase>
+      {/* + Group button (hidden when the parent renders its own trigger) */}
+      {!hideAddGroup && (
+        <ButtonBase
+          role="button"
+          aria-label="+ Group"
+          onClick={handleAddGroup}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            fontSize: 13,
+            fontWeight: 600,
+            color: tokens.section.recipes,
+            border: `1px dashed ${tokens.section.recipes}66`,
+            borderRadius: `${tokens.radius.lg}px`,
+            px: 1.5,
+            py: 0.875,
+            mt: 0.5,
+          }}
+        >
+          <Box component="span" sx={{ fontSize: 16, lineHeight: 1 }}>
+            +
+          </Box>
+          Group
+        </ButtonBase>
+      )}
     </Box>
   );
-}
+});

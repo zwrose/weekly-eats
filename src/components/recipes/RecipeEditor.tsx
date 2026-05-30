@@ -1,19 +1,10 @@
 // src/components/recipes/RecipeEditor.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  ButtonBase,
-  FormControlLabel,
-  InputBase,
-  Radio,
-  RadioGroup,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { useMemo, useRef, useState } from 'react';
+import { Box, Button, ButtonBase, InputBase, TextField } from '@mui/material';
 import { tokens } from '@/lib/design-tokens';
+import { Icon } from '@/components/ui/Icon';
 import { createRecipe, updateRecipe, deleteRecipe } from '@/lib/recipe-utils';
 import {
   updateRecipeTags,
@@ -23,16 +14,19 @@ import {
 import { EmojiPicker } from '@/components/recipes/EmojiPicker';
 import { RecipeTagsEditor } from '@/components/recipes/RecipeTagsEditor';
 import { Stars } from '@/components/recipes/Stars';
+import { SectionLabel } from '@/components/recipes/SectionLabel';
+import { RECIPE_ACCENT_MUTED } from '@/components/recipes/recipe-display-utils';
 import {
   RecipeIngredientsEditor,
   validateRecipeIngredients,
+  type RecipeIngredientsEditorHandle,
 } from '@/components/recipes/RecipeIngredientsEditor';
 import { ConfirmDialog } from '@/components/meal-plans/ConfirmDialog';
 import type { Recipe, RecipeIngredientList } from '@/types/recipe';
 import type { RecipeUserDataResponse } from '@/types/recipe-user-data';
 
 // ---------------------------------------------------------------------------
-// Helper
+// Helpers
 // ---------------------------------------------------------------------------
 function filterBlankIngredients(ingredients: RecipeIngredientList[]): RecipeIngredientList[] {
   return ingredients.map((list) => ({
@@ -41,6 +35,24 @@ function filterBlankIngredients(ingredients: RecipeIngredientList[]): RecipeIngr
       (ingredient) => ingredient.id && ingredient.id.trim() !== ''
     ),
   }));
+}
+
+/** Uppercase form-field label (matches the artboard <FieldLabel>). */
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: tokens.text.secondary,
+        mb: 1,
+      }}
+    >
+      {children}
+    </Box>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +102,7 @@ export function RecipeEditor({
   const [discardOpen, setDiscardOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const ingredientsRef = useRef<RecipeIngredientsEditorHandle>(null);
 
   const valid = draft.title.trim() !== '' && validateRecipeIngredients(draft.ingredients);
   const dirty =
@@ -132,7 +145,52 @@ export function RecipeEditor({
     onDeleted?.();
   };
 
-  const headerTitle = mode === 'create' ? 'New recipe' : 'Editing recipe';
+  const mobileTitle = mode === 'create' ? 'New recipe' : 'Edit recipe';
+  const desktopTitle = mode === 'create' ? 'New recipe' : 'Editing recipe';
+
+  // Access option as a bordered radio card (matches the artboard <RadioRow>).
+  const accessOption = (value: 'personal' | 'global', label: string) => {
+    const selected = (draft.isGlobal ? 'global' : 'personal') === value;
+    return (
+      <ButtonBase
+        aria-label={label}
+        aria-pressed={selected}
+        onClick={() => setDraft((d) => ({ ...d, isGlobal: value === 'global' }))}
+        sx={{
+          flex: 1,
+          justifyContent: 'flex-start',
+          gap: 1.25,
+          px: 1.5,
+          py: 1.25,
+          borderRadius: `${tokens.radius.lg}px`,
+          border: `1px solid ${selected ? `${tokens.section.recipes}55` : tokens.border.subtle}`,
+          bgcolor: selected ? RECIPE_ACCENT_MUTED : 'transparent',
+        }}
+      >
+        <Box
+          sx={{
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            flexShrink: 0,
+            border: `1.5px solid ${selected ? tokens.section.recipes : tokens.border.strong}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {selected && (
+            <Box
+              sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.section.recipes }}
+            />
+          )}
+        </Box>
+        <Box sx={{ fontSize: 14, fontWeight: selected ? 600 : 400, color: tokens.text.primary }}>
+          {label}
+        </Box>
+      </ButtonBase>
+    );
+  };
 
   return (
     <Box
@@ -154,62 +212,117 @@ export function RecipeEditor({
           borderBottom: `1px solid ${tokens.border.subtle}`,
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
-          px: { xs: 2, md: 3 },
+          px: { xs: 2, md: 4 },
           py: 1.5,
         }}
       >
-        {/* Cancel (mobile: text; desktop: ghost button) */}
+        {/* Mobile: Cancel (muted text) */}
         <Button
           onClick={cancel}
           sx={{
+            display: { xs: 'inline-flex', md: 'none' },
             color: tokens.text.secondary,
             textTransform: 'none',
             fontWeight: 500,
             fontSize: 14,
             minWidth: 0,
+            p: 0,
             mr: 'auto',
           }}
         >
           Cancel
         </Button>
 
-        {/* Title */}
-        <Typography
+        {/* Desktop: "‹ Recipes" + title (left-grouped) */}
+        <Box
+          sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.75, mr: 'auto' }}
+        >
+          <ButtonBase
+            onClick={cancel}
+            aria-label="Back to recipes"
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.25,
+              color: tokens.section.recipes,
+              fontSize: 14,
+              '&:hover': { opacity: 0.85 },
+            }}
+          >
+            <Icon name="chevron_left" size={18} />
+            Recipes
+          </ButtonBase>
+          <Box sx={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>
+            {desktopTitle}
+          </Box>
+        </Box>
+
+        {/* Mobile: centered title */}
+        <Box
           sx={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: { xs: 15, md: 17 },
-            color: tokens.text.primary,
+            display: { xs: 'block', md: 'none' },
             position: 'absolute',
             left: '50%',
             transform: 'translateX(-50%)',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            fontSize: 15,
           }}
         >
-          {headerTitle}
-        </Typography>
+          {mobileTitle}
+        </Box>
 
-        {/* Save */}
-        <Button
-          variant="contained"
+        {/* Mobile: Save (amber text) */}
+        <ButtonBase
           onClick={save}
           disabled={!valid || saving}
           sx={{
+            display: { xs: 'inline-flex', md: 'none' },
             ml: 'auto',
-            textTransform: 'none',
-            fontWeight: 600,
             fontSize: 14,
-            bgcolor: tokens.section.recipes,
-            color: '#0c1118',
-            borderRadius: `${tokens.radius.pill}px`,
-            px: 2,
-            py: 0.75,
-            '&:hover': { bgcolor: tokens.section.recipes, filter: 'brightness(1.1)' },
-            '&.Mui-disabled': { bgcolor: tokens.surface.elevated, color: tokens.text.muted },
+            fontWeight: 600,
+            color: valid && !saving ? tokens.section.recipes : tokens.text.muted,
           }}
         >
           Save
-        </Button>
+        </ButtonBase>
+
+        {/* Desktop: Cancel (ghost) + Save (filled pill) */}
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, ml: 'auto' }}>
+          <Button
+            onClick={cancel}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: 14,
+              color: tokens.text.secondary,
+              border: `1px solid ${tokens.border.strong}`,
+              borderRadius: `${tokens.radius.md}px`,
+              px: 2,
+              '&:hover': { bgcolor: tokens.surface.elevated, color: tokens.text.primary },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={save}
+            disabled={!valid || saving}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: 14,
+              bgcolor: tokens.section.recipes,
+              color: '#0c1118',
+              borderRadius: `${tokens.radius.md}px`,
+              px: 2.5,
+              '&:hover': { bgcolor: tokens.section.recipes, filter: 'brightness(1.1)' },
+              '&.Mui-disabled': { bgcolor: tokens.surface.elevated, color: tokens.text.muted },
+            }}
+          >
+            Save
+          </Button>
+        </Box>
       </Box>
 
       {/* ── Body ── */}
@@ -225,143 +338,91 @@ export function RecipeEditor({
           gap: 3,
         }}
       >
-        {/* Emoji + Title row */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        {/* Emoji + Title */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 } }}>
           <ButtonBase
+            aria-label="Choose emoji"
             onClick={() => setEmojiOpen(true)}
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: `${tokens.radius.xl}px`,
+              width: { xs: 56, md: 64 },
+              height: { xs: 56, md: 64 },
+              borderRadius: '14px',
               bgcolor: tokens.surface.elevated,
-              border: `1px solid ${tokens.border.subtle}`,
-              fontSize: 24,
+              border: `1px dashed ${tokens.border.subtle}`,
+              fontSize: 32,
               flexShrink: 0,
             }}
           >
             {draft.emoji || '🍽'}
           </ButtonBase>
-          <InputBase
-            value={draft.title}
-            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-            inputProps={{ 'aria-label': 'Title' }}
-            placeholder="Recipe name"
-            sx={{
-              flex: 1,
-              fontSize: { xs: 20, md: 24 },
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              color: tokens.text.primary,
-              '& input::placeholder': { color: tokens.text.muted, opacity: 1 },
-            }}
-          />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <FieldLabel>Title</FieldLabel>
+            <Box
+              sx={{
+                height: 40,
+                px: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                border: `1px solid ${tokens.border.subtle}`,
+                borderRadius: `${tokens.radius.lg}px`,
+                '&:focus-within': { borderColor: tokens.section.recipes },
+              }}
+            >
+              <InputBase
+                value={draft.title}
+                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                inputProps={{ 'aria-label': 'Title' }}
+                placeholder="Recipe name"
+                sx={{
+                  flex: 1,
+                  fontSize: 16,
+                  color: tokens.text.primary,
+                  '& input::placeholder': { color: tokens.text.muted, opacity: 1 },
+                }}
+              />
+            </Box>
+          </Box>
         </Box>
 
-        {/* Access */}
-        <Box>
-          <Typography
-            sx={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: tokens.text.muted,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              mb: 1,
-            }}
-          >
-            Access
-          </Typography>
-          <RadioGroup
-            row
-            value={draft.isGlobal ? 'global' : 'personal'}
-            onChange={(e) => setDraft((d) => ({ ...d, isGlobal: e.target.value === 'global' }))}
-            sx={{ gap: 2 }}
-          >
-            <FormControlLabel
-              value="personal"
-              control={
-                <Radio
-                  size="small"
+        {/* Access + Rating (side by side on desktop) */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+          <Box sx={{ flex: { md: 1 } }}>
+            <FieldLabel>Access</FieldLabel>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {accessOption('personal', 'Personal')}
+              {accessOption('global', 'Global')}
+            </Box>
+          </Box>
+          <Box>
+            <FieldLabel>Your rating</FieldLabel>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, height: 40 }}>
+              <Stars
+                editable
+                rating={rating ?? 0}
+                onChange={(n) => setRating(n === 0 ? undefined : n)}
+                size={20}
+              />
+              {rating !== undefined && (
+                <ButtonBase
+                  onClick={() => setRating(undefined)}
                   sx={{
+                    fontSize: 12,
                     color: tokens.text.muted,
-                    '&.Mui-checked': { color: tokens.section.recipes },
+                    px: 1,
+                    borderRadius: `${tokens.radius.sm}px`,
                   }}
-                />
-              }
-              label={
-                <Typography sx={{ fontSize: 14, color: tokens.text.primary }}>Personal</Typography>
-              }
-            />
-            <FormControlLabel
-              value="global"
-              control={
-                <Radio
-                  size="small"
-                  sx={{
-                    color: tokens.text.muted,
-                    '&.Mui-checked': { color: tokens.section.recipes },
-                  }}
-                />
-              }
-              label={
-                <Typography sx={{ fontSize: 14, color: tokens.text.primary }}>Global</Typography>
-              }
-            />
-          </RadioGroup>
+                >
+                  Clear
+                </ButtonBase>
+              )}
+            </Box>
+          </Box>
         </Box>
 
         {/* Tags */}
         <Box>
-          <Typography
-            sx={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: tokens.text.muted,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              mb: 1,
-            }}
-          >
-            Tags
-          </Typography>
+          <FieldLabel>Tags</FieldLabel>
           <RecipeTagsEditor value={tags} onChange={setTags} availableTags={availableTags} />
-        </Box>
-
-        {/* Your rating */}
-        <Box>
-          <Typography
-            sx={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: tokens.text.muted,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              mb: 1,
-            }}
-          >
-            Your rating
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Stars
-              editable
-              rating={rating ?? 0}
-              onChange={(n) => setRating(n === 0 ? undefined : n)}
-              size={20}
-            />
-            {rating !== undefined && (
-              <ButtonBase
-                onClick={() => setRating(undefined)}
-                sx={{
-                  fontSize: 12,
-                  color: tokens.text.muted,
-                  px: 1,
-                  borderRadius: `${tokens.radius.sm}px`,
-                }}
-              >
-                Clear
-              </ButtonBase>
-            )}
-          </Box>
         </Box>
 
         {/* Ingredients + Instructions: two-column on md+, single on xs */}
@@ -374,19 +435,21 @@ export function RecipeEditor({
         >
           {/* Ingredients */}
           <Box>
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: tokens.text.muted,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                mb: 1.5,
-              }}
+            <SectionLabel
+              right={
+                <ButtonBase
+                  onClick={() => ingredientsRef.current?.addGroup()}
+                  sx={{ fontSize: 12, color: tokens.section.recipes, '&:hover': { opacity: 0.85 } }}
+                >
+                  + Group
+                </ButtonBase>
+              }
             >
               Ingredients
-            </Typography>
+            </SectionLabel>
             <RecipeIngredientsEditor
+              ref={ingredientsRef}
+              hideAddGroup
               value={draft.ingredients}
               onChange={(ings) => setDraft((d) => ({ ...d, ingredients: ings }))}
               currentRecipeId={currentRecipeId}
@@ -395,18 +458,7 @@ export function RecipeEditor({
 
           {/* Instructions */}
           <Box>
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: tokens.text.muted,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                mb: 1.5,
-              }}
-            >
-              Instructions
-            </Typography>
+            <SectionLabel>Instructions</SectionLabel>
             <TextField
               multiline
               fullWidth
@@ -421,7 +473,7 @@ export function RecipeEditor({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   bgcolor: tokens.surface.raised,
-                  borderRadius: `${tokens.radius.lg}px`,
+                  borderRadius: `${tokens.radius.xl}px`,
                   color: tokens.text.primary,
                   fontSize: 14,
                   '& fieldset': { borderColor: tokens.border.subtle },
@@ -445,18 +497,22 @@ export function RecipeEditor({
             <Button
               onClick={() => setDeleteOpen(true)}
               sx={{
+                width: { xs: '100%', md: 'auto' },
+                height: { xs: 40, md: 38 },
                 color: tokens.state.danger,
-                borderColor: tokens.state.danger,
-                border: `1px solid ${tokens.state.danger}`,
+                border: `1px solid ${tokens.state.danger}55`,
                 borderRadius: `${tokens.radius.lg}px`,
                 textTransform: 'none',
-                fontWeight: 500,
+                fontWeight: 600,
                 fontSize: 14,
                 px: 2,
                 '&:hover': { bgcolor: tokens.state.dangerMuted },
               }}
             >
-              🗑 Delete recipe
+              <Icon name="delete" size={16} color={tokens.state.danger} />
+              <Box component="span" sx={{ ml: 1 }}>
+                Delete recipe
+              </Box>
             </Button>
           </Box>
         )}

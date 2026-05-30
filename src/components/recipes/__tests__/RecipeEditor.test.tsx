@@ -16,11 +16,17 @@ vi.mock('@/lib/recipe-user-data-utils', () => ({
   deleteRecipeRating: vi.fn(async () => ({})),
 }));
 // Keep the ingredients editor light — exercised in its own test (Task 9).
-vi.mock('../RecipeIngredientsEditor', () => ({
-  validateRecipeIngredients: (lists: { ingredients: unknown[] }[]) =>
-    lists.some((l) => l.ingredients.length > 0),
-  RecipeIngredientsEditor: () => <div data-testid="ingredients-editor" />,
-}));
+// forwardRef so RecipeEditor's ref={ingredientsRef} attaches without a warning.
+vi.mock('../RecipeIngredientsEditor', async () => {
+  const React = await import('react');
+  return {
+    validateRecipeIngredients: (lists: { ingredients: unknown[] }[]) =>
+      lists.some((l) => l.ingredients.length > 0),
+    RecipeIngredientsEditor: React.forwardRef(function MockIngredientsEditor() {
+      return <div data-testid="ingredients-editor" />;
+    }),
+  };
+});
 
 import { createRecipe, updateRecipe, deleteRecipe } from '@/lib/recipe-utils';
 
@@ -59,7 +65,8 @@ describe('RecipeEditor', () => {
       />
     );
     expect(screen.getByDisplayValue('Lemon pasta')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    // Mobile + desktop each render a Save control; clicking either saves.
+    await user.click(screen.getAllByRole('button', { name: /^save$/i })[0]);
     await waitFor(() =>
       expect(updateRecipe).toHaveBeenCalledWith(
         'r1',
@@ -72,7 +79,7 @@ describe('RecipeEditor', () => {
   it('create mode disables Save until a title + an ingredient exist', async () => {
     render(<RecipeEditor mode="create" onSaved={vi.fn()} onClose={vi.fn()} />);
     // No title, no ingredients (mock validate returns false) → disabled
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeDisabled();
+    screen.getAllByRole('button', { name: /^save$/i }).forEach((btn) => expect(btn).toBeDisabled());
   });
 
   it('Cancel with edits prompts a discard confirmation', async () => {
@@ -90,7 +97,7 @@ describe('RecipeEditor', () => {
     );
     await user.clear(screen.getByDisplayValue('Lemon pasta'));
     await user.type(screen.getByLabelText(/title/i), 'Changed');
-    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+    await user.click(screen.getAllByRole('button', { name: /^cancel$/i })[0]);
     expect(screen.getByText(/discard changes/i)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
