@@ -102,11 +102,10 @@ export function EditorGroupSection({
           <ButtonBase
             onClick={onAddToGroup}
             sx={{
-              mt: 0.5,
               width: '100%',
               justifyContent: 'flex-start',
               px: 1.5,
-              py: 1,
+              py: 0.75,
               color: tokens.section.plans,
               fontSize: 13,
               fontWeight: 600,
