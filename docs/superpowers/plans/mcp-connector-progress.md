@@ -17,13 +17,13 @@ all phases land.
 
 ## Phase status
 
-| #   | Phase                                                        | Status  | Plan doc                                                                                       | PR test comment | Done |
-| --- | ------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------- | --------------- | ---- |
-| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | pending | [`2026-05-30-mcp-phase-1-service-tools-plan.md`](2026-05-30-mcp-phase-1-service-tools-plan.md) | —               | —    |
-| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | pending | — _(own effort; sequence between Ph1 and Ph2)_                                                 | —               | —    |
-| 2   | OAuth AS + approval-gated verification + deploy              | pending | —                                                                                              | —               | —    |
-| 3   | `recipe-import` skill                                        | pending | —                                                                                              | —               | —    |
-| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending | —                                                                                              | —               | —    |
+| #   | Phase                                                        | Status                            | Plan doc                                                                                                                 | PR test comment                                                                | Done              |
+| --- | ------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ----------------- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | code done — manual verify pending | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 (code) |
+| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | pending                           | — _(own effort; sequence between Ph1 and Ph2)_                                                                           | —                                                                              | —                 |
+| 2   | OAuth AS + approval-gated verification + deploy              | pending                           | —                                                                                                                        | —                                                                              | —                 |
+| 3   | `recipe-import` skill                                        | pending                           | —                                                                                                                        | —                                                                              | —                 |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                           | —                                                                                                                        | —                                                                              | —                 |
 
 Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
 `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
@@ -32,26 +32,47 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
-**Phase 1 — Service layer + recipes/food-items tools.** No OAuth surface → lowest-risk
-starting point. Extract `src/lib/service-errors.ts` + `src/lib/services/{recipes,food-items}.ts`,
-refactor the four existing routes to thin callers (behavior-preserving), stand up
-`/api/mcp` (stateless Streamable HTTP via `mcp-handler`) with the recipes + food-items
-tools behind the `MCP_DEV_TOKEN` + non-prod gate. Tests per spec §8a.
+**Phase 1 code is complete and on `feat/mcp` (pushed).** Built 2026-05-30 via
+`writing-plans` → 3-loop `review-plan` (converged clean) → `subagent-driven-development`
+(11 tasks, TDD, one commit each) → `review-code` (1 round, 4 Minor test-hardening findings
+auto-fixed) → `npm run check` green (**1487 tests**, lint 0, build OK). Manual-test data
+seeded for `zwrose@gmail.com` (13 food items, 5 recipes); checklist posted to
+[PR #140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
 
-**How to resume (cold-start checklist):**
+**The ONE remaining Phase-1 item — manual/end-to-end verification — is the user's to run**
+(needs a signed-in dev user + a local MCP client pointed at `/api/mcp` with the dev token;
+an agent can't drive the OAuth-protected app or an external MCP client). Follow the posted
+PR checklist: set `MCP_DEV_TOKEN` + `MCP_DEV_USER_ID` in `.env.local`, `npm run dev`,
+connect MCP Inspector, walk sections A (browser regression) / B (7 MCP tools) / C (401 gate).
 
-1. Read the spec (§6.3, §6.5, §8, §8a, §11) + this ledger. The Phase-1 plan (once authored
-   via `writing-plans`) is self-contained (exact code + tests per task).
-2. **Author the Phase-1 plan** with `superpowers:writing-plans` if not yet done; then
-   **execute via `superpowers:subagent-driven-development`** (fresh subagent per task,
-   two-stage review, TDD: failing test → run → implement → pass → commit). Run vitest
-   per-task with `MONGODB_URI='mongodb://localhost:27017/fake' SKIP_DB_SETUP=true npx vitest run <file>`.
+Implementation notes worth carrying forward:
+
+- **SDK pin:** `@modelcontextprotocol/sdk@1.26.0` **exactly** (mcp-handler@1.1.0's peer is
+  exact; 1.29.0 → ERESOLVE). Still satisfies spec ≥1.26.0.
+- **Tool names use underscores** (`food_items_search`, not `food_items.search`) — the SDK's
+  `McpServer.registerTool` rejects `.` in names. The dot form in the spec is superseded.
+- **Route mount:** `src/app/api/[transport]/route.ts` + `basePath:'/api'` → endpoint
+  `/api/mcp` (mcp-handler requires the `[transport]` dynamic segment). Accepted side effect:
+  unknown `/api/<typo>` paths now 401 instead of 404 (documented in the plan's Scope).
+- **Transport positive-auth test omitted on purpose:** with a valid bearer the handler
+  streams a response mcp-handler's adapter can't build under jsdom/undici (`Unexpected chunk
+type`); covered instead by verify-token unit tests + the register smoke test.
+- **Seed manifest** (`test/manual/manifests/feat%2Fmcp.json`) pins `user-baseline` to
+  `zwrose@gmail.com` — the dev DB has 4 users so apply is ambiguous without it.
+
+**Then:** Phase 1.5 (#142 Auth.js v5) → Phase 2 (OAuth AS). Do NOT start either without the
+user. Phase 1 manual verify + a `/code-review ultra` + a human OAuth pass are still owed
+before this work is "done done."
+
+**Prior cold-start checklist (kept for reference; Phase 1 is now built):**
+
+1. Read the spec (§6.3, §6.5, §8, §8a, §11) + this ledger. The Phase-1 plan is self-contained.
+2. Execute via `superpowers:subagent-driven-development` (fresh subagent per task, TDD).
 3. **`npm run check`** at the end (only when no dev server is running — Turbopack/build
    collision clobbers `.next`).
-4. Push → CI. Post the Phase-1 manual-test checklist as a slot comment on the draft PR
-   (`/manual-testing`), then verify locally.
-5. Update this ledger (status → done, fill plan-doc/PR-comment/date), and pause for user
-   review before calling the phase done if that's the agreed cadence.
+4. Push → CI. Post the Phase-1 manual-test checklist on the draft PR (`/manual-testing`),
+   then verify locally.
+5. Update this ledger (status → done, fill plan-doc/PR-comment/date), pause for user review.
 
 ## Decisions & carryovers
 
