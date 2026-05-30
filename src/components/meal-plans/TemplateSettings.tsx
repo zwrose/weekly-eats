@@ -163,8 +163,7 @@ export function TemplateSettings() {
 
   const card = {
     bgcolor: tokens.surface.raised,
-    borderRadius: `${tokens.radius.xl}px`,
-    border: `1px solid ${tokens.border.subtle}`,
+    borderRadius: `${tokens.radius.xxl}px`,
     p: 2.25,
   } as const;
 
@@ -294,6 +293,28 @@ export function TemplateSettings() {
                     setDraft((p) => p && { ...p, meals: { ...p.meals, [meal]: e.target.checked } })
                   }
                   slotProps={{ input: { 'aria-label': MEAL_LABEL[meal] } }}
+                  sx={{
+                    width: 36,
+                    height: 22,
+                    padding: 0,
+                    '& .MuiSwitch-switchBase': {
+                      padding: '2px',
+                      '&.Mui-checked': {
+                        transform: 'translateX(14px)',
+                        color: '#fff',
+                        '& + .MuiSwitch-track': {
+                          backgroundColor: tokens.section.plans,
+                          opacity: 1,
+                        },
+                      },
+                    },
+                    '& .MuiSwitch-thumb': { width: 18, height: 18, boxShadow: 'none' },
+                    '& .MuiSwitch-track': {
+                      borderRadius: '11px',
+                      backgroundColor: tokens.border.strong,
+                      opacity: 1,
+                    },
+                  }}
                 />
               </Box>
             ))}
