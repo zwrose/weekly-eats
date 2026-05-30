@@ -867,8 +867,19 @@ describe('ShoppingListsPage', () => {
       updatedAt: new Date(),
     };
 
+    // Opening the dialog triggers two concurrent fetchShoppingList calls
+    // (handleViewList + the restore useEffect). Track server-side checked state
+    // so a late-resolving refetch returns the post-toggle value instead of stale
+    // checked:false — mirroring real server behavior and removing a timing race.
+    let f1Checked = false;
     mockFetchStores.mockResolvedValue(mockStores);
-    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
+    mockFetchShoppingList.mockImplementation(
+      async () =>
+        ({
+          ...shoppingListWithItems,
+          items: [{ ...shoppingListWithItems.items[0], checked: f1Checked }],
+        }) as any,
+    );
     mockFinishShop.mockResolvedValue({ success: true, remainingItems: [] });
 
     mockFetch.mockImplementation((url) => {
@@ -878,11 +889,12 @@ describe('ShoppingListsPage', () => {
           json: async () => [],
         } as Response);
       }
-      // Toggle endpoint should succeed so checkbox stays checked.
+      // Toggle flips the tracked server state so subsequent refetches agree.
       if (typeof url === 'string' && url.includes('/api/shopping-lists/store-1/items/f1/toggle')) {
+        f1Checked = !f1Checked;
         return Promise.resolve({
           ok: true,
-          json: async () => ({ success: true, foodItemId: 'f1', checked: true, items: [] }),
+          json: async () => ({ success: true, foodItemId: 'f1', checked: f1Checked, items: [] }),
         } as Response);
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -904,25 +916,10 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
-    // Finish button appears only after the async toggle round-trip + re-render;
-    // give waitFor headroom beyond the 1000ms default for slower CI runners.
-    try {
-      await waitFor(
-        () => {
-          expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
-        },
-        { timeout: 5000 },
-      );
-    } catch {
-      const cbs = screen.queryAllByRole('checkbox') as HTMLInputElement[];
-      const diag = {
-        checkboxChecked: cbs.map((c) => c.checked),
-        fetchURLs: mockFetch.mock.calls.map((c) => String(c[0])),
-        buttons: screen.queryAllByRole('button').map((b) => b.textContent),
-        finishShopCalled: mockFinishShop.mock.calls.length,
-      };
-      throw new Error('[DIAG] finish button not found. State: ' + JSON.stringify(diag));
-    }
+    // Finish button appears after the toggle marks the item checked.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /finish/i })).toBeInTheDocument();
+    });
 
     // After finishing, the handler calls fetchStores() then a useEffect
     // re-fetches the shopping list. Update mocks so refetched data reflects
@@ -936,14 +933,11 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('button', { name: /finish shop/i }));
 
-    await waitFor(
-      () => {
-        expect(mockFinishShop).toHaveBeenCalled();
-        expect(screen.queryByText('Milk')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
+    await waitFor(() => {
+      expect(mockFinishShop).toHaveBeenCalled();
+      expect(screen.queryByText('Milk')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /finish/i })).not.toBeInTheDocument();
+    });
   });
 
   it('renders with unit selector and keyboard support without errors', async () => {
