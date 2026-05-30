@@ -77,9 +77,10 @@ const StatusPill = ({ status }: { status: 'pending' | 'accepted' }) => {
         textTransform: 'uppercase',
         px: 0.75,
         py: '3px',
-        borderRadius: `${tokens.radius.xs}px`,
-        color: accepted ? tokens.state.success : tokens.state.warn,
-        bgcolor: accepted ? tokens.state.successMuted : tokens.state.warnMuted,
+        borderRadius: `${tokens.radius.pill}px`,
+        color: accepted ? tokens.state.success : tokens.text.secondary,
+        bgcolor: accepted ? tokens.state.successMuted : 'transparent',
+        border: `1px solid ${accepted ? 'transparent' : tokens.border.strong}`,
       }}
     >
       {status}
@@ -193,32 +194,42 @@ function Body({
                         </Box>
                       </Box>
                     </Box>
-                    <IconButton
+                    <Button
                       aria-label={`Accept invitation from ${name}`}
                       onClick={() => onAccept(inv.invitation.userId)}
                       sx={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: `${tokens.radius.sm}px`,
+                        flexShrink: 0,
+                        height: 32,
+                        px: 1.5,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textTransform: 'none',
                         color: tokens.state.success,
                         bgcolor: tokens.state.successMuted,
+                        '&:hover': {
+                          bgcolor: tokens.state.successMuted,
+                          filter: 'brightness(1.15)',
+                        },
                       }}
                     >
-                      <Icon name="check" size={18} />
-                    </IconButton>
-                    <IconButton
+                      Accept
+                    </Button>
+                    <Button
                       aria-label={`Decline invitation from ${name}`}
                       onClick={() => onReject(inv.invitation.userId)}
                       sx={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: `${tokens.radius.sm}px`,
-                        color: tokens.state.danger,
-                        bgcolor: tokens.state.dangerMuted,
+                        flexShrink: 0,
+                        height: 32,
+                        px: 1.5,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        color: tokens.text.secondary,
+                        '&:hover': { bgcolor: 'transparent', color: tokens.text.primary },
                       }}
                     >
-                      <Icon name="close" size={18} />
-                    </IconButton>
+                      Decline
+                    </Button>
                   </Box>
                 );
               })}
@@ -240,7 +251,7 @@ function Body({
             inputProps={{ 'aria-label': 'Email Address' }}
             sx={{
               flex: 1,
-              height: 42,
+              height: 38,
               px: 1.5,
               bgcolor: tokens.surface.elevated,
               border: `1px solid ${tokens.border.strong}`,
@@ -278,7 +289,7 @@ function Body({
                       borderRadius: `${tokens.radius.lg}px`,
                     }}
                   >
-                    <Avatar name={name} size={28} />
+                    <Avatar name={name} size={32} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Box
                         sx={{
@@ -309,9 +320,9 @@ function Body({
                       aria-label={`Remove ${name}`}
                       onClick={() => onRemove(user.userId)}
                       size="small"
-                      sx={{ color: tokens.text.muted }}
+                      sx={{ color: tokens.state.danger }}
                     >
-                      <Icon name="close" size={18} />
+                      <Icon name="delete" size={18} />
                     </IconButton>
                   </Box>
                 );
@@ -373,7 +384,14 @@ export function ShareMealPlansDialog(props: ShareMealPlansDialogProps) {
         onClose={onClose}
         maxWidth="sm"
         slotProps={{
-          paper: { sx: { bgcolor: tokens.surface.sheet, borderRadius: `${tokens.radius.xl}px` } },
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.raised,
+              borderRadius: `${tokens.radius.xxxl}px`,
+              border: `1px solid ${tokens.border.subtle}`,
+              boxShadow: tokens.shadow.modal,
+            },
+          },
         }}
       >
         {body}
