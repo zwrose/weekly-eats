@@ -37,8 +37,6 @@ vi.mock('@/lib/recipe-user-data-utils', () => ({
 // Render the editor as a stub so this test stays about the detail shell.
 vi.mock('../RecipeEditor', () => ({ RecipeEditor: () => <div data-testid="recipe-editor" /> }));
 
-import { deleteRecipe } from '@/lib/recipe-utils';
-
 afterEach(cleanup);
 beforeEach(() => push.mockClear());
 

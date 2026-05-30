@@ -122,15 +122,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
     );
   }
 
-  const sharedRatings =
-    userData && 'sharedRatings' in userData
-      ? (userData.sharedRatings as Array<{
-          userId: string;
-          userName?: string;
-          userEmail: string;
-          rating: number;
-        }>)
-      : undefined;
+  const sharedRatings = userData?.sharedRatings;
 
   return (
     <Box sx={{ color: tokens.text.primary }}>
