@@ -84,6 +84,29 @@ describe('recipes.create tool', () => {
     expect(userId).toBe('u1');
     expect(input.title).toBe('My Recipe');
   });
+
+  // Unlike food_items_create (which forces isGlobal:false), the recipe tool
+  // DELIBERATELY forwards isGlobal: a user's own global recipe is the recipe-
+  // sharing mechanism ("shared-by-you"), per spec §6.5 / key decisions. This
+  // pins that intentional asymmetry so a future change that silently forces or
+  // strips isGlobal on the recipe path is caught.
+  it('forwards a caller-supplied isGlobal:true to createRecipe (recipe sharing is allowed)', async () => {
+    createRecipeMock.mockResolvedValueOnce({ _id: 'new', title: 'Shared', isGlobal: true });
+    const body = {
+      title: 'Shared',
+      instructions: 'Cook it',
+      isGlobal: true,
+      ingredients: [
+        {
+          ingredients: [{ type: 'foodItem' as const, id: 'f1', quantity: 1, unit: 'cup' }],
+          isStandalone: true,
+        },
+      ],
+    };
+    await recipesCreateHandler(body, extra);
+    const [, input] = createRecipeMock.mock.calls[0];
+    expect(input.isGlobal).toBe(true);
+  });
 });
 
 describe('recipes.update tool', () => {

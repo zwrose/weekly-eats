@@ -68,6 +68,34 @@ describe('searchFoodItems', () => {
     expect(filterArg.createdBy).toBe('u1');
     expect(filterArg.isGlobal).toEqual({ $ne: true });
   });
+
+  it('scopes accessLevel=shared-by-others to global items NOT created by the caller', async () => {
+    paginatedResponseMock.mockResolvedValueOnce({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+    });
+    await searchFoodItems('u1', { accessLevel: 'shared-by-others', pagination });
+    const filterArg = paginatedResponseMock.mock.calls[0][1];
+    expect(filterArg.isGlobal).toBe(true);
+    expect(filterArg.createdBy).toEqual({ $ne: 'u1' });
+  });
+
+  it("scopes accessLevel=shared-by-you to the caller's own global items", async () => {
+    paginatedResponseMock.mockResolvedValueOnce({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+    });
+    await searchFoodItems('u1', { accessLevel: 'shared-by-you', pagination });
+    const filterArg = paginatedResponseMock.mock.calls[0][1];
+    expect(filterArg.isGlobal).toBe(true);
+    expect(filterArg.createdBy).toBe('u1');
+  });
 });
 
 describe('getFoodItem', () => {

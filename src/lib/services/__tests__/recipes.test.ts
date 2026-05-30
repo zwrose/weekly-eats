@@ -181,6 +181,13 @@ describe('createRecipe', () => {
     expect(insertOneMock).toHaveBeenCalledTimes(1);
     expect(created.createdBy).toBe('u1');
     expect(created._id).toBe('new-id');
+    // Assert the PERSISTED document (the insertOne argument), not just the
+    // returned value — a regression that stops stamping createdBy/timestamps
+    // on the inserted doc would otherwise slip through.
+    const insertedDoc = insertOneMock.mock.calls[0][0];
+    expect(insertedDoc.createdBy).toBe('u1');
+    expect(insertedDoc.createdAt).toBeInstanceOf(Date);
+    expect(insertedDoc.updatedAt).toBeInstanceOf(Date);
   });
 });
 

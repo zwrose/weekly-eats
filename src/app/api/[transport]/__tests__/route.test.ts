@@ -42,4 +42,14 @@ describe('/api/mcp transport auth wiring', () => {
     const res = await POST(req);
     expect(res.status).toBe(401);
   });
+
+  // NOTE: a positive auth-wiring test (correct bearer → not 401) was attempted
+  // but removed. With a valid token the auth gate opens and mcp-handler's
+  // handler body runs, which streams its JSON-RPC response through a Response
+  // adapter that throws "Unexpected chunk type: object" under the jsdom/undici
+  // test environment — an unhandled rejection that fails `npm run check`. This
+  // is the undici/jsdom incompatibility the plan's Task 11 Step 8 skip clause
+  // anticipated. The positive path is covered instead by the verify-token unit
+  // tests (the gate returns valid AuthInfo for the dev token) and the register
+  // smoke test (tools load); the two 401 cases above cover the rejection wiring.
 });
