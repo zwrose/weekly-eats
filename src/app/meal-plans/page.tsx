@@ -11,15 +11,11 @@ import {
   Alert,
   IconButton,
   Snackbar,
-  List,
-  ListItem,
-  ListItemText,
-  TextField,
 } from '@mui/material';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
 import { useSession } from 'next-auth/react';
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
@@ -36,6 +32,7 @@ import {
 } from '../../lib/meal-plan-utils';
 import dynamic from 'next/dynamic';
 import AddFoodItemDialog from '../../components/AddFoodItemDialog';
+import { ShareMealPlansDialog } from '@/components/meal-plans/ShareMealPlansDialog';
 const MealPlanCreateDialog = dynamic(() => import('@/components/MealPlanCreateDialog'), {
   ssr: false,
 });
@@ -156,7 +153,6 @@ function MealPlansPageContent() {
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]); // Users YOU invited (for sharing dialog)
   const [mealPlanOwners, setMealPlanOwners] = useState<SharedUser[]>([]); // Users who invited YOU
   const [shareEmail, setShareEmail] = useState('');
-  const shareEmailRef = useRef<HTMLInputElement>(null);
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null); // For creating meal plans
   const [userSettings, setUserSettings] = useState<{ defaultMealPlanOwner?: string } | null>(null);
 
@@ -588,53 +584,6 @@ function MealPlansPageContent() {
             </Box>
           </Box>
 
-          {/* Pending invitations */}
-          {pendingCount > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <SectionLabel>Invitations</SectionLabel>
-              <List disablePadding>
-                {pendingMealPlanInvitations.map((inv) => (
-                  <ListItem
-                    key={inv.ownerId}
-                    sx={{
-                      bgcolor: tokens.surface.raised,
-                      border: `1px solid ${tokens.border.subtle}`,
-                      borderRadius: `${tokens.radius.lg}px`,
-                      mb: 1,
-                    }}
-                    secondaryAction={
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <IconButton
-                          size="small"
-                          title="Accept"
-                          aria-label="Accept invitation"
-                          onClick={() => handleAcceptMealPlanInvitation(inv.invitation.userId)}
-                          sx={{ color: tokens.state.success }}
-                        >
-                          <Icon name="check" size={18} />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          title="Reject"
-                          aria-label="Reject invitation"
-                          onClick={() => handleRejectMealPlanInvitation(inv.invitation.userId)}
-                          sx={{ color: tokens.state.danger }}
-                        >
-                          <Icon name="close" size={18} />
-                        </IconButton>
-                      </Box>
-                    }
-                  >
-                    <ListItemText
-                      primary={`${inv.ownerName || inv.ownerEmail}'s Meal Plans`}
-                      secondary={`Invited ${new Date(inv.invitation.invitedAt).toLocaleDateString()}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
               <CircularProgress sx={{ color: tokens.section.plans }} />
@@ -801,83 +750,19 @@ function MealPlansPageContent() {
             prefillName={prefillFoodItemName}
           />
 
-          {/* Share Meal Plans Dialog */}
-          <Dialog
+          {/* Share Meal Plans — designed sheet (mobile) / dialog (desktop) */}
+          <ShareMealPlansDialog
             open={shareDialog.open}
             onClose={shareDialog.closeDialog}
-            maxWidth="sm"
-            fullWidth
-            sx={responsiveDialogStyle}
-            TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
-          >
-            <DialogTitle onClose={shareDialog.closeDialog}>Share Meal Plans</DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Invite users by email. They&apos;ll be able to view and edit all your meal plans.
-              </Typography>
-
-              {/* Invite Section */}
-              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <TextField
-                  inputRef={shareEmailRef}
-                  label="Email Address"
-                  type="email"
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && shareEmail.trim()) {
-                      handleInviteUser();
-                    }
-                  }}
-                  size="small"
-                  fullWidth
-                  placeholder="user@example.com"
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleInviteUser}
-                  disabled={!shareEmail.trim()}
-                  sx={{ minWidth: 100 }}
-                >
-                  Invite
-                </Button>
-              </Box>
-
-              {/* Shared Users List */}
-              {sharedUsers && sharedUsers.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                    Shared With:
-                  </Typography>
-                  <List>
-                    {sharedUsers.map((user) => (
-                      <ListItem key={user.userId}>
-                        <ListItemText primary={user.name || user.email} secondary={user.email} />
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Remove user"
-                          aria-label="Remove user"
-                          onClick={() => handleRemoveMealPlanUser(user.userId)}
-                        >
-                          <Icon name="delete" size={18} />
-                        </IconButton>
-                      </ListItem>
-                    ))}
-                  </List>
-                </>
-              )}
-
-              <DialogActions primaryButtonIndex={0}>
-                <Button
-                  onClick={shareDialog.closeDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Done
-                </Button>
-              </DialogActions>
-            </DialogContent>
-          </Dialog>
+            pendingInvitations={pendingMealPlanInvitations}
+            sharedUsers={sharedUsers}
+            email={shareEmail}
+            onEmailChange={setShareEmail}
+            onInvite={handleInviteUser}
+            onAccept={(userId) => handleAcceptMealPlanInvitation(userId)}
+            onReject={(userId) => handleRejectMealPlanInvitation(userId)}
+            onRemove={(userId) => handleRemoveMealPlanUser(userId)}
+          />
 
           {/* Snackbar for notifications */}
           <Snackbar
