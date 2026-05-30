@@ -111,6 +111,14 @@ const createThemeOptions = (): ThemeOptions => ({
           '&:hover': { boxShadow: 'none' },
         },
         containedPrimary: { color: tokens.surface.base },
+        // Text buttons (Cancel / Done / back, etc.) are flush iOS-style text actions. MUI's
+        // default text-variant hover paints a translucent rounded rect; when the button sits
+        // in a rounded popover/dialog corner (overflow:hidden) that rect bleeds into the corner
+        // and clips flat — reads as a rendering artifact. Use a contained opacity dim instead:
+        // no background box means nothing to clip, on any surface.
+        text: {
+          '&:hover': { backgroundColor: 'transparent', opacity: 0.65 },
+        },
       },
     },
     MuiCard: {
