@@ -18,10 +18,13 @@ const handler = createMcpHandler(
   { basePath: '/api' }
 );
 
-// Phase 1: static dev-token auth (inert in production). Phase 2 swaps in the
-// OAuth-minted-token verifier (§6.4). required:true → unauthenticated calls
-// get 401 + WWW-Authenticate from mcp-handler.
-const authHandler = withMcpAuth(handler, verifyToken, { required: true });
+// Phase 2: OAuth-minted-token verifier (§6.4). required:true → unauthenticated
+// calls get 401 + WWW-Authenticate carrying the RFC 9728 resource_metadata
+// challenge (R4), pointing Claude at our Protected Resource Metadata.
+const authHandler = withMcpAuth(handler, verifyToken, {
+  required: true,
+  resourceMetadataPath: '/.well-known/oauth-protected-resource',
+});
 
 export {
   authHandler as GET,
