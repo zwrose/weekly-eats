@@ -108,6 +108,15 @@ to Claude.
 are valid only for this MCP server; `401` responses carry `WWW-Authenticate` pointing
 at the Protected Resource Metadata URL.
 
+**Claude registration (resolved):** Claude uses **Dynamic Client Registration by
+default** — it registers itself with our AS automatically — so `/api/mcp/oauth/register`
+(RFC 7591) is a required Phase-2 deliverable, not optional. Manually-entered client
+ID/secret (Claude's Advanced settings) is the fallback if DCR is ever unavailable. The
+Protected Resource Metadata document must include `authorization_servers` and
+`scopes_supported`; the AS metadata must advertise the authorize/token/register
+endpoints and supported PKCE methods. Only residual: confirm exact field names against
+the live Claude connector docs while implementing Phase 2.
+
 **Reference implementation:** DTeam-Top/mcp-oauth (OAuth 2.1 MCP server as a Next.js
 app) — adapt its AS endpoint structure to our Google/NextAuth login + Mongo storage.
 
@@ -150,6 +159,11 @@ orchestrates MCP tools and the in-chat review — it never touches Mongo or the 
 directly. Encapsulates the _judgment_ (parsing, fuzzy ingredient matching, unit
 normalization, good confirmation questions); the connector enforces the _invariants_
 (valid units, ownership, recipe structure). Installable and customizable in Claude.
+
+**Source ingestion (resolved):** the skill relies on **Claude's native file/URL
+reading** (Claude.ai, mobile, and Claude Code all ingest PDFs and fetch URLs) rather
+than bundling its own fetcher/PDF parser. The skill operates on already-read content;
+its job is extraction → tool orchestration. No parsing dependency to build or maintain.
 
 ## 7. Data flow — recipe import
 
@@ -200,9 +214,10 @@ Indexes added to `src/lib/database-indexes.ts` (TTL indexes for code/token expir
   tokens reach Claude. Tokens are resource-scoped (RFC 8707).
 - **PKCE required** on the authorization code flow.
 - **Pinned dependencies:** `@modelcontextprotocol/sdk` ≥ 1.26.0 (prior versions have
-  advisories). Pin a `mcp-handler` version verified to work in **stateless** mode
-  without Redis (a regression has been reported where stateless StreamableHTTP can
-  infinite-loop without Redis — verify on the pinned version before shipping).
+  advisories). Per the `mcp-handler` README, **Redis is optional and only needed for
+  the legacy SSE transport** — stateless Streamable HTTP needs none. The earlier
+  no-Redis infinite-loop issue (vercel/vercel#13321) is closed; use a current
+  `mcp-handler` release.
 - **Least privilege:** v1 uses a single scope granting the user access to their own
   data; finer scopes can come later.
 
@@ -231,14 +246,18 @@ the established pattern. _Deliverable: full read/write tool surface._
 
 ## 12. Open questions / risks
 
-- **Claude DCR specifics:** confirm Claude's exact DCR expectations and metadata fields
-  against the current Claude connector docs during Phase 2.
-- **`mcp-handler` stateless/Redis regression:** verify on the pinned version (§10)
-  before relying on stateless mode.
+Resolved during design (see §6.2, §6.6, §10): Claude DCR is a confirmed Phase-2
+requirement; the stateless/Redis concern is cleared (Redis is SSE-only); PDF/URL
+ingestion uses Claude's native file reading.
+
+Remaining:
+
+- **Exact Claude DCR/metadata field names:** confirm against the live Claude connector
+  docs while implementing Phase 2 (low risk — shape is known, only field-name details
+  remain).
 - **Service extraction surface:** keep each phase's refactor scoped to the routes that
-  phase exposes; avoid a big-bang refactor of all routes at once.
-- **PDF ingestion in the skill:** decide how the skill reads PDFs (Claude's own file
-  handling vs. a fetch+parse step) during Phase 3.
+  phase exposes; avoid a big-bang refactor of all routes at once. (Process guideline,
+  not an unknown.)
 
 ## 13. References
 
