@@ -91,14 +91,14 @@ for validation, ownership, and user-scoping.
 
 Weekly Eats acts as a spec-compliant OAuth 2.1 Authorization Server. New endpoints:
 
-| Endpoint                                  | Role                                                                                                                                                           |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/.well-known/oauth-protected-resource`   | RFC 9728 Protected Resource Metadata; advertises the AS. Served by `protectedResourceHandler()`.                                                               |
-| `/.well-known/oauth-authorization-server` | AS metadata: issuer, authorize/token/register URLs, PKCE methods, supported scopes.                                                                            |
-| `/api/mcp/oauth/register`                 | Dynamic Client Registration (RFC 7591) — Claude auto-registers itself.                                                                                         |
-| `/api/mcp/oauth/authorize`                | Authorization endpoint. Requires PKCE. Bounces the user through existing Google/NextAuth login, then issues a short-lived, PKCE-bound auth code.               |
-| `/api/mcp/oauth/token`                    | Token endpoint. Exchanges auth code (or refresh token) for the app's own MCP access + refresh tokens, bound to `userId` and the resource indicator (RFC 8707). |
-| `/api/mcp/oauth/revoke`                   | Token revocation.                                                                                                                                              |
+| Endpoint                                  | Role                                                                                                                                                                                                              |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/.well-known/oauth-protected-resource`   | RFC 9728 Protected Resource Metadata; advertises the AS. Served by `protectedResourceHandler()`.                                                                                                                  |
+| `/.well-known/oauth-authorization-server` | AS metadata: issuer, authorize/token/register URLs, PKCE methods, supported scopes.                                                                                                                               |
+| `/api/mcp/oauth/register`                 | Dynamic Client Registration (RFC 7591) — Claude auto-registers itself. Per-IP rate limited; see "AS hardening" below.                                                                                             |
+| `/api/mcp/oauth/authorize`                | Authorization endpoint. Requires PKCE **and a server-verified `state`**. Bounces the user through existing Google/NextAuth login, then issues a short-lived, PKCE-bound auth code.                                |
+| `/api/mcp/oauth/token`                    | Token endpoint. Exchanges auth code (or refresh token) for the app's own MCP access + refresh tokens, bound to `userId` and the resource indicator (RFC 8707). Re-checks approval on refresh; see "AS hardening". |
+| `/api/mcp/oauth/revoke`                   | Token revocation (sets `revokedAt`; see §9).                                                                                                                                                                      |
 
 **Token flow:** Claude → `register` → `authorize` → (Google login via NextAuth) →
 auth code → `token` → MCP access + refresh token. Google's tokens are never returned
@@ -107,6 +107,31 @@ to Claude.
 **Requirements enforced:** OAuth 2.1 + PKCE; Resource Indicators (RFC 8707) so tokens
 are valid only for this MCP server; `401` responses carry `WWW-Authenticate` pointing
 at the Protected Resource Metadata URL.
+
+**AS hardening (required, from plan review):**
+
+- **CSRF / `state` (I4):** `/authorize` generates a cryptographically random `state`,
+  stores it server-side bound to the initiating request, carries it through the
+  Google/NextAuth redirect, and verifies it on return **before** issuing the auth code.
+  PKCE alone does not cover the authorization-request initiation leg.
+- **Refresh & revocation (I5):** the token endpoint re-checks `isApproved`/`isAdmin`
+  (and revocation status) from `users` on **every refresh exchange**, returning `401`
+  and deleting the refresh token if the user is no longer approved. Refresh tokens use
+  **rotation with reuse detection** (each refresh issues a new refresh token and
+  invalidates the prior one; replay of a rotated token revokes the whole chain) and an
+  **idle/sliding expiry** (TTL resets on use) rather than a hard absolute lifetime — so
+  active users are never forced to periodically re-authenticate, while leaked or
+  abandoned tokens still expire.
+- **DCR abuse (I6):** `/register` is per-IP rate limited; `mcpClients` documents carry
+  a TTL/last-used cleanup policy (see §9). Registration is open per RFC 7591 but
+  bounded by the rate limit; restricting to Claude's known client metadata is an option
+  if abuse appears.
+
+**Approval re-check mechanism (M1):** `verifyToken` performs a **live `users` lookup on
+every tool call** to read `isApproved`/`isAdmin` (not embedded in the token), so revoked
+approval takes effect immediately. This is the intentional departure from the
+JWT-cached web-app pattern in `src/lib/auth.ts`; the latency cost is one indexed lookup
+per call and is accepted for a write-capable agent surface.
 
 **Claude registration (resolved):** Claude uses **Dynamic Client Registration by
 default** — it registers itself with our AS automatically — so `/api/mcp/oauth/register`
@@ -127,7 +152,9 @@ Pure, transport-agnostic functions, one module per domain
 
 - Signature shape: `(userId: string, input: …) => Promise<Result>`.
 - Encapsulate validation, ownership checks, user-scoping, and Mongo access.
-- Throw typed domain errors (§8) reusing `@/lib/errors` constants.
+- Throw typed domain errors from **`src/lib/service-errors.ts`** (see §8) — a new
+  Phase 1 deliverable, since `src/lib/errors.ts` today exports only string constants,
+  not throwable classes.
 - Existing route handlers are refactored to call these (behavior-preserving).
 - MCP tools call the identical functions.
 
@@ -135,8 +162,10 @@ Pure, transport-agnostic functions, one module per domain
 
 The connector equivalent of `requireApprovedSession`:
 
-- Extract + validate the bearer token (our minted MCP access token).
-- Resolve to `{ userId, email, isApproved, isAdmin }`.
+- Extract the bearer token, hash it, look it up in `mcpTokens`; reject if missing,
+  expired, `revokedAt` set, or the resource indicator doesn't match (M3, §9).
+- Resolve `userId`, then perform a **live `users` lookup** for `isApproved`/`isAdmin`
+  (not embedded in the token — see M1 in §6.2) so revoked approval applies immediately.
 - Enforce `isApproved || isAdmin` (matches `requireApprovedSession` semantics).
 - On success return `AuthInfo` with `userId` (+ approval flags) in `extra`; tool
   handlers read `extra.authInfo`.
@@ -151,6 +180,13 @@ errors. Initial (Phase set, §11):
 - **Food items:** `food_items.search`, `food_items.get`, `food_items.create`.
 - **Recipes:** `recipes.search`, `recipes.get`, `recipes.create`, `recipes.update`.
 - **Later domains:** meal plans, pantry, shopping lists (read + write).
+
+**Ownership-bearing fields (I3):** `food_items.create` via MCP **always forces
+`isGlobal: false`** (personal items only). The existing HTTP route persists a
+caller-supplied `isGlobal` with no admin gate (`food-items/route.ts`), so an agent
+could otherwise publish globally-visible items into every user's catalog during import.
+If admin-created globals are ever wanted, that path must re-check `isAdmin` from the MCP
+auth context explicitly. Tool tests verify the forced `isGlobal: false` (see §8).
 
 ### 6.6 `recipe-import` skill
 
@@ -185,8 +221,10 @@ re-validates at `recipes.create`.
 
 ## 8. Error handling
 
-- Service layer throws typed domain errors: `ValidationError`, `NotFoundError`,
-  `ForbiddenError` (reusing `@/lib/errors` message constants).
+- Service layer throws typed domain errors `ValidationError`, `NotFoundError`,
+  `ForbiddenError` defined in **`src/lib/service-errors.ts`** (a new Phase 1
+  deliverable — `@/lib/errors` provides only the message-string constants, which each
+  error class carries). Route handlers and tools `instanceof`-check these.
 - HTTP route handlers map these to existing status codes (400/403/404/500) — external
   API behavior is unchanged.
 - MCP tools map these to MCP tool errors (`isError: true` + an actionable message
@@ -195,24 +233,72 @@ re-validates at `recipes.create`.
   authenticated-but-unapproved → a clear "not approved" tool error.
 - Continue using `logError('ContextName', error)` server-side.
 
+## 8a. Testing strategy
+
+Every phase ships with tests, following the existing `__tests__/` + `vi.mock('@/lib/mongodb')`
+pattern (see `docs/testing.md`). No phase is "done" on "tests stay green" alone.
+
+- **Service layer (Phase 1)** — unit tests per function: happy path; `userId` scoping
+  (never returns/ mutates another user's docs); ownership rejection → `ForbiddenError`;
+  validation rejection → `ValidationError` with the right `@/lib/errors` constant;
+  unknown id → `NotFoundError`. Plus: existing route-handler tests still pass after the
+  refactor (behavior-preserving).
+- **MCP tools (Phase 1)** — mock `@/lib/services/*` (not Mongo): correct service called
+  with the authed `userId` from `extra.authInfo`; domain errors mapped to `isError`
+  responses; zod input rejection produces a readable MCP error; `food_items.create`
+  forces `isGlobal: false`.
+- **`verifyToken` (Phase 2)** — valid token resolves to `{ userId, isApproved, isAdmin }`;
+  expired token → `undefined`; revoked token (`revokedAt` set) → `undefined`;
+  unapproved + non-admin → `undefined`; admin bypasses approval; malformed/forged
+  bearer → `undefined`; resource-indicator mismatch → `undefined`.
+- **OAuth AS endpoints (Phase 2)** — `/token`: successful PKCE code exchange;
+  `code_verifier` mismatch → 400; missing verifier → 400; expired auth code → 400;
+  replayed (single-use) code → 400; successful refresh **with** approval re-check;
+  refresh by a now-unapproved user → 401 + token deleted; rotated-token replay revokes
+  the chain. `/authorize`: missing `code_challenge` → 400; missing/!verified `state` →
+  400; `redirect_uri` mismatch → 400; unapproved user cannot obtain a code. `/revoke`:
+  valid revocation succeeds; unknown token succeeds silently (RFC 7009 §2.2);
+  unauthenticated → 401. `/register`: rate-limit enforced.
+- **Phase 1 dev-token gate (Phase 2)** — integration test asserting the production
+  configuration rejects the static dev token (see §11, C1).
+- **Skill (Phase 3)** — validated manually.
+
 ## 9. Data model changes
 
 No changes to existing collections. New collections for the AS:
 
-- `mcpClients` — registered OAuth clients (from DCR).
-- `mcpAuthCodes` — short-lived PKCE-bound authorization codes.
-- `mcpTokens` — access + refresh tokens bound to `userId`, with expiry + revocation.
+- `mcpClients` — registered OAuth clients (from DCR). Carries a `lastUsedAt`/TTL
+  cleanup policy so abandoned registrations are reaped (I6).
+- `mcpAuthCodes` — short-lived PKCE-bound authorization codes (single-use).
+- `mcpTokens` — access + refresh tokens bound to `userId`, with expiry and a
+  `revokedAt` field. Refresh tokens use rotation (a `replacedBy`/chain reference) for
+  reuse detection and an idle/sliding TTL (§6.2).
 
-Indexes added to `src/lib/database-indexes.ts` (TTL indexes for code/token expiry).
+**Storage format (M2):** access tokens and auth codes are persisted as **SHA-256
+hashes**, never plaintext — the raw secret is returned to the client once at issuance
+and never stored. A database read therefore cannot impersonate a user.
+
+**Revocation (M3):** `/revoke` (and refresh-rotation/approval-loss) sets `revokedAt`
+rather than deleting the document, so `verifyToken` and the token endpoint **must check
+`revokedAt`** on every use. TTL indexes are keyed on the **expiry** field (not
+`revokedAt`), so MongoDB's eventual TTL deletion never races ahead of an explicit
+revocation check.
+
+Indexes added to `src/lib/database-indexes.ts` (TTL on `mcpAuthCodes`/`mcpTokens`
+expiry; `mcpClients` cleanup; lookup indexes on the hashed-token fields).
 
 ## 10. Security considerations
 
 - **User-scoping is non-negotiable:** every service function filters by the authed
-  `userId`; no tool accepts a caller-supplied user id.
-- **Approval gating** re-checked on every tool call (not just at token issuance).
+  `userId`; no tool accepts a caller-supplied user id. `food_items.create` forces
+  `isGlobal: false` (I3, §6.5).
+- **Approval gating** re-checked live on every tool call **and on every refresh
+  exchange** (not just at token issuance) — see §6.2 (I5) and §6.4 (M1).
 - **Token isolation:** Google tokens never leave the server; only app-minted MCP
-  tokens reach Claude. Tokens are resource-scoped (RFC 8707).
-- **PKCE required** on the authorization code flow.
+  tokens reach Claude, stored hashed at rest (M2, §9). Tokens are resource-scoped
+  (RFC 8707).
+- **PKCE + `state` required** on the authorization code flow (I4, §6.2); DCR endpoint
+  is rate limited (I6, §6.2).
 - **Pinned dependencies:** `@modelcontextprotocol/sdk` ≥ 1.26.0 (prior versions have
   advisories). Per the `mcp-handler` README, **Redis is optional and only needed for
   the legacy SSE transport** — stateless Streamable HTTP needs none. The earlier
@@ -226,15 +312,22 @@ Indexes added to `src/lib/database-indexes.ts` (TTL indexes for code/token expir
 One spec, built and reviewed as separate plans (run `writing-plans` per phase):
 
 **Phase 1 — Service layer + recipes/food-items tools (behind a dev token).**
-Extract `services/recipes.ts` and `services/food-items.ts`; refactor the existing
-routes to call them (tests stay green). Stand up `/api/mcp` (stateless Streamable HTTP)
-with the recipes + food-items tools, gated by a temporary static bearer token for
-local end-to-end testing. _Deliverable: tools callable from a local MCP client._
+Add `src/lib/service-errors.ts` (typed throwable errors, §8); extract
+`services/recipes.ts` and `services/food-items.ts`; refactor the existing routes to call
+them (existing tests stay green) and add the service + tool tests in §8a. Stand up
+`/api/mcp` (stateless Streamable HTTP) with the recipes + food-items tools.
+**Dev-token gate (C1):** the temporary static bearer token is enabled **only** when
+`MCP_DEV_TOKEN` is set **and** `NODE_ENV !== 'production'` — it is never wired into any
+deployed environment. _Deliverable: tools callable from a local MCP client._
 
 **Phase 2 — OAuth Authorization Server + approval-gated verification + deploy.**
-Implement the AS endpoints (§6.2), `verifyToken` (§6.4), the `mcp*` collections, and
-deploy. Replace the dev token with real OAuth. _Deliverable: a self-serve connector an
-approved user can add in Claude and use for recipes + food items._
+Implement the AS endpoints (§6.2) including `state`/CSRF, refresh re-approval + rotation,
+DCR rate limiting, and hashed token storage; implement `verifyToken` (§6.4); create the
+`mcp*` collections + indexes (§9); add the §8a auth tests. **Exit checklist:** the
+Phase 1 dev-token code path is removed or provably inert in production, verified by the
+§8a integration test, before deploy. Replace the dev token with real OAuth.
+_Deliverable: a self-serve connector an approved user can add in Claude and use for
+recipes + food items._
 
 **Phase 3 — `recipe-import` skill.**
 Build and package the skill (§6.6) on top of Phase 1–2 tools. _Deliverable: the
@@ -249,6 +342,13 @@ the established pattern. _Deliverable: full read/write tool surface._
 Resolved during design (see §6.2, §6.6, §10): Claude DCR is a confirmed Phase-2
 requirement; the stateless/Redis concern is cleared (Redis is SSE-only); PDF/URL
 ingestion uses Claude's native file reading.
+
+Resolved during plan review (see `2026-05-29-agent-connector-design-review.md`): the
+OAuth AS now specifies `state`/CSRF (I4), refresh re-approval + rotation + idle expiry
+(I5), DCR rate limiting + `mcpClients` TTL (I6), hashed token storage (M2),
+`revokedAt`-based revocation (M3), and live approval re-check (M1); the spec adds a
+Testing strategy (§8a, I1), a `service-errors.ts` deliverable (I2), the
+`food_items.create` `isGlobal: false` rule (I3), and the Phase 1 dev-token gate (C1).
 
 Remaining:
 
