@@ -20,7 +20,9 @@ export async function issueAuthCode(
   fields: AuthCodeFields,
   expiresAt: number
 ): Promise<void> {
-  await (await codes()).insertOne({ ...fields, hashedCode: sha256Hex(rawCode), expiresAt });
+  await (
+    await codes()
+  ).insertOne({ ...fields, hashedCode: sha256Hex(rawCode), expiresAt: new Date(expiresAt) });
 }
 
 /** Atomic single-use consume (MA) + at-use expiry (R6). */
@@ -29,6 +31,6 @@ export async function consumeAuthCode(
   now: number
 ): Promise<McpAuthCodeDoc | null> {
   const doc = await (await codes()).findOneAndDelete({ hashedCode: sha256Hex(rawCode) });
-  if (!doc || doc.expiresAt <= now) return null;
+  if (!doc || doc.expiresAt.getTime() <= now) return null;
   return doc;
 }

@@ -36,6 +36,6 @@ describe('clients store', () => {
       1000
     );
     await touchClient(clientId, 5000);
-    expect((await getClient(clientId))?.lastUsedAt).toBe(5000);
+    expect((await getClient(clientId))?.lastUsedAt).toEqual(new Date(5000));
   });
 });

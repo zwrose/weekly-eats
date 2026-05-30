@@ -144,11 +144,15 @@ export const createDatabaseIndexes = async () => {
 
     // --- MCP OAuth Authorization Server collections (Phase 2, spec §9) ---
 
-    // mcpClients — registered DCR clients; unique clientId; TTL-less (reaped by
-    // lastUsedAt cleanup policy, I6).
+    // mcpClients — registered DCR clients; unique clientId; TTL reaps clients
+    // unused for 90 days (I6). touchClient refreshes lastUsedAt on every use, so
+    // active clients are never reaped. New registrations start with lastUsedAt=now.
     const mcpClients = db.collection('mcpClients');
     await mcpClients.createIndex({ clientId: 1 }, { name: 'mcpClients_clientId', unique: true });
-    await mcpClients.createIndex({ lastUsedAt: 1 }, { name: 'mcpClients_lastUsedAt' });
+    await mcpClients.createIndex(
+      { lastUsedAt: 1 },
+      { name: 'mcpClients_lastUsedAt_ttl', expireAfterSeconds: 60 * 60 * 24 * 90 }
+    );
 
     // mcpAuthCodes — single-use PKCE codes; lookup by hash; TTL on expiry.
     const mcpAuthCodes = db.collection('mcpAuthCodes');

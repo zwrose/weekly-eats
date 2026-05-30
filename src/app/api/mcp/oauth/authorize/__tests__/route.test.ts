@@ -1,16 +1,19 @@
 // src/app/api/mcp/oauth/authorize/__tests__/route.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getMongoClient, auth, getClient, lookupApproval, hasConsent } = vi.hoisted(() => ({
-  getMongoClient: vi.fn(),
-  auth: vi.fn(),
-  getClient: vi.fn(),
-  lookupApproval: vi.fn(),
-  hasConsent: vi.fn(),
-}));
+const { getMongoClient, auth, getClient, touchClient, lookupApproval, hasConsent } = vi.hoisted(
+  () => ({
+    getMongoClient: vi.fn(),
+    auth: vi.fn(),
+    getClient: vi.fn(),
+    touchClient: vi.fn(),
+    lookupApproval: vi.fn(),
+    hasConsent: vi.fn(),
+  })
+);
 vi.mock('@/lib/mongodb', () => ({ getMongoClient }));
 vi.mock('@/lib/auth', () => ({ auth }));
-vi.mock('@/lib/mcp/oauth/stores/clients', () => ({ getClient }));
+vi.mock('@/lib/mcp/oauth/stores/clients', () => ({ getClient, touchClient }));
 vi.mock('@/lib/mcp/oauth/approval', () => ({ lookupApproval }));
 vi.mock('@/lib/mcp/oauth/stores/consents', () => ({ hasConsent }));
 
@@ -28,6 +31,7 @@ beforeEach(() => {
     clientName: 'Claude',
     redirectUris: ['https://claude.ai/cb'],
   });
+  touchClient.mockReset().mockResolvedValue(undefined);
   lookupApproval.mockReset();
   hasConsent.mockReset().mockResolvedValue(false);
 });

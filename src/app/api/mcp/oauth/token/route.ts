@@ -3,7 +3,7 @@ import { MCP_OAUTH_ERRORS } from '@/lib/errors';
 import { ACCESS_TOKEN_TTL_MS, getResourceUrl, MCP_SCOPE } from '@/lib/mcp/oauth/config';
 import { pkceS256Matches } from '@/lib/mcp/oauth/crypto';
 import { oauthErrorJson } from '@/lib/mcp/oauth/oauth-response';
-import { getClient } from '@/lib/mcp/oauth/stores/clients';
+import { getClient, touchClient } from '@/lib/mcp/oauth/stores/clients';
 import { consumeAuthCode, grantIdForCode } from '@/lib/mcp/oauth/stores/auth-codes';
 import {
   findRefreshToken,
@@ -35,6 +35,9 @@ export async function POST(req: Request): Promise<Response> {
   // Client auth (public client; PKCE substitutes for a secret). T4.
   const client = await getClient(clientId);
   if (!client) return oauthErrorJson(MCP_OAUTH_ERRORS.INVALID_CLIENT, 'Unknown client', 401);
+
+  // Refresh lastUsedAt so the 90d TTL reaper (I6) doesn't prune active clients.
+  await touchClient(clientId, now);
 
   if (grantType === 'authorization_code') {
     const rawCode = String(form.get('code') ?? '');
@@ -75,7 +78,7 @@ export async function POST(req: Request): Promise<Response> {
     if (doc.clientId !== clientId) {
       return oauthErrorJson(MCP_OAUTH_ERRORS.INVALID_GRANT, 'Client mismatch', 400);
     }
-    if (doc.expiresAt <= now) {
+    if (doc.expiresAt.getTime() <= now) {
       return oauthErrorJson(MCP_OAUTH_ERRORS.INVALID_GRANT, 'Refresh token expired', 400);
     }
     if (doc.revokedAt !== null) {

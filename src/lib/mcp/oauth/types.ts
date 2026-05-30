@@ -7,7 +7,7 @@ export interface McpClientDoc {
   clientName: string;
   redirectUris: string[];
   createdAt: number;
-  lastUsedAt: number;
+  lastUsedAt: Date;
 }
 
 export interface McpAuthStateDoc {
@@ -19,7 +19,7 @@ export interface McpAuthStateDoc {
   resource: string;
   scope: string;
   clientState: string | null; // the OAuth client's own `state`, echoed back verbatim
-  expiresAt: number;
+  expiresAt: Date;
 }
 
 export interface McpAuthCodeDoc {
@@ -31,7 +31,7 @@ export interface McpAuthCodeDoc {
   resource: string;
   userId: string;
   scope: string;
-  expiresAt: number;
+  expiresAt: Date;
 }
 
 export type McpTokenType = 'access' | 'refresh';
@@ -46,7 +46,7 @@ export interface McpTokenDoc {
   scope: string;
   /** Shared across an entire grant lineage (= SHA-256 of the originating auth code). */
   grantId: string;
-  expiresAt: number;
+  expiresAt: Date;
   revokedAt: number | null;
   /** Refresh tokens only: hash of the token that replaced this one (rotation). */
   replacedBy: string | null;
@@ -65,5 +65,5 @@ export interface McpRateLimitDoc {
   key: string; // e.g. `register:<ip>`
   count: number;
   windowStart: number;
-  expiresAt: number;
+  expiresAt: Date;
 }

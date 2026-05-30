@@ -29,7 +29,7 @@ describe('auth-states store', () => {
     expect(nonce).toMatch(/^[A-Za-z0-9_-]+$/);
     // the returned doc lets an authed caller skip a read-back (arch-004)
     expect(created.clientId).toBe('c1');
-    expect(created.expiresAt).toBe(1000 + 600_000);
+    expect(created.expiresAt).toEqual(new Date(1000 + 600_000));
     const doc = await peekAuthState(nonce, 1000);
     expect(doc?.clientId).toBe('c1');
     expect(doc?.clientState).toBe('client-xyz');

@@ -82,7 +82,7 @@ describe('tokens store', () => {
     const { refreshToken } = await mintPair('grant-1', fields, NOW);
     const rotated = await rotateRefresh(refreshToken, 'grant-1', fields, NOW + 10);
     const newRef = await findRefreshToken(rotated!.refreshToken);
-    expect(newRef?.expiresAt).toBe(NOW + 10 + 30 * 24 * 60 * 60 * 1000);
+    expect(newRef?.expiresAt).toEqual(new Date(NOW + 10 + 30 * 24 * 60 * 60 * 1000));
   });
 
   it('revokeChain revokes every token sharing the grant', async () => {

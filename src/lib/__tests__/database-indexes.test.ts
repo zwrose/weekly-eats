@@ -28,15 +28,22 @@ describe('database indexes — mcp* collections', () => {
     const touched = new Set(collection.mock.calls.map((c) => c[0]));
     for (const name of MCP) expect(touched.has(name)).toBe(true);
 
-    // Exactly the four mcp* TTL indexes (scoped + exact, so a dropped one fails
+    // Exactly the five mcp* TTL indexes (scoped + exact, so a dropped one fails
     // — not merely arrayContaining, which the pre-existing manualTestLocks TTL
-    // would also satisfy).
+    // would also satisfy). mcpClients_lastUsedAt_ttl is the I6 client reaper
+    // (90d), the other four use expireAfterSeconds:0 (MongoDB-side Date math).
     const mcpTtlNames = createIndex.mock.calls
-      .filter((c) => c[1]?.expireAfterSeconds === 0 && (c[1]?.name as string)?.startsWith('mcp'))
+      .filter(
+        (c) =>
+          c[1]?.expireAfterSeconds != null &&
+          c[1]?.expireAfterSeconds >= 0 &&
+          (c[1]?.name as string)?.startsWith('mcp')
+      )
       .map((c) => c[1]?.name as string);
     expect(mcpTtlNames.sort()).toEqual([
       'mcpAuthCodes_expiry_ttl',
       'mcpAuthStates_expiry_ttl',
+      'mcpClients_lastUsedAt_ttl',
       'mcpRateLimits_expiry_ttl',
       'mcpTokens_expiry_ttl',
     ]);

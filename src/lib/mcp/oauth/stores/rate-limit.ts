@@ -23,7 +23,7 @@ export async function consumeRateLimit(
   if (!doc || now - doc.windowStart >= windowMs) {
     await col.updateOne(
       { key },
-      { $set: { key, count: 1, windowStart: now, expiresAt: now + windowMs } },
+      { $set: { key, count: 1, windowStart: now, expiresAt: new Date(now + windowMs) } },
       { upsert: true }
     );
     return { allowed: true };

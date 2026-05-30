@@ -20,7 +20,7 @@ export async function registerClient(
     clientName: input.clientName,
     redirectUris: input.redirectUris,
     createdAt: now,
-    lastUsedAt: now,
+    lastUsedAt: new Date(now),
   });
   return { clientId };
 }
@@ -30,5 +30,5 @@ export async function getClient(clientId: string): Promise<McpClientDoc | null> 
 }
 
 export async function touchClient(clientId: string, now: number): Promise<void> {
-  await (await clients()).updateOne({ clientId }, { $set: { lastUsedAt: now } });
+  await (await clients()).updateOne({ clientId }, { $set: { lastUsedAt: new Date(now) } });
 }

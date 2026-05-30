@@ -24,7 +24,7 @@ export async function createAuthState(
   const doc: McpAuthStateDoc = {
     ...input,
     hashedState: sha256Hex(nonce),
-    expiresAt,
+    expiresAt: new Date(expiresAt),
   };
   await (await states()).insertOne(doc);
   return { nonce, doc };
@@ -33,7 +33,7 @@ export async function createAuthState(
 /** Read without consuming (consent render). Enforces at-use expiry (R6). */
 export async function peekAuthState(nonce: string, now: number): Promise<McpAuthStateDoc | null> {
   const doc = await (await states()).findOne({ hashedState: sha256Hex(nonce) });
-  if (!doc || doc.expiresAt <= now) return null;
+  if (!doc || doc.expiresAt.getTime() <= now) return null;
   return doc;
 }
 
@@ -43,6 +43,6 @@ export async function consumeAuthState(
   now: number
 ): Promise<McpAuthStateDoc | null> {
   const doc = await (await states()).findOneAndDelete({ hashedState: sha256Hex(nonce) });
-  if (!doc || doc.expiresAt <= now) return null;
+  if (!doc || doc.expiresAt.getTime() <= now) return null;
   return doc;
 }

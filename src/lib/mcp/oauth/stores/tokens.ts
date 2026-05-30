@@ -25,7 +25,7 @@ export async function mintPair(
     hashedToken: sha256Hex(accessToken),
     tokenType: 'access',
     grantId,
-    expiresAt: now + ACCESS_TOKEN_TTL_MS,
+    expiresAt: new Date(now + ACCESS_TOKEN_TTL_MS),
     revokedAt: null,
     replacedBy: null,
   });
@@ -34,7 +34,7 @@ export async function mintPair(
     hashedToken: sha256Hex(refreshToken),
     tokenType: 'refresh',
     grantId,
-    expiresAt: now + REFRESH_TOKEN_IDLE_TTL_MS,
+    expiresAt: new Date(now + REFRESH_TOKEN_IDLE_TTL_MS),
     revokedAt: null,
     replacedBy: null,
   });
@@ -53,7 +53,7 @@ export async function findValidAccessToken(
     tokenType: 'access',
     revokedAt: null,
   });
-  if (!doc || doc.expiresAt <= now) return null;
+  if (!doc || doc.expiresAt.getTime() <= now) return null;
   return doc;
 }
 
@@ -85,7 +85,7 @@ export async function rotateRefresh(
       hashedToken: sha256Hex(oldRawRefresh),
       replacedBy: null,
       revokedAt: null,
-      expiresAt: { $gt: now },
+      expiresAt: { $gt: new Date(now) },
     },
     { $set: { replacedBy: sha256Hex(newRefresh) } }
   );
@@ -98,7 +98,7 @@ export async function rotateRefresh(
     hashedToken: sha256Hex(accessToken),
     tokenType: 'access',
     grantId,
-    expiresAt: now + ACCESS_TOKEN_TTL_MS,
+    expiresAt: new Date(now + ACCESS_TOKEN_TTL_MS),
     revokedAt: null,
     replacedBy: null,
   });
@@ -107,7 +107,7 @@ export async function rotateRefresh(
     hashedToken: sha256Hex(newRefresh),
     tokenType: 'refresh',
     grantId,
-    expiresAt: now + REFRESH_TOKEN_IDLE_TTL_MS,
+    expiresAt: new Date(now + REFRESH_TOKEN_IDLE_TTL_MS),
     revokedAt: null,
     replacedBy: null,
   });

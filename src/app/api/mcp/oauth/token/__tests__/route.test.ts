@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   getClient,
+  touchClient,
   consumeAuthCode,
   mintPair,
   findRefreshToken,
@@ -11,6 +12,7 @@ const {
   lookupApproval,
 } = vi.hoisted(() => ({
   getClient: vi.fn(),
+  touchClient: vi.fn(),
   consumeAuthCode: vi.fn(),
   mintPair: vi.fn(),
   findRefreshToken: vi.fn(),
@@ -19,7 +21,7 @@ const {
   lookupApproval: vi.fn(),
 }));
 
-vi.mock('@/lib/mcp/oauth/stores/clients', () => ({ getClient }));
+vi.mock('@/lib/mcp/oauth/stores/clients', () => ({ getClient, touchClient }));
 vi.mock('@/lib/mcp/oauth/stores/auth-codes', () => ({
   consumeAuthCode,
   grantIdForCode: (c: string) => `grant:${c}`,
@@ -62,6 +64,7 @@ beforeEach(() => {
   getClient
     .mockReset()
     .mockResolvedValue({ clientId: 'c1', redirectUris: ['https://claude.ai/cb'] });
+  touchClient.mockReset().mockResolvedValue(undefined);
   consumeAuthCode.mockReset().mockResolvedValue(codeDoc);
   mintPair.mockReset().mockResolvedValue({ accessToken: 'AT', refreshToken: 'RT' });
   findRefreshToken.mockReset();
@@ -138,7 +141,7 @@ describe('POST /token — refresh_token', () => {
     resource: RESOURCE,
     scope: 'weekly-eats:rw',
     grantId: 'grant:the-code',
-    expiresAt: 9_999_999_999_999,
+    expiresAt: new Date(9_999_999_999_999),
     revokedAt: null,
     replacedBy: null,
   };
@@ -169,7 +172,7 @@ describe('POST /token — refresh_token', () => {
   });
 
   it('expired refresh token (at-use) → invalid_grant', async () => {
-    findRefreshToken.mockResolvedValue({ ...refreshDoc, expiresAt: 1 });
+    findRefreshToken.mockResolvedValue({ ...refreshDoc, expiresAt: new Date(1) });
     const res = await POST(tokenReq(refreshGrant));
     expect((await res.json()).error).toBe('invalid_grant');
   });

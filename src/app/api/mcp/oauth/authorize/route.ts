@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { MCP_OAUTH_ERRORS } from '@/lib/errors';
 import { AUTH_STATE_TTL_MS, getIssuerUrl, getResourceUrl, MCP_SCOPE } from '@/lib/mcp/oauth/config';
 import { oauthErrorJson, redirectWithError } from '@/lib/mcp/oauth/oauth-response';
-import { getClient } from '@/lib/mcp/oauth/stores/clients';
+import { getClient, touchClient } from '@/lib/mcp/oauth/stores/clients';
 import {
   consumeAuthState,
   createAuthState,
@@ -44,6 +44,9 @@ async function initial(
   if (!client.redirectUris.includes(redirectUri)) {
     return oauthErrorJson(MCP_OAUTH_ERRORS.INVALID_REQUEST, 'redirect_uri not registered', 400);
   }
+
+  // Refresh lastUsedAt so the 90d TTL reaper (I6) doesn't prune active clients.
+  await touchClient(clientId, now);
 
   // 2. redirect_uri is trusted → remaining failures redirect back with iss (R1).
   const fail = (description: string) =>
