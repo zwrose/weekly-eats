@@ -26,17 +26,19 @@ All audit artifacts live in a per-invocation temp directory so parallel runs don
 SESSION_DIR=$(mktemp -d /tmp/audit-debt-XXXXXXXX)
 ```
 
-| Path                                      | Written by   | Purpose                                                                    |
-| ----------------------------------------- | ------------ | -------------------------------------------------------------------------- |
-| `$SESSION_DIR/meta.json`                  | orchestrator | Repo, branch, head SHA, session dir, file count                            |
-| `$SESSION_DIR/sweep-prep/`                | orchestrator | Directory of prep artifacts (npm audit, TODO census, file list, dep churn) |
-| `$SESSION_DIR/findings-architecture.json` | arch agent   | Architecture-reviewer findings array                                       |
-| `$SESSION_DIR/findings-code.json`         | code agent   | Code-reviewer findings array                                               |
-| `$SESSION_DIR/findings-security.json`     | sec agent    | Security-reviewer findings array                                           |
-| `$SESSION_DIR/findings-test.json`         | test agent   | Test-reviewer findings array                                               |
-| `$SESSION_DIR/orchestrator-findings.json` | orchestrator | Deps + TODO accumulation + doc-drift findings                              |
-| `$SESSION_DIR/compiled.json`              | orchestrator | Sorted, prioritized backlog + totals + summary                             |
-| `$SESSION_DIR/report.md`                  | orchestrator | Final markdown report (optionally saved by user)                           |
+| Path                                      | Written by   | Purpose                                                                            |
+| ----------------------------------------- | ------------ | ---------------------------------------------------------------------------------- |
+| `$SESSION_DIR/meta.json`                  | orchestrator | Repo, branch, head SHA, session dir, file count                                    |
+| `$SESSION_DIR/sweep-prep/`                | orchestrator | Directory of prep artifacts (npm audit, TODO census, file list, dep churn)         |
+| `$SESSION_DIR/findings-architecture.json` | arch agent   | Architecture-reviewer findings array                                               |
+| `$SESSION_DIR/findings-code.json`         | code agent   | Code-reviewer findings array                                                       |
+| `$SESSION_DIR/findings-security.json`     | sec agent    | Security-reviewer findings array                                                   |
+| `$SESSION_DIR/findings-test.json`         | test agent   | Test-reviewer findings array                                                       |
+| `$SESSION_DIR/round-<N>/findings-*.json`  | agents       | Specialist findings for discovery-loop round N (round 1 uses the flat paths above) |
+| `$SESSION_DIR/all-findings.json`          | orchestrator | Accumulated specialist findings across all discovery-loop rounds                   |
+| `$SESSION_DIR/orchestrator-findings.json` | orchestrator | Deps + TODO accumulation + doc-drift findings                                      |
+| `$SESSION_DIR/compiled.json`              | orchestrator | Sorted, prioritized backlog + totals + summary                                     |
+| `$SESSION_DIR/report.md`                  | orchestrator | Final markdown report (optionally saved by user)                                   |
 
 ## Workflow
 
