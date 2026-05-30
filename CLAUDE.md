@@ -1,6 +1,6 @@
 # Weekly Eats
 
-Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB, and NextAuth.
+Meal planning app built with Next.js 15 (App Router), React 19, MUI v7, MongoDB, and Auth.js (v5).
 
 ## Quick Reference
 
@@ -82,7 +82,8 @@ src/
   lib/
     hooks/        # Custom React hooks (useRecipes, useFoodItems, etc.)
     __tests__/    # Utility tests
-    auth.ts       # NextAuth config
+    auth.config.ts # Edge-safe Auth.js v5 config (providers, session/redirect callbacks)
+    auth.ts       # Full Auth.js v5 config (adapter + jwt) — exports handlers/auth/signIn/signOut
     mongodb.ts    # MongoDB connection singleton
     errors.ts     # Centralized error constants
     validation.ts # Input validation helpers
@@ -119,7 +120,7 @@ src/
 - Colocated in `__tests__/` folders next to source files
 - Vitest + React Testing Library + MSW for API mocking
 - When mocking `@/lib/errors`, include ALL error constant groups the route uses (missing ones cause silent 500s)
-- Mock next-auth: `vi.mock('next-auth/next', () => ({ getServerSession: vi.fn() }))`
+- Mock auth: `vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))` then `vi.mocked(auth).mockResolvedValue(...)` (route tests mock the `auth()` helper, not `next-auth` directly)
 - Mock MongoDB: `vi.mock('@/lib/mongodb', () => ({ getMongoClient: vi.fn() }))`
 - Use `userEvent.setup()` for user interactions (not fireEvent)
 - Use `waitFor()` for async assertions
