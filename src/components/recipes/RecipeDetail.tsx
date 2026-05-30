@@ -189,7 +189,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
           justifyContent: 'space-between',
           py: 1.25,
           borderBottom: `1px solid ${tokens.border.subtle}`,
-          mb: 2,
+          mb: 1.75,
         }}
       >
         {backLink({ ml: -0.5 })}
@@ -213,7 +213,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
       </Box>
 
       {/* ── Desktop back link ── */}
-      {backLink({ display: { xs: 'none', md: 'inline-flex' }, pt: 2.5, pb: 1 })}
+      {backLink({ display: { xs: 'none', md: 'inline-flex' }, pb: 1 })}
 
       {/* ── Header (flat; desktop has a bottom divider) ── */}
       <Box
@@ -346,12 +346,20 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={() => setMenuAnchor(null)}
-        PaperProps={{
-          sx: {
-            bgcolor: tokens.surface.elevated,
-            border: `1px solid ${tokens.border.subtle}`,
-            color: tokens.text.primary,
-            minWidth: 140,
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.elevated,
+              border: `1px solid ${tokens.border.subtle}`,
+              color: tokens.text.primary,
+              minWidth: 160,
+              mt: 0.75,
+              borderRadius: `${tokens.radius.lg}px`,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+              '& .MuiList-root': { py: 0.5 },
+            },
           },
         }}
       >
@@ -360,12 +368,17 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
             setMenuAnchor(null);
             setDeleteOpen(true);
           }}
-          sx={{ color: tokens.state.danger, fontSize: 14 }}
+          sx={{
+            color: tokens.state.danger,
+            fontSize: 14,
+            minHeight: 0,
+            py: 1,
+            px: 1.5,
+            gap: 1,
+          }}
         >
           <Icon name="delete" size={16} color={tokens.state.danger} />
-          <Box component="span" sx={{ ml: 1 }}>
-            Delete
-          </Box>
+          Delete
         </MenuItem>
       </Menu>
 
