@@ -351,10 +351,10 @@ function RecipesPageContent() {
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
+              flexDirection: 'row',
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
+              alignItems: 'center',
+              gap: 2,
               mb: { xs: 2, md: 3 },
             }}
           >
