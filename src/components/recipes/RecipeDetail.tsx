@@ -194,7 +194,7 @@ export function RecipeDetail({ recipeId }: RecipeDetailProps) {
       >
         {backLink({ ml: -0.5 })}
         {canEdit && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <ButtonBase
               aria-label="Edit recipe"
               onClick={() => setEditing(true)}

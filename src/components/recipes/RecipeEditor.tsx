@@ -223,6 +223,9 @@ export function RecipeEditor({
         minHeight: '100%',
         bgcolor: tokens.surface.base,
         color: tokens.text.primary,
+        // Full-page takeover: cancel AuthenticatedLayout's top padding so the sticky
+        // header sits flush under the nav instead of floating below a gap.
+        mt: { xs: -2, md: -3 },
       }}
     >
       {/* ── Sticky header ── */}
@@ -256,28 +259,17 @@ export function RecipeEditor({
           Cancel
         </Button>
 
-        {/* Desktop: "‹ Recipes" + title (left-grouped) */}
+        {/* Desktop: title */}
         <Box
-          sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.75, mr: 'auto' }}
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            mr: 'auto',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            fontSize: 18,
+          }}
         >
-          <ButtonBase
-            onClick={cancel}
-            aria-label="Back to recipes"
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 0.25,
-              color: tokens.section.recipes,
-              fontSize: 14,
-              '&:hover': { opacity: 0.85 },
-            }}
-          >
-            <Icon name="chevron_left" size={18} />
-            Recipes
-          </ButtonBase>
-          <Box sx={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>
-            {desktopTitle}
-          </Box>
+          {desktopTitle}
         </Box>
 
         {/* Mobile: centered title */}
@@ -295,23 +287,20 @@ export function RecipeEditor({
           {mobileTitle}
         </Box>
 
-        {/* Mobile: Save (amber text) + ⋯ */}
-        <Box
-          sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, ml: 'auto' }}
+        {/* Mobile: Save (amber text) */}
+        <ButtonBase
+          onClick={save}
+          disabled={!valid || saving}
+          sx={{
+            display: { xs: 'inline-flex', md: 'none' },
+            ml: 'auto',
+            fontSize: 14,
+            fontWeight: 600,
+            color: valid && !saving ? tokens.section.recipes : tokens.text.muted,
+          }}
         >
-          <ButtonBase
-            onClick={save}
-            disabled={!valid || saving}
-            sx={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: valid && !saving ? tokens.section.recipes : tokens.text.muted,
-            }}
-          >
-            Save
-          </ButtonBase>
-          {mode === 'edit' && moreButton}
-        </Box>
+          Save
+        </ButtonBase>
 
         {/* Desktop: Cancel (ghost) + Save (filled pill) */}
         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, ml: 'auto' }}>

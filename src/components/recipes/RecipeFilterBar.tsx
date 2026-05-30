@@ -173,12 +173,12 @@ export const RecipeFilterBar = memo(function RecipeFilterBar(props: RecipeFilter
 
   return (
     <Box
-      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: { xs: 'wrap', md: 'nowrap' } }}
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}
     >
       <Box
         sx={{
           flex: 1,
-          minWidth: 200,
+          minWidth: { xs: '100%', sm: 200 },
           display: 'flex',
           alignItems: 'center',
           gap: 1,
