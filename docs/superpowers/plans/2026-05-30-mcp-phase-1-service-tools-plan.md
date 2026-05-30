@@ -1010,6 +1010,11 @@ describe('getRecipe', () => {
     });
     const recipe = await getRecipe('u1', '64b7f8c2a2b7c2f1a2b7c2f1');
     expect(recipe.ingredients[0].ingredients[0].name).toBe('Tomatoes');
+    // Prove the foodItems collection was actually queried (by $in of the
+    // ingredient id) — i.e. the name was resolved, not coincidentally present.
+    expect(foodItemsFindMock).toHaveBeenCalledTimes(1);
+    const foodItemsFilter = foodItemsFindMock.mock.calls[0][0];
+    expect(JSON.stringify(foodItemsFilter)).toContain(foodItemId);
   });
 });
 
