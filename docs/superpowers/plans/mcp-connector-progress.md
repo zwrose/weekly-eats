@@ -17,13 +17,13 @@ all phases land.
 
 ## Phase status
 
-| #   | Phase                                                        | Status                            | Plan doc                                                                                                                 | PR test comment                                                                | Done              |
-| --- | ------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ----------------- |
-| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | code done — manual verify pending | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 (code) |
-| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | pending                           | — _(own effort; sequence between Ph1 and Ph2)_                                                                           | —                                                                              | —                 |
-| 2   | OAuth AS + approval-gated verification + deploy              | pending                           | —                                                                                                                        | —                                                                              | —                 |
-| 3   | `recipe-import` skill                                        | pending                           | —                                                                                                                        | —                                                                              | —                 |
-| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                           | —                                                                                                                        | —                                                                              | —                 |
+| #   | Phase                                                        | Status                      | Plan doc                                                                                                                 | PR test comment                                                                | Done       |
+| --- | ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
+| 1   | Service layer + recipes/food-items MCP tools (dev-token)     | done — code + manual verify | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
+| 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | pending                     | — _(own effort; sequence between Ph1 and Ph2)_                                                                           | —                                                                              | —          |
+| 2   | OAuth AS + approval-gated verification + deploy              | pending                     | —                                                                                                                        | —                                                                              | —          |
+| 3   | `recipe-import` skill                                        | pending                     | —                                                                                                                        | —                                                                              | —          |
+| 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                     | —                                                                                                                        | —                                                                              | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-phase plans live at
 `docs/superpowers/plans/YYYY-MM-DD-mcp-phase-N-<surface>-plan.md` (authored via
@@ -39,11 +39,35 @@ auto-fixed) → `npm run check` green (**1487 tests**, lint 0, build OK). Manual
 seeded for `zwrose@gmail.com` (13 food items, 5 recipes); checklist posted to
 [PR #140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
 
-**The ONE remaining Phase-1 item — manual/end-to-end verification — is the user's to run**
-(needs a signed-in dev user + a local MCP client pointed at `/api/mcp` with the dev token;
-an agent can't drive the OAuth-protected app or an external MCP client). Follow the posted
-PR checklist: set `MCP_DEV_TOKEN` + `MCP_DEV_USER_ID` in `.env.local`, `npm run dev`,
-connect MCP Inspector, walk sections A (browser regression) / B (7 MCP tools) / C (401 gate).
+**Manual/end-to-end verification COMPLETE (2026-05-30).** User connected MCP Inspector to
+`/api/mcp` with the dev token and walked the full checklist: section A (browser regression),
+section B (all 7 tools — search/get/create/update for both domains, isGlobal-forced-false,
+error mapping), section C (401 gate: no-auth→401, wrong-token→401, correct-token→200,
+confirmed via curl). Verification surfaced **two real bugs, both fixed on-branch**:
+
+1. **Seed recipes 500'd on fetch** — `cc10ea9` (ingredient ids written as ObjectId, not hex
+   string; see the dated carryover below + issue #144).
+2. **`/api/mcp` redirected to the HTML login page** — `920d771`. The global NextAuth session
+   middleware matched `/api/mcp`, found no session cookie (MCP clients use a Bearer token),
+   and 307-redirected → "Unexpected content type: text/html" in the client. Fixed by exempting
+   `/api/mcp` in the middleware allow short-circuit (same treatment as `/api/auth/*`); the
+   route's `withMcpAuth` bearer gate owns auth. Regression test added.
+
+Also **synced with `main`** (`3bde32c`): merged the major dep wave (zod 4 / TS 6 / vitest 4 /
+Node 24 / convert 7) — only `package-lock.json` conflicted; `npm run check` green afterward
+with zero source fixes. `feat/mcp` is now 0 behind main.
+
+Dev-token-in-worktree gotcha (cost real time during verify): `npm run dev` runs
+`setup-worktree.js`, which **regenerates the worktree's `.env.local` from the main worktree's
+copy** (`rewriteWorktreeEnv` only rewrites PORT/NEXTAUTH_URL, passes other lines through). So
+`MCP_DEV_TOKEN`/`MCP_DEV_USER_ID` must live in **main's** `.env.local` (`/Users/zwrose/weekly-eats/.env.local`)
+to survive restarts — adding them to the worktree copy gets wiped on the next `npm run dev`.
+
+**Still owed before "done done":** a final `npm run check` re-run capturing the `920d771`
+middleware fix through the build step (the dev server was up during that commit so only lint +
+targeted tests ran locally; CI on PR #140 covers it), plus `/code-review ultra`. **Then:**
+Phase 1.5 (#142 Auth.js v5 — worktree already exists at `feat/142-auth-v5-upgrade`) → Phase 2
+(OAuth AS). Do NOT start 1.5 or 2 without the user.
 
 Implementation notes worth carrying forward:
 
@@ -60,11 +84,7 @@ type`); covered instead by verify-token unit tests + the register smoke test.
 - **Seed manifest** (`test/manual/manifests/feat%2Fmcp.json`) pins `user-baseline` to
   `zwrose@gmail.com` — the dev DB has 4 users so apply is ambiguous without it.
 
-**Then:** Phase 1.5 (#142 Auth.js v5) → Phase 2 (OAuth AS). Do NOT start either without the
-user. Phase 1 manual verify + a `/code-review ultra` + a human OAuth pass are still owed
-before this work is "done done."
-
-**Prior cold-start checklist (kept for reference; Phase 1 is now built):**
+**Prior cold-start checklist (kept for reference; Phase 1 is now built + verified):**
 
 1. Read the spec (§6.3, §6.5, §8, §8a, §11) + this ledger. The Phase-1 plan is self-contained.
 2. Execute via `superpowers:subagent-driven-development` (fresh subagent per task, TDD).
