@@ -214,7 +214,16 @@ export function PlanDetail({ planId }: PlanDetailProps) {
 
   return (
     <RecipeEmojiProvider value={recipeEmojiById}>
-      <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, md: 3 }, py: { xs: 1.5, md: 3 } }}>
+      <Box
+        sx={{
+          maxWidth: 1080,
+          mx: 'auto',
+          px: { xs: 1.5, md: 3 },
+          // The app shell (<main>) already pads the top; don't double it on mobile.
+          pt: { xs: 0, md: 3 },
+          pb: { xs: 1.5, md: 3 },
+        }}
+      >
         {/* Back */}
         <Box sx={{ mb: 1.5 }}>{backButton}</Box>
 
