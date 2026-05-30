@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Box, InputBase, ButtonBase, Popover, MenuItem, MenuList } from '@mui/material';
 import { tokens } from '@/lib/design-tokens';
 import { RECIPE_ACCENT_MUTED } from './recipe-display-utils';
@@ -20,6 +20,13 @@ export interface RecipeFilterBarProps {
   onClearFilters: () => void;
 }
 
+/** Default sort direction per key when first selected */
+const DEFAULT_SORT_ORDER: Record<string, 'asc' | 'desc'> = {
+  updatedAt: 'desc',
+  title: 'asc',
+  rating: 'desc',
+};
+
 const chipSx = (selected: boolean) => ({
   height: 30,
   px: 1.5,
@@ -31,7 +38,7 @@ const chipSx = (selected: boolean) => ({
   color: selected ? tokens.section.recipes : tokens.text.secondary,
 });
 
-export function RecipeFilterBar(props: RecipeFilterBarProps) {
+export const RecipeFilterBar = memo(function RecipeFilterBar(props: RecipeFilterBarProps) {
   const {
     searchTerm,
     onSearchChange,
@@ -99,7 +106,13 @@ export function RecipeFilterBar(props: RecipeFilterBarProps) {
         onClick={(e) => setRatingAnchor(e.currentTarget)}
         sx={chipSx(selectedRatings.length > 0)}
       >
-        ★ {selectedRatings.length ? selectedRatings.slice().sort().join(',') : 'Rating'}
+        ★{' '}
+        {selectedRatings.length
+          ? selectedRatings
+              .slice()
+              .sort((a, b) => a - b)
+              .join(',')
+          : 'Rating'}
       </ButtonBase>
       <ButtonBase onClick={(e) => setSortAnchor(e.currentTarget)} sx={chipSx(false)}>
         Sort ▾
@@ -186,7 +199,14 @@ export function RecipeFilterBar(props: RecipeFilterBarProps) {
             <MenuItem
               key={key}
               onClick={() => {
-                onSortChange(key, key === 'title' ? 'asc' : 'desc');
+                // If already-active key: flip direction. Otherwise: use default direction.
+                const nextOrder: 'asc' | 'desc' =
+                  sortBy === key
+                    ? sortOrder === 'asc'
+                      ? 'desc'
+                      : 'asc'
+                    : (DEFAULT_SORT_ORDER[key] ?? 'desc');
+                onSortChange(key, nextOrder);
                 setSortAnchor(null);
               }}
               sx={{ color: tokens.text.primary, fontSize: 13 }}
@@ -199,4 +219,4 @@ export function RecipeFilterBar(props: RecipeFilterBarProps) {
       </Popover>
     </Box>
   );
-}
+});

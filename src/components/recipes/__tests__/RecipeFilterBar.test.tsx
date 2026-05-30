@@ -45,4 +45,38 @@ describe('RecipeFilterBar', () => {
     await user.click(screen.getByRole('button', { name: /clear/i }));
     expect(onClearFilters).toHaveBeenCalled();
   });
+
+  it('clicking the active sort key flips the sort direction', async () => {
+    const user = userEvent.setup();
+    const onSortChange = vi.fn();
+    // Active sort is updatedAt/desc — clicking "Updated" again should flip to asc
+    render(
+      <RecipeFilterBar
+        {...baseProps}
+        sortBy="updatedAt"
+        sortOrder="desc"
+        onSortChange={onSortChange}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: /sort/i }));
+    await user.click(screen.getByRole('menuitem', { name: /updated/i }));
+    expect(onSortChange).toHaveBeenCalledWith('updatedAt', 'asc');
+  });
+
+  it('clicking a different sort key uses its default direction', async () => {
+    const user = userEvent.setup();
+    const onSortChange = vi.fn();
+    // Active sort is updatedAt — clicking Title should use default asc
+    render(
+      <RecipeFilterBar
+        {...baseProps}
+        sortBy="updatedAt"
+        sortOrder="desc"
+        onSortChange={onSortChange}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: /sort/i }));
+    await user.click(screen.getByRole('menuitem', { name: /title/i }));
+    expect(onSortChange).toHaveBeenCalledWith('title', 'asc');
+  });
 });
