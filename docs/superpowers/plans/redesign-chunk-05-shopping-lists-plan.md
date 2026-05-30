@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
-> **STATUS: Gate #1 concerns RESOLVED (locked 2026-05-30).** The four judgment calls (§4) are signed off; decisions folded in below. Next: `/review-plan`, then implement via subagent-driven-development.
+> **STATUS: PLAN READY (2026-05-30).** Gate #1 concerns resolved (§4) + `/review-plan` converged over 2 rounds (§7). Next: implement via subagent-driven-development (Tasks 1 → 11), then Gate #2 artboard-fidelity audit (§6) before `review-code`.
 >
 > **Locked decisions (Gate #1):** **C1 = Option A** (in-page master-detail, no real route nesting). **C2 = default KEEP** (opt-in SKIP). **C3 = full presence pill** (all 6 states, avatar color/initials derived client-side from email/name hash — no API change). **C6 = add both finish-shop confirms** (desktop dialog + mobile bottom sheet, over unchanged `finishShop`). C4 (keep DnD reorder), C5 (token additions), C7 (drop StatusBar, restyle existing history dialog) accepted as proposed.
 
@@ -186,8 +186,10 @@ src/components/shopping-list/
   UnitConflictDialog.tsx        # extract + restyle (mobile sheet / desktop modal)
   ShareStoreDialog.tsx          # extract + restyle
   StoreEditorDialog.tsx         # create/edit store + flat emoji picker
-src/components/EmojiPicker.tsx  # restyle to flat token grid (§3.5)
-src/lib/design-tokens.ts        # + onAccent.shop, onDanger (§2)
+src/components/ui/EmojiPicker.tsx  # shared flat picker (generalize Chunk-4 recipes/EmojiPicker w/ accent prop, §3.5)
+src/components/EmojiPicker.tsx     # legacy: keep FOOD_EMOJIS data; convert to NAMED export
+src/test-utils/renderWithTheme.tsx # shop-accent-bound render helper (Task 3A)
+src/lib/design-tokens.ts           # + onAccent.shop, onDanger (§2)
 ```
 
 **Known signatures (verified against current code — reuse, don't change):**
@@ -365,6 +367,103 @@ describe('KeepSkipToggle', () => {
 
 ---
 
+### Task 3A: `renderWithTheme` test util (prerequisite for Tasks 4–9)
+
+Nearly every new component test renders MUI and asserts token-derived colors, so it must render under a theme whose `palette.primary` is the **shop** accent (`#6fcf97`) — exactly as `SectionThemeProvider` binds it live on `/shopping-lists`. Build this **before** the first test that imports it (Task 4 Step 5). Only `src/test-utils/session.ts` exists today; this adds the render helper.
+
+**Files:** Create `src/test-utils/renderWithTheme.tsx`; Test `src/test-utils/__tests__/renderWithTheme.test.tsx`
+
+- [ ] **Step 1: Failing sanity test** — the helper's theme must resolve the shop accent (so downstream color assertions are trustworthy).
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { useTheme } from '@mui/material/styles';
+import { renderWithTheme } from '../renderWithTheme';
+import { tokens } from '@/lib/design-tokens';
+
+function Probe() {
+  const t = useTheme();
+  return <span data-testid="primary">{t.palette.primary.main}</span>;
+}
+
+describe('renderWithTheme', () => {
+  it('binds the shop section accent to palette.primary', () => {
+    renderWithTheme(<Probe />);
+    expect(screen.getByTestId('primary')).toHaveTextContent(tokens.section.shop);
+  });
+});
+```
+
+- [ ] **Step 2: Run → FAIL.** **Step 3: Implement `renderWithTheme.tsx`** — re-export RTL's `render` wrapped in the app `theme` (from `@/lib/theme`) with `palette.primary` overridden to `{ main: tokens.section.shop }` (the shop accent), mirroring `SectionThemeProvider`. Export `renderWithTheme(ui, options?)` returning the RTL result, plus a `stubHandlers()` factory returning the no-op **`ShoppingListView`-level** props it requires: `onSelectStore`, `onToggleItem`, `onEditItem`, `onAddItem`, `onFinish`, `onBack`, `onReconnect`, `connectionState: 'connected'`, `activeUsers: []`. (Note: these are the _view's_ handler names; the view maps them down to the narrower `ShoppingItemRow` props `onToggle`/`onEdit` — keep the two levels' names distinct, not a mismatch.) MUI `sx`-class colors still resolve from this `palette.primary` in jsdom for `toHaveStyle` on inline-mapped values; tests primarily assert text/aria, with color only where load-bearing.
+- [ ] **Step 4: Run → PASS. Commit** — `git commit -am "test(shopping): renderWithTheme helper bound to shop accent"`
+
+---
+
+### Task 3B: `StoreListView` index surface (decompose the store list)
+
+The index (list-of-stores) is a full surface in the artboard (§3.1) but had no dedicated task. Extract it from `page.tsx` (the index `return` at `:1433`, table `:1544`, mobile cards, pending-invite `Paper` `:1468`) into focused components, restyled to §3.1. **On desktop this is the zero-store / empty state and the mobile store-list; the two-pane (Task 4) is the populated desktop view.**
+
+**Files:** Create `.../StoreList/StoreListView.tsx`, `.../StoreList/StoreCard.tsx`, `.../StoreList/StoreRow.tsx`, `.../StoreList/PendingInviteBanner.tsx`; Modify `page.tsx`; Test `.../StoreList/__tests__/StoreListView.test.tsx`, `.../PendingInviteBanner.test.tsx`
+
+- [ ] **Step 1: Failing tests**
+
+```tsx
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import { StoreListView } from '../StoreListView';
+import { PendingInviteBanner } from '../PendingInviteBanner';
+import { renderWithTheme } from '@/test-utils/renderWithTheme';
+
+const stores = [
+  { _id: 's1', name: 'Corner market', emoji: '🛒', itemCount: 3 },
+  { _id: 's2', name: 'Greenleaf', emoji: '🥬', itemCount: 0 },
+];
+
+describe('StoreListView', () => {
+  it('renders each store with its name and to-buy count', () => {
+    renderWithTheme(
+      <StoreListView stores={stores} onSelectStore={() => {}} onAddStore={() => {}} />
+    );
+    expect(screen.getByText('Corner market')).toBeInTheDocument();
+    expect(screen.getByText(/3 to buy/i)).toBeInTheDocument();
+    expect(screen.getByText(/list empty/i)).toBeInTheDocument(); // s2 has 0
+  });
+  it('calls onSelectStore with the store id when a row is clicked', async () => {
+    const user = userEvent.setup();
+    const onSelectStore = vi.fn();
+    renderWithTheme(
+      <StoreListView stores={stores} onSelectStore={onSelectStore} onAddStore={() => {}} />
+    );
+    await user.click(screen.getByRole('button', { name: /Corner market/ }));
+    expect(onSelectStore).toHaveBeenCalledWith('s1');
+  });
+});
+
+describe('PendingInviteBanner', () => {
+  it('renders an accept and decline control for a pending invite', async () => {
+    const user = userEvent.setup();
+    const onAccept = vi.fn();
+    renderWithTheme(
+      <PendingInviteBanner
+        invite={{ storeId: 's9', storeName: 'Sara’s store', inviterName: 'Sara' }}
+        onAccept={onAccept}
+        onDecline={() => {}}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: /accept/i }));
+    expect(onAccept).toHaveBeenCalledWith('s9');
+  });
+});
+```
+
+- [ ] **Step 2: Run → FAIL.** **Step 3: Implement** — `StoreListView` renders the §3.1 header (title display 26(m)/32(d)/700, `+ Store`/`+ Add store` btnPrimary), the `PendingInviteBanner` (warn-tinted, Accept/Decline), the desktop search bar + 6-col `60px 1fr 140px 180px 140px 90px` table **and** mobile `StoreCard` list; each row/card is a `ButtonBase` (accessible name = store name) → `onSelectStore(store._id)`. Migrate raw hex (`#2e7d32`/`#1b5e20`) → `palette.primary`/tokens. Keep `useSearchPagination` + the existing invite-respond handlers.
+- [ ] **Step 4: Migrate `page.test.tsx` index cases** — `:191` render, `:233` item counts, `:263` "does not show View List button", and the pending-invitations cases — into `StoreListView.test.tsx`, preserving intent.
+- [ ] **Step 5: Run → PASS. Commit** — `git commit -am "feat(shopping): extract StoreListView index surface + invite banner"`
+
+---
+
 ### Task 4: Working-view shell — two-pane (desktop) / pushed (mobile), `StoreSidebar` ⭐
 
 Implements C1=A. **Covers spec §4 required case: store-pane ↔ working-list selection.**
@@ -423,7 +522,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ShoppingListView } from '../ShoppingListView';
-import { renderWithTheme } from '@/test-utils/renderWithTheme'; // see Step 6
+import { renderWithTheme, stubHandlers } from '@/test-utils/renderWithTheme'; // created in Task 3A
 
 const stores = [
   { _id: 's1', name: 'Corner market', emoji: '🛒', itemCount: 1 },
@@ -453,10 +552,18 @@ describe('ShoppingListView (two-pane selection)', () => {
 });
 ```
 
-- [ ] **Step 6: Add `src/test-utils/renderWithTheme.tsx`** (if not present) — wraps `render` in `<ThemeProvider theme={...}>` with the shop section accent bound to `palette.primary` (mirror `SectionThemeProvider` for shop), so token-derived colors resolve in tests. Define a `stubHandlers()` factory returning no-op props the view requires.
+- [ ] **Step 6: (`renderWithTheme` + `stubHandlers` already exist from Task 3A — no work here.)**
 - [ ] **Step 7: Run → FAIL. Implement `ShoppingListView.tsx`** — desktop (`md+`): `display:grid; gridTemplateColumns:'280px 1fr'` with `StoreSidebar` + the list pane; mobile (`xs`): show the list pane only with a `‹ Stores` back affordance (calls `onBack`); list pane renders the store header (emoji 40 / name display 28 / subline), the presence + actions cluster (Task 7/finish in later tasks slot in), the unchecked group, add-row, checked group. Items rendered via `ShoppingItemRow` (Task 5) — for this task a minimal inline row is fine; Task 5 swaps it in.
-- [ ] **Step 8: Wire into `page.tsx`** — replace the working-list `Dialog` (`:1943`) with `ShoppingListView`; `activeStoreId` comes from the existing `usePersistentDialog('shoppingList')` `storeId` param; `onSelectStore` calls `viewListDialog.openDialog({ storeId })` + the existing fetch; `onBack` closes it (mobile). Desktop renders the index store-table only when no store is selected? **No** — desktop shows the two-pane whenever stores exist, defaulting selection to the first/last-viewed store; the standalone index table (Task 3) remains the mobile store-list and the desktop empty/zero-store state. (Resolve the exact desktop default-selection in implementation; assert restore-from-URL still works.)
-- [ ] **Step 9: Migrate `page.test.tsx`** cases that asserted the dialog (`:400` re-fetch-on-open, `:966` URL restore, `:1062` ignore-legacy-mode) to the new view; keep their behavioral intent. Run the file → PASS.
+- [ ] **Step 8: Wire into `page.tsx`** — replace the working-list `Dialog` (`:1943`) with `ShoppingListView`; `activeStoreId` comes from the existing `usePersistentDialog('shoppingList')` `storeId` param; `onSelectStore` calls `viewListDialog.openDialog({ storeId })` + the existing fetch; `onBack` closes it (mobile). Desktop shows the two-pane whenever stores exist, defaulting selection to the first/last-viewed store; the standalone `StoreListView` (Task 3B) remains the **mobile** store-list and the **desktop empty/zero-store** state. (Resolve the exact desktop default-selection in implementation; assert restore-from-URL still works.)
+  - **🔒 Locked (arch finding): `useShoppingSync` `enabled` becomes `selectedStore !== null`** (was `enabled: viewListDialog.open` at `page.tsx:270`). This is the correct lifecycle now that the working list is always mounted on desktop — it avoids connecting/entering presence on a null channel before a store is selected, and ensures the presence pill activates on desktop (the pill renders only inside `ShoppingListView` with an active store). Mobile: same rule (enabled once a store is in the pushed view).
+- [ ] **Step 9: Migrate `page.test.tsx`** to the new view, keeping behavioral intent. Enumerate each load-bearing case with an explicit disposition (migrate-as-is / rewrite-for-new-DOM / superseded-by-component-test):
+  - `:400` re-fetch-on-open → **rewrite** (open = select store in view).
+  - `:966` URL restore, `:1062` ignore-legacy-mode → **migrate-as-is** (the `?store=` param contract is preserved).
+  - `:691` **realtime `onItemChecked` integration** → **migrate (must survive) — stays a PAGE-level test** (`useShoppingSync` remains owned by `page.tsx`, so the test keeps rendering the page and driving `lastShoppingSyncOptions.onItemChecked('f1', true)` against the mocked hook). Task 7 deletes only the inline _presence_ constructs, not the sync wiring. Do **not** relocate it into `ShoppingListView.test.tsx` (the view receives items as props and never sees the hook options).
+  - `:545`/`:589`/`:632` **start-shopping trio** (shows button / disabled-when-empty / opens view) → **rewrite-for-new-DOM** (no separate shop mode; "open store" replaces it).
+  - `:839` finish-shop visibility → **rewrite** (now `FinishShopBar`, Task 6).
+  - Checkbox assertions (`:758`/`:768`, `:691`) read `(el as HTMLInputElement).checked` — see Task 5 Step 3: the new row keeps a **native checkbox input**, so `.checked`/`toBeChecked()` still work; rewrite only the surrounding queries that moved.
+  - Run the file → PASS.
 - [ ] **Step 10: `npx vitest run src/app/shopping-lists src/components/shopping-list/Working` → PASS. Commit** — `git commit -am "feat(shopping): two-pane working view + StoreSidebar (no modal)"`
 
 ---
@@ -493,16 +600,20 @@ describe('ShoppingItemRow', () => {
     await user.click(screen.getByRole('checkbox', { name: /shallots/i }));
     expect(onToggle).toHaveBeenCalledWith('f1');
   });
-  it('shows checked styling (line-through name) when checked', () => {
+  it('reflects the checked state on the checkbox when checked', () => {
     renderWithTheme(
       <ShoppingItemRow item={{ ...item, checked: true }} onToggle={() => {}} onEdit={() => {}} />
     );
+    // Assert checked state via the reliable native-input semantics, not computed CSS.
+    expect(screen.getByRole('checkbox', { name: /shallots/i })).toBeChecked();
+    // Line-through is applied as an INLINE style on the name element (see Step 3) so toHaveStyle
+    // resolves in jsdom (MUI sx→emotion classes don't always surface to computed style).
     expect(screen.getByText('shallots')).toHaveStyle({ textDecoration: 'line-through' });
   });
 });
 ```
 
-- [ ] **Step 2: Run → FAIL. Step 3: Implement `ShoppingItemRow.tsx`** — 22×22 custom checkbox (`role="checkbox"` via `ButtonBase` + `aria-checked` + accessible name = item.name; radius `sm`(6); unchecked transparent `1.5px border.strong`; checked `bgcolor: primary` + `check` icon `tokens.onAccent.shop`); name 14.5–15/500 (line-through + `opacity 0.55–0.6` row when checked); qty/unit `text.muted` tabular; `drag_indicator` handle wired to `@dnd-kit` `useSortable` listeners; tap on body (not checkbox/handle) → `onEdit(item)`.
+- [ ] **Step 2: Run → FAIL. Step 3: Implement `ShoppingItemRow.tsx`** — **use a real checkbox input** so native `.checked` / `toBeChecked()` semantics survive the `page.test.tsx` migration (the existing suite reads `(el as HTMLInputElement).checked` at `:758`/`:768`). Render a **visually-hidden `<input type="checkbox">`** (accessible name = item.name, `checked`/`onChange→onToggle(foodItemId)`) layered under a styled 22×22 visual box (radius `sm`(6); unchecked transparent `1.5px border.strong`; checked `bgcolor: primary` + `check` glyph `tokens.onAccent.shop`). Name 14.5–15/500 with **`style={{ textDecoration: checked ? 'line-through' : 'none' }}`** (inline, not sx) + row `opacity 0.55–0.6` when checked; qty/unit `text.muted` tabular; `drag_indicator` handle wired to `@dnd-kit` `useSortable` listeners; tap on body (not checkbox/handle) → `onEdit(item)`.
 - [ ] **Step 4: Implement `AddItemRow.tsx`** — full-width `ButtonBase`, `1px dashed border.strong`, radius `xl`(12), `primary` text, `add` icon + "Add item"; `onClick`. (Add a trivial render+click test.)
 - [ ] **Step 5: Run → PASS. Step 6: Commit** — `git commit -am "feat(shopping): sortable ShoppingItemRow + AddItemRow"`
 
@@ -576,6 +687,7 @@ describe('FinishShopConfirm', () => {
 ```
 
 - [ ] **Step 5: Run → FAIL. Implement `FinishShopConfirm.tsx`** — `variant='dialog'` → MUI `Dialog` (width 460, radius `xxxl`(16), `boxShadow: tokens.shadow.modal`); `variant='sheet'` → bottom `Drawer` (rounded top `tokens.radius.sheet`, grab handle, `tokens.shadow.sheet`). Same content: 56×56 accent-badge `done_all`, title display 22/700, body "{bought} items … saved to {storeName} … {remaining} items remain.", Cancel btnGhost + "Save trip" btnPrimary.
+  - **Rationale (vs the existing `meal-plans/ConfirmDialog`):** a standalone component is warranted because the artboard confirm is bespoke — an **icon badge** above the title and a **mobile `Drawer` sheet variant** (`ConfirmDialog` is dialog-only, iconless). Reuse `ConfirmDialog`'s token vocabulary (dark `paper`, radius, button styles) so the two stay visually consistent; do **not** inflate `ConfirmDialog`'s API with shopping-specific props.
 - [ ] **Step 6: Wire** — `ShoppingListView` renders `FinishShopBar` (mobile absolute / desktop sticky after sidebar); clicking opens `FinishShopConfirm` (`variant` by breakpoint via `useMediaQuery`); confirm calls the existing `handleClearCheckedItems`/`finishShop` flow unchanged.
 - [ ] **Step 7: Run → PASS. Commit** — `git commit -am "feat(shopping): solid finish-shop bar + confirm (desktop dialog / mobile sheet)"`
 
@@ -724,15 +836,17 @@ describe('PantryCheckDialog (KEEP/SKIP filtering)', () => {
 
 Each is an **extract-and-restyle** of existing behavior — rewrite each dialog's tests to the new DOM, keep the behavioral assertions, change no data logic.
 
-**9a — `EmojiPicker` flat grid** (`src/components/EmojiPicker.tsx`):
+**9a — flat `EmojiPicker` (reuse the Chunk-4 redesigned picker — do NOT rebuild from the legacy one).**
 
-- [ ] Failing test: search filters the grid + selecting calls `onSelect`.
+⚠️ **Chunk 4 already built a redesigned flat-grid picker:** `src/components/recipes/EmojiPicker.tsx` — `ButtonBase` cells, token styles, `aspect-ratio:1`, search, responsive `repeat(10/7,1fr)`, **named export**, `Dialog`+`Drawer` breakpoint split — and it imports the curated `FOOD_EMOJIS` data from the legacy `src/components/EmojiPicker.tsx`. The shop picker needs the **same component shape with the shop accent** instead of the recipe accent. **Preferred path:** generalize into a shared `src/components/ui/EmojiPicker.tsx` that takes an `accentColor`/`accentMuted` (default to `palette.primary` so each section's `SectionThemeProvider` supplies its accent), then point both recipes and shopping at it. **Fallback:** copy the recipes version with the shop accent. Either way, **convert the legacy default export to a named export** (CLAUDE.md: named exports only) and update its consumers.
+
+- [ ] **Failing test** (named import; works for the shared `ui/EmojiPicker` or the restyled component):
 
 ```tsx
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
-import EmojiPicker from '@/components/EmojiPicker';
+import { EmojiPicker } from '@/components/ui/EmojiPicker'; // shared (preferred); or '@/components/EmojiPicker' if restyled in place
 import { renderWithTheme } from '@/test-utils/renderWithTheme';
 
 describe('EmojiPicker (flat grid)', () => {
@@ -747,17 +861,108 @@ describe('EmojiPicker (flat grid)', () => {
 });
 ```
 
-- [ ] Implement: keep curated `FOOD_EMOJIS` + search filter; restyle grid to flat token cells — `display:grid; gridTemplateColumns: { xs:'repeat(7,1fr)', md:'repeat(10,1fr)' }; gap: 0.5`, each cell `aspect-ratio:1` radius `md`(8), selected → `bgcolor: accentDim` + `1px primary` (replace raw `#1976d2`); each cell `role="button"` `aria-label={description}`. Run → PASS. Commit.
+- [ ] **Implement:** keep curated `FOOD_EMOJIS` + search filter; flat token cells `display:grid; gridTemplateColumns: { xs:'repeat(7,1fr)', md:'repeat(10,1fr)' }; gap: 0.5`, each cell `aspect-ratio:1` radius `md`(8), selected → `bgcolor: accentDim` + `1px primary` (no raw `#1976d2`); each cell `role="button"` `aria-label={description}`. **Named export.** Files to update **in the same commit** (CI stays green):
+  - `page.tsx:98` dynamic import — **named-export form is mandatory** or it silently renders null: `const EmojiPickerDialog = dynamic(() => import('@/components/ui/EmojiPicker').then((m) => m.EmojiPicker), { ssr: false });`.
+  - `src/components/__tests__/EmojiPicker.test.tsx` — switch to the named import.
+  - **`src/components/recipes/__tests__/EmojiPicker.test.tsx:20`** ⚠️ — when recipes is pointed at the shared component, its cell `aria-label` changes from `emoji <glyph>` to `{description}`; that test's `getAllByRole('button', { name: /emoji /i })` query then matches **zero** buttons. Update the query to a description form (e.g. a known `/carrot/i`, or filter out the search button) so it passes against the shared picker.
+  - `src/components/recipes/RecipeEditor.tsx` (the recipes consumer) — import the shared `ui/EmojiPicker`, passing the recipes accent (default `palette.primary` already supplies it under the recipes `SectionThemeProvider`).
+  - Run the recipes + shopping emoji tests → PASS. Commit.
 
-**9b — `StoreEditorDialog`** (create/edit store; hosts the emoji preview + name field, opens `EmojiPicker`): extract from `page.tsx` create/edit-store dialogs. Tests: create flow calls `createStore` payload; edit flow calls `updateStore`. Restyle to §3.5. Commit.
+**9b — `StoreEditorDialog`** (create/edit store; hosts the emoji preview + name field, opens `EmojiPicker`): extract from `page.tsx` create/edit-store dialogs; restyle to §3.5.
+
+```tsx
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import { StoreEditorDialog } from '../StoreEditorDialog';
+import { renderWithTheme } from '@/test-utils/renderWithTheme';
+
+it('create flow submits the typed name + selected emoji', async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  renderWithTheme(<StoreEditorDialog open mode="create" onSave={onSave} onClose={() => {}} />);
+  await user.type(screen.getByLabelText(/name/i), 'Greenleaf');
+  await user.click(screen.getByRole('button', { name: /create store/i }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Greenleaf' }));
+});
+```
+
+(Plus an edit-mode test asserting `onSave` carries the edited name. The page wires `onSave`→`createStore`/`updateStore` — unchanged.) Commit.
 
 **9c — `ItemEditorDialog`** (`src/components/shopping-list/ItemEditorDialog.tsx`): restyle to §3.6 (food field accent ring, qty stepper, edit-mode danger Remove) — props unchanged; existing tests (`ItemEditorDialog.test.tsx`) kept, updated only where DOM moved. Commit.
 
-**9d — `ImportFromPlansDialog`**: extract from `page.tsx:2383`; restyle to §3.7 (RECENT PLANS, accent-selected rows, checkbox). Keep meal-plan selection behavior (test `page.test.tsx` meal-plan checkbox migrates here). Commit.
+**9d — `ImportFromPlansDialog`**: extract from `page.tsx:2383`; restyle to §3.7 (RECENT PLANS, accent-selected rows, checkbox).
 
-**9e — `UnitConflictDialog`**: extract from `page.tsx:2466`; mobile bottom **sheet** / desktop modal; eyebrow "UNIT CONFLICT · n OF m", source rows, suggestion banner, qty+unit accent fields. Keep conversion/merge behavior unchanged. Commit.
+```tsx
+it('imports the selected plans', async () => {
+  const user = userEvent.setup();
+  const onImport = vi.fn();
+  renderWithTheme(
+    <ImportFromPlansDialog
+      open
+      plans={[{ _id: 'p1', label: 'Week of May 25', itemCount: 14 }]}
+      onImport={onImport}
+      onClose={() => {}}
+    />
+  );
+  await user.click(screen.getByRole('checkbox', { name: /Week of May 25/i }));
+  await user.click(screen.getByRole('button', { name: /^import/i }));
+  expect(onImport).toHaveBeenCalledWith(['p1']);
+});
+```
 
-**9f — `ShareStoreDialog`**: extract from `page.tsx:2598`; restyle to §3.7 (invite field, shared-with rows w/ `PresenceAvatar`-style 34px avatar + remove, pending dashed card). Keep invite/respond/remove handlers. Migrate the share-dialog auto-focus test. Commit.
+(Migrates the `page.test.tsx:335` meal-plan-selection case.) Commit.
+
+**9e — `UnitConflictDialog`**: extract from `page.tsx:2466`; mobile bottom **sheet** / desktop modal; eyebrow "UNIT CONFLICT · n OF m", source rows, suggestion banner, qty+unit accent fields. Keep conversion/merge behavior unchanged.
+
+```tsx
+it('advances and rewinds the conflict index', async () => {
+  const user = userEvent.setup();
+  const onNext = vi.fn();
+  renderWithTheme(
+    <UnitConflictDialog
+      open
+      conflicts={[c1, c2, c3]}
+      index={0}
+      onNext={onNext}
+      onBack={() => {}}
+      {...rest}
+    />
+  );
+  expect(screen.getByText(/1 of 3/i)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /next conflict/i }));
+  expect(onNext).toHaveBeenCalled();
+});
+```
+
+Commit.
+
+**9f — `ShareStoreDialog`**: extract from `page.tsx:2598`; restyle to §3.7 (invite field, shared-with rows w/ `PresenceAvatar`-style 34px avatar + remove, pending dashed card). Keep invite/respond/remove handlers.
+
+```tsx
+it('focuses the email field on open and invites a typed address', async () => {
+  const user = userEvent.setup();
+  const onInvite = vi.fn();
+  renderWithTheme(
+    <ShareStoreDialog
+      open
+      storeName="Corner market"
+      sharedWith={[]}
+      pending={[]}
+      onInvite={onInvite}
+      onRemove={() => {}}
+      onClose={() => {}}
+    />
+  );
+  const field = screen.getByPlaceholderText(/name@example\.com/i);
+  expect(field).toHaveFocus(); // migrates the auto-focus assertion
+  await user.type(field, 'jamie@x.com');
+  await user.click(screen.getByRole('button', { name: /^invite/i }));
+  expect(onInvite).toHaveBeenCalledWith('jamie@x.com');
+});
+```
+
+Commit.
 
 **9g — `StoreHistoryDialog`** (`src/components/shopping-list/StoreHistoryDialog.tsx`, C7): restyle to redesign dialog vocab (dark `paper`, radius 16, modal shadow); behavior + existing tests unchanged. Commit.
 
@@ -800,5 +1005,7 @@ After implementation + `npm run check` green, **before `review-code`**:
 - **Per-chunk test list:** the three required cases are pinned to Tasks 4/8/6. ✓
 - **Reuse:** `EmojiPicker` kept + restyled (not rebuilt); `@dnd-kit` reorder + positions preserved; `useShoppingSync`, all `shopping-list-utils`, pantry/finish handlers untouched. ✓
 - **Decomposition:** the 2,885-line `page.tsx` is carved into ~20 focused components (Tasks 3–10); `page.tsx` ends as orchestration-only. ✓
-- **Gate #1 concerns:** all resolved + folded as locked decisions (§4 / header). Remaining open items: none — ready for `/review-plan`.
-- **Risk note:** the `page.test.tsx` migration (Tasks 4/8/9/10) is the highest-churn area — the existing suite is tightly coupled to the dialog DOM; each migrated case must preserve behavioral intent (re-fetch-on-open, URL restore, ignore-legacy-mode, finish-shop-visibility, meal-plan selection).
+- **Gate #1 concerns:** all resolved + folded as locked decisions (§4 / header).
+- **Risk note:** the `page.test.tsx` migration (Tasks 4/8/9/10) is the highest-churn area — the existing suite is tightly coupled to the dialog DOM. Task 4 Step 9 now enumerates each load-bearing case with an explicit disposition (incl. the realtime `:691` and start-shopping `:545/:589/:632`), and Task 5 keeps a **native checkbox input** so legacy `.checked` assertions survive.
+- **`/review-plan` round 1 (2026-05-30):** verdict REVISE → 4 Important + 6 Minor, all auto-revised. Applied: EmojiPicker named-export + reuse Chunk-4 `recipes/EmojiPicker` (new shared `ui/EmojiPicker`); `renderWithTheme` promoted to prerequisite **Task 3A** (shop-accent-bound, with sanity test); **Task 3B** added for the StoreListView index surface + invite banner with pinned tests; checkbox→native input + migration-assertion note; migration enumeration extended (realtime/start-shopping/index); `useShoppingSync` `enabled: selectedStore !== null` locked; `FinishShopConfirm` rationale vs `ConfirmDialog`; concrete test blocks for 9b/9d/9e/9f; line-through assertion hardened. Security: clean (no API/write-logic change holds).
+- **`/review-plan` round 2 (2026-05-30):** all 8 round-1 findings confirmed resolved; code dimension clean. 3 new mechanical residuals applied: (Important) the shared `ui/EmojiPicker` `aria-label` change would break `recipes/__tests__/EmojiPicker.test.tsx:20` — now listed for same-commit update + the `next/dynamic` `.then(m => m.EmojiPicker)` form spelled out; (Minor) the realtime `:691` test stays a **page-level** test (hook is page-owned, not view-owned); (Minor) `stubHandlers()` names clarified as view-level (mapped down to row `onToggle`/`onEdit`). **→ VERDICT: PLAN READY.** Round-2 residuals were determinate doc edits with no design ambiguity, so the loop closed without a 3rd dispatch.
