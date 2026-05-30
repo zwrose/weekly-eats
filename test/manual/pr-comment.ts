@@ -7,7 +7,7 @@ import { validateBranch, validateSlot } from './validate-args.js';
 // (err, { stdout, stderr }) following the promisify convention.
 function execFileAsync(cmd: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, {}, (err, result: any) => {
+    execFile(cmd, args, {}, (err, result: unknown) => {
       if (err) reject(err);
       else if (typeof result === 'object' && result !== null && 'stdout' in result) {
         // Test mock calls cb(null, { stdout, stderr }) — 2-arg convention
