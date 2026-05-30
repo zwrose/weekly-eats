@@ -30,8 +30,7 @@ export function RecipeCardMobile({ recipe, tags, rating, onOpen }: RecipeRowProp
         width: '100%',
         textAlign: 'left',
         bgcolor: tokens.surface.raised,
-        borderRadius: `${tokens.radius.lg}px`,
-        border: `1px solid ${tokens.border.subtle}`,
+        borderRadius: `${tokens.radius.xl}px`,
         p: `${tokens.space.md}px`,
         mb: `${tokens.space.sm}px`,
         gap: `${tokens.space.md}px`,
@@ -60,8 +59,9 @@ export function RecipeCardMobile({ recipe, tags, rating, onOpen }: RecipeRowProp
         {/* Title row */}
         <Box
           sx={{
-            fontSize: 14,
-            fontWeight: 600,
+            fontSize: 15,
+            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
             color: tokens.text.primary,
             lineHeight: 1.3,
             mb: '4px',
@@ -104,7 +104,8 @@ export function RecipeCardMobile({ recipe, tags, rating, onOpen }: RecipeRowProp
       <Box
         sx={{
           flexShrink: 0,
-          alignSelf: 'center',
+          alignSelf: 'flex-start',
+          mt: '6px',
           fontSize: 14,
           color: tokens.text.muted,
         }}
@@ -139,7 +140,8 @@ export function RecipeTableRow({ recipe, tags, rating, onOpen }: RecipeRowProps)
         gap: `${tokens.space.md}px`,
         px: `${tokens.space.lg}px`,
         py: `${tokens.space.md}px`,
-        borderBottom: `1px solid ${tokens.border.subtle}`,
+        borderTop: `1px solid ${tokens.border.subtle}`,
+        '&:first-of-type': { borderTop: 'none' },
         cursor: 'pointer',
         '&:hover': {
           bgcolor: tokens.surface.elevated,
@@ -150,23 +152,24 @@ export function RecipeTableRow({ recipe, tags, rating, onOpen }: RecipeRowProps)
       <Box sx={{ display: 'flex', alignItems: 'center', gap: `${tokens.space.sm}px`, minWidth: 0 }}>
         <Box
           sx={{
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             bgcolor: tokens.surface.elevated,
-            borderRadius: `${tokens.radius.md}px`,
-            fontSize: 16,
+            borderRadius: `${tokens.radius.lg}px`,
+            fontSize: 20,
           }}
         >
           {recipe.emoji ?? '🍽️'}
         </Box>
         <Box
           sx={{
-            fontSize: 14,
-            fontWeight: 500,
+            fontSize: 15,
+            fontWeight: 600,
+            fontFamily: 'var(--font-display)',
             color: tokens.text.primary,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -184,16 +187,12 @@ export function RecipeTableRow({ recipe, tags, rating, onOpen }: RecipeRowProps)
             {tag}
           </TagChip>
         ))}
-        {overflow > 0 && (
-          <Box component="span" sx={{ fontSize: 11, color: tokens.text.muted }}>
-            +{overflow}
-          </Box>
-        )}
+        {overflow > 0 && <TagChip small>{`+${overflow}`}</TagChip>}
       </Box>
 
       {/* Col 3: stars */}
       <Box>
-        <Stars rating={rating} size={12} />
+        <Stars rating={rating} size={13} />
       </Box>
 
       {/* Col 4: updated date */}

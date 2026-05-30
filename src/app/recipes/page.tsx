@@ -74,12 +74,13 @@ function DotBadge({ show }: { show: boolean }) {
     <Box
       sx={{
         position: 'absolute',
-        top: 6,
-        right: 6,
-        width: 7,
-        height: 7,
+        top: 4,
+        right: 4,
+        width: 8,
+        height: 8,
         borderRadius: '50%',
-        bgcolor: tokens.state.danger,
+        bgcolor: tokens.section.recipes,
+        border: `2px solid ${tokens.surface.base}`,
         pointerEvents: 'none',
       }}
     />
@@ -365,16 +366,18 @@ function RecipesPageContent() {
                   fontFamily: "'Bricolage Grotesque', sans-serif",
                   color: tokens.text.primary,
                   fontWeight: 700,
+                  fontSize: { xs: 24, md: 30 },
+                  letterSpacing: '-0.02em',
                   lineHeight: 1.1,
                 }}
               >
                 Your recipes
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{ color: tokens.section.recipes, mt: 0.5, fontWeight: 500 }}
-              >
-                {total} {total === 1 ? 'recipe' : 'recipes'}
+              <Typography variant="body2" sx={{ color: tokens.text.secondary, mt: 0.5 }}>
+                <Box component="span" sx={{ color: tokens.section.recipes, fontWeight: 600 }}>
+                  {total}
+                </Box>{' '}
+                {total === 1 ? 'recipe' : 'recipes'}
               </Typography>
             </Box>
 
@@ -387,7 +390,7 @@ function RecipesPageContent() {
                   sx={{
                     color: tokens.text.secondary,
                     border: `1px solid ${tokens.border.subtle}`,
-                    borderRadius: `${tokens.radius.md}px`,
+                    borderRadius: `${tokens.radius.lg}px`,
                     p: 1,
                     '&:hover': {
                       bgcolor: tokens.surface.elevated,
@@ -409,11 +412,16 @@ function RecipesPageContent() {
                   bgcolor: tokens.section.recipes,
                   color: '#0c1118',
                   fontWeight: 700,
-                  borderRadius: `${tokens.radius.md}px`,
+                  borderRadius: `${tokens.radius.lg}px`,
                   '&:hover': { bgcolor: '#d4944f' },
                 }}
               >
-                New recipe
+                <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>
+                  New
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>
+                  New recipe
+                </Box>
               </Button>
             </Box>
           </Box>
@@ -445,21 +453,56 @@ function RecipesPageContent() {
             <>
               {/* Desktop table */}
               <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                {recipes.map((recipe) => {
-                  const userData = recipesUserData.get(recipe._id ?? '');
-                  const allTags = [
-                    ...new Set([...(userData?.tags ?? []), ...(userData?.sharedTags ?? [])]),
-                  ];
-                  return (
-                    <RecipeTableRow
-                      key={recipe._id}
-                      recipe={recipe}
-                      tags={allTags}
-                      rating={userData?.rating}
-                      onOpen={() => router.push(`/recipes/${recipe._id}`)}
-                    />
-                  );
-                })}
+                <Box
+                  sx={{
+                    bgcolor: tokens.surface.raised,
+                    border: `1px solid ${tokens.border.subtle}`,
+                    borderRadius: `${tokens.radius.xxl}px`,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Column headers */}
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 240px 100px 110px',
+                      gap: `${tokens.space.md}px`,
+                      px: `${tokens.space.lg}px`,
+                      py: `${tokens.space.md}px`,
+                      borderBottom: `1px solid ${tokens.border.subtle}`,
+                    }}
+                  >
+                    {['Recipe', 'Tags', 'Rating', 'Updated'].map((label) => (
+                      <Box
+                        key={label}
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.16em',
+                          textTransform: 'uppercase',
+                          color: tokens.text.secondary,
+                        }}
+                      >
+                        {label}
+                      </Box>
+                    ))}
+                  </Box>
+                  {recipes.map((recipe) => {
+                    const userData = recipesUserData.get(recipe._id ?? '');
+                    const allTags = [
+                      ...new Set([...(userData?.tags ?? []), ...(userData?.sharedTags ?? [])]),
+                    ];
+                    return (
+                      <RecipeTableRow
+                        key={recipe._id}
+                        recipe={recipe}
+                        tags={allTags}
+                        rating={userData?.rating}
+                        onOpen={() => router.push(`/recipes/${recipe._id}`)}
+                      />
+                    );
+                  })}
+                </Box>
               </Box>
 
               {/* Mobile cards */}

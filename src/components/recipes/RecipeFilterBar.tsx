@@ -27,6 +27,13 @@ const DEFAULT_SORT_ORDER: Record<string, 'asc' | 'desc'> = {
   rating: 'desc',
 };
 
+/** Display labels for the sort chip / menu. */
+const SORT_LABELS: Record<string, string> = {
+  updatedAt: 'Updated',
+  title: 'Title',
+  rating: 'Rating',
+};
+
 const chipSx = (selected: boolean) => ({
   height: 30,
   px: 1.5,
@@ -115,7 +122,7 @@ export const RecipeFilterBar = memo(function RecipeFilterBar(props: RecipeFilter
           : 'Rating'}
       </ButtonBase>
       <ButtonBase onClick={(e) => setSortAnchor(e.currentTarget)} sx={chipSx(false)}>
-        Sort ▾
+        {`Sort: ${SORT_LABELS[sortBy] ?? 'Updated'} ▾`}
       </ButtonBase>
       {hasActiveFilters && (
         <ButtonBase
