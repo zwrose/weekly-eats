@@ -25,6 +25,11 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
     return FOOD_EMOJIS.filter((e) => e.description.toLowerCase().includes(needle));
   }, [q]);
 
+  const clear = () => {
+    onSelect('');
+    onClose();
+  };
+
   const body = (
     <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: isDesktop ? '80vh' : '78vh' }}>
       <Box
@@ -37,28 +42,73 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
           borderBottom: `1px solid ${tokens.border.subtle}`,
         }}
       >
-        <Box
-          sx={{ fontFamily: 'var(--font-display)', fontSize: isDesktop ? 18 : 15, fontWeight: 700 }}
-        >
-          Pick an emoji
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <ButtonBase
-            onClick={() => {
-              onSelect('');
-              onClose();
-            }}
-            sx={{ color: tokens.text.secondary, fontSize: 14 }}
-          >
-            Clear
-          </ButtonBase>
-          <ButtonBase
-            onClick={onClose}
-            sx={{ color: 'primary.main', fontSize: 14, fontWeight: 600 }}
-          >
-            Done
-          </ButtonBase>
-        </Box>
+        {isDesktop ? (
+          <>
+            <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>
+              Pick an emoji
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <ButtonBase
+                onClick={clear}
+                sx={{
+                  fontSize: 14,
+                  color: tokens.text.secondary,
+                  border: `1px solid ${tokens.border.strong}`,
+                  borderRadius: `${tokens.radius.md}px`,
+                  px: 2,
+                  py: 0.75,
+                  '&:hover': { bgcolor: tokens.surface.elevated, color: tokens.text.primary },
+                }}
+              >
+                Clear
+              </ButtonBase>
+              <ButtonBase
+                onClick={onClose}
+                sx={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  bgcolor: tokens.section.recipes,
+                  color: '#0c1118',
+                  borderRadius: `${tokens.radius.md}px`,
+                  px: 2.5,
+                  py: 0.75,
+                  '&:hover': { filter: 'brightness(1.08)' },
+                }}
+              >
+                Done
+              </ButtonBase>
+            </Box>
+          </>
+        ) : (
+          <>
+            <ButtonBase
+              onClick={clear}
+              sx={{
+                minWidth: 56,
+                justifyContent: 'flex-start',
+                color: tokens.text.secondary,
+                fontSize: 14,
+              }}
+            >
+              Clear
+            </ButtonBase>
+            <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700 }}>
+              Pick an emoji
+            </Box>
+            <ButtonBase
+              onClick={onClose}
+              sx={{
+                minWidth: 56,
+                justifyContent: 'flex-end',
+                color: tokens.section.recipes,
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              Done
+            </ButtonBase>
+          </>
+        )}
       </Box>
       <Box sx={{ px: 2.5, pt: 1.5 }}>
         <InputBase
@@ -100,7 +150,7 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
                 sx={{
                   height: isDesktop ? 40 : 38,
                   fontSize: 22,
-                  borderRadius: `${tokens.radius.sm}px`,
+                  borderRadius: `${tokens.radius.md}px`,
                   bgcolor: selected ? RECIPE_ACCENT_MUTED : 'transparent',
                   border: `1px solid ${selected ? tokens.section.recipes : 'transparent'}`,
                 }}
