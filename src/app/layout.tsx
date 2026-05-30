@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Outfit } from 'next/font/google';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import './globals.css';
@@ -30,6 +30,13 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+};
+
+// Dark-first branding: tint the browser/OS chrome and native UI at first paint (SSR),
+// before the runtime ThemeColorMeta sets the same value. Matches tokens.surface.base.
+export const viewport: Viewport = {
+  themeColor: '#0f1115',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

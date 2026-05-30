@@ -1,5 +1,8 @@
 :root {
   --font-icons: 'Material Symbols Outlined';
+  /* Dark-first app: render native UI (scrollbars, form controls, spinners) dark and
+     avoid a white flash before React paints. */
+  color-scheme: dark;
 }
 
 body {
