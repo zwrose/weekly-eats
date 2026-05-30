@@ -904,18 +904,6 @@ describe('ShoppingListsPage', () => {
 
     await user.click(screen.getByRole('checkbox'));
 
-    // --- TEMP CI DIAGNOSTIC (remove after root-causing the CI-only failure) ---
-    {
-      const cbs = screen.queryAllByRole('checkbox') as HTMLInputElement[];
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] checkbox count:', cbs.length, 'checked:', cbs.map((c) => c.checked));
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] fetch URLs called:', mockFetch.mock.calls.map((c) => String(c[0])));
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] buttons present:', screen.queryAllByRole('button').map((b) => b.textContent));
-    }
-    // --- end diagnostic ---
-
     // Finish button appears only after the async toggle round-trip + re-render;
     // give waitFor headroom beyond the 1000ms default for slower CI runners.
     try {
@@ -925,15 +913,15 @@ describe('ShoppingListsPage', () => {
         },
         { timeout: 5000 },
       );
-    } catch (e) {
+    } catch {
       const cbs = screen.queryAllByRole('checkbox') as HTMLInputElement[];
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] FAILURE — checkbox checked:', cbs.map((c) => c.checked));
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] FAILURE — fetch URLs:', mockFetch.mock.calls.map((c) => String(c[0])));
-      // eslint-disable-next-line no-console
-      console.error('[DIAG] FAILURE — buttons:', screen.queryAllByRole('button').map((b) => b.textContent));
-      throw e;
+      const diag = {
+        checkboxChecked: cbs.map((c) => c.checked),
+        fetchURLs: mockFetch.mock.calls.map((c) => String(c[0])),
+        buttons: screen.queryAllByRole('button').map((b) => b.textContent),
+        finishShopCalled: mockFinishShop.mock.calls.length,
+      };
+      throw new Error('[DIAG] finish button not found. State: ' + JSON.stringify(diag));
     }
 
     // After finishing, the handler calls fetchStores() then a useEffect
