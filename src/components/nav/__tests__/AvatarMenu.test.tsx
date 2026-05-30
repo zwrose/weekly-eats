@@ -40,6 +40,33 @@ describe('AvatarMenu', () => {
     expect(screen.getByText('Manage users')).toBeInTheDocument();
   });
 
+  it('renders the user identity header (name + email) in both variants', () => {
+    const { rerender } = render(
+      <AvatarMenu
+        variant="menu"
+        open
+        onClose={vi.fn()}
+        isAdmin={false}
+        name="Zach Rose"
+        email="zwrose@gmail.com"
+      />
+    );
+    expect(screen.getByText('Zach Rose')).toBeInTheDocument();
+    expect(screen.getByText('zwrose@gmail.com')).toBeInTheDocument();
+    rerender(
+      <AvatarMenu
+        variant="sheet"
+        open
+        onClose={vi.fn()}
+        isAdmin={false}
+        name="Zach Rose"
+        email="zwrose@gmail.com"
+      />
+    );
+    expect(screen.getByText('Zach Rose')).toBeInTheDocument();
+    expect(screen.getByText('zwrose@gmail.com')).toBeInTheDocument();
+  });
+
   it('navigates on item click and signs out', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

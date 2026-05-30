@@ -120,6 +120,9 @@ export function TopNav() {
         anchorEl={anchorEl}
         onClose={closeMenu}
         isAdmin={Boolean(user?.isAdmin)}
+        name={name}
+        email={user?.email}
+        image={user?.image}
       />
     </Box>
   );

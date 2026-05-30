@@ -88,6 +88,9 @@ export function BottomNav() {
         open={sheetOpen}
         onClose={closeSheet}
         isAdmin={Boolean(user?.isAdmin)}
+        name={user?.name}
+        email={user?.email}
+        image={user?.image}
       />
     </>
   );
