@@ -203,6 +203,9 @@ export default function PantryPage() {
           slotProps={{
             paper: {
               sx: {
+                // Edge-to-edge full-screen on phones (responsiveDialogStyle sets width/height
+                // 100% on xs, but maxWidth="xs" would otherwise cap width on >444px phones).
+                maxWidth: { xs: '100%', sm: 460 },
                 bgcolor: tokens.surface.raised,
                 border: `1px solid ${tokens.border.strong}`,
                 borderRadius: { sm: `${tokens.radius.xxxl}px` },
