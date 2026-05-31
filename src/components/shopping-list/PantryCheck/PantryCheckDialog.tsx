@@ -71,13 +71,13 @@ export function PantryCheckDialog({ open, matches, onApply, onClose }: PantryChe
             gap: 1.5,
             bgcolor: alpha(tokens.section.pantry, 0.14),
             border: `1px solid ${tokens.section.pantry}44`,
-            borderRadius: tokens.radius.lg,
+            borderRadius: `${tokens.radius.xl}px`,
             px: 2,
             py: 1.5,
             mb: 2,
           }}
         >
-          <Icon name="kitchen" size={20} color={tokens.section.pantry} />
+          <Icon name="kitchen" size={18} color={tokens.section.pantry} />
           <Typography variant="body2" sx={{ color: tokens.text.secondary, lineHeight: 1.5 }}>
             These items are already in your pantry. Toggle{' '}
             <Box component="span" sx={{ color: tokens.state.danger, fontWeight: 700 }}>
@@ -90,10 +90,14 @@ export function PantryCheckDialog({ open, matches, onApply, onClose }: PantryChe
         {/* Tally pill */}
         <Box
           sx={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: 1,
-            mb: 2,
+            bgcolor: tokens.surface.elevated,
+            border: `1px solid ${tokens.border.subtle}`,
+            borderRadius: `${tokens.radius.pill}px`,
+            padding: '6px 12px',
+            mb: 1.75,
           }}
         >
           <Box
@@ -125,9 +129,12 @@ export function PantryCheckDialog({ open, matches, onApply, onClose }: PantryChe
                   gap: 2,
                   px: 1.5,
                   py: 1.25,
-                  borderRadius: tokens.radius.md,
-                  bgcolor: isSkip ? tokens.state.dangerMuted : 'transparent',
-                  transition: 'background-color 0.15s ease',
+                  borderRadius: `${tokens.radius.xl}px`,
+                  bgcolor: isSkip ? tokens.state.dangerMuted : tokens.surface.elevated,
+                  border: isSkip
+                    ? `1px solid ${alpha(tokens.state.danger, 0.33)}`
+                    : `1px solid ${tokens.border.subtle}`,
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease',
                 }}
               >
                 <Box sx={{ flex: 1, minWidth: 0 }}>

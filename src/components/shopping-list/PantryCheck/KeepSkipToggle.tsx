@@ -24,6 +24,7 @@ export function KeepSkipToggle({ value, onChange }: KeepSkipToggleProps) {
     <Box
       sx={{
         display: 'inline-flex',
+        bgcolor: tokens.surface.elevated,
         border: `1px solid ${tokens.border.subtle}`,
         borderRadius: tokens.radius.pill,
         p: '2px',

@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, ButtonBase } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { tokens } from '@/lib/design-tokens';
 import type { ActiveUser, ShoppingSyncConnectionState } from '@/lib/hooks/use-shopping-sync';
 import { PresenceAvatar } from './PresenceAvatar';
@@ -39,8 +40,7 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
     display: 'inline-flex',
     alignItems: 'center',
     gap: 0.75,
-    px: 1,
-    py: 0.5,
+    padding: '3px 10px 3px 3px',
     borderRadius: `${tokens.radius.pill}px`,
     border: `1px solid ${tokens.border.subtle}`,
     bgcolor: tokens.surface.raised,
@@ -76,7 +76,10 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
               {visibleUsers.map((user, i) => (
                 <Box
                   key={user.email}
-                  sx={{ ml: i === 0 ? 0 : -0.75, zIndex: visibleUsers.length - i }}
+                  sx={{
+                    marginLeft: i === 0 ? 0 : i === 1 ? '-4px' : '-8px',
+                    zIndex: visibleUsers.length - i,
+                  }}
                 >
                   <PresenceAvatar name={user.name} email={user.email} size={20} ring />
                 </Box>
@@ -127,7 +130,7 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
           sx={{
             px: 0.75,
             py: 0.25,
-            borderRadius: `${tokens.radius.sm}px`,
+            borderRadius: `${tokens.radius.pill}px`,
             bgcolor: tokens.state.danger,
             color: tokens.onDanger,
             fontSize: 10,
@@ -149,7 +152,7 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
       onClick={onReconnect}
       sx={{
         ...pillBase,
-        border: `1px solid ${tokens.state.dangerMuted}`,
+        border: `1px solid ${alpha(tokens.state.danger, 0.33)}`,
         bgcolor: tokens.state.dangerMuted,
         cursor: 'pointer',
       }}
