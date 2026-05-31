@@ -32,6 +32,37 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
+**▶ ACTIVE TASK (2026-05-31) — bespoke connector sign-in screen (UX fix).** During live manual
+testing, the OAuth authorize flow's login leg dumps the user on the **full marketing landing page**
+(`/`) as the "sign in" step — janky; no production connector does that. It functions (login →
+consent → connected) but looks broken. **Build a focused, minimal connector sign-in screen.**
+
+- **Current behavior:** `src/app/api/mcp/oauth/authorize/route.ts` `initial()` — when `await auth()`
+  finds no session, it redirects to `/?callbackUrl=<encoded /api/mcp/oauth/authorize?mcp_auth=NONCE>`.
+  `/` is `src/app/page.tsx` (marketing) whose `src/components/SignInButton.tsx` honors `callbackUrl`
+  (`signIn('google', { redirectTo: callbackUrl })`). After Google auth → back to the authorize
+  continuation → approval gate → `/mcp/consent` (the consent screen already IS a clean focused page).
+- **Proposed fix:** add a minimal server-rendered page (e.g. `src/app/mcp/connect/page.tsx`, mirror the
+  `src/app/mcp/consent/page.tsx` pattern) showing "Sign in to connect **<client name>** to Weekly Eats"
+  - a Google sign-in button (`redirectTo` = the authorize continuation). Change the authorize no-session
+    redirect to point at that page (carrying `mcp_auth=NONCE`) instead of `/`. Optionally read the client
+    name from the `mcpAuthStates` doc via the nonce (like the consent page does via `peekAuthState`).
+    Client-side `signIn` needs `"use client"`, OR use a server action / a form that posts to the app's
+    sign-in. Brainstorm the cleanest shape (route name, client-name display, session-already-exists case)
+    then `writing-plans` → `subagent-driven-development`. **UX only — not security; the flow works.**
+- **Mid-test gate to resolve in parallel:** confirm `zwrose@gmail.com` is **approved in `weekly-eats-develop`**
+  (the preview DB). If sign-in bounces back to Claude with `access_denied` instead of showing consent,
+  that account isn't approved there (it's created `pending` on first preview login).
+
+**Phase-2 state at this point (all pushed; HEAD `bd3dc20`, `feat/mcp` 0-behind / 84-ahead of main):**
+Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **Synced with main** (Next 16
+
+- MUI 9, merge `9b9b0f6`; one MUI-v9 `Stack` fix). **Firewall `mcp-bypass` rule LIVE** (published; connector
+  machine paths bypass Vercel auto-mitigation). **Discovery (Section A) verified live** (PRM/AS-metadata/401
+  all pass). Manual test plan on [PR #140 comment 4582026777](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
+  Remaining manual test: Sections B (connect in Claude) / C (create-then-read tools) / D (revoke) / E
+  (browser regression) — blocked on the active UX task + the develop-approval gate above.
+
 > ### ⚠️ PRODUCTION-LAUNCH CHECKLIST (do these when `feat/mcp` ships to production)
 >
 > - [ ] **Set `MCP_ISSUER_URL=https://weekly-eats.zamilyfam.com` on Vercel _Production_** (the canonical custom domain). REQUIRED — prod has multiple hostnames (custom domain + `.vercel.app` + `beta` subdomain), so without pinning, OAuth tokens break across hosts. **Leave Preview unset.** Command: `vercel env add MCP_ISSUER_URL production` (CLI already authed to `zach-roses-projects/weekly-eats`). See carryover (f).
