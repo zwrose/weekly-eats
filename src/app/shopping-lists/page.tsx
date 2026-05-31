@@ -77,7 +77,10 @@ import {
   type ActiveUser,
 } from '@/lib/hooks';
 import dynamic from 'next/dynamic';
-const EmojiPicker = dynamic(() => import('../../components/EmojiPicker'), { ssr: false });
+const EmojiPicker = dynamic(
+  () => import('@/components/ui/EmojiPicker').then((m) => m.EmojiPicker),
+  { ssr: false }
+);
 const StoreHistoryDialog = dynamic(
   () => import('../../components/shopping-list/StoreHistoryDialog'),
   { ssr: false }

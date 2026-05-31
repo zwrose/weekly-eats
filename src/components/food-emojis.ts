@@ -1,20 +1,13 @@
-'use client';
+// Curated food / cooking / shopping emojis with human-readable descriptions.
+// Shared data source for the flat-grid EmojiPicker (src/components/ui/EmojiPicker.tsx).
+// Keep this as the single source of truth — do not duplicate the array.
 
-import { useState, useRef } from 'react';
-import { Dialog, DialogContent, Box, Typography, TextField, InputAdornment } from '@mui/material';
-import { Search } from '@mui/icons-material';
-import { responsiveDialogStyle } from '../lib/theme';
-import { DialogTitle } from './ui';
-
-interface EmojiPickerProps {
-  open: boolean;
-  onClose: () => void;
-  onSelect: (emoji: string) => void;
-  currentEmoji?: string;
+export interface FoodEmoji {
+  emoji: string;
+  description: string;
 }
 
-// Food and cooking related emojis with descriptions
-export const FOOD_EMOJIS = [
+export const FOOD_EMOJIS: FoodEmoji[] = [
   // Stores & Shopping
   { emoji: '🏪', description: 'convenience store' },
   { emoji: '🛒', description: 'shopping cart' },
@@ -184,85 +177,3 @@ export const FOOD_EMOJIS = [
   // Snacks
   { emoji: '🍿', description: 'popcorn' },
 ];
-
-export default function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPickerProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const filteredEmojis = FOOD_EMOJIS.filter(
-    (item) =>
-      item.emoji.includes(searchTerm) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      searchTerm === ''
-  );
-
-  const handleEmojiSelect = (emoji: string) => {
-    onSelect(emoji);
-    onClose();
-    setSearchTerm('');
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      sx={responsiveDialogStyle}
-      TransitionProps={{ onEntered: () => searchInputRef.current?.focus() }}
-    >
-      <DialogTitle onClose={onClose}>
-        <Typography variant="h6">Choose an Emoji</Typography>
-      </DialogTitle>
-      <DialogContent>
-        <TextField
-          fullWidth
-          inputRef={searchInputRef}
-          placeholder="Search emojis..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          margin="normal"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-        />
-
-        <Box sx={{ mt: 2, maxHeight: 400, overflow: 'auto' }}>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))',
-              gap: 1,
-            }}
-          >
-            {filteredEmojis.map((item) => (
-              <Box
-                key={item.emoji}
-                onClick={() => handleEmojiSelect(item.emoji)}
-                sx={{
-                  fontSize: '2rem',
-                  cursor: 'pointer',
-                  p: 1,
-                  borderRadius: 1,
-                  textAlign: 'center',
-                  border:
-                    currentEmoji === item.emoji ? '2px solid #1976d2' : '2px solid transparent',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                  },
-                }}
-                title={item.description}
-              >
-                {item.emoji}
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      </DialogContent>
-    </Dialog>
-  );
-}

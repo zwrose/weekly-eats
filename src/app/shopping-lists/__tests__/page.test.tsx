@@ -100,8 +100,8 @@ vi.mock('../../../components/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../../../components/EmojiPicker', () => ({
-  default: () => <div>Emoji Picker</div>,
+vi.mock('@/components/ui/EmojiPicker', () => ({
+  EmojiPicker: () => <div>Emoji Picker</div>,
 }));
 
 vi.mock('../../../components/shopping-list/StoreHistoryDialog', () => ({

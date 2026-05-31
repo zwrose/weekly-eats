@@ -11,7 +11,7 @@ import {
   updateRecipeRating,
   deleteRecipeRating,
 } from '@/lib/recipe-user-data-utils';
-import { EmojiPicker } from '@/components/recipes/EmojiPicker';
+import { EmojiPicker } from '@/components/ui/EmojiPicker';
 import { RecipeTagsEditor } from '@/components/recipes/RecipeTagsEditor';
 import { Stars } from '@/components/recipes/Stars';
 import { SectionLabel } from '@/components/recipes/SectionLabel';

@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { Box, Drawer, Dialog, InputBase, ButtonBase, useMediaQuery, useTheme } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { tokens } from '@/lib/design-tokens';
-import { FOOD_EMOJIS } from '@/components/EmojiPicker';
-import { RECIPE_ACCENT_MUTED } from './recipe-display-utils';
+import { FOOD_EMOJIS } from '@/components/food-emojis';
 
 export interface EmojiPickerProps {
   open: boolean;
@@ -13,15 +13,23 @@ export interface EmojiPickerProps {
   currentEmoji?: string;
 }
 
+/**
+ * Shared flat-grid emoji picker. The accent comes from `palette.primary`, which
+ * SectionThemeProvider rebinds per section — so recipes (orange) and shopping
+ * (green) each pick up their section accent automatically. Dialog on desktop,
+ * bottom Drawer on mobile.
+ */
 export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPickerProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [q, setQ] = useState('');
 
+  const accent = theme.palette.primary.main;
+  const accentMuted = alpha(accent, 0.14);
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return FOOD_EMOJIS;
-    // FOOD_EMOJIS is `{ emoji: string; description: string }[]` (verified in src/components/EmojiPicker.tsx).
     return FOOD_EMOJIS.filter((e) => e.description.toLowerCase().includes(needle));
   }, [q]);
 
@@ -67,8 +75,8 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
                 sx={{
                   fontSize: 14,
                   fontWeight: 600,
-                  bgcolor: tokens.section.recipes,
-                  color: '#0c1118',
+                  bgcolor: accent,
+                  color: theme.palette.primary.contrastText,
                   borderRadius: `${tokens.radius.md}px`,
                   px: 2.5,
                   py: 0.75,
@@ -100,7 +108,7 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
               sx={{
                 minWidth: 56,
                 justifyContent: 'flex-end',
-                color: tokens.section.recipes,
+                color: accent,
                 fontSize: 14,
                 fontWeight: 600,
               }}
@@ -114,7 +122,7 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
         <InputBase
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search emoji"
+          placeholder="Search emoji…"
           inputProps={{ 'aria-label': 'Search emoji' }}
           sx={{
             width: '100%',
@@ -132,8 +140,8 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${isDesktop ? 10 : 8}, 1fr)`,
-            gap: '4px',
+            gridTemplateColumns: { xs: 'repeat(7, 1fr)', md: 'repeat(10, 1fr)' },
+            gap: 0.5,
           }}
         >
           {filtered.map((e, i) => {
@@ -142,17 +150,18 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
             return (
               <ButtonBase
                 key={`${i}-${em}`}
-                aria-label={`emoji ${em}`}
+                role="button"
+                aria-label={e.description}
                 onClick={() => {
                   onSelect(em);
                   onClose();
                 }}
                 sx={{
-                  height: isDesktop ? 40 : 38,
+                  aspectRatio: '1',
                   fontSize: 22,
                   borderRadius: `${tokens.radius.md}px`,
-                  bgcolor: selected ? RECIPE_ACCENT_MUTED : 'transparent',
-                  border: `1px solid ${selected ? tokens.section.recipes : 'transparent'}`,
+                  bgcolor: selected ? accentMuted : 'transparent',
+                  border: `1px solid ${selected ? accent : 'transparent'}`,
                 }}
               >
                 {em}
