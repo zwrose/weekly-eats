@@ -66,3 +66,24 @@ Post-implementation fidelity pass per spec §5 step 2, run **before** `review-co
 **Batch C — Dialogs + Index:** explicit dialog widths (480/540/560/540); UnitConflict suggestion→accent + `auto_fix_high` + title 20; ItemEditor Cancel + qty/unit grid; Import row icon + weight; EmojiPicker search h40/radius12 + 85vh; index search double-box fix + "Your stores" mobile label + PendingInviteBanner Accept=primary + letter-spacing.
 
 After CLOSE: re-screenshot both breakpoints (working view + a dialog + pantry) to confirm, then `review-code --base redesign-chunk-04`.
+
+---
+
+## Gate #2 — CLOSED (2026-05-30)
+
+All three CLOSE batches landed + verified live (chrome-devtools-mcp, authenticated `:3235`, desktop 1440 + mobile 430, seeded data). 100 shopping tests + 158 across ui/recipes/shopping stayed green; eslint clean.
+
+- **Batch A — `fa84873`** (working view): item rows now **left-aligned** (checkbox→name→qty packed left, drag handle `ml:auto`); **group-container boxes** (`surface.raised` unchecked / `surface.sunken` checked) with per-row hairlines + "IN CART · {n}" label; list-pane `24px 32px 110px` / sidebar `20px 14px`; **FinishShopBar absolute-anchored** (mobile `bottom:0` / desktop `left:280`) + text 15/700·14.5/700; store name responsive 22/28; mobile back-link → **accent**; row metrics (padding/sizes/qty/handle/opacity). _Omitted:_ desktop "Uncheck all" — no bulk-uncheck handler exists (would require inventing write logic; the "IN CART" label renders without it). **KEEP.**
+- **Batch B — `73ea24a`** (pantry/presence): tally **pill container**; match-row keep-fill + skip-border + radius 12; KeepSkipToggle outer bg; PresencePill Retry radius→pill, asymmetric pad, stacked-avatar margins, OFFLINE border `{danger}55`.
+- **Batch C — `6e05a17`** (dialogs/index): explicit dialog widths **480/540/560/540**; ItemEditor **Cancel** button added; UnitConflict suggestion banner → **accentDim + `auto_fix_high`** + title 20 + sheet shadow; Import row `event_note` icon + name 700; EmojiPicker search h40/radius12 + 85vh; **index search double-box fixed** (single bordered field) + mobile "Your stores" label; PendingInviteBanner Accept → **btnPrimary** + eyebrow `0.10em`.
+
+**Live-verified:** index (clean single search field, accent counts, primary Add-store), two-pane working view at both breakpoints (left-aligned rows in group box, active-store sidebar highlight, LIVE pill, ⋮ actions, finish-bar lifecycle), Add-Item dialog (≈480 paper, accent-ring field, Cancel+Add footer).
+
+**KEEP-as-built deviations (recorded; not re-litigated):**
+
+1. Mobile working view retains the app **BottomNav** — direct consequence of the locked **C1=A in-page** architecture (an immersive full-screen shop mode would need a route).
+2. Index rows keep **5 inline action icons** (Start/History/Share/Edit/Delete) vs the artboard's chevron — Task 3B preserved direct one-click access + the ~10 tests that pin them; the same actions also live in the in-store `StoreActionsMenu`. _(Revisit only if the clean chevron row is preferred.)_
+3. **No-data fields** (API change forbidden): index `lastShop`, desktop "with {names}" / Share member display-names (email-only), `inviterName`; pantry per-row quantity-adjust dropped (binary KEEP/SKIP per artboard).
+4. Desktop 26px presence-pill list-header variant + connecting-dot pulse animation not built (single 20px pill both breakpoints) — low value.
+
+**→ Gate #2 done. Next: `review-code --base redesign-chunk-04`.**
