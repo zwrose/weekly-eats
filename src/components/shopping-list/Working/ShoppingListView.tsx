@@ -7,12 +7,13 @@ import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
 import { getUnitForm } from '@/lib/food-items-utils';
-import type { ActiveUser } from '@/lib/hooks';
+import type { ActiveUser, ShoppingSyncConnectionState } from '@/lib/hooks/use-shopping-sync';
 import type { ShoppingListItem } from '@/types/shopping-list';
 import { StoreSidebar, type StoreSidebarStore } from './StoreSidebar';
 import { AddItemRow } from './AddItemRow';
 import { FinishShopBar } from './FinishShopBar';
 import { FinishShopConfirm } from './FinishShopConfirm';
+import { PresencePill } from '../Presence/PresencePill';
 
 export interface ShoppingListViewProps {
   stores: StoreSidebarStore[];
@@ -23,20 +24,12 @@ export interface ShoppingListViewProps {
   onEditItem: (item: ShoppingListItem) => void;
   onAddItem: () => void;
   onBack: () => void;
-  /**
-   * View-level handlers/state the page still owns. Currently surfaced through
-   * the presence/finish slots (which carry the page's live constructs), so they
-   * are accepted but not consumed directly yet. Tasks 7/10 restyle/extract
-   * these (presence pill, actions menu) and will wire them here.
-   */
   onFinish: () => void;
   onReconnect: () => void;
-  connectionState: 'connected' | 'connecting' | 'disconnected';
+  connectionState: ShoppingSyncConnectionState;
   activeUsers: ActiveUser[];
   /** Add-store affordance for the sidebar. Optional; defaults to onAddItem-less no-op. */
   onAddStore?: () => void;
-  /** Presence cluster (live pill + "also viewing") — page passes its existing construct. */
-  presenceSlot?: ReactNode;
   /** Actions cluster (overflow menu trigger) — page passes its existing construct. */
   actionsSlot?: ReactNode;
   /** Replaces the default item rows with the page's DnD list when provided. */
@@ -119,7 +112,9 @@ export function ShoppingListView({
   onBack,
   onAddStore,
   onFinish,
-  presenceSlot,
+  onReconnect,
+  connectionState,
+  activeUsers,
   actionsSlot,
   listSlot,
 }: ShoppingListViewProps) {
@@ -192,7 +187,11 @@ export function ShoppingListView({
             {unchecked.length} to buy · {checked.length} in cart
           </Typography>
         </Box>
-        {presenceSlot}
+        <PresencePill
+          connectionState={connectionState}
+          activeUsers={activeUsers}
+          onReconnect={onReconnect}
+        />
         {actionsSlot}
       </Box>
 

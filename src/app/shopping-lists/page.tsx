@@ -46,7 +46,6 @@ import {
   Close as CloseIcon,
   Kitchen,
   MoreVert,
-  Refresh,
   History,
 } from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
@@ -1332,90 +1331,10 @@ function ShoppingListsPageContent() {
     return { unchecked, checked };
   }, [shoppingListItems]);
 
-  // ── Working-view slots (presence / actions / finish / list) ──────────────
-  // These reuse the existing handlers/JSX, lifted out of the former modal into
-  // the in-page ShoppingListView via slots. The page keeps owning all state,
-  // sync, DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
-  const presenceSlot = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
-      <Box
-        role={shoppingSync.isConnected ? undefined : 'button'}
-        onClick={shoppingSync.isConnected ? undefined : handleManualReconnect}
-        sx={{
-          flex: '0 0 auto',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 0.5,
-          px: 1,
-          py: 0.5,
-          borderRadius: 1,
-          bgcolor: shoppingSync.isConnected
-            ? 'success.main'
-            : shoppingSync.connectionState === 'connecting'
-              ? 'warning.main'
-              : (theme) => (theme.palette.mode === 'dark' ? 'grey.700' : 'grey.300'),
-          color: shoppingSync.isConnected
-            ? 'success.contrastText'
-            : shoppingSync.connectionState === 'connecting'
-              ? 'warning.contrastText'
-              : (theme) => (theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800'),
-          fontSize: '0.7rem',
-          whiteSpace: 'nowrap',
-          cursor: shoppingSync.isConnected ? 'default' : 'pointer',
-          userSelect: 'none',
-        }}
-        title={
-          shoppingSync.isConnected
-            ? 'Live'
-            : shoppingSync.connectionState === 'connecting'
-              ? 'Reconnecting…'
-              : 'Offline (tap to reconnect)'
-        }
-      >
-        {shoppingSync.isConnected ? (
-          <Box
-            sx={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              bgcolor: 'success.contrastText',
-            }}
-          />
-        ) : (
-          <Refresh sx={{ fontSize: 14 }} />
-        )}
-        {shoppingSync.isConnected
-          ? 'Live'
-          : shoppingSync.connectionState === 'connecting'
-            ? 'Reconnecting'
-            : 'Offline'}
-      </Box>
-      {activeUsers.length > 0 && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="caption" color="text.secondary">
-            Also viewing:
-          </Typography>
-          {activeUsers.map((user, index) => (
-            <Box
-              key={index}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                fontSize: '0.75rem',
-              }}
-            >
-              {user.name}
-            </Box>
-          ))}
-        </Box>
-      )}
-    </Box>
-  );
+  // ── Working-view slots (actions / list) ──────────────────────────────────
+  // Presence is now rendered by <PresencePill> inside ShoppingListView, fed via
+  // connectionState / activeUsers / onReconnect props. The page keeps owning all
+  // state, sync, DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
 
   const actionsSlot = (
     <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
@@ -1547,15 +1466,8 @@ function ShoppingListsPageContent() {
               onBack={viewListDialog.closeDialog}
               onReconnect={handleManualReconnect}
               onAddStore={createStoreDialog.openDialog}
-              connectionState={
-                shoppingSync.isConnected
-                  ? 'connected'
-                  : shoppingSync.connectionState === 'connecting'
-                    ? 'connecting'
-                    : 'disconnected'
-              }
+              connectionState={shoppingSync.connectionState}
               activeUsers={activeUsers}
-              presenceSlot={presenceSlot}
               actionsSlot={actionsSlot}
               listSlot={workingListSlot}
             />
