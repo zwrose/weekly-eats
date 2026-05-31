@@ -35,6 +35,7 @@ own slot comments on the draft PR when a phase lands.
 > ### ⚠️ PRODUCTION-LAUNCH CHECKLIST (do these when `feat/mcp` ships to production)
 >
 > - [ ] **Set `MCP_ISSUER_URL=https://weekly-eats.zamilyfam.com` on Vercel _Production_** (the canonical custom domain). REQUIRED — prod has multiple hostnames (custom domain + `.vercel.app` + `beta` subdomain), so without pinning, OAuth tokens break across hosts. **Leave Preview unset.** Command: `vercel env add MCP_ISSUER_URL production` (CLI already authed to `zach-roses-projects/weekly-eats`). See carryover (f).
+> - [ ] **Vercel Firewall: add a Bypass/Allow rule for `(/api/mcp.*|/\.well-known/oauth-.*)`** so Claude's automated client isn't blocked by **Attack Challenge Mode** (currently ON across all hosts — browsers pass the JS challenge, but Claude's connector fetcher / curl get a 429 "Security Checkpoint"). Leave the challenge ON for the rest of the app. Safe because those endpoints self-authenticate (Bearer/PKCE/rate-limit); necessary because the connector's discovery + token + tool-call legs are machine-to-machine. (The browser legs — Google login + `/mcp/consent` — pass the challenge fine.) **This applies to production too, not just preview.**
 > - [ ] Confirm **no** `MCP_DEV_TOKEN` / `MCP_DEV_USER_ID` in the Production/Preview env (currently absent — keep it that way; the dev path is removed).
 > - [ ] (Optional, #142 cleanup) remove the now-dead v4 vars from Vercel: `GOOGLE_CLIENT_ID/SECRET`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`.
 
