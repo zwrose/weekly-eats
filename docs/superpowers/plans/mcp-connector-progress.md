@@ -21,7 +21,7 @@ all phases land.
 | --- | ------------------------------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------- |
 | 1   | Service layer + recipes/food-items MCP tools (dev-token)     | **DONE** — code + manual verify + review-code (clean)                   | [`plan`](2026-05-30-mcp-phase-1-service-tools-plan.md) · [`review`](2026-05-30-mcp-phase-1-service-tools-plan-review.md) | [#140](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777) | 2026-05-30 |
 | 1.5 | Auth.js v5 migration + redirect proxy (#142) — gates Phase 2 | **DONE** — merged to `main` (#146) + pulled into `feat/mcp` (`45bcd2b`) | — _(user effort)_                                                                                                        | —                                                                              | 2026-05-30 |
-| 2   | OAuth AS + approval-gated verification + deploy              | **DONE** — code + review-code (clean) + `npm run check` green           | [`plan`](2026-05-30-mcp-phase-2-oauth-as-plan.md)                                                                        | —                                                                              | 2026-05-30 |
+| 2   | OAuth AS + approval-gated verification + deploy              | **DONE** — code + manual verify (B–E) + review-code (clean) + green     | [`plan`](2026-05-30-mcp-phase-2-oauth-as-plan.md)                                                                        | —                                                                              | 2026-05-30 |
 | 3   | `recipe-import` skill                                        | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
 | 4   | Remaining domains (meal plans, pantry, shopping lists)       | pending                                                                 | —                                                                                                                        | —                                                                              | —          |
 
@@ -45,13 +45,9 @@ the design spec (`docs/superpowers/specs/2026-05-29-agent-connector-design.md`, 
 `review-plan` → `subagent-driven-development`. Confirm scope with the user before planning — "recipe-import
 skill" may mean a Claude Code/Agent skill that drives the connector's `recipes_create` tool from a URL/text.
 
-**Still-open Phase-2 items (parallel; NOT blockers for starting Phase 3 planning):**
-
-- **Manual test plan Sections B–E** (connect in Claude → create-then-read tools → revoke → browser
-  regression) — runtime verification the USER drives; now unblocked (approved in `weekly-eats-develop`).
-  Connector URL `https://weekly-eats-git-feat-mcp-zach-roses-projects.vercel.app/api/mcp`; a 10-min test-link
-  minting command (register + authorize via curl) is in chat. Plan: PR #140 comment 4582026777.
-- **Production-launch checklist below** — the `MCP_ISSUER_URL` pin is the one required action at launch.
+**Phase-2 status: fully complete.** Manual test plan **Sections B–E DONE** (user resolved 2026-05-31 —
+connect in Claude → create-then-read tools → revoke → browser regression all verified end-to-end). The ONLY
+remaining Phase-2 item is the **production-launch checklist below** (the `MCP_ISSUER_URL` pin at launch).
 
 **✅ DONE (2026-05-31) — bespoke connector sign-in screen (UX fix).** Replaced the marketing-homepage
 login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, `npm run check` green
@@ -101,8 +97,8 @@ Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **S
 - MUI 9, merge `9b9b0f6`; one MUI-v9 `Stack` fix). **Firewall `mcp-bypass` rule LIVE** (published; connector
   machine paths bypass Vercel auto-mitigation). **Discovery (Section A) verified live** (PRM/AS-metadata/401
   all pass). Manual test plan on [PR #140 comment 4582026777](https://github.com/zwrose/weekly-eats/pull/140#issuecomment-4582026777).
-  Remaining manual test: Sections B (connect in Claude) / C (create-then-read tools) / D (revoke) / E
-  (browser regression) — blocked on the active UX task + the develop-approval gate above.
+  Manual test Sections B (connect in Claude) / C (create-then-read tools) / D (revoke) / E
+  (browser regression) — **all DONE (user resolved 2026-05-31)**.
 
 > ### ⚠️ PRODUCTION-LAUNCH CHECKLIST (do these when `feat/mcp` ships to production)
 >
