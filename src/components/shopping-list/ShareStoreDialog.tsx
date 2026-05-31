@@ -1,16 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  Drawer,
-  IconButton,
-  InputBase,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
+import { Box, Button, Dialog, IconButton, InputBase } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
@@ -81,62 +72,35 @@ function Body({
   onRemove,
   onClose,
   emailRef,
-  sheet,
 }: Omit<ShareStoreDialogProps, 'open'> & {
   emailRef: React.RefObject<HTMLInputElement | null>;
-  sheet: boolean;
 }) {
   const accent = tokens.section.shop;
   const canInvite = email.trim().length > 0;
   const shared = invitations.filter((inv) => inv.status === 'accepted' || inv.status === 'pending');
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: sheet ? undefined : 480 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Header */}
-      {sheet ? (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1, pb: 0.5 }}>
-            <Box sx={{ width: 36, height: 4, borderRadius: 2, bgcolor: tokens.border.strong }} />
-          </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              px: 2,
-              py: 1.25,
-              borderBottom: `1px solid ${tokens.border.subtle}`,
-            }}
-          >
-            <Box sx={{ minWidth: 56 }} />
-            <Box sx={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
-              <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700 }}>
-                Share &ldquo;{storeName}&rdquo;
-              </Box>
-              <Box sx={{ fontSize: 11, color: tokens.text.secondary }}>
-                Invited people can view + edit
-              </Box>
-            </Box>
-            <Button onClick={onClose} sx={{ minWidth: 56, fontWeight: 600, color: accent }}>
-              Done
-            </Button>
-          </Box>
+      <Box sx={{ px: 2.75, pt: 2.25, pb: 1.75, borderBottom: `1px solid ${tokens.border.subtle}` }}>
+        <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>
+          Share &ldquo;{storeName}&rdquo;
         </Box>
-      ) : (
-        <Box
-          sx={{ px: 2.75, pt: 2.25, pb: 1.75, borderBottom: `1px solid ${tokens.border.subtle}` }}
-        >
-          <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>
-            Share &ldquo;{storeName}&rdquo;
-          </Box>
-          <Box sx={{ fontSize: 12, color: tokens.text.secondary, mt: 0.5 }}>
-            Invite people by email. They can view and edit this shopping list.
-          </Box>
+        <Box sx={{ fontSize: 12, color: tokens.text.secondary, mt: 0.5 }}>
+          Invite people by email. They can view and edit this shopping list.
         </Box>
-      )}
+      </Box>
 
       {/* Content */}
-      <Box sx={{ px: { xs: 2.25, md: 2.75 }, py: 2.25, overflowY: 'auto' }}>
+      <Box
+        sx={{
+          px: { xs: 2.25, md: 2.75 },
+          py: 2.25,
+          overflowY: 'auto',
+          flex: { xs: 1, sm: '0 1 auto' },
+          minHeight: 0,
+        }}
+      >
         <FieldLabel>Invite by email</FieldLabel>
         <Box sx={{ display: 'flex', gap: 1, mb: 2.25 }}>
           <InputBase
@@ -245,46 +209,43 @@ function Body({
         )}
       </Box>
 
-      {/* Desktop footer */}
-      {!sheet && (
-        <Box
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 2.75,
+          py: 1.5,
+          borderTop: `1px solid ${tokens.border.subtle}`,
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <Button
+          onClick={onClose}
           sx={{
-            px: 2.75,
-            py: 1.5,
-            borderTop: `1px solid ${tokens.border.subtle}`,
-            display: 'flex',
-            justifyContent: 'flex-end',
+            textTransform: 'none',
+            fontWeight: 700,
+            bgcolor: accent,
+            color: tokens.onAccent.shop,
+            borderRadius: `${tokens.radius.lg}px`,
+            px: 2.25,
+            '&:hover': { bgcolor: accent, filter: 'brightness(1.05)' },
           }}
         >
-          <Button
-            onClick={onClose}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              bgcolor: accent,
-              color: tokens.onAccent.shop,
-              borderRadius: `${tokens.radius.lg}px`,
-              px: 2.25,
-              '&:hover': { bgcolor: accent, filter: 'brightness(1.05)' },
-            }}
-          >
-            Done
-          </Button>
-        </Box>
-      )}
+          Done
+        </Button>
+      </Box>
     </Box>
   );
 }
 
 /**
  * Share a store: invite by email + a shared-with list (accepted / pending) with
- * remove. Bottom sheet on mobile, centered dialog on desktop. The page owns the
+ * remove. Full-screen frame on mobile, centered 540 dialog on desktop (artboard
+ * §3.7) — consistent with the import/item-editor dialogs. The page owns the
  * invite/remove handlers and the sharing store — this component is pure UI.
  */
 export function ShareStoreDialog(props: ShareStoreDialogProps) {
   const { open, onClose } = props;
-  const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const emailRef = useRef<HTMLInputElement | null>(null);
 
   // Auto-focus the email field when the surface opens (parity with old dialog).
@@ -294,48 +255,30 @@ export function ShareStoreDialog(props: ShareStoreDialogProps) {
     return () => clearTimeout(t);
   }, [open]);
 
-  const body = <Body {...props} emailRef={emailRef} sheet={!isDesktop} />;
-
-  if (isDesktop) {
-    return (
-      <Dialog
-        open={open}
-        onClose={onClose}
-        maxWidth="sm"
-        slotProps={{
-          paper: {
-            sx: {
-              width: { sm: 540 },
-              maxWidth: { sm: 540 },
-              bgcolor: tokens.surface.raised,
-              border: `1px solid ${tokens.border.strong}`,
-              borderRadius: `${tokens.radius.xxxl}px`,
-              boxShadow: tokens.shadow.modal,
-            },
-          },
-        }}
-      >
-        {body}
-      </Dialog>
-    );
-  }
   return (
-    <Drawer
-      anchor="bottom"
+    <Dialog
       open={open}
       onClose={onClose}
+      maxWidth="sm"
+      fullWidth
       slotProps={{
         paper: {
           sx: {
-            bgcolor: tokens.surface.sheet,
-            borderTopLeftRadius: tokens.radius.sheet,
-            borderTopRightRadius: tokens.radius.sheet,
-            maxHeight: '92%',
+            // Mobile: full-screen frame (artboard §3.7); desktop: 540 dialog.
+            margin: { xs: 0, sm: 'auto' },
+            width: { xs: '100%', sm: 540 },
+            maxWidth: { xs: '100%', sm: 540 },
+            height: { xs: '100%', sm: 'auto' },
+            maxHeight: { xs: '100%', sm: '85vh' },
+            bgcolor: tokens.surface.raised,
+            border: `1px solid ${tokens.border.strong}`,
+            borderRadius: `${tokens.radius.xxxl}px`,
+            boxShadow: tokens.shadow.modal,
           },
         },
       }}
     >
-      {body}
-    </Drawer>
+      <Body {...props} emailRef={emailRef} />
+    </Dialog>
   );
 }
