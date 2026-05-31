@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logError } from '@/lib/errors';
 import { listSkills, getSkill } from '@/lib/mcp/skills/registry';
-import { toolText, type ToolExtra, type ToolResult, type ToolServer } from '@/lib/mcp/tool-helpers';
+import { toolText, type ToolResult, type ToolServer } from '@/lib/mcp/tool-helpers';
 
 // --- input shapes (zod raw shapes for registerTool inputSchema) ---
 
@@ -18,7 +18,7 @@ export const skillsGetInput = {
 // markdown, not JSON) so a missing/unreadable SKILL.md degrades to a clean
 // isError result instead of throwing into mcp-handler.
 
-export async function skillsListHandler(_args: unknown, _extra: ToolExtra): Promise<ToolResult> {
+export async function skillsListHandler(): Promise<ToolResult> {
   try {
     return toolText(JSON.stringify(listSkills()));
   } catch (error) {
@@ -27,10 +27,7 @@ export async function skillsListHandler(_args: unknown, _extra: ToolExtra): Prom
   }
 }
 
-export async function skillsGetHandler(
-  args: { name: string },
-  _extra: ToolExtra
-): Promise<ToolResult> {
+export async function skillsGetHandler(args: { name: string }): Promise<ToolResult> {
   try {
     const skill = getSkill(args.name);
     if (!skill) {

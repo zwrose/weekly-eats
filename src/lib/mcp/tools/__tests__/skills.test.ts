@@ -12,8 +12,6 @@ vi.mock('@/lib/mcp/skills/registry', () => ({
 const { skillsListInput, skillsGetInput, skillsListHandler, skillsGetHandler, registerSkillTools } =
   await import('@/lib/mcp/tools/skills');
 
-const extra = { authInfo: { extra: { userId: 'u1', isAdmin: false } } };
-
 beforeEach(() => {
   listSkillsMock.mockReset();
   getSkillMock.mockReset();
@@ -24,7 +22,7 @@ describe('skills_list tool', () => {
     listSkillsMock.mockReturnValueOnce([
       { name: 'recipe-import', description: 'Import a recipe.' },
     ]);
-    const res = await skillsListHandler({}, extra);
+    const res = await skillsListHandler();
     expect(res.isError).toBeUndefined();
     expect(JSON.parse(res.content[0].text)).toEqual([
       { name: 'recipe-import', description: 'Import a recipe.' },
@@ -35,7 +33,7 @@ describe('skills_list tool', () => {
     listSkillsMock.mockImplementationOnce(() => {
       throw new Error('ENOENT');
     });
-    const res = await skillsListHandler({}, extra);
+    const res = await skillsListHandler();
     expect(res.isError).toBe(true);
   });
 });
@@ -47,7 +45,7 @@ describe('skills_get tool', () => {
       description: 'Import a recipe.',
       content: '# Recipe Import\nsteps...',
     });
-    const res = await skillsGetHandler({ name: 'recipe-import' }, extra);
+    const res = await skillsGetHandler({ name: 'recipe-import' });
     expect(res.isError).toBeUndefined();
     expect(res.content[0].text).toBe('# Recipe Import\nsteps...');
     expect(getSkillMock).toHaveBeenCalledWith('recipe-import');
@@ -55,14 +53,14 @@ describe('skills_get tool', () => {
 
   it('returns an isError result pointing at skills_list for an unknown skill', async () => {
     getSkillMock.mockReturnValueOnce(null);
-    const res = await skillsGetHandler({ name: 'nope' }, extra);
+    const res = await skillsGetHandler({ name: 'nope' });
     expect(res.isError).toBe(true);
     expect(res.content[0].text).toContain('skills_list');
   });
 
   it('truncates an over-long name in the unknown-skill message (does not echo unbounded input)', async () => {
     getSkillMock.mockReturnValueOnce(null);
-    const res = await skillsGetHandler({ name: 'x'.repeat(500) }, extra);
+    const res = await skillsGetHandler({ name: 'x'.repeat(500) });
     expect(res.isError).toBe(true);
     expect(res.content[0].text.length).toBeLessThan(160);
   });
@@ -71,7 +69,7 @@ describe('skills_get tool', () => {
     getSkillMock.mockImplementationOnce(() => {
       throw new Error('ENOENT');
     });
-    const res = await skillsGetHandler({ name: 'recipe-import' }, extra);
+    const res = await skillsGetHandler({ name: 'recipe-import' });
     expect(res.isError).toBe(true);
   });
 });
