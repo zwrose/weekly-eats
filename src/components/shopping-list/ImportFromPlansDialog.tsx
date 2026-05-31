@@ -62,8 +62,12 @@ export function ImportFromPlansDialog({
       slotProps={{
         paper: {
           sx: {
-            width: { sm: 540 },
-            maxWidth: { sm: 540 },
+            // Mobile: full-screen frame (artboard §3.7); desktop: 540 dialog.
+            margin: { xs: 0, sm: 'auto' },
+            width: { xs: '100%', sm: 540 },
+            maxWidth: { xs: '100%', sm: 540 },
+            height: { xs: '100%', sm: 'auto' },
+            maxHeight: { xs: '100%', sm: '85vh' },
             bgcolor: tokens.surface.raised,
             border: `1px solid ${tokens.border.strong}`,
             borderRadius: `${tokens.radius.xxxl}px`,
@@ -72,7 +76,7 @@ export function ImportFromPlansDialog({
         },
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <Box
           sx={{ px: 2.75, pt: 2.25, pb: 1.75, borderBottom: `1px solid ${tokens.border.subtle}` }}
         >
@@ -87,7 +91,16 @@ export function ImportFromPlansDialog({
           </Box>
         </Box>
 
-        <Box sx={{ px: 2.75, py: 2.25, overflowY: 'auto', maxHeight: '60vh' }}>
+        <Box
+          sx={{
+            px: 2.75,
+            py: 2.25,
+            overflowY: 'auto',
+            flex: { xs: 1, sm: '0 1 auto' },
+            minHeight: 0,
+            maxHeight: { sm: '60vh' },
+          }}
+        >
           {plans.length === 0 ? (
             <Box
               sx={{
