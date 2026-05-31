@@ -17,15 +17,17 @@ vi.mock('@/lib/services/recipes', () => ({
 const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 const { registerFoodItemTools } = await import('@/lib/mcp/tools/food-items');
 const { registerRecipeTools } = await import('@/lib/mcp/tools/recipes');
+const { registerSkillTools } = await import('@/lib/mcp/tools/skills');
 
 describe('tool registration', () => {
-  it('registers all Phase-1 tools on a real McpServer without throwing', () => {
+  it('registers all tools on a real McpServer without throwing', () => {
     const server = new McpServer({ name: 'weekly-eats-test', version: '0.0.0' });
     expect(() => {
       // McpServer.registerTool is generic over the zod input shape, so it is
       // not structurally identical to our minimal ToolServer (Task 11, Step 9).
       registerFoodItemTools(server as never);
       registerRecipeTools(server as never);
+      registerSkillTools(server as never);
     }).not.toThrow();
   });
 });

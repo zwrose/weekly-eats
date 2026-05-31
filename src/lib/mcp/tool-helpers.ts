@@ -41,7 +41,7 @@ export function getAuthContext(extra: ToolExtra): AuthContext {
   return { userId, isAdmin };
 }
 
-function toolText(text: string, isError?: true): ToolResult {
+export function toolText(text: string, isError?: true): ToolResult {
   return isError
     ? { isError, content: [{ type: 'text', text }] }
     : { content: [{ type: 'text', text }] };
