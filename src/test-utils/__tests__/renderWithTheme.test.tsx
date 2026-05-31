@@ -10,8 +10,13 @@ function Probe() {
 }
 
 describe('renderWithTheme', () => {
-  it('binds the shop section accent to palette.primary', () => {
+  it('binds the shop section accent to palette.primary by default', () => {
     renderWithTheme(<Probe />);
     expect(screen.getByTestId('primary')).toHaveTextContent(tokens.section.shop);
+  });
+
+  it('binds the pantry section accent when section="pantry"', () => {
+    renderWithTheme(<Probe />, { section: 'pantry' });
+    expect(screen.getByTestId('primary')).toHaveTextContent(tokens.section.pantry);
   });
 });

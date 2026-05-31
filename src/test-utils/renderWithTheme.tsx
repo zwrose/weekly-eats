@@ -1,33 +1,44 @@
 import React from 'react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider, createTheme, type Theme } from '@mui/material/styles';
 import { darkTheme } from '@/lib/theme';
 import { tokens } from '@/lib/design-tokens';
+import type { SectionKey } from '@/lib/nav-sections';
 
-/** Shop-section theme: palette.primary bound to the shop accent, mirroring SectionThemeProvider. */
-const shopTheme = createTheme(darkTheme, {
-  palette: {
-    primary: { main: tokens.section.shop, contrastText: tokens.surface.base },
-  },
-});
+/**
+ * Section themes: palette.primary bound to each section's accent, mirroring
+ * SectionThemeProvider. Add entries as chunks need them.
+ */
+const sectionThemes: Partial<Record<SectionKey, Theme>> = {
+  shop: createTheme(darkTheme, {
+    palette: { primary: { main: tokens.section.shop, contrastText: tokens.surface.base } },
+  }),
+  pantry: createTheme(darkTheme, {
+    palette: { primary: { main: tokens.section.pantry, contrastText: tokens.surface.base } },
+  }),
+};
 
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return <ThemeProvider theme={shopTheme}>{children}</ThemeProvider>;
+interface RenderWithThemeOptions extends Omit<RenderOptions, 'wrapper'> {
+  /** Section accent to bind to `palette.primary`. Defaults to `'shop'`. */
+  section?: SectionKey;
 }
 
 /**
- * RTL `render` wrapped in the app theme with palette.primary bound to the shop
- * section accent (`tokens.section.shop`). Mirrors how SectionThemeProvider
- * rebinds primary on `/shopping-lists`.
- *
- * Use for all Shopping Lists component tests so MUI color assertions are
- * consistent with the live surface.
+ * RTL `render` wrapped in the app theme with `palette.primary` bound to a
+ * section accent, mirroring how SectionThemeProvider rebinds primary per route.
+ * Defaults to the shop section (`tokens.section.shop`) so existing callers are
+ * unchanged; pass `{ section: 'pantry' }` for Pantry component tests.
  */
 export function renderWithTheme(
   ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
+  options?: RenderWithThemeOptions
 ): RenderResult {
-  return render(ui, { wrapper: Wrapper, ...options });
+  const { section = 'shop', ...renderOptions } = options ?? {};
+  const theme = sectionThemes[section] ?? sectionThemes.shop!;
+  function Wrapper({ children }: { children: React.ReactNode }) {
+    return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
+  }
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
 /**
