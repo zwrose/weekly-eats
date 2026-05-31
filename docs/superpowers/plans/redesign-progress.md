@@ -10,20 +10,20 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status  | Tag               | Plan doc                                                                 | PR test comment | Done       |
-| --- | ---------------------------- | ------- | ----------------- | ------------------------------------------------------------------------ | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done    | redesign-chunk-00 | §6 of spec                                                               | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | done    | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                     | PR #89 comment  | 2026-05-28 |
-| 2   | Nav chrome                   | done    | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                            | PR #89 comment  | 2026-05-28 |
-| 3   | Meal Plans                   | done    | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                                     | PR #89 comment  | 2026-05-29 |
-| 4   | Recipes                      | done    | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_                        | PR #89 comment  | 2026-05-30 |
-| 5   | Shopping Lists               | done    | redesign-chunk-05 | redesign-chunk-05-shopping-lists-plan.md _(gate #1 ✅ + review-plan ✅)_ | PR #89 comment  | 2026-05-30 |
-| 6   | Pantry                       | pending | —                 | —                                                                        | —               | —          |
-| 7   | Food Items                   | pending | —                 | —                                                                        | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending | —                 | —                                                                        | —               | —          |
-| 9   | Settings (placeholder)       | pending | —                 | —                                                                        | —               | —          |
-| 10  | Marketing / home             | pending | —                 | —                                                                        | —               | —          |
-| 11  | Cleanup                      | pending | —                 | —                                                                        | —               | —          |
+| #   | Chunk                        | Status      | Tag               | Plan doc                                                                 | PR test comment | Done       |
+| --- | ---------------------------- | ----------- | ----------------- | ------------------------------------------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                                               | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                     | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                            | PR #89 comment  | 2026-05-28 |
+| 3   | Meal Plans                   | done        | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                                     | PR #89 comment  | 2026-05-29 |
+| 4   | Recipes                      | done        | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_                        | PR #89 comment  | 2026-05-30 |
+| 5   | Shopping Lists               | done        | redesign-chunk-05 | redesign-chunk-05-shopping-lists-plan.md _(gate #1 ✅ + review-plan ✅)_ | PR #89 comment  | 2026-05-30 |
+| 6   | Pantry                       | in-progress | —                 | —                                                                        | —               | —          |
+| 7   | Food Items                   | pending     | —                 | —                                                                        | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                                        | —               | —          |
+| 9   | Settings (placeholder)       | pending     | —                 | —                                                                        | —               | —          |
+| 10  | Marketing / home             | pending     | —                 | —                                                                        | —               | —          |
+| 11  | Cleanup                      | pending     | —                 | —                                                                        | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
@@ -35,18 +35,20 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 
 ---
 
-## NEXT UP — ⚠️ FIRST: back-merge `main` (Next 16 + MUI 9), THEN Chunk 6: Pantry
+## NEXT UP — Chunk 6: Pantry (back-merge DONE)
 
-**State at handoff (2026-05-30):** **Chunk 5 = DONE, tagged `redesign-chunk-05` @ `e53e44b`, pushed; branch synced (0 ahead/behind `origin/claude-design-redesign`).** Dev server is **stopped** (I killed it for the final clean build; restart with `npm run dev` on `:3235` — `npm run clean` first since the last build left a prod `.next`). Only untracked vendored design-bundle files remain in the tree (expected).
+**State (2026-05-31):** **Chunk 5 = DONE, tagged `redesign-chunk-05` @ `e53e44b`.** Dev server runs on `:3235` (`npm run clean` first if the last op left a prod `.next`). Only untracked vendored design-bundle files in the tree (expected).
 
-**⚠️ BLOCKER before Chunk 6 — back-merge `main` is now a MAJOR-VERSION integration, not a routine step-11 merge.** `origin/main` is **3 commits ahead** and they are the dep-upgrade campaign landing: **Next.js 15→16** (#148, + ESLint flat-config migration), **MUI 7→9** (#149: material/icons/material-nextjs/x-date-pickers), and uuid-override removal (#150). The redesign branch is still on **Next 15 / MUI 7**. I **attempted `git merge origin/main` and aborted it** — it conflicts and, more importantly, dragging Next 16 + MUI 9 into the whole redesign branch needs a **deliberate, fully-revalidated integration**, not a rushed session-end merge. Do it as its own focused task **before** starting Chunk 6 (so Chunk 6 builds on the upgraded base and doesn't accrue more MUI-7→9 debt). Conflict shape when you re-run `git merge origin/main`:
+**✅ BLOCKER CLEARED (2026-05-31) — back-merge of `main` (Next 16 + MUI 9 + uuid) DONE.** The major-version integration is complete and pushed to PR #89. Two commits: `ac76217` (merge — raw conflict resolution) + `64364b6` (MUI v9 fallout fixes). Pre-merge tip safety-tagged `redesign-pre-mui9-merge` @ `bd8b212`. Resolution recap:
 
-- **modify/delete (keep DELETED — `git rm`):** `MealEditor.tsx`, `RecipeEditorDialog.tsx`, `RecipeIngredients.tsx`, `RecipeInstructionsView.tsx`, `RecipeSharingSection.tsx`, `RecipeTagsEditor.tsx`, `RecipeViewDialog.tsx` — the redesign deleted these old components (chunks 3/4); main only dep-tweaked them. Keep them gone.
-- **content conflicts (merge by hand):** `MealPlanBrowser.tsx` (~9 lines), `MealPlanCreateDialog.tsx` (~8), `src/components/food-emojis.ts` (~18). Small.
-- **Then the real work:** the whole redesign branch must build + pass under **MUI v9 + Next 16**. Expect MUI v9 breaking-change fallout across the new components (precedent: the MUI 7.3 Switch `slotProps.input` fix in chunk 3, the NextAuth-v5 fallout in chunk 4). Run `npm run check` and fix until GREEN; re-verify a couple of key surfaces live. MUI v9 + Next 16 migration notes: use context7 / official upgrade guides.
-- After GREEN: push, then proceed to Chunk 6.
+- **9 modify/delete → `git rm`** (kept the redesign's deletions; verified 0 importers of the old bare paths): Ingredient{Group,Input}, MealEditor, Recipe{EditorDialog,Ingredients,InstructionsView,SharingSection,TagsEditor,ViewDialog}.
+- **content merges:** `layout.tsx` (redesign fonts/Viewport + main's v16-appRouter; dropped unused `cookies`); `meal-plans/page.tsx` + `shopping-lists/page.tsx` (kept redesign's extracted dialog components, dropped main's MUI9 edits to the now-removed inline dialogs); `MealPlanBrowser.tsx` (kept redesign's Box+CountBadge year row); `MealPlanCreateDialog.tsx` (**genuine overlap** — kept redesign's token-styled DatePicker slot AND grafted main's `inputProps`→`slotProps.htmlInput`); `food-emojis.ts` (spurious rename match vs old EmojiPicker — kept the data-only module).
+- **MUI v9 source fallout (only 3 build-graph files; ~247 other tsc errors are test-only and ungated by `npm run check`):** `theme.ts` composite `containedPrimary` styleOverrides slot removed → re-expressed via component `variants` API; `PantryCheckDialog` `PaperProps`→`slotProps.paper`; `StoreHistoryDialog` `secondaryTypographyProps`→`slotProps.secondary`. The 10 `inputProps` the grep flagged need **no change** — they're on `InputBase`, which retains the prop in v9 (only TextField/OutlinedInput dropped it); `CachedAvatar` `imgProps` was already fixed by main's auto-merge.
+- **eslint.config.mjs:** ignore `docs/**` — Next 16's `eslint .` (replaces `next lint`) walks the vendored design `.jsx` artboards. Mirrors tsconfig's `exclude: ["docs"]`.
+- **`npm run check` GREEN** (lint 0 errors, full suite, build ✓). **Browser-verified** high-risk surfaces live on MUI 9 / Next 16 at 1440 + 430 (chrome-devtools-mcp): theme button color (measured `surface.base` text on accent), PantryCheck paper (measured 560/16/shadow), DatePicker (readOnly/inputMode), StoreEditor + emoji round-trip, MealPlanBrowser year rows, recipe detail, realtime LIVE — zero console errors.
+- **⚠️ Follow-up (not a merge regression, pre-existing):** the MealPlanCreateDialog DatePicker field's token styling never applies — its `sx` selector targets `.MuiOutlinedInput-root`, but the accessible-DOM field uses `.MuiPickersOutlinedInput-root` (MUI X v7+, redesign was on v8). Retarget the selector in a polish pass. Looks acceptable as-is.
 
-**THEN — Chunk 6: Pantry** (`src/app/pantry/*`). Per spec table: **lavender accent, trash icons, flat list.** Has artboards (check `docs/design/weekly-eats-redesign/project/` for the pantry artboard + HTML). Follow the per-chunk loop (spec §5) — and **this time do gate #2 by the new rigorous artboard-scrub method now written into spec §5 step 2** (measure with `evaluate_script`, element-by-element, MUI-gotcha checklist, drive every state). Review base = `redesign-chunk-05` (or the post-merge commit once main is back-merged). `SectionThemeProvider` already supports per-section accents (chunks 3–6).
+**NOW — Chunk 6: Pantry** (`src/app/pantry/*`). Per spec table: **lavender accent, trash icons, flat list.** Artboards: `docs/design/weekly-eats-redesign/project/artboards-pantry.jsx` + `Pantry.html`. Follow the per-chunk loop (spec §5) — and **do gate #2 by the rigorous artboard-scrub method in spec §5 step 2** (measure with `evaluate_script`, element-by-element, MUI-gotcha checklist incl. the bare-`borderRadius`×8 trap, drive every state). **Review base = the post-merge commit `64364b6`** (NOT `redesign-chunk-05` — that predates the Next16/MUI9 base). `SectionThemeProvider` already supports per-section accents (chunks 3–6).
 
 ---
 
