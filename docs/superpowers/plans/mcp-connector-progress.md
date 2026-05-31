@@ -52,10 +52,10 @@ login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, 
   - Tests: `src/app/mcp/connect/__tests__/page.test.tsx` (client-name render + nonce in form, generic-title
     fallback, expired-nonce friendly error short-circuits `getClient`); authorize route test updated for the
     new connect redirect + a new post-login-leg-no-session → `/mcp/connect` case.
-- **Mid-test gate still open:** confirm `zwrose@gmail.com` is **approved in `weekly-eats-develop`** (the
-  preview DB). If sign-in bounces back to Claude with `access_denied` instead of showing consent, that
-  account isn't approved there (created `pending` on first preview login).
+- **Mid-test gate RESOLVED (2026-05-31):** `zwrose@gmail.com` confirmed **approved in `weekly-eats-develop`**
+  (the preview DB) by the user — so the approval gate won't bounce the connect flow with `access_denied`.
 - **Next:** verify the new screen live in the preview (Chrome), then resume manual test plan Sections B–E.
+- **Pushed:** commit `d9d26f0` on `feat/mcp` (preview will redeploy).
 
 **Phase-2 state at this point (all pushed; HEAD `bd3dc20`, `feat/mcp` 0-behind / 84-ahead of main):**
 Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **Synced with main** (Next 16
