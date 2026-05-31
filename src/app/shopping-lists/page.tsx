@@ -8,7 +8,6 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Paper,
   Button,
   Dialog,
   DialogContent,
@@ -21,10 +20,8 @@ import {
   ListItem,
   ListItemText,
   Divider,
-  Autocomplete,
   Alert,
   Snackbar,
-  Chip,
 } from '@mui/material';
 import {
   DndContext,
@@ -88,7 +85,7 @@ import Pagination from '@/components/optimized/Pagination';
 import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
 import { ShoppingListView } from '@/components/shopping-list/Working/ShoppingListView';
 import { ShoppingItemRow } from '@/components/shopping-list/Working/ShoppingItemRow';
-import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
+import { getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
 import {
@@ -105,7 +102,6 @@ import {
 } from '../../lib/shopping-list-position-utils';
 import { CalendarMonth } from '@mui/icons-material';
 import { fetchPantryItems } from '../../lib/pantry-utils';
-import QuantityInput from '../../components/food-item-inputs/QuantityInput';
 import ItemEditorDialog, {
   type ItemEditorDraft,
   type ItemEditorMode,
@@ -116,6 +112,7 @@ import {
 } from '@/components/shopping-list/PantryCheck/PantryCheckDialog';
 import { StoreEditorDialog } from '@/components/shopping-list/StoreEditorDialog';
 import { ImportFromPlansDialog } from '@/components/shopping-list/ImportFromPlansDialog';
+import { UnitConflictDialog } from '@/components/shopping-list/UnitConflictDialog';
 
 interface FoodItem {
   _id: string;
@@ -1679,136 +1676,20 @@ function ShoppingListsPageContent() {
       />
 
       {/* Unit Conflict Resolution Dialog */}
-      <Dialog
+      <UnitConflictDialog
         open={unitConflictDialog.open}
-        onClose={() => {}} // Prevent closing - must resolve conflicts
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle showCloseButton={false}>
-          Resolve Unit Conflict ({currentConflictIndex + 1} of {unitConflicts.length})
-        </DialogTitle>
-        <DialogContent>
-          {unitConflicts.length > 0 && (
-            <>
-              <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                {unitConflicts[currentConflictIndex]?.foodItemName}
-              </Typography>
-
-              {unitConflicts[currentConflictIndex]?.isAutoConverted ? (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <Chip label="Auto-converted" size="small" color="success" variant="outlined" />
-                    <Typography variant="body2">
-                      {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
-                        <span key={idx}>
-                          {idx > 0 && ' + '}
-                          {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
-                        </span>
-                      ))}
-                      {' = '}
-                      {Math.round(
-                        (unitConflicts[currentConflictIndex]?.suggestedQuantity ?? 0) * 100
-                      ) / 100}{' '}
-                      {unitConflicts[currentConflictIndex]?.suggestedUnit
-                        ? getUnitForm(
-                            unitConflicts[currentConflictIndex]!.suggestedUnit!,
-                            unitConflicts[currentConflictIndex]!.suggestedQuantity!
-                          )
-                        : ''}
-                    </Typography>
-                  </Box>
-                </Alert>
-              ) : (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  This item has different units that can&apos;t be auto-converted. Choose the
-                  quantity and unit for your list.
-                </Alert>
-              )}
-
-              <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                <Typography variant="caption" color="text.secondary" gutterBottom>
-                  Unit entries to combine:
-                </Typography>
-                <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                  {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
-                    <Typography
-                      key={idx}
-                      component="li"
-                      variant="body1"
-                      sx={{ fontWeight: 'medium' }}
-                    >
-                      {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
-                    </Typography>
-                  ))}
-                </Box>
-              </Paper>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {unitConflicts[currentConflictIndex]?.isAutoConverted
-                  ? 'Review the suggested combined value:'
-                  : 'Set the quantity and unit for your shopping list:'}
-              </Typography>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 2,
-                  mb: 3,
-                  alignItems: 'flex-start',
-                }}
-              >
-                <QuantityInput
-                  label="Quantity"
-                  value={getCurrentConflictResolution().quantity}
-                  onChange={handleConflictQuantityChange}
-                  size="small"
-                  sx={{ width: 150 }}
-                />
-                <Autocomplete
-                  options={getUnitOptions()}
-                  value={
-                    getUnitOptions().find(
-                      (option) => option.value === getCurrentConflictResolution().unit
-                    ) ?? null
-                  }
-                  onChange={(_, value) => {
-                    if (value) {
-                      handleConflictUnitChange(value.value);
-                    }
-                  }}
-                  getOptionLabel={(option) =>
-                    getUnitForm(option.value, getCurrentConflictResolution().quantity)
-                  }
-                  isOptionEqualToValue={(option, value) => option.value === value.value}
-                  renderInput={(params) => <TextField {...params} label="Unit" size="small" />}
-                  sx={{ flex: 1 }}
-                />
-              </Box>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 2,
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Button onClick={handlePreviousConflict} disabled={currentConflictIndex === 0}>
-                  ← Previous
-                </Button>
-                <Button
-                  onClick={handleNextConflict}
-                  variant="contained"
-                  disabled={!isCurrentConflictResolved()}
-                >
-                  {currentConflictIndex < unitConflicts.length - 1 ? 'Next →' : 'Complete'}
-                </Button>
-              </Box>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        conflict={unitConflicts[currentConflictIndex] ?? null}
+        index={currentConflictIndex}
+        total={unitConflicts.length}
+        quantity={getCurrentConflictResolution().quantity}
+        unit={getCurrentConflictResolution().unit}
+        resolved={isCurrentConflictResolved()}
+        isLast={currentConflictIndex >= unitConflicts.length - 1}
+        onQuantityChange={handleConflictQuantityChange}
+        onUnitChange={handleConflictUnitChange}
+        onPrevious={handlePreviousConflict}
+        onNext={handleNextConflict}
+      />
 
       {/* Share Store Dialog */}
       <Dialog
