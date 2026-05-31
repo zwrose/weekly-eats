@@ -18,9 +18,11 @@ import {
   CircularProgress,
   InputAdornment,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { Add, Search } from '@mui/icons-material';
 import { DialogTitle } from '@/components/ui/DialogTitle';
-import { responsiveDialogStyle } from '@/lib/theme';
+import { tokens } from '@/lib/design-tokens';
 import { PurchaseHistoryRecord, ShoppingListItem } from '@/types/shopping-list';
 
 interface StoreHistoryDialogProps {
@@ -59,6 +61,9 @@ export default function StoreHistoryDialog({
   onAddItems,
   loading,
 }: StoreHistoryDialogProps) {
+  const theme = useTheme();
+  const accent = theme.palette.primary.main;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -116,12 +121,32 @@ export default function StoreHistoryDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth sx={responsiveDialogStyle}>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            bgcolor: tokens.surface.raised,
+            border: `1px solid ${tokens.border.strong}`,
+            borderRadius: `${tokens.radius.xxxl}px`,
+            boxShadow: tokens.shadow.modal,
+            // Mobile: full-screen sheet
+            margin: { xs: 0, sm: 'auto' },
+            width: { xs: '100%' },
+            height: { xs: '100%', sm: 'auto' },
+            maxHeight: { xs: '100%', sm: '90vh' },
+          },
+        },
+      }}
+    >
       <DialogTitle onClose={handleClose}>Purchase History</DialogTitle>
       <DialogContent sx={{ px: { xs: 1, sm: 3 }, pb: 2 }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+            <CircularProgress sx={{ color: accent }} />
           </Box>
         ) : historyItems.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -131,6 +156,7 @@ export default function StoreHistoryDialog({
           </Box>
         ) : (
           <>
+            {/* Search field with accent focus ring */}
             <TextField
               placeholder="Search history..."
               value={searchQuery}
@@ -141,12 +167,24 @@ export default function StoreHistoryDialog({
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search />
+                      <Search sx={{ color: tokens.text.secondary }} />
                     </InputAdornment>
                   ),
                 },
               }}
-              sx={{ mb: 1 }}
+              sx={{
+                mb: 1.5,
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: tokens.surface.elevated,
+                  borderRadius: `${tokens.radius.xl}px`,
+                  '& fieldset': { borderColor: tokens.border.strong },
+                  '&:hover fieldset': { borderColor: tokens.border.strong },
+                  '&.Mui-focused fieldset': {
+                    borderColor: accent,
+                    boxShadow: `0 0 0 3px ${alpha(accent, 0.14)}`,
+                  },
+                },
+              }}
             />
 
             {filteredItems.length === 0 ? (
@@ -165,9 +203,14 @@ export default function StoreHistoryDialog({
                       data-testid={`history-item-${item.foodItemId}`}
                       sx={{
                         opacity: isOnList ? 0.6 : 1,
-                        borderRadius: 1,
+                        borderRadius: `${tokens.radius.lg}px`,
                         mb: 0.5,
                         pr: 7,
+                        bgcolor: isSelected ? alpha(accent, 0.08) : 'transparent',
+                        border: isSelected
+                          ? `1px solid ${alpha(accent, 0.22)}`
+                          : '1px solid transparent',
+                        transition: 'background-color 0.15s, border-color 0.15s',
                       }}
                     >
                       <Checkbox
@@ -175,18 +218,33 @@ export default function StoreHistoryDialog({
                         checked={isSelected}
                         disabled={isOnList}
                         onChange={() => handleToggleSelect(item.foodItemId)}
-                        sx={{ mr: 1 }}
+                        sx={{
+                          mr: 1,
+                          color: tokens.border.strong,
+                          '&.Mui-checked': { color: accent },
+                        }}
                       />
                       <ListItemText
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body1">{item.name}</Typography>
                             {isOnList && (
-                              <Chip label="On list" size="small" color="info" variant="outlined" />
+                              <Chip
+                                label="On list"
+                                size="small"
+                                sx={{
+                                  bgcolor: alpha(accent, 0.12),
+                                  color: accent,
+                                  border: `1px solid ${alpha(accent, 0.25)}`,
+                                  fontWeight: 600,
+                                  fontSize: 11,
+                                }}
+                              />
                             )}
                           </Box>
                         }
-                        secondary={`${item.quantity} ${item.unit} \u00B7 ${formatRelativeDate(item.lastPurchasedAt)}`}
+                        secondary={`${item.quantity} ${item.unit} · ${formatRelativeDate(item.lastPurchasedAt)}`}
+                        secondaryTypographyProps={{ sx: { color: tokens.text.secondary } }}
                       />
                       <ListItemSecondaryAction>
                         <IconButton
@@ -195,6 +253,16 @@ export default function StoreHistoryDialog({
                           onClick={() => handleAddSingle(item)}
                           disabled={isOnList}
                           size="small"
+                          sx={{
+                            color: accent,
+                            border: `1px solid ${tokens.border.subtle}`,
+                            borderRadius: `${tokens.radius.md}px`,
+                            '&:hover': { bgcolor: alpha(accent, 0.1) },
+                            '&.Mui-disabled': {
+                              color: tokens.text.muted,
+                              borderColor: 'transparent',
+                            },
+                          }}
                         >
                           <Add />
                         </IconButton>
@@ -205,11 +273,28 @@ export default function StoreHistoryDialog({
               </List>
             )}
 
+            {/* Sticky "Add Selected" bar */}
             {selectedIds.size > 0 && (
               <Box
-                sx={{ position: 'sticky', bottom: 0, pt: 1, pb: 1, bgcolor: 'background.paper' }}
+                sx={{
+                  position: 'sticky',
+                  bottom: 0,
+                  pt: 1,
+                  pb: 1,
+                  bgcolor: tokens.surface.raised,
+                }}
               >
-                <Button variant="contained" fullWidth onClick={handleAddSelected}>
+                <Button
+                  fullWidth
+                  onClick={handleAddSelected}
+                  sx={{
+                    bgcolor: accent,
+                    color: tokens.onAccent.shop,
+                    borderRadius: `${tokens.radius.lg}px`,
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: accent, filter: 'brightness(1.05)' },
+                  }}
+                >
                   Add Selected ({selectedIds.size})
                 </Button>
               </Box>
