@@ -130,7 +130,6 @@ const RecipeViewDialog: React.FC<RecipeViewDialogProps> = ({
       onClose={onClose}
       maxWidth="lg"
       fullWidth
-      disableEscapeKeyDown={false}
       sx={responsiveDialogStyle}
     >
       <DialogTitle

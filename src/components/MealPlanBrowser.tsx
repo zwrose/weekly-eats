@@ -185,18 +185,21 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
               <Chip label={yearPlanCount} size="small" variant="outlined" sx={{ mr: 1 }} />
               {isYearExpanded ? <ExpandLess color="action" /> : <ExpandMore color="action" />}
             </Paper>
-
             {/* Year row — list item on desktop */}
             <ListItemButton
               onClick={() => handleYearClick(year)}
               sx={{ display: { xs: 'none', md: 'flex' }, minHeight: 40, py: 0.5 }}
             >
               <FolderOpen sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} />
-              <ListItemText primary={String(year)} primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemText
+                primary={String(year)}
+                slotProps={{
+                  primary: { sx: { fontWeight: 600 } },
+                }}
+              />
               <Chip label={yearPlanCount} size="small" variant="outlined" sx={{ mr: 1 }} />
               {isYearExpanded ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
-
             <Collapse in={isYearExpanded} timeout="auto" unmountOnExit>
               <Box sx={{ pl: { xs: 0, md: 0 } }}>
                 {byYear[year].map((item) => {

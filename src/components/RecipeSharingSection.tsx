@@ -120,7 +120,6 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
           </List>
         </Paper>
       )}
-
       {/* Share Recipe Data Dialog */}
       <Dialog
         open={shareDialogOpen}
@@ -128,8 +127,10 @@ const RecipeSharingSection: React.FC<RecipeSharingSectionProps> = ({
         maxWidth="sm"
         fullWidth
         sx={responsiveDialogStyle}
-        TransitionProps={{
-          onEntered: () => shareEmailRef.current?.focus(),
+        slotProps={{
+          transition: {
+            onEntered: () => shareEmailRef.current?.focus(),
+          },
         }}
       >
         <DialogTitle onClose={onShareDialogClose}>Share Recipe Data</DialogTitle>

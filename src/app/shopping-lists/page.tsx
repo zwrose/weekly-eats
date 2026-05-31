@@ -1833,7 +1833,9 @@ function ShoppingListsPageContent() {
         open={createStoreDialog.open}
         onClose={createStoreDialog.closeDialog}
         sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
+        slotProps={{
+          transition: { onEntered: () => storeNameRef.current?.focus() },
+        }}
       >
         <DialogTitle onClose={createStoreDialog.closeDialog}>Add Store</DialogTitle>
         <DialogContent>
@@ -1891,7 +1893,9 @@ function ShoppingListsPageContent() {
         open={editStoreDialog.open}
         onClose={editStoreDialog.closeDialog}
         sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
+        slotProps={{
+          transition: { onEntered: () => storeNameRef.current?.focus() },
+        }}
       >
         <DialogTitle onClose={editStoreDialog.closeDialog}>Edit Store</DialogTitle>
         <DialogContent>
@@ -2601,7 +2605,9 @@ function ShoppingListsPageContent() {
         maxWidth="sm"
         fullWidth
         sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
+        slotProps={{
+          transition: { onEntered: () => shareEmailRef.current?.focus() },
+        }}
       >
         <DialogTitle onClose={shareDialog.closeDialog}>
           Share &quot;{sharingStore?.name}&quot;

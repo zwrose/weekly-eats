@@ -67,7 +67,9 @@ const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
       maxWidth="lg"
       fullWidth
       sx={responsiveDialogStyle}
-      TransitionProps={{ onEntered: () => titleRef.current?.focus() }}
+      slotProps={{
+        transition: { onEntered: () => titleRef.current?.focus() },
+      }}
     >
       <DialogTitle onClose={onClose}>Create New Recipe</DialogTitle>
       <DialogContent>
