@@ -156,9 +156,12 @@ describe('recipes.apply — basic', () => {
     await recipes.apply(cfg, ctx);
 
     const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
-    const ingredientLists = doc.ingredients as Array<{ ingredients: Array<{ id: string }> }>;
+    const ingredientLists = doc.ingredients as Array<{ ingredients: Array<{ id: unknown }> }>;
     const firstIngredient = ingredientLists[0].ingredients[0];
-    expect(firstIngredient.id).toMatch(/placeholder/);
+    // Ingredient ids must be 24-char hex strings — matches RecipeIngredient.id (string)
+    // and survives ObjectId.createFromHexString in the recipe-detail fetch path.
+    expect(typeof firstIngredient.id).toBe('string');
+    expect(firstIngredient.id).toMatch(/^[0-9a-f]{24}$/);
   });
 
   it('uses food item IDs from foodItemsRef when provided', async () => {
@@ -172,8 +175,9 @@ describe('recipes.apply — basic', () => {
     const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
     const ingredientLists = doc.ingredients as Array<{ ingredients: Array<{ id: unknown }> }>;
     const firstIngredient = ingredientLists[0].ingredients[0];
-    // Should be one of the real ObjectId values
-    expect(firstIngredient.id).toBeInstanceOf(ObjectId);
+    // Real food item _ids, stringified — RecipeIngredient.id is a hex string, not an ObjectId.
+    expect(typeof firstIngredient.id).toBe('string');
+    expect(firstIngredient.id).toMatch(/^[0-9a-f]{24}$/);
   });
 
   it('produces a non-empty summary string', async () => {

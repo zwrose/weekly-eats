@@ -42,13 +42,20 @@ const documentation: BlockDocumentation = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const PLACEHOLDER_IDS = ['placeholder-food-1', 'placeholder-food-2', 'placeholder-food-3'];
+// Valid 24-char hex strings that point at no real food item — RecipeIngredient.id is a
+// hex string (see src/types/recipe.ts), and the recipe-detail fetch path runs every
+// ingredient id through ObjectId.createFromHexString, which throws on non-hex input.
+const PLACEHOLDER_IDS = [
+  '000000000000000000000001',
+  '000000000000000000000002',
+  '000000000000000000000003',
+];
 
 function buildIngredients(
   index: number,
-  foodItemValues: ObjectId[]
+  foodItemValues: string[]
 ): Array<{
-  ingredients: Array<{ type: 'foodItem'; id: ObjectId | string; quantity: number; unit: string }>;
+  ingredients: Array<{ type: 'foodItem'; id: string; quantity: number; unit: string }>;
 }> {
   const pool = foodItemValues.length > 0 ? foodItemValues : PLACEHOLDER_IDS;
   // Each recipe gets 1-3 ingredients, cycled from the pool
@@ -75,11 +82,12 @@ export const block: Block<Config, State> = {
   async apply(config, ctx) {
     const { userId } = ctx.resolve<{ userId: string }>('u');
 
-    // Resolve food item IDs if a reference is provided
-    let foodItemValues: ObjectId[] = [];
+    // Resolve food item IDs if a reference is provided. Stringify the ObjectIds —
+    // recipe ingredient ids are stored as hex strings (RecipeIngredient.id: string).
+    let foodItemValues: string[] = [];
     if (config.foodItemsRef) {
       const fiState = ctx.resolve<{ foodItemIds: Record<string, ObjectId> }>(config.foodItemsRef);
-      foodItemValues = Object.values(fiState.foodItemIds);
+      foodItemValues = Object.values(fiState.foodItemIds).map((oid) => oid.toString());
     }
 
     const tagFilter = seedTag(ctx);

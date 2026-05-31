@@ -142,6 +142,67 @@ export const createDatabaseIndexes = async () => {
         { name: 'manualTestLocks_expireAt_ttl', expireAfterSeconds: 0 }
       );
 
+    // --- MCP OAuth Authorization Server collections (Phase 2, spec §9) ---
+
+    // mcpClients — registered DCR clients; unique clientId; TTL reaps clients
+    // unused for 90 days (I6). touchClient refreshes lastUsedAt on every use, so
+    // active clients are never reaped. New registrations start with lastUsedAt=now.
+    const mcpClients = db.collection('mcpClients');
+    await mcpClients.createIndex({ clientId: 1 }, { name: 'mcpClients_clientId', unique: true });
+    await mcpClients.createIndex(
+      { lastUsedAt: 1 },
+      { name: 'mcpClients_lastUsedAt_ttl', expireAfterSeconds: 60 * 60 * 24 * 90 }
+    );
+
+    // mcpAuthCodes — single-use PKCE codes; lookup by hash; TTL on expiry.
+    const mcpAuthCodes = db.collection('mcpAuthCodes');
+    await mcpAuthCodes.createIndex(
+      { hashedCode: 1 },
+      { name: 'mcpAuthCodes_hashedCode', unique: true }
+    );
+    await mcpAuthCodes.createIndex(
+      { expiresAt: 1 },
+      { name: 'mcpAuthCodes_expiry_ttl', expireAfterSeconds: 0 }
+    );
+
+    // mcpTokens — access + refresh; lookup by hash; chain ops by grantId; TTL on expiry.
+    const mcpTokens = db.collection('mcpTokens');
+    await mcpTokens.createIndex(
+      { hashedToken: 1 },
+      { name: 'mcpTokens_hashedToken', unique: true }
+    );
+    await mcpTokens.createIndex({ grantId: 1 }, { name: 'mcpTokens_grantId' });
+    await mcpTokens.createIndex(
+      { expiresAt: 1 },
+      { name: 'mcpTokens_expiry_ttl', expireAfterSeconds: 0 }
+    );
+
+    // mcpAuthStates — in-flight /authorize nonces; lookup by hash; TTL on expiry.
+    const mcpAuthStates = db.collection('mcpAuthStates');
+    await mcpAuthStates.createIndex(
+      { hashedState: 1 },
+      { name: 'mcpAuthStates_hashedState', unique: true }
+    );
+    await mcpAuthStates.createIndex(
+      { expiresAt: 1 },
+      { name: 'mcpAuthStates_expiry_ttl', expireAfterSeconds: 0 }
+    );
+
+    // mcpConsents — one row per (userId, clientId); exact-match consent skip (CS1).
+    const mcpConsents = db.collection('mcpConsents');
+    await mcpConsents.createIndex(
+      { userId: 1, clientId: 1 },
+      { name: 'mcpConsents_userId_clientId', unique: true }
+    );
+
+    // mcpRateLimits — DCR per-IP throttle (I6); lookup by key; TTL on expiry.
+    const mcpRateLimits = db.collection('mcpRateLimits');
+    await mcpRateLimits.createIndex({ key: 1 }, { name: 'mcpRateLimits_key', unique: true });
+    await mcpRateLimits.createIndex(
+      { expiresAt: 1 },
+      { name: 'mcpRateLimits_expiry_ttl', expireAfterSeconds: 0 }
+    );
+
     console.log('Database indexes created successfully');
   } catch (error) {
     console.error('Error creating database indexes:', error);
@@ -170,6 +231,12 @@ export const dropAllIndexes = async () => {
       'storeItemPositions',
       'shoppingLists',
       'purchaseHistory',
+      'mcpClients',
+      'mcpAuthCodes',
+      'mcpTokens',
+      'mcpAuthStates',
+      'mcpConsents',
+      'mcpRateLimits',
       'manualTestState',
       'manualTestLocks',
     ];

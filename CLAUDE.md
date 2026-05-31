@@ -101,7 +101,7 @@ src/
 - Admin routes check `user.isAdmin`, return 403 with `AUTH_ERRORS.FORBIDDEN`
 - Session user has typed `id`, `isAdmin`, `isApproved` properties — never use `as` casts
 - Auth uses JWT strategy; `isAdmin`/`isApproved` are cached in the token. Config is split: `src/lib/auth.config.ts` holds the edge-safe callbacks (session/redirect, trustHost), `src/lib/auth.ts` adds the MongoDB adapter + DB-backed jwt callback and exports `handlers`/`auth`/`signIn`/`signOut`.
-- Use error constants from `@/lib/errors` (never hardcode error strings)
+- Use error constants from `@/lib/errors` (never hardcode error strings); OAuth protocol wire codes are an RFC-literal exemption — they live in `MCP_OAUTH_ERRORS` in `@/lib/errors`
 - Log errors with `logError('ContextName', error)`
 - Validate ObjectIds with `ObjectId.isValid(id)` before querying
 - Always filter user-scoped data by `userId` from the session
@@ -143,9 +143,10 @@ and posts a checkbox test plan to the PR.
 
 ### Database
 
-- MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`
+- MongoDB collections: `mealPlans`, `mealPlanTemplates`, `foodItems`, `recipes`, `recipeUserData`, `pantry`, `users`, `stores`, `storeItemPositions`, `shoppingLists`, `purchaseHistory`, `mcpClients`, `mcpAuthCodes`, `mcpTokens`, `mcpAuthStates`, `mcpConsents`, `mcpRateLimits`
 - Access pattern: `const client = await getMongoClient(); const db = client.db();`
 - Indexes defined in `src/lib/database-indexes.ts`, applied via `npm run setup-db`
+- `MCP_ISSUER_URL` (optional) — overrides the request-derived issuer/resource origin for the OAuth AS; otherwise derived from proxy forwarding headers
 
 ### Code Style
 
