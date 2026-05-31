@@ -465,24 +465,26 @@ export default function ItemEditorDialog({
 
             {/* Mobile: delete near fields; Save lives in bottom actions. */}
             {mode === 'edit' && (
-              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+              <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 1.25 }}>
                 <Button
                   onClick={() => void onDelete?.()}
-                  startIcon={<Icon name="delete" size={18} />}
+                  startIcon={<Icon name="delete" size={16} />}
                   sx={{
                     width: '100%',
+                    height: 44,
                     bgcolor: tokens.state.dangerMuted,
                     border: `1px solid ${tokens.state.danger}55`,
                     color: tokens.state.danger,
                     borderRadius: `${tokens.radius.lg}px`,
                     fontWeight: 600,
+                    textTransform: 'none',
                     '&:hover': {
                       bgcolor: tokens.state.dangerMuted,
                       filter: 'brightness(1.08)',
                     },
                   }}
                 >
-                  Delete
+                  Remove from list
                 </Button>
               </Box>
             )}
@@ -514,20 +516,21 @@ export default function ItemEditorDialog({
               {mode === 'edit' && (
                 <Button
                   onClick={() => void onDelete?.()}
-                  startIcon={<Icon name="delete" size={18} />}
+                  startIcon={<Icon name="delete" size={16} />}
                   sx={{
-                    bgcolor: tokens.state.dangerMuted,
-                    border: `1px solid ${tokens.state.danger}55`,
+                    height: 36,
+                    bgcolor: 'transparent',
+                    border: `1px solid ${alpha(tokens.state.danger, 0.35)}`,
                     color: tokens.state.danger,
-                    borderRadius: `${tokens.radius.lg}px`,
+                    borderRadius: `${tokens.radius.md}px`,
                     fontWeight: 600,
+                    textTransform: 'none',
                     '&:hover': {
                       bgcolor: tokens.state.dangerMuted,
-                      filter: 'brightness(1.08)',
                     },
                   }}
                 >
-                  Delete
+                  Remove from list
                 </Button>
               )}
             </Box>
