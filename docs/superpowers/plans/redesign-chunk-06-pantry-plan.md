@@ -4,7 +4,7 @@
 
 **Goal:** Re-theme the Pantry surface (`src/app/pantry/*`) to the dark-first lavender vocab — flat list, redesigned Add + Remove dialogs — with **no feature/API/write-logic change**.
 
-**Architecture:** Slim `page.tsx` to orchestration (data fetch via `useServerPagination`, dialog state, handlers) and extract a presentational `PantryListView` (flat list + header + pagination + empty state + search slot, desktop table / mobile single-card). Reuse the shared `FoodItemAutocomplete` in a re-chromed Add dialog (gate-#1 decision). Extract a **reusable `ui/ConfirmDialog`** (desktop centered dialog / mobile bottom sheet, danger variant) that Pantry uses now and food-items/user-mgmt reuse in later chunks (gate-#1 decision). Accent comes free from `SectionThemeProvider` (the `/pantry` route already maps to `tokens.section.pantry` = `#c79bff`).
+**Architecture:** Slim `page.tsx` to orchestration (data fetch via `useServerPagination`, dialog state, handlers) and extract a presentational `PantryListView` (flat list + header + pagination + empty state + search slot, desktop table / mobile single-card). Reuse the shared `FoodItemAutocomplete` in a re-chromed Add dialog (gate-#1 decision). **Promote the existing `meal-plans/ConfirmDialog` to `ui/ConfirmDialog`** and add a mobile bottom-sheet (desktop unchanged), migrating its 7 callers — Pantry consumes it now and food-items/user-mgmt reuse it later (gate-#1 D2, revised after review-plan found the existing component). Accent comes free from `SectionThemeProvider` (the `/pantry` route already maps to `tokens.section.pantry` = `#c79bff`).
 
 **Tech Stack:** Next 16 / React 19 / MUI v9 (`sx`, `Drawer`, `Dialog`, breakpoints), TypeScript, Vitest + RTL.
 
@@ -17,7 +17,7 @@
 ## Gate #1 — artboard sign-off (DONE 2026-05-31)
 
 - **D1 — Add dialog:** **Keep the shared `FoodItemAutocomplete`** (MUI Autocomplete: floating label + popup listbox), restyle only the dialog chrome to the lavender vocab. Consistent with chunks 4 & 5. **Recorded deviation:** the artboard's always-inline flat results list ("↵" / "Already in pantry" / "Create X" rows) is delivered functionally by `FoodItemAutocomplete` (it already supports `excludedItemLabel="Already in pantry"`, `onCreateItem`, keyboard select) but rendered as a MUI popup, not the flat inline list.
-- **D2 — Remove confirm:** **Extract a reusable `ui/ConfirmDialog`** (desktop centered dialog / mobile bottom sheet with grab handle, `danger` variant) modeled on `FinishShopConfirm`. Pantry consumes it; food-items + user-mgmt reuse it later.
+- **D2 — Remove confirm (REVISED after review-plan):** the gate-#1 premise "no shared confirm primitive today" was wrong — `meal-plans/ConfirmDialog` already exists (7 call sites). **Promote it to `ui/ConfirmDialog` and add a mobile bottom-sheet** (desktop dialog unchanged); migrate all 7 callers; delete the old path. Pantry consumes it; food-items + user-mgmt reuse it later. This upgrades **all** existing confirms to a bottom sheet on mobile (recipe + meal-plan deletes, template confirms) — accepted trade-off for artboard fidelity + one canonical primitive; those surfaces are re-verified at gate #2. See Task 2.
 
 ---
 
@@ -50,27 +50,29 @@ Replace the MUI `Alert severity="info"` with a dark box: `bgcolor surface.raised
 ### Add dialog (`DesktopAdd` 460 / `MobileAdd` full-screen)
 
 - Desktop: `Dialog maxWidth` custom → paper `width 460`, `borderRadius '16px'`, `bgcolor surface.raised`, `border 1px border.strong`, `boxShadow tokens.shadow.modal`, `overflow hidden`. Mobile: `responsiveDialogStyle` → full-screen frame.
-- **Header:** `DialogTitle onClose` → `Add pantry item` (display 18/700) + close ghost-icon (`30×30`, `Icon name="close" size 14`). `borderBottom 1px border.subtle`.
+- **Header:** the shared `DialogTitle onClose` → `Add pantry item` (display 18/700). **Recorded deviation (D3):** the artboard draws a `30×30` ghost-icon close at `size 14`; use the shared `ui/DialogTitle`'s built-in close button as-is (consistent with every chunk 3–5 dialog) rather than forking `DialogTitle` for one artboard. Do NOT modify `DialogTitle.tsx`.
 - **Body** (`padding '20px 22px'`): eyebrow `Food item` (11/700, letterSpacing `0.14em`, uppercase, `text.secondary`, `mb 8`). Then the shared `FoodItemAutocomplete` (`allowRecipes={false}`, `excludeIds` = current page items, `excludedItemLabel="Already in pantry"`, `autoFocus`, `onChange`/`onFoodItemAdded`/`onCreateItem` as today). Keep its MUI floating-label input but ensure the focus ring reads accent (resolves via `palette.primary`).
 - **Footer:** `DialogActions primaryButtonIndex={1}` → `Cancel` (ghost) + `Add` (primary, `color onAccent.pantry`, disabled until `foodItemId`). `bgcolor surface.elevated`, `borderTop 1px border.subtle` (DialogActions already applies the redesign footer chrome — verify).
 
-### Remove confirm → `ui/ConfirmDialog` (`DesktopDelete` 440 / `MobileDelete` sheet)
+### Remove confirm → promoted `ui/ConfirmDialog` (shared; gains a mobile sheet)
 
-- **Desktop dialog:** paper `width 440`, `borderRadius '16px'`, `bgcolor surface.raised`, `border 1px border.strong`, `boxShadow tokens.shadow.modal`, `padding '22px 24px 20px'`. Title `Remove pantry item` (display 20/700, letterSpacing `-0.01em`); message 14 `text.secondary`, `mt 10`, lineHeight 1.5, item name bolded in `text.primary`. Footer right-aligned, `gap 8`, `mt 22`: `Cancel` (ghost) + `Remove` (danger: `bgcolor state.danger`, `color onDanger`).
-- **Mobile sheet** (`Drawer anchor="bottom"`): `bgcolor surface.sheet`, top corners `borderRadius '18px 18px 0 0'`, `boxShadow '0 -10px 30px rgba(0,0,0,0.4)'`, `padding '12px 20px 28px'`. Grab handle (`36×4`, `borderRadius '2px'`, `rgba(255,255,255,0.18)`, centered, `pb 10`). Title 18/700; message 13 `text.secondary` `mt 8`; buttons full-width row `gap 8` `mt 20` `height 44`: `Cancel` ghost + `Remove` danger.
+**This reuses the EXISTING `meal-plans/ConfirmDialog` (promoted to `ui/`) — not a new component (gate-#1 D2 revised, see below).** To avoid churning the 7 existing call sites' appearance, **keep the existing component's props (`title`, `body`, `confirmLabel`, `cancelLabel`, `confirmColor: 'error' | 'primary'`) and its current desktop dialog styling unchanged**; only **add** a responsive mobile presentation.
+
+- **Desktop dialog (unchanged from today):** centered `Dialog maxWidth="xs"`, paper `bgcolor surface.sheet`, `borderRadius '14px'` (`radius.xxl`), `border 1px border.strong`, `p 0.5`; title (display 18/700, `text.primary`); body 13 `text.secondary` `mt 1` lineHeight 1.55; footer Cancel (text, `text.primary`) + confirm (`variant="contained" color={confirmColor}`). Pantry passes `title="Remove pantry item"`, `body={<>…remove <b>{name}</b>…</>}`, `confirmLabel="Remove"`, `confirmColor="error"`. **Recorded deviation:** the shared dialog's established desktop vocab (sheet bg / radius 14 / MUI `error` button) is kept over the pantry artboard's exact desktop values (raised bg / radius 16 / salmon `#e87a8a`) — one consistent confirm across the app beats per-artboard divergence.
+- **Mobile sheet (NEW — added to the shared component):** below `sm`, render the same title/body/buttons inside a `Drawer anchor="bottom"` instead of `Dialog`: `bgcolor surface.sheet`, top corners `borderRadius '18px 18px 0 0'`, `boxShadow '0 -10px 30px rgba(0,0,0,0.4)'`, `padding '12px 20px 28px'`. Grab handle (`36×4`, `borderRadius '2px'`, `rgba(255,255,255,0.18)`, centered, `pb 10`). Buttons become a full-width row (`gap 8`, `mt 20`, `height 44`). Chosen via `useMediaQuery(theme.breakpoints.down('sm'))`. **This changes ALL 7 existing confirms (recipe + meal-plan deletes, template confirms) to a bottom sheet on mobile — re-verify those at gate #2.**
 
 ---
 
 ## File structure
 
-- **Create** `src/components/ui/ConfirmDialog.tsx` — reusable confirm (dialog/sheet, danger variant).
-- **Create** `src/components/ui/__tests__/ConfirmDialog.test.tsx`.
+- **Move** `src/components/meal-plans/ConfirmDialog.tsx` → `src/components/ui/ConfirmDialog.tsx` (`git mv`), keep its public API, **add** the responsive mobile-sheet presentation. **Export** from `src/components/ui/index.ts`.
+- **Move** `src/components/meal-plans/__tests__/ConfirmDialog.test.tsx` → `src/components/ui/__tests__/ConfirmDialog.test.tsx`; fix its import; add a mobile-sheet behavioral case.
+- **Migrate 5 importers** to `@/components/ui` (delete old path): `recipes/RecipeEditor.tsx`, `recipes/RecipeDetail.tsx`, `meal-plans/PlanDetail.tsx`, `meal-plans/MealEditorDialog.tsx`, `meal-plans/TemplateSettings.tsx`. After migration `git grep "meal-plans/ConfirmDialog"` and `"from './ConfirmDialog'"` must be empty.
 - **Create** `src/components/pantry/PantryListView.tsx` — presentational flat list (desktop table + mobile single-card), header, search slot, pagination slot, empty state.
 - **Create** `src/components/pantry/__tests__/PantryListView.test.tsx`.
-- **Modify** `src/lib/design-tokens.ts` — add `onAccent.pantry`.
-- **Modify** `src/app/pantry/page.tsx` — slim to orchestration; lavender accent; Snackbar errors; wire `PantryListView`, re-chromed Add dialog, `ConfirmDialog`.
+- **Modify** `src/lib/design-tokens.ts` — add `onAccent.pantry` (used by the page's Add buttons, NOT by ConfirmDialog).
+- **Modify** `src/app/pantry/page.tsx` — slim to orchestration; lavender accent; Snackbar errors; wire `PantryListView`, re-chromed Add dialog, shared `ConfirmDialog`.
 - **Modify** `src/app/pantry/__tests__/page.test.tsx` — update to new structure (title "Pantry", flat list, ConfirmDialog).
-- **Export** `ConfirmDialog` from `src/components/ui/index.ts`.
 
 ---
 
@@ -78,33 +80,36 @@ Replace the MUI `Alert severity="info"` with a dark box: `bgcolor surface.raised
 
 ### Task 1: Add `onAccent.pantry` token
 
-**Files:** Modify `src/lib/design-tokens.ts`; Test `src/lib/__tests__/` (existing token test if present).
+**Files:** Modify `src/lib/design-tokens.ts`; Modify `src/lib/__tests__/design-tokens.test.ts`.
 
-- [ ] **Step 1:** In `design-tokens.ts`, change `onAccent: { shop: '#0c1a13' }` → `onAccent: { shop: '#0c1a13', pantry: '#1a0f24' }`.
-- [ ] **Step 2:** Typecheck passes (consumers reference `tokens.onAccent.pantry` in later tasks). Commit: `feat(pantry): add onAccent.pantry token`.
+- [ ] **Step 1 (test first):** In `design-tokens.test.ts`, add `expect(tokens.onAccent.pantry).toBe('#1a0f24')` to the existing on-accent `describe` block (next to the `onAccent.shop` assertion at ~line 34). Run → fails (key absent).
+- [ ] **Step 2:** In `design-tokens.ts`, change `onAccent: { shop: '#0c1a13' }` → `onAccent: { shop: '#0c1a13', pantry: '#1a0f24' }`. Run → passes.
+- [ ] **Step 3:** Commit: `feat(pantry): add onAccent.pantry token`.
 
-### Task 2: Reusable `ui/ConfirmDialog`
+### Task 2: Promote `ConfirmDialog` to `ui/` + add a mobile sheet + migrate callers
 
-**Files:** Create `src/components/ui/ConfirmDialog.tsx` + `__tests__/ConfirmDialog.test.tsx`; Modify `src/components/ui/index.ts`.
+**Gate-#1 D2 REVISED:** a `ConfirmDialog` already exists at `src/components/meal-plans/ConfirmDialog.tsx` (7 call sites: `recipes/RecipeEditor` ×2, `recipes/RecipeDetail`, `meal-plans/MealEditorDialog` ×3, `meal-plans/PlanDetail`, `meal-plans/TemplateSettings`). Do **not** create a new one — **promote it to `ui/` and add the responsive mobile sheet** (user decision: artboard-faithful, accept upgrading all callers' mobile presentation).
 
-Props:
+**Keep the existing public API verbatim** (do NOT rename `body`→`message`; renaming breaks 7 callers):
 
 ```ts
 export interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  message: React.ReactNode;
+  body: React.ReactNode;
   confirmLabel?: string; // default "Confirm"
   cancelLabel?: string; // default "Cancel"
-  danger?: boolean; // danger styling on confirm button
+  confirmColor?: 'error' | 'primary'; // default "error"
   onConfirm: () => void;
   onCancel: () => void;
 }
 ```
 
-- [ ] **Step 1 (test first):** assert it renders `title` + `message`; clicking confirm fires `onConfirm`, cancel fires `onCancel`; `danger` applies the danger confirm color. Render via `renderWithTheme` (so `palette.primary` is bound). Use `useMediaQuery(theme.breakpoints.down('sm'))` to choose `Drawer` (mobile) vs `Dialog` (desktop); test the desktop dialog path (jsdom default width is desktop).
-- [ ] **Step 2:** Implement. Desktop = `Dialog` (paper 440, `surface.raised`, `border.strong`, `borderRadius '16px'`, `tokens.shadow.modal`, padding `'22px 24px 20px'`). Mobile = `Drawer anchor="bottom"` (sheet vocab: `surface.sheet`, top `borderRadius '18px 18px 0 0'`, grab handle, padding `'12px 20px 28px'`, full-width buttons h44). Shared `ConfirmBody` renders title (display font) + message + Cancel (ghost) + confirm (danger → `bgcolor state.danger`/`color onDanger`; else primary → `color onAccent.pantry`). Mirror `FinishShopConfirm` structure.
-- [ ] **Step 3:** Export from `ui/index.ts`. Run the test → pass. Commit: `feat(ui): reusable ConfirmDialog (dialog/sheet, danger variant)`.
+- [ ] **Step 1 (move):** `git mv src/components/meal-plans/ConfirmDialog.tsx src/components/ui/ConfirmDialog.tsx`; `git mv src/components/meal-plans/__tests__/ConfirmDialog.test.tsx src/components/ui/__tests__/ConfirmDialog.test.tsx`; fix the test's relative import (`../ConfirmDialog`). Add `export { ConfirmDialog } from './ConfirmDialog';` (and re-export `ConfirmDialogProps`) to `src/components/ui/index.ts`.
+- [ ] **Step 2 (migrate callers):** repoint all 5 source importers to `import { ConfirmDialog } from '@/components/ui';` — `recipes/RecipeEditor.tsx`, `recipes/RecipeDetail.tsx`, `meal-plans/PlanDetail.tsx`, `meal-plans/MealEditorDialog.tsx`, `meal-plans/TemplateSettings.tsx`. Verify `git grep -n "meal-plans/ConfirmDialog\|from './ConfirmDialog'"` returns nothing.
+- [ ] **Step 3 (test first — sheet variant):** add a case to the moved test: when rendered below `sm` (set `matchMedia` to match `down('sm')`, per the project's matchMedia mock pattern) it renders a `presentation`/`dialog` Drawer with the same title/body/buttons and confirm still fires `onConfirm`. Keep the existing desktop assertions. Render via `renderWithTheme`. **Do not assert sx colors** (jsdom limitation) — assert structure/behavior.
+- [ ] **Step 4 (implement sheet):** extract a shared `ConfirmBody` (title + body + Cancel + `<Button variant="contained" color={confirmColor}>{confirmLabel}</Button>`). Keep the existing **desktop `Dialog`** exactly as-is. Add: `const isMobile = useMediaQuery(theme.breakpoints.down('sm'))`; when `isMobile`, render `ConfirmBody` inside a `Drawer anchor="bottom"` (sheet vocab per §3 Remove confirm: `surface.sheet`, top `borderRadius '18px 18px 0 0'`, grab handle, `padding '12px 20px 28px'`, full-width h44 buttons) instead of `Dialog`. Mirror `FinishShopConfirm`'s dialog/sheet split. **No `onAccent.pantry` here** — the confirm button resolves color via `confirmColor`/theme (section-agnostic).
+- [ ] **Step 5:** Run the moved test + a quick `npm test` of the 7 callers' suites (recipes, meal-plans) → green. Commit: `refactor(ui): promote ConfirmDialog to ui/ + mobile sheet; migrate callers`.
 
 ### Task 3: `PantryListView`
 
@@ -130,7 +135,7 @@ export interface PantryListViewProps {
 
 (Page maps `pantryItems` → `{ _id, name: item.foodItem.pluralName }`.)
 
-- [ ] **Step 1 (test first):** renders each item name; clicking a row's delete button fires `onDeleteItem(id)`; header shows `Pantry` + `{total} items`; empty list shows `emptyMessage`. Use `renderWithTheme` bound to the pantry accent (extend `renderWithTheme` to accept a section, or wrap in `SectionThemeProvider` — match how chunk-5 tests bound the shop accent).
+- [ ] **Step 1 (test first):** renders each item name; clicking a row's delete button fires `onDeleteItem(id)`; header shows `Pantry` + `{total} items`; empty list shows `emptyMessage`. **Test infra — pinned approach:** extend `src/test-utils/renderWithTheme.tsx` with an optional `section?: SectionKey` option **defaulting to `'shop'`** (so every existing caller — FinishShopConfirm, StoreListView, EmojiPicker tests — stays unchanged), and add a `pantryTheme` constant alongside `shopTheme` built from `tokens.section.pantry`. Pass `{ section: 'pantry' }` here. Add a case to `src/test-utils/__tests__/renderWithTheme.test.tsx` asserting `renderWithTheme(<Probe/>, { section: 'pantry' })` resolves `palette.primary.main` to `tokens.section.pantry`. Do NOT wrap in a bare `SectionThemeProvider` (it depends on `usePathname`, which jsdom doesn't drive).
 - [ ] **Step 2:** Implement header (title + accent count subline + `+ Add` primary button), desktop table card (grid `1fr 80px`, eyebrow header, rows with bordered-ghost danger delete `Icon name="delete"`), mobile single card (rows with borderless dim delete), `{search}` slot above the card, `{pagination}` slot below. Exact values per §3. **Use `` `${px}px` `` string form for all `borderRadius`.**
 - [ ] **Step 3:** Test green. Commit: `feat(pantry): PantryListView flat list (desktop table + mobile card)`.
 
@@ -145,7 +150,7 @@ export interface PantryListViewProps {
 
 **Files:** Modify `src/app/pantry/page.tsx`.
 
-- [ ] **Step 1:** Replace the inline delete `Dialog` with `<ConfirmDialog open={deleteConfirmDialog.open} title="Remove pantry item" message={<>Are you sure you want to remove <b>{name}</b> from your pantry?</>} confirmLabel="Remove" danger onConfirm={handleDeleteItem} onCancel={deleteConfirmDialog.cancel} />`. Keep `useConfirmDialog` + `handleDeleteItem` unchanged.
+- [ ] **Step 1:** Replace the inline delete `Dialog` with the promoted shared component — using its existing API (`body`, `confirmColor`): `<ConfirmDialog open={deleteConfirmDialog.open} title="Remove pantry item" body={<>Are you sure you want to remove <b>{name}</b> from your pantry?</>} confirmLabel="Remove" confirmColor="error" onConfirm={handleDeleteItem} onCancel={deleteConfirmDialog.cancel} />` (import from `@/components/ui`). Keep `useConfirmDialog` + `handleDeleteItem` unchanged.
 - [ ] **Step 2:** Commit folded into Task 6.
 
 ### Task 6: Slim `page.tsx` + lavender accent + Snackbar
@@ -154,7 +159,7 @@ export interface PantryListViewProps {
 
 - [ ] **Step 1:** Remove the `Kitchen` icon and all `#9c27b0`/`#fff` hex. Header → `PantryListView` (pass items/total/handlers + search slot using the existing `SearchBar` neutralized to the redesign box per §3 + pagination slot + empty box). Title becomes "Pantry" (the view owns it). Remove the MUI `Table`/`Paper`/`Alert` blocks (moved into `PantryListView`).
 - [ ] **Step 2:** Replace both `alert('Failed…')` calls with a `Snackbar` (mirror `shopping-lists/page.tsx` `showSnackbar`/`handleCloseSnackbar`/state).
-- [ ] **Step 3:** Update `page.test.tsx`: query "Pantry" (not "Pantry Items (N)"), flat-list rows, ConfirmDialog title "Remove pantry item". Keep coverage of: renders items, opens Add dialog, opens Remove confirm, delete calls API, empty state, search. Preserve the `food-item-input.behavior.test.tsx` + `loading.test.tsx` (adjust only if structure forces it).
+- [ ] **Step 3:** Update `page.test.tsx`: query "Pantry" (not "Pantry Items (N)"), flat-list rows, ConfirmDialog title "Remove pantry item". **Specifically replace the existing `shows item count in header` assertion (`page.test.tsx:280`, `getByText(/pantry items \(2\)/i)`)** — it breaks deterministically when the title becomes "Pantry" + the count moves to the accent subline; split into a title query (`"Pantry"`) and a count-subline query (`"2"` within the header). Keep coverage of: renders items, opens Add dialog, opens Remove confirm, delete calls API, empty state, search. Preserve the `food-item-input.behavior.test.tsx` + `loading.test.tsx` (adjust only if structure forces it).
 - [ ] **Step 4:** Commit: `feat(pantry): lavender flat-list redesign + Snackbar errors`.
 
 ### Task 7: Validate
@@ -166,7 +171,9 @@ export interface PantryListViewProps {
 
 ## Test list (explicit)
 
-- `ConfirmDialog.test.tsx`: renders title+message; confirm fires `onConfirm`; cancel fires `onCancel`; `danger` applies danger color on confirm.
+- `design-tokens.test.ts` (updated): add `expect(tokens.onAccent.pantry).toBe('#1a0f24')` to the existing on-accent `describe` block (the new key is unverified otherwise — jsdom-independent, pure value check).
+- `renderWithTheme.test.tsx` (updated): `renderWithTheme(<Probe/>, { section: 'pantry' })` resolves `palette.primary.main` to `tokens.section.pantry`; default (no section) still resolves shop.
+- `ui/__tests__/ConfirmDialog.test.tsx` (moved from `meal-plans/__tests__/`): keep existing desktop assertions (renders `title`+`body`; confirm fires `onConfirm`; cancel fires `onCancel`); **add** a mobile case (matchMedia → `down('sm')`) asserting the Drawer/sheet renders the same title/body and confirm still fires. **Do NOT assert sx colors** — MUI/Emotion styles aren't in jsdom `getComputedStyle`; assert structure/behavior only (as `FinishShopConfirm.test.tsx` does).
 - `PantryListView.test.tsx`: renders item names; delete button fires `onDeleteItem(id)`; header count = `total`; empty → `emptyMessage`.
 - `page.test.tsx` (updated): title "Pantry"; renders fetched items as flat rows; Add button opens Add dialog; delete icon opens ConfirmDialog ("Remove pantry item"); confirm calls `deletePantryItem`; Snackbar on failure; empty state copy (search vs none).
 - Preserve `food-item-input.behavior.test.tsx`, `loading.test.tsx`.
@@ -178,3 +185,5 @@ No API, schema, or auth change. `/api/pantry`, `createPantryItem`, `deletePantry
 ## Mobile / responsive
 
 Both breakpoints specified in §3. Desktop = table card; mobile = single list card + full-screen Add dialog + bottom-sheet Remove confirm. Verified at gate #2 (1440 + 430) by the rigorous artboard-scrub method (spec §5 step 2: `evaluate_script` measurement, element-by-element, MUI-gotcha checklist, drive every state).
+
+**Gate #2 regression scope (from the ConfirmDialog promotion):** because the shared `ConfirmDialog` now renders as a bottom sheet below `sm`, **re-verify the existing confirms on mobile (430)** that were centered dialogs before: recipe delete (`RecipeDetail`/`RecipeEditor`), meal-plan deletes (`MealEditorDialog`, `PlanDetail`), and template confirms (`TemplateSettings`). Desktop is unchanged for all of them. Run the recipes + meal-plans test suites (the 7 callers) before tagging.
