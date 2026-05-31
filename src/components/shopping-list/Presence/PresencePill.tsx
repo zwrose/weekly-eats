@@ -124,7 +124,6 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
           SYNC FAILED
         </Box>
         <ButtonBase
-          role="button"
           aria-label="Retry"
           onClick={onReconnect}
           sx={{

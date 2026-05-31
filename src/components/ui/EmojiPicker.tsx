@@ -150,7 +150,6 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
             return (
               <ButtonBase
                 key={`${i}-${em}`}
-                role="button"
                 aria-label={e.description}
                 onClick={() => {
                   onSelect(em);

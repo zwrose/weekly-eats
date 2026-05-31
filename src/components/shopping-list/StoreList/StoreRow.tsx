@@ -59,9 +59,6 @@ export function StoreRow({ store, onSelect, lastShop, isLast, actions }: StoreRo
           >
             {store.name}
           </Typography>
-          {store.shared && (
-            <Icon name="group" size={14} color={tokens.text.secondary} aria-label="Shared store" />
-          )}
         </Box>
         <Typography
           sx={{
