@@ -49,12 +49,14 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
       src={imageSrc}
       alt={alt}
       sx={sx}
-      imgProps={{
-        onError: () => {
-          // Set error state to prevent retrying on every render
-          setImageError(true);
+      slotProps={{
+        img: {
+          onError: () => {
+            // Set error state to prevent retrying on every render
+            setImageError(true);
+          },
+          loading: 'lazy',
         },
-        loading: 'lazy',
       }}
     />
   );

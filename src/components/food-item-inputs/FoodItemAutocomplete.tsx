@@ -323,7 +323,7 @@ export default function FoodItemAutocomplete({
         noOptionsText={
           selector.inputValue.trim() ? (
             <Box>
-              <Typography variant="body2" color="text.secondary" mb={1}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {allowRecipes ? 'No food items or recipes found' : 'No food items found'}
               </Typography>
               {!inputMatchesExcludedItem && (

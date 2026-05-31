@@ -168,9 +168,11 @@ const MealPlanCreateDialog: React.FC<MealPlanCreateDialogProps> = ({
                     fullWidth: true,
                     required: true,
                     error: !!validationError,
-                    inputProps: {
-                      readOnly: true,
-                      inputMode: 'none',
+                    slotProps: {
+                      htmlInput: {
+                        readOnly: true,
+                        inputMode: 'none',
+                      },
                     },
                     sx: {
                       '& .MuiOutlinedInput-root': {
