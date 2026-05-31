@@ -1,6 +1,7 @@
 import { createMcpHandler, withMcpAuth } from 'mcp-handler';
 import { registerFoodItemTools } from '@/lib/mcp/tools/food-items';
 import { registerRecipeTools } from '@/lib/mcp/tools/recipes';
+import { registerSkillTools } from '@/lib/mcp/tools/skills';
 import { verifyToken } from '@/lib/mcp/verify-token';
 
 // Vercel function timeout (Fluid Compute). Raise if tool calls need longer.
@@ -13,8 +14,14 @@ const handler = createMcpHandler(
     // (Task 11, Step 9). McpServer provides registerTool, so the cast is sound.
     registerFoodItemTools(server as never);
     registerRecipeTools(server as never);
+    registerSkillTools(server as never);
   },
-  {},
+  {
+    // Surfaced to clients on initialize. Tells the agent that beyond the data
+    // tools, this connector ships guided skills it should discover (Phase 3).
+    instructions:
+      'Weekly Eats connector. Beyond the data tools, this server provides guided skills — multi-step workflows for common tasks. Call skills_list to discover them (for example, importing a recipe from a URL or PDF), then call skills_get with the skill name to load its step-by-step instructions before starting that task.',
+  },
   { basePath: '/api' }
 );
 
