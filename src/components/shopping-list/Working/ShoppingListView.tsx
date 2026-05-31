@@ -141,6 +141,21 @@ export function ShoppingListView({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Desktop header ghost button (Import / Pantry) — btnGhost vocab from artboard §3.2.
+  const headerActionSx = {
+    height: 36,
+    px: 1.75,
+    gap: 0.75,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    borderRadius: `${tokens.radius.lg}px`,
+    border: `1px solid ${tokens.border.subtle}`,
+    color: tokens.text.primary,
+    fontFamily: 'var(--font-body)',
+    fontSize: 13.5,
+    fontWeight: 600,
+  } as const;
+
   const activeStore = stores.find((s) => s._id === activeStoreId) ?? null;
   const unchecked = items.filter((i) => !i.checked);
   const checked = items.filter((i) => i.checked);
@@ -219,6 +234,24 @@ export function ShoppingListView({
           activeUsers={activeUsers}
           onReconnect={onReconnect}
         />
+        {/* Desktop: Import + Pantry are dedicated header buttons (artboard §3.2); the overflow
+            menu carries the rest. Mobile: all actions live in the menu (no room for inline buttons). */}
+        {isDesktop && (
+          <>
+            <ButtonBase onClick={onImport} sx={headerActionSx}>
+              <Icon name="event_note" size={16} color={tokens.section.plans} />
+              Import from plans
+            </ButtonBase>
+            <ButtonBase
+              onClick={onPantryCheck}
+              disabled={loadingPantryCheck}
+              sx={{ ...headerActionSx, opacity: loadingPantryCheck ? 0.5 : 1 }}
+            >
+              <Icon name="kitchen" size={16} color={tokens.section.pantry} />
+              Pantry check
+            </ButtonBase>
+          </>
+        )}
         <StoreActionsMenu
           onImport={onImport}
           onPantryCheck={onPantryCheck}
@@ -229,6 +262,7 @@ export function ShoppingListView({
           canLeave={canLeave}
           onLeave={onLeave}
           loadingPantryCheck={loadingPantryCheck}
+          includeImportPantry={isMobile}
         />
       </Box>
 

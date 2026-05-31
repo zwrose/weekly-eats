@@ -22,6 +22,12 @@ export interface StoreActionsMenuProps {
   canLeave?: boolean;
   onLeave?: () => void;
   loadingPantryCheck?: boolean;
+  /**
+   * Whether Import-from-plans and Pantry-check appear inside this menu. On desktop
+   * they render as dedicated header buttons (per the artboard), so the overflow menu
+   * omits them; on mobile the menu carries all actions. Defaults to true.
+   */
+  includeImportPantry?: boolean;
 }
 
 export function StoreActionsMenu({
@@ -34,6 +40,7 @@ export function StoreActionsMenu({
   canLeave = false,
   onLeave,
   loadingPantryCheck = false,
+  includeImportPantry = true,
 }: StoreActionsMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -60,7 +67,7 @@ export function StoreActionsMenu({
         onClick={handleOpen}
         size="small"
       >
-        <Icon name="more_vert" size={20} />
+        <Icon name="more_horiz" size={20} />
       </IconButton>
 
       <Menu
@@ -70,23 +77,27 @@ export function StoreActionsMenu({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <MenuItem onClick={handle(onImport)}>
-          <ListItemIcon>
-            <Icon name="event_note" size={20} color={tokens.section.plans} />
-          </ListItemIcon>
-          <ListItemText>Add items from meal plans</ListItemText>
-        </MenuItem>
+        {includeImportPantry && (
+          <MenuItem onClick={handle(onImport)}>
+            <ListItemIcon>
+              <Icon name="event_note" size={20} color={tokens.section.plans} />
+            </ListItemIcon>
+            <ListItemText>Add items from meal plans</ListItemText>
+          </MenuItem>
+        )}
 
-        <MenuItem onClick={handle(onPantryCheck)} disabled={loadingPantryCheck}>
-          <ListItemIcon>
-            {loadingPantryCheck ? (
-              <CircularProgress size={16} />
-            ) : (
-              <Icon name="kitchen" size={20} color={tokens.section.pantry} />
-            )}
-          </ListItemIcon>
-          <ListItemText>Pantry check</ListItemText>
-        </MenuItem>
+        {includeImportPantry && (
+          <MenuItem onClick={handle(onPantryCheck)} disabled={loadingPantryCheck}>
+            <ListItemIcon>
+              {loadingPantryCheck ? (
+                <CircularProgress size={16} />
+              ) : (
+                <Icon name="kitchen" size={20} color={tokens.section.pantry} />
+              )}
+            </ListItemIcon>
+            <ListItemText>Pantry check</ListItemText>
+          </MenuItem>
+        )}
 
         <MenuItem onClick={handle(onHistory)}>
           <ListItemIcon>
