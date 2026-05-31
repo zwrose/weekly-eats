@@ -10,20 +10,20 @@ Living dashboard for the dark-first redesign migration. This is the **compaction
 
 ## Chunk status
 
-| #   | Chunk                        | Status      | Tag               | Plan doc                                                                 | PR test comment | Done       |
-| --- | ---------------------------- | ----------- | ----------------- | ------------------------------------------------------------------------ | --------------- | ---------- |
-| 0   | Test baseline + hardening    | done        | redesign-chunk-00 | §6 of spec                                                               | n/a (no UI)     | 2026-05-28 |
-| 1   | Foundation                   | done        | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                     | PR #89 comment  | 2026-05-28 |
-| 2   | Nav chrome                   | done        | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                            | PR #89 comment  | 2026-05-28 |
-| 3   | Meal Plans                   | done        | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                                     | PR #89 comment  | 2026-05-29 |
-| 4   | Recipes                      | done        | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_                        | PR #89 comment  | 2026-05-30 |
-| 5   | Shopping Lists               | done        | redesign-chunk-05 | redesign-chunk-05-shopping-lists-plan.md _(gate #1 ✅ + review-plan ✅)_ | PR #89 comment  | 2026-05-30 |
-| 6   | Pantry                       | in-progress | —                 | —                                                                        | —               | —          |
-| 7   | Food Items                   | pending     | —                 | —                                                                        | —               | —          |
-| 8   | User Mgmt & Pending Approval | pending     | —                 | —                                                                        | —               | —          |
-| 9   | Settings (placeholder)       | pending     | —                 | —                                                                        | —               | —          |
-| 10  | Marketing / home             | pending     | —                 | —                                                                        | —               | —          |
-| 11  | Cleanup                      | pending     | —                 | —                                                                        | —               | —          |
+| #   | Chunk                        | Status  | Tag               | Plan doc                                                                 | PR test comment | Done       |
+| --- | ---------------------------- | ------- | ----------------- | ------------------------------------------------------------------------ | --------------- | ---------- |
+| 0   | Test baseline + hardening    | done    | redesign-chunk-00 | §6 of spec                                                               | n/a (no UI)     | 2026-05-28 |
+| 1   | Foundation                   | done    | redesign-chunk-01 | redesign-chunk-01-foundation-plan.md                                     | PR #89 comment  | 2026-05-28 |
+| 2   | Nav chrome                   | done    | redesign-chunk-02 | redesign-chunk-02-nav-plan.md                                            | PR #89 comment  | 2026-05-28 |
+| 3   | Meal Plans                   | done    | redesign-chunk-03 | redesign-chunk-03-meal-plans-plan.md                                     | PR #89 comment  | 2026-05-29 |
+| 4   | Recipes                      | done    | redesign-chunk-04 | redesign-chunk-04-recipes-plan.md _(review-plan)_                        | PR #89 comment  | 2026-05-30 |
+| 5   | Shopping Lists               | done    | redesign-chunk-05 | redesign-chunk-05-shopping-lists-plan.md _(gate #1 ✅ + review-plan ✅)_ | PR #89 comment  | 2026-05-30 |
+| 6   | Pantry                       | done    | redesign-chunk-06 | redesign-chunk-06-pantry-plan.md _(review-plan)_                         | PR #89 comment  | 2026-05-31 |
+| 7   | Food Items                   | pending | —                 | —                                                                        | —               | —          |
+| 8   | User Mgmt & Pending Approval | pending | —                 | —                                                                        | —               | —          |
+| 9   | Settings (placeholder)       | pending | —                 | —                                                                        | —               | —          |
+| 10  | Marketing / home             | pending | —                 | —                                                                        | —               | —          |
+| 11  | Cleanup                      | pending | —                 | —                                                                        | —               | —          |
 
 Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `docs/superpowers/plans/redesign-chunk-NN-<surface>-plan.md`.
 
@@ -35,7 +35,7 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 
 ---
 
-## NEXT UP — Chunk 6: Pantry (back-merge DONE)
+## NEXT UP — Chunk 7: Food Items (Chunk 6 Pantry DONE)
 
 **State (2026-05-31):** **Chunk 5 = DONE, tagged `redesign-chunk-05` @ `e53e44b`.** Dev server runs on `:3235` (`npm run clean` first if the last op left a prod `.next`). Only untracked vendored design-bundle files in the tree (expected).
 
@@ -48,7 +48,9 @@ Status values: `pending` → `in-progress` → `done`. Per-chunk plans live at `
 - **`npm run check` GREEN** (lint 0 errors, full suite, build ✓). **Browser-verified** high-risk surfaces live on MUI 9 / Next 16 at 1440 + 430 (chrome-devtools-mcp): theme button color (measured `surface.base` text on accent), PantryCheck paper (measured 560/16/shadow), DatePicker (readOnly/inputMode), StoreEditor + emoji round-trip, MealPlanBrowser year rows, recipe detail, realtime LIVE — zero console errors.
 - **⚠️ Follow-up (not a merge regression, pre-existing):** the MealPlanCreateDialog DatePicker field's token styling never applies — its `sx` selector targets `.MuiOutlinedInput-root`, but the accessible-DOM field uses `.MuiPickersOutlinedInput-root` (MUI X v7+, redesign was on v8). Retarget the selector in a polish pass. Looks acceptable as-is.
 
-**NOW — Chunk 6: Pantry** (`src/app/pantry/*`). Per spec table: **lavender accent, trash icons, flat list.** Artboards: `docs/design/weekly-eats-redesign/project/artboards-pantry.jsx` + `Pantry.html`. Follow the per-chunk loop (spec §5) — and **do gate #2 by the rigorous artboard-scrub method in spec §5 step 2** (measure with `evaluate_script`, element-by-element, MUI-gotcha checklist incl. the bare-`borderRadius`×8 trap, drive every state). **Review base = the post-merge commit `64364b6`** (NOT `redesign-chunk-05` — that predates the Next16/MUI9 base). `SectionThemeProvider` already supports per-section accents (chunks 3–6).
+**✅ Chunk 6 — Pantry: DONE (2026-05-31), tagged `redesign-chunk-06`.** Built directly in the main loop (small chunk; 8 logical commits) after `writing-plans` + `/review-plan`. Shape: `page.tsx` slimmed to orchestration; presentational `PantryListView` (flat list — desktop table / mobile single-card, mirroring `StoreListView`'s slot pattern); lavender accent free via `SectionThemeProvider`; `Snackbar` errors (replaced raw `alert()`). **Gate-#1 D2 was made on a false premise** (`/review-plan` caught it): a `ConfirmDialog` already existed at `meal-plans/ConfirmDialog` (7 callers). Resolution (user chose): **promoted it to `ui/ConfirmDialog`, added a mobile bottom-sheet (desktop unchanged), migrated all 7 callers, deleted the old path** — so recipe/meal-plan deletes are now bottom sheets on mobile too. New token `onAccent.pantry` (`#1a0f24`); `renderWithTheme` gained an optional `section` (default `'shop'`). Add dialog keeps the shared `FoodItemAutocomplete` (recorded deviation D1) + `DialogTitle` close (D3). **Gate #2 (rigorous, live 1440+430 via chrome-devtools-mcp, `evaluate_script`-measured):** desktop list/eyebrow/search/add/delete/count and the mobile sheet (`surface.sheet`/r18/handle/h44/danger) all measured exact; **found+fixed 1 issue** — the mobile Add dialog wasn't edge-to-edge (`maxWidth:{xs:'100%'}`); regression-verified a recipe delete is now a sheet on mobile. **`/review-code --base 64364b6`:** Code/Architecture/Security all clean; 1 Important + 1 Minor Test finding (Snackbar error paths + ConfirmDialog cancel uncovered) → both fixed. **`npm run check` GREEN** (185 test files, build ✓). **`manual-testing chunk-06-pantry`** seeded (8 food items + 8 pantry items) + plan posted to PR #89. Tagged + pushed.
+
+**NEXT — Chunk 7: Food Items** (`src/app/food-items/*`, `src/components/food-item-inputs/*`). Per spec table. **Review base = `redesign-chunk-06`.** Reuse the now-canonical `ui/ConfirmDialog` for any delete confirms. Follow the per-chunk loop (spec §5) with the rigorous gate-#2 scrub. Note the carried-over **polish follow-up**: retarget the MealPlanCreateDialog DatePicker `sx` selector to `.MuiPickersOutlinedInput-root` (pre-existing, not blocking). `SectionThemeProvider` accents: food-items is a system/utility page (no section accent) — verify the intended accent in the artboard.
 
 ---
 
