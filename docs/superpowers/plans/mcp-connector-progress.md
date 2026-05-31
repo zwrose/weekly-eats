@@ -54,8 +54,18 @@ login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, 
     new connect redirect + a new post-login-leg-no-session → `/mcp/connect` case.
 - **Mid-test gate RESOLVED (2026-05-31):** `zwrose@gmail.com` confirmed **approved in `weekly-eats-develop`**
   (the preview DB) by the user — so the approval gate won't bounce the connect flow with `access_denied`.
-- **Next:** verify the new screen live in the preview (Chrome), then resume manual test plan Sections B–E.
-- **Pushed:** commit `d9d26f0` on `feat/mcp` (preview will redeploy).
+- **Middleware fix (`f029a9d`):** `/mcp/connect` was being bounced to `/` by the NextAuth session
+  middleware (it redirects all unauthenticated non-exempt paths) — exactly the marketing-page bug it was
+  meant to fix. Added `/mcp/connect` to the middleware allow-list (it's a public page; `/mcp/consent` stays
+  gated since it's only reached with a session). Confirmed working live.
+- **Design polish (`1900bfd`):** logo on connect + consent cards; theme-independent Google-branded button
+  (shared `GOOGLE_BUTTON_SX` in `src/components/GoogleIcon.tsx`) — the old `grey.100` hover washed out in
+  dark mode; connect button now full-width. **Agent name in the title stays dynamic** (user's choice — shows
+  whichever agent registered; generic fallback when none).
+- **App-wide font fix (separate commit in `1900bfd` series):** `var(--font-figtree)` now referenced in
+  `theme.ts` + `globals.css` — the brand font was loaded by `next/font` but referenced by the bare name
+  `"Figtree"`, so the whole app silently used Helvetica/Arial. Blast radius: changes the font everywhere.
+- **Next:** re-verify the redeployed screen, then resume manual test plan Sections B–E.
 
 **Phase-2 state at this point (all pushed; HEAD `bd3dc20`, `feat/mcp` 0-behind / 84-ahead of main):**
 Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **Synced with main** (Next 16
