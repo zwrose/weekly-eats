@@ -26,7 +26,7 @@ const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => ({
     },
   },
   typography: {
-    fontFamily: '"Figtree", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: 'var(--font-figtree), "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontSize: '2.5rem',
       fontWeight: 700,
