@@ -322,6 +322,17 @@ directly. Encapsulates the _judgment_ (parsing, fuzzy ingredient matching, unit
 normalization, good confirmation questions); the connector enforces the _invariants_
 (valid units, ownership, recipe structure). Installable and customizable in Claude.
 
+> **Delivery decision (2026-05-31, Phase 3): skills-over-MCP.** Rather than relying
+> solely on out-of-band install (plugin/upload/clone), the connector itself serves its
+> skills. `/api/mcp` exposes two tools — `skills_list` (metadata) and `skills_get`
+> (full `SKILL.md` body) — using progressive disclosure, and advertises them via the
+> MCP server `instructions`. Any agent that connects auto-discovers the skill with no
+> separate install. The `SKILL.md` remains a real, versioned, distributable file under
+> `skills/<name>/`; it is simply also reachable through the connector. There is no MCP
+> protocol "skills capability" today (Skills and MCP are complementary standards), so
+> this tools-based delivery is the de-facto pattern. Reference-file serving (a third
+> tool) is deferred until a skill needs it (YAGNI).
+
 **Source ingestion (resolved):** the skill relies on **Claude's native file/URL
 reading** (Claude.ai, mobile, and Claude Code all ingest PDFs and fetch URLs) rather
 than bundling its own fetcher/PDF parser. The skill operates on already-read content;
