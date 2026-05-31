@@ -1256,10 +1256,20 @@ function ShoppingListsPageContent() {
 
   const workingListSlot =
     shoppingListItems.length === 0 ? (
-      <Box>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No items in this shopping list yet. Add an item to get started.
-        </Alert>
+      <Box
+        sx={{
+          mb: 2,
+          px: 2.5,
+          py: 3,
+          bgcolor: tokens.surface.raised,
+          border: `1px solid ${tokens.border.subtle}`,
+          borderRadius: `${tokens.radius.xl}px`,
+          color: tokens.text.secondary,
+          fontSize: 14,
+          textAlign: 'center',
+        }}
+      >
+        No items in this shopping list yet. Add an item to get started.
       </Box>
     ) : (
       <Box

@@ -40,7 +40,7 @@ export function PresencePill({ connectionState, activeUsers, onReconnect }: Pres
     display: 'inline-flex',
     alignItems: 'center',
     gap: 0.75,
-    padding: '3px 10px 3px 3px',
+    padding: '4px 10px',
     borderRadius: `${tokens.radius.pill}px`,
     border: `1px solid ${tokens.border.subtle}`,
     bgcolor: tokens.surface.raised,
