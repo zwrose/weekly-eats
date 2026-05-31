@@ -34,7 +34,7 @@ export const tokens = {
     pantry: '#c79bff',
   },
   accentUtility: '#9aa4b3',
-  onAccent: { shop: '#0c1a13' },
+  onAccent: { shop: '#0c1a13', pantry: '#1a0f24' },
   onDanger: '#1a0f0f',
   state: {
     success: '#8edcb4',
