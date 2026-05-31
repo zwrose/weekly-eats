@@ -61,7 +61,7 @@ export default async function ConnectPage({
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Sign in to continue connecting your Weekly Eats account.
         </Typography>
-        <form action={startGoogleSignIn} style={{ width: '100%' }}>
+        <Box component="form" action={startGoogleSignIn} sx={{ width: '100%' }}>
           <input type="hidden" name="mcp_auth" value={nonce} />
           <Button
             type="submit"
@@ -73,7 +73,7 @@ export default async function ConnectPage({
           >
             Sign in with Google
           </Button>
-        </form>
+        </Box>
       </Paper>
     </Container>
   );
