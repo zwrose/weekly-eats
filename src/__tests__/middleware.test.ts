@@ -71,6 +71,21 @@ describe('middleware approval gate', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1'); // NextResponse.next()
   });
 
+  it('lets /mcp/connect through without a session (it IS the connector login screen)', async () => {
+    // The OAuth authorize flow redirects unauthenticated users here. If the
+    // session middleware bounced it to `/`, the user would land on the marketing
+    // page instead of the bespoke sign-in screen.
+    const res = await middleware(req('/mcp/connect', null));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('still redirects /mcp/consent to / without a session (consent requires login)', async () => {
+    // Only /mcp/connect is exempt — /mcp/consent is reached only with a session.
+    const res = await middleware(req('/mcp/consent', null));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe('https://app.test/?callbackUrl=%2Fmcp%2Fconsent');
+  });
+
   it('passes an approved session through', async () => {
     const res = await middleware(req('/api/meal-plans', approved()));
     expect(res.headers.get('x-middleware-next')).toBe('1');

@@ -8,12 +8,16 @@ const { auth } = NextAuth(authConfig);
 export const middleware = auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow: home/login, auth API, Next internals, static/public assets, and the
-  // MCP endpoint. /api/mcp self-authenticates via a Bearer token in withMcpAuth
-  // (not a NextAuth session cookie), so this session middleware must not shadow
-  // it — without the exemption, MCP clients get a 307 to the HTML login page.
+  // Allow: home/login, the connector sign-in screen, auth API, Next internals,
+  // static/public assets, and the MCP endpoint. /api/mcp self-authenticates via
+  // a Bearer token in withMcpAuth (not a NextAuth session cookie), so this
+  // session middleware must not shadow it — without the exemption, MCP clients
+  // get a 307 to the HTML login page. /mcp/connect is the OAuth flow's bespoke
+  // sign-in screen, shown precisely when the user is NOT authenticated, so it
+  // must be reachable without a session (else the middleware bounces it to `/`).
   if (
     pathname === '/' ||
+    pathname === '/mcp/connect' ||
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/mcp') ||
     pathname.startsWith('/_next/') ||
