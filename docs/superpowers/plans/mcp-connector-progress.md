@@ -32,6 +32,27 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
+**▶ CURRENT STATE (2026-05-31) — connector functionally complete & review-clean; ready for Phase 3.**
+Phases 1, 1.5, 2 are DONE. The bespoke connector sign-in screen (a Phase-2 UX gap) shipped, had its
+middleware-bounce bug fixed, got polished (logo / branded button / Figtree font), and passed a **full-branch
+`/review-code`** (all 91 files — run as a substitute after `/ultrareview` errored twice; READY FOR PR).
+`feat/mcp` HEAD **`2395395`**, ~90-ahead / 0-behind `main`, working tree clean, `npm run check` green
+(**1606 tests**).
+
+**▶ NEXT PHASE: Phase 3 — `recipe-import` skill** (the motivating use case; closes #56). Start by authoring
+the plan via `writing-plans` (→ `docs/superpowers/plans/2026-05-31-mcp-phase-3-recipe-import-plan.md`) from
+the design spec (`docs/superpowers/specs/2026-05-29-agent-connector-design.md`, §11 phasing), then
+`review-plan` → `subagent-driven-development`. Confirm scope with the user before planning — "recipe-import
+skill" may mean a Claude Code/Agent skill that drives the connector's `recipes_create` tool from a URL/text.
+
+**Still-open Phase-2 items (parallel; NOT blockers for starting Phase 3 planning):**
+
+- **Manual test plan Sections B–E** (connect in Claude → create-then-read tools → revoke → browser
+  regression) — runtime verification the USER drives; now unblocked (approved in `weekly-eats-develop`).
+  Connector URL `https://weekly-eats-git-feat-mcp-zach-roses-projects.vercel.app/api/mcp`; a 10-min test-link
+  minting command (register + authorize via curl) is in chat. Plan: PR #140 comment 4582026777.
+- **Production-launch checklist below** — the `MCP_ISSUER_URL` pin is the one required action at launch.
+
 **✅ DONE (2026-05-31) — bespoke connector sign-in screen (UX fix).** Replaced the marketing-homepage
 login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, `npm run check` green
 (1603 tests).
@@ -65,7 +86,14 @@ login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, 
 - **App-wide font fix (separate commit in `1900bfd` series):** `var(--font-figtree)` now referenced in
   `theme.ts` + `globals.css` — the brand font was loaded by `next/font` but referenced by the bare name
   `"Figtree"`, so the whole app silently used Helvetica/Arial. Blast radius: changes the font everywhere.
-- **Next:** re-verify the redeployed screen, then resume manual test plan Sections B–E.
+- **✅ Review-clean (2026-05-31):** scoped `/review-code` of the connector-screen work was clean (1 Nit
+  fixed, `e20117c`); then a **full-branch** `/review-code` (all 91 files) returned READY FOR PR — 4 Minor + 1
+  Nit. Fixed in `2395395`: atomic `consumeRateLimit` (security-002; test fake-DB gained `$inc`/range-operator
+  support), `MCP_OAUTH_ERRORS.INVALID_REDIRECT_URI` (code-001), RFC 8707 token-audience test (test-001),
+  narrowed `postLoginWithState` nullable param (arch-001). **Skipped:** security-001 (host-derived audience
+  when `MCP_ISSUER_URL` unset) — the launch-pin is the mitigation; Vercel overwrites `X-Forwarded-Host`.
+  Security specialist independently re-verified every OAuth invariant (PKCE S256, single-use+chain-revoke,
+  SHA-256-at-rest, approval gate at all 5 points, audience binding, no IDOR, TTL-as-Date). All pushed.
 
 **Phase-2 state at this point (all pushed; HEAD `bd3dc20`, `feat/mcp` 0-behind / 84-ahead of main):**
 Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **Synced with main** (Next 16
