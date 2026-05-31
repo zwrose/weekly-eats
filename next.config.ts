@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+  // Bundle the skills source tree into the MCP function so the skill
+  // registry's fs reads resolve in Vercel serverless (Phase 3).
+  outputFileTracingIncludes: {
+    '/api/[transport]': ['./skills/**/*'],
+  },
   async rewrites() {
     return [
       {
