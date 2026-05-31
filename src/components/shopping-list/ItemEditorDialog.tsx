@@ -12,8 +12,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { DialogTitle } from '@/components/ui';
-import { responsiveDialogStyle } from '@/lib/theme';
+import { Icon } from '@/components/ui/Icon';
+import { tokens } from '@/lib/design-tokens';
 import QuantityInput from '@/components/food-item-inputs/QuantityInput';
 import UnitSelector from '@/components/food-item-inputs/UnitSelector';
 import AddFoodItemDialog from '@/components/AddFoodItemDialog';
@@ -55,6 +58,23 @@ export type ItemEditorDialogProps = {
   onFoodItemAdded?: (foodItem: FoodItem) => Promise<void>;
 };
 
+// Shared sx for accent-ring inputs (search field, quantity, unit).
+const accentInputSx = (accent: string) => ({
+  bgcolor: tokens.surface.elevated,
+  borderRadius: `${tokens.radius.xl}px`,
+  '& .MuiOutlinedInput-root': {
+    bgcolor: tokens.surface.elevated,
+    borderRadius: `${tokens.radius.xl}px`,
+    '& fieldset': { borderColor: tokens.border.strong },
+    '&:hover fieldset': { borderColor: tokens.border.strong },
+    '&.Mui-focused fieldset': {
+      borderColor: accent,
+      boxShadow: `0 0 0 3px ${alpha(accent, 0.14)}`,
+    },
+  },
+  '& .MuiInputBase-input': { fontVariantNumeric: 'tabular-nums' },
+});
+
 export default function ItemEditorDialog({
   open,
   mode,
@@ -66,6 +86,9 @@ export default function ItemEditorDialog({
   onDelete,
   onFoodItemAdded,
 }: ItemEditorDialogProps) {
+  const theme = useTheme();
+  const accent = theme.palette.primary.main;
+
   const [selectedFoodItem, setSelectedFoodItem] = useState<SelectedFoodItem | null>(null);
   const [foodItemInputValue, setFoodItemInputValue] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -240,6 +263,8 @@ export default function ItemEditorDialog({
   const isSaveDisabled = !foodItemInputValue.trim() || quantity <= 0;
   const dialogTitle = title ?? (mode === 'add' ? 'Add Item' : 'Edit Item');
 
+  const inputSx = accentInputSx(accent);
+
   return (
     <>
       <Dialog
@@ -247,14 +272,21 @@ export default function ItemEditorDialog({
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
-        sx={{
-          ...responsiveDialogStyle,
-          '& .MuiDialog-paper': {
-            ...(((responsiveDialogStyle as unknown as Record<string, unknown>)[
-              '& .MuiDialog-paper'
-            ] as Record<string, unknown>) ?? {}),
-            display: 'flex',
-            flexDirection: 'column',
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: tokens.surface.raised,
+              border: `1px solid ${tokens.border.strong}`,
+              borderRadius: `${tokens.radius.xxxl}px`,
+              boxShadow: tokens.shadow.modal,
+              display: 'flex',
+              flexDirection: 'column',
+              // Mobile: full-screen sheet
+              margin: { xs: 0, sm: 'auto' },
+              width: { xs: '100%' },
+              height: { xs: '100%', sm: 'auto' },
+              maxHeight: { xs: '100%', sm: '90vh' },
+            },
           },
         }}
       >
@@ -263,6 +295,7 @@ export default function ItemEditorDialog({
         </DialogTitle>
         <DialogContent sx={{ flex: 1, minHeight: 0 }}>
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Food-item search with accent focus ring */}
             <Autocomplete
               freeSolo
               autoHighlight
@@ -374,7 +407,13 @@ export default function ItemEditorDialog({
                 );
               }}
               renderInput={(params) => (
-                <TextField {...params} label="Item Name" placeholder="Start typing…" autoFocus />
+                <TextField
+                  {...params}
+                  label="Item Name"
+                  placeholder="Start typing…"
+                  autoFocus
+                  sx={inputSx}
+                />
               )}
               loadingText={
                 <Box
@@ -400,13 +439,15 @@ export default function ItemEditorDialog({
                 flexDirection: { xs: 'column', sm: 'row' },
               }}
             >
+              {/* Quantity field: elevated bg, strong border, accent focus, tabular-nums */}
               <QuantityInput
                 value={quantity}
                 onChange={setQuantity}
                 label="Quantity"
                 size="small"
-                sx={{ width: { xs: '100%', sm: 140 } }}
+                sx={{ width: { xs: '100%', sm: 140 }, ...inputSx }}
               />
+              {/* Unit field: styled to match */}
               <UnitSelector
                 value={unit}
                 quantity={quantity}
@@ -417,17 +458,28 @@ export default function ItemEditorDialog({
                 label="Unit"
                 size="small"
                 fullWidth={true}
+                sx={inputSx}
               />
             </Box>
 
-            {/* Mobile: keep delete near the fields; Save lives in bottom actions. */}
+            {/* Mobile: delete near fields; Save lives in bottom actions. */}
             {mode === 'edit' && (
               <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                 <Button
                   onClick={() => void onDelete?.()}
-                  color="error"
-                  variant="outlined"
-                  sx={{ width: '100%' }}
+                  startIcon={<Icon name="delete" size={18} />}
+                  sx={{
+                    width: '100%',
+                    bgcolor: tokens.state.dangerMuted,
+                    border: `1px solid ${tokens.state.danger}55`,
+                    color: tokens.state.danger,
+                    borderRadius: `${tokens.radius.lg}px`,
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: tokens.state.dangerMuted,
+                      filter: 'brightness(1.08)',
+                    },
+                  }}
                 >
                   Delete
                 </Button>
@@ -442,7 +494,7 @@ export default function ItemEditorDialog({
             pb: { xs: 2, sm: 3 },
             position: { xs: 'sticky', sm: 'static' },
             bottom: { xs: keyboardInsetPx, sm: 'auto' },
-            bgcolor: 'background.paper',
+            bgcolor: tokens.surface.raised,
             zIndex: 1,
           }}
         >
@@ -459,20 +511,46 @@ export default function ItemEditorDialog({
             {/* Desktop: Delete bottom-left; Save bottom-right. */}
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
               {mode === 'edit' && (
-                <Button onClick={() => void onDelete?.()} color="error" variant="outlined">
+                <Button
+                  onClick={() => void onDelete?.()}
+                  startIcon={<Icon name="delete" size={18} />}
+                  sx={{
+                    bgcolor: tokens.state.dangerMuted,
+                    border: `1px solid ${tokens.state.danger}55`,
+                    color: tokens.state.danger,
+                    borderRadius: `${tokens.radius.lg}px`,
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: tokens.state.dangerMuted,
+                      filter: 'brightness(1.08)',
+                    },
+                  }}
+                >
                   Delete
                 </Button>
               )}
             </Box>
 
+            {/* Primary action: Add / Save */}
             <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
               <Button
                 onClick={() => void handleSave()}
-                variant="contained"
                 disabled={isSaveDisabled}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                sx={{
+                  width: { xs: '100%', sm: 'auto' },
+                  bgcolor: accent,
+                  color: tokens.onAccent.shop,
+                  borderRadius: `${tokens.radius.lg}px`,
+                  fontWeight: 700,
+                  px: 2.5,
+                  '&:hover': { bgcolor: accent, filter: 'brightness(1.05)' },
+                  '&.Mui-disabled': {
+                    bgcolor: tokens.surface.elevated,
+                    color: tokens.text.muted,
+                  },
+                }}
               >
-                Save
+                {mode === 'add' ? 'Add' : 'Save'}
               </Button>
             </Box>
           </Box>
