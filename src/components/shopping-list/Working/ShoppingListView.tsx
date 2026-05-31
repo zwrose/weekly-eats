@@ -14,6 +14,7 @@ import { AddItemRow } from './AddItemRow';
 import { FinishShopBar } from './FinishShopBar';
 import { FinishShopConfirm } from './FinishShopConfirm';
 import { PresencePill } from '../Presence/PresencePill';
+import { StoreActionsMenu } from './StoreActionsMenu';
 
 export interface ShoppingListViewProps {
   stores: StoreSidebarStore[];
@@ -30,8 +31,16 @@ export interface ShoppingListViewProps {
   activeUsers: ActiveUser[];
   /** Add-store affordance for the sidebar. Optional; defaults to onAddItem-less no-op. */
   onAddStore?: () => void;
-  /** Actions cluster (overflow menu trigger) — page passes its existing construct. */
-  actionsSlot?: ReactNode;
+  /** Action callbacks forwarded into the store overflow menu. */
+  onImport: () => void;
+  onPantryCheck: () => void;
+  onHistory: () => void;
+  onShare: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  canLeave?: boolean;
+  onLeave?: () => void;
+  loadingPantryCheck?: boolean;
   /** Replaces the default item rows with the page's DnD list when provided. */
   listSlot?: ReactNode;
 }
@@ -115,7 +124,15 @@ export function ShoppingListView({
   onReconnect,
   connectionState,
   activeUsers,
-  actionsSlot,
+  onImport,
+  onPantryCheck,
+  onHistory,
+  onShare,
+  onRename,
+  onDelete,
+  canLeave,
+  onLeave,
+  loadingPantryCheck,
   listSlot,
 }: ShoppingListViewProps) {
   const theme = useTheme();
@@ -192,7 +209,17 @@ export function ShoppingListView({
           activeUsers={activeUsers}
           onReconnect={onReconnect}
         />
-        {actionsSlot}
+        <StoreActionsMenu
+          onImport={onImport}
+          onPantryCheck={onPantryCheck}
+          onHistory={onHistory}
+          onShare={onShare}
+          onRename={onRename}
+          onDelete={onDelete}
+          canLeave={canLeave}
+          onLeave={onLeave}
+          loadingPantryCheck={loadingPantryCheck}
+        />
       </Box>
 
       {/* Item list */}
@@ -258,7 +285,6 @@ export function ShoppingListView({
             display: 'grid',
             gridTemplateColumns: '280px 1fr',
             minHeight: 0,
-            flexDirection: 'column',
           }}
         >
           {renderSidebar(false)}

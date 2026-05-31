@@ -12,11 +12,7 @@ import {
   Dialog,
   DialogContent,
   IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
   List,
-  ListItemText,
   Divider,
   Alert,
   Snackbar,
@@ -38,8 +34,6 @@ import {
   Delete,
   Share,
   Close as CloseIcon,
-  Kitchen,
-  MoreVert,
   History,
 } from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
@@ -78,6 +72,7 @@ const StoreHistoryDialog = dynamic(
 import { DialogTitle } from '../../components/ui/DialogTitle';
 import { DialogActions } from '../../components/ui/DialogActions';
 import { responsiveDialogStyle } from '@/lib/theme';
+import { tokens } from '@/lib/design-tokens';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
 import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
@@ -98,7 +93,6 @@ import {
   insertItemAtPosition,
   insertItemsWithPositions,
 } from '../../lib/shopping-list-position-utils';
-import { CalendarMonth } from '@mui/icons-material';
 import { fetchPantryItems } from '../../lib/pantry-utils';
 import ItemEditorDialog, {
   type ItemEditorDraft,
@@ -205,7 +199,6 @@ function ShoppingListsPageContent() {
 
   // Scroll container for shopping list items
   const listContainerRef = useRef<HTMLDivElement | null>(null);
-  const [listActionsAnchorEl, setListActionsAnchorEl] = useState<null | HTMLElement>(null);
   const [itemEditorMode, setItemEditorMode] = useState<ItemEditorMode>('add');
   const [itemEditorOpen, setItemEditorOpen] = useState(false);
   const [itemEditorInitialDraft, setItemEditorInitialDraft] = useState<ItemEditorDraft | null>(
@@ -325,20 +318,11 @@ function ShoppingListsPageContent() {
 
   useEffect(() => {
     if (!viewListDialog.open) {
-      setListActionsAnchorEl(null);
       // No store selected in the URL → leave the working view, return to the
       // store index, and let useShoppingSync disable (enabled = selectedStore).
       setSelectedStore(null);
     }
   }, [viewListDialog.open]);
-
-  const handleOpenListActionsMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setListActionsAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseListActionsMenu = () => {
-    setListActionsAnchorEl(null);
-  };
 
   const handleCreateStore = async (data: { name: string; emoji?: string }) => {
     if (!data.name.trim()) return;
@@ -1267,16 +1251,10 @@ function ShoppingListsPageContent() {
     return { unchecked, checked };
   }, [shoppingListItems]);
 
-  // ── Working-view slots (actions / list) ──────────────────────────────────
-  // Presence is now rendered by <PresencePill> inside ShoppingListView, fed via
-  // connectionState / activeUsers / onReconnect props. The page keeps owning all
-  // state, sync, DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
-
-  const actionsSlot = (
-    <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
-      <MoreVert />
-    </IconButton>
-  );
+  // ── Working-view list slot ───────────────────────────────────────────────
+  // Presence and the store actions menu are rendered inside ShoppingListView
+  // directly; the page passes action callbacks and keeps owning all state, sync,
+  // DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
 
   const workingListSlot =
     shoppingListItems.length === 0 ? (
@@ -1296,22 +1274,17 @@ function ShoppingListsPageContent() {
           overscrollBehaviorX: 'none',
           '@media (pointer: fine) and (min-width:600px)': {
             scrollbarWidth: 'thin',
-            scrollbarColor: (theme) =>
-              theme.palette.mode === 'dark'
-                ? 'rgba(255,255,255,0.5) transparent'
-                : 'rgba(0,0,0,0.35) transparent',
+            scrollbarColor: `${tokens.border.strong} transparent`,
             '&::-webkit-scrollbar': { width: 6 },
             '&::-webkit-scrollbar-track': { background: 'transparent' },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.25)',
+              backgroundColor: tokens.border.subtle,
               borderRadius: 999,
               border: '2px solid transparent',
               backgroundClip: 'content-box',
             },
             '&:hover::-webkit-scrollbar-thumb': {
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+              backgroundColor: tokens.border.strong,
             },
           },
         }}
@@ -1404,7 +1377,17 @@ function ShoppingListsPageContent() {
               onAddStore={createStoreDialog.openDialog}
               connectionState={shoppingSync.connectionState}
               activeUsers={activeUsers}
-              actionsSlot={actionsSlot}
+              onImport={() => void handleOpenMealPlanSelection()}
+              onPantryCheck={() => void handleOpenPantryCheck()}
+              onHistory={() => void handleOpenHistory(selectedStore)}
+              onShare={() => void handleOpenShareDialog(selectedStore)}
+              onRename={() => handleEditStore(selectedStore)}
+              onDelete={() => {
+                deleteConfirmDialog.openDialog();
+              }}
+              canLeave={!isStoreOwner(selectedStore)}
+              onLeave={() => handleLeaveStore(selectedStore)}
+              loadingPantryCheck={loadingPantryCheck}
               listSlot={workingListSlot}
             />
           ) : (
@@ -1557,52 +1540,6 @@ function ShoppingListsPageContent() {
         onSave={handleUpdateStore}
         onClose={editStoreDialog.closeDialog}
       />
-
-      {/* Working-list overflow actions menu (anchored from ShoppingListView actionsSlot) */}
-      <Menu
-        anchorEl={listActionsAnchorEl}
-        open={Boolean(listActionsAnchorEl)}
-        onClose={handleCloseListActionsMenu}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem
-          onClick={() => {
-            handleCloseListActionsMenu();
-            void handleOpenMealPlanSelection();
-          }}
-        >
-          <ListItemIcon>
-            <CalendarMonth fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Add items from meal plans</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={loadingPantryCheck}
-          onClick={() => {
-            handleCloseListActionsMenu();
-            void handleOpenPantryCheck();
-          }}
-        >
-          <ListItemIcon>
-            {loadingPantryCheck ? <CircularProgress size={16} /> : <Kitchen fontSize="small" />}
-          </ListItemIcon>
-          <ListItemText>Pantry check</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleCloseListActionsMenu();
-            if (selectedStore) {
-              void handleOpenHistory(selectedStore);
-            }
-          }}
-        >
-          <ListItemIcon>
-            <History fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Purchase history</ListItemText>
-        </MenuItem>
-      </Menu>
 
       <ItemEditorDialog
         open={itemEditorOpen}

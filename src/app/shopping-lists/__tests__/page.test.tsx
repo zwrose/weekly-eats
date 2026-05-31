@@ -328,7 +328,7 @@ describe('ShoppingListsPage', () => {
 
     // Wait for dialog to open
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     });
   });
@@ -377,11 +377,11 @@ describe('ShoppingListsPage', () => {
     await user.click(storeName);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
     });
 
     // Open actions menu, then meal plan selection
-    await user.click(screen.getByRole('button', { name: /more actions/i }));
+    await user.click(screen.getByRole('button', { name: /store actions/i }));
     await user.click(screen.getByText(/add items from meal plans/i));
 
     const dialog = await waitFor(() => {
@@ -1024,7 +1024,7 @@ describe('ShoppingListsPage', () => {
 
     await waitFor(() => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     });
   });
@@ -1261,11 +1261,11 @@ describe('ShoppingListsPage', () => {
     await user.click(storeName);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
     });
 
     // Open overflow menu
-    await user.click(screen.getByRole('button', { name: /more actions/i }));
+    await user.click(screen.getByRole('button', { name: /store actions/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Purchase history')).toBeInTheDocument();
