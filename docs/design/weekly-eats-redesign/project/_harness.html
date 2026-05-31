@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Artboard harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#0f1115; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; user-select:none; }
+  #stage { background:#0f1115; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx"></script>
+<script type="text/babel" src="artboards-recipes.jsx"></script>
+<script type="text/babel">
+  const params = new URLSearchParams(location.search);
+  const name = params.get('c') || 'MobileList';
+  const w = parseInt(params.get('w') || '390', 10);
+  const h = parseInt(params.get('h') || '844', 10);
+  const Comp = window[name];
+  const stage = document.getElementById('stage');
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+  ReactDOM.createRoot(stage).render(Comp ? <Comp /> : <div style={{color:'#fff',padding:20}}>No component: {name}</div>);
+</script>
+</body>
+</html>

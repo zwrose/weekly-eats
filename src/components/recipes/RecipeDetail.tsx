@@ -15,7 +15,7 @@ import { SectionLabel } from './SectionLabel';
 import { RecipeIngredientsView } from './RecipeIngredientsView';
 import { RecipeInstructionsView } from './RecipeInstructionsView';
 import dynamic from 'next/dynamic';
-import { ConfirmDialog } from '@/components/meal-plans/ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui';
 import { type AccessLevel } from './recipe-display-utils';
 import type { Recipe } from '@/types/recipe';
 import type { RecipeUserDataResponse } from '@/types/recipe-user-data';

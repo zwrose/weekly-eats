@@ -29,7 +29,7 @@ import { StaplesBar } from './StaplesBar';
 import { PlanViewDesktop } from './PlanViewDesktop';
 import { PlanViewMobile } from './PlanViewMobile';
 import { MealEditorDialog, type EditableMeal } from './MealEditorDialog';
-import { ConfirmDialog } from './ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui';
 import { RecipeEmojiProvider, useRecipeEmojiMap } from './recipe-emoji';
 
 export interface PlanDetailProps {

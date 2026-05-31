@@ -13,7 +13,7 @@ import { EditorGroupSection } from './EditorGroupSection';
 import { CombinedSearch } from './CombinedSearch';
 import { QtyEditor } from './QtyEditor';
 import { UnitEditor } from './UnitEditor';
-import { ConfirmDialog } from './ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui';
 import { mealItemCount } from './meal-display-utils';
 
 export interface EditableMeal {

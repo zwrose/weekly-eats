@@ -21,7 +21,7 @@ import {
   validateRecipeIngredients,
   type RecipeIngredientsEditorHandle,
 } from '@/components/recipes/RecipeIngredientsEditor';
-import { ConfirmDialog } from '@/components/meal-plans/ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui';
 import type { Recipe, RecipeIngredientList } from '@/types/recipe';
 import type { RecipeUserDataResponse } from '@/types/recipe-user-data';
 

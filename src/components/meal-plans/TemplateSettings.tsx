@@ -15,7 +15,7 @@ import {
 } from '@/lib/meal-plan-utils';
 import { MealEditorDialog } from './MealEditorDialog';
 import { MealItemLine } from './MealItemLine';
-import { ConfirmDialog } from './ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui';
 import { MEAL_LABEL, MEAL_ORDER, mealColorToken, mealItemCount } from './meal-display-utils';
 
 const DAY_CHIPS: { label: string; value: DayOfWeek }[] = [
