@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, ButtonBase } from '@mui/material';
+import { ButtonBase } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
