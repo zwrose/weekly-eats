@@ -244,7 +244,7 @@ export default function StoreHistoryDialog({
                           </Box>
                         }
                         secondary={`${item.quantity} ${item.unit} · ${formatRelativeDate(item.lastPurchasedAt)}`}
-                        secondaryTypographyProps={{ sx: { color: tokens.text.secondary } }}
+                        slotProps={{ secondary: { sx: { color: tokens.text.secondary } } }}
                       />
                       <ListItemSecondaryAction>
                         <IconButton

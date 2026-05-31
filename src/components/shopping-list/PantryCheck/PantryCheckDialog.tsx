@@ -53,11 +53,13 @@ export function PantryCheckDialog({ open, matches, onApply, onClose }: PantryChe
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          width: 560,
-          borderRadius: `${tokens.radius.xxxl}px`,
-          boxShadow: tokens.shadow.modal,
+      slotProps={{
+        paper: {
+          sx: {
+            width: 560,
+            borderRadius: `${tokens.radius.xxxl}px`,
+            boxShadow: tokens.shadow.modal,
+          },
         },
       }}
     >

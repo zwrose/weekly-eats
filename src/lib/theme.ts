@@ -112,7 +112,6 @@ const createThemeOptions = (): ThemeOptions => ({
           boxShadow: 'none',
           '&:hover': { boxShadow: 'none' },
         },
-        containedPrimary: { color: tokens.surface.base },
         // Text buttons (Cancel / Done / back, etc.) are flush iOS-style text actions. MUI's
         // default text-variant hover paints a translucent rounded rect; when the button sits
         // in a rounded popover/dialog corner (overflow:hidden) that rect bleeds into the corner
@@ -122,6 +121,15 @@ const createThemeOptions = (): ThemeOptions => ({
           '&:hover': { backgroundColor: 'transparent', opacity: 0.65 },
         },
       },
+      // MUI v9 removed the composite `containedPrimary` styleOverrides slot (split into
+      // separate `contained` + `colorPrimary` classes). Target the same filled-accent
+      // buttons — text color against the accent fill — via the variants API instead.
+      variants: [
+        {
+          props: { variant: 'contained', color: 'primary' },
+          style: { color: tokens.surface.base },
+        },
+      ],
     },
     MuiCard: {
       styleOverrides: {
