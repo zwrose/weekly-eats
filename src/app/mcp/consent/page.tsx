@@ -34,7 +34,7 @@ export default async function ConsentPage({
         <Stack
           direction={{ xs: 'column-reverse', sm: 'row' }}
           spacing={2}
-          justifyContent="flex-end"
+          sx={{ justifyContent: 'flex-end' }}
         >
           <Box component="form" action="/api/mcp/oauth/authorize/decision" method="POST">
             <input type="hidden" name="mcp_auth" value={nonce} />
