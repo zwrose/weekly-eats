@@ -181,6 +181,7 @@ function Body({
             mb: 2.25,
             borderRadius: `${tokens.radius.lg}px`,
             border: `1px solid ${tokens.border.subtle}`,
+            bgcolor: tokens.surface.elevated,
             display: 'flex',
             flexDirection: 'column',
             gap: 0.5,
