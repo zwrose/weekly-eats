@@ -131,6 +131,13 @@ describe('POST /token — authorization_code', () => {
     const res = await POST(tokenReq({ ...codeGrant, redirect_uri: 'https://claude.ai/other' }));
     expect((await res.json()).error).toBe('invalid_grant');
   });
+
+  it('code bound to a different resource → invalid_grant, no token minted (RFC 8707 audience)', async () => {
+    consumeAuthCode.mockResolvedValue({ ...codeDoc, resource: 'https://evil.example/api/mcp' });
+    const res = await POST(tokenReq(codeGrant));
+    expect((await res.json()).error).toBe('invalid_grant');
+    expect(mintPair).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /token — refresh_token', () => {

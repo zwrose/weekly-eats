@@ -124,14 +124,11 @@ async function postLogin(
 async function postLoginWithState(
   _req: Request,
   nonce: string,
-  state: McpAuthStateDoc | null,
+  state: McpAuthStateDoc,
   userId: string,
   issuer: string,
   now: number
 ): Promise<Response> {
-  if (!state)
-    return oauthErrorJson(MCP_OAUTH_ERRORS.INVALID_REQUEST, 'Authorization request expired', 400);
-
   // Approval gate BEFORE any code issuance — including the consent-skip path (L5-S1/L6).
   const approval = await lookupApproval(userId);
   if (!approval || (!approval.isApproved && !approval.isAdmin)) {

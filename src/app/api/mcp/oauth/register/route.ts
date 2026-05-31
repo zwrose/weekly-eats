@@ -48,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
     ) {
       return NextResponse.json(
         {
-          error: 'invalid_redirect_uri',
+          error: MCP_OAUTH_ERRORS.INVALID_REDIRECT_URI,
           error_description: 'redirect_uris must be HTTPS or loopback',
         },
         { status: 400, headers: { 'cache-control': 'no-store' } }

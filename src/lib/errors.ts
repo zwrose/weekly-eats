@@ -182,6 +182,8 @@ export const MCP_OAUTH_ERRORS = {
   UNSUPPORTED_GRANT_TYPE: 'unsupported_grant_type',
   UNSUPPORTED_RESPONSE_TYPE: 'unsupported_response_type',
   INVALID_SCOPE: 'invalid_scope',
+  // RFC 7591 §3.2.2 — Dynamic Client Registration redirect_uri rejection.
+  INVALID_REDIRECT_URI: 'invalid_redirect_uri',
   ACCESS_DENIED: 'access_denied',
   INVALID_TOKEN: 'invalid_token',
   SERVER_ERROR: 'server_error',

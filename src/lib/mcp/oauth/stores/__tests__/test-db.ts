@@ -14,10 +14,27 @@ export function makeFakeDb() {
   };
   const matches = (doc: any, filter: any) =>
     Object.entries(filter).every(([k, v]) => {
-      if (v && typeof v === 'object' && '$gt' in v) return doc[k] > (v as any).$gt;
+      // Range operators ($gt/$gte/$lt/$lte). A Date filter value is an equality
+      // match, not an operator object.
+      if (v && typeof v === 'object' && !(v instanceof Date)) {
+        const ops = v as Record<string, any>;
+        if ('$gt' in ops && !(doc[k] > ops.$gt)) return false;
+        if ('$gte' in ops && !(doc[k] >= ops.$gte)) return false;
+        if ('$lt' in ops && !(doc[k] < ops.$lt)) return false;
+        if ('$lte' in ops && !(doc[k] <= ops.$lte)) return false;
+        return true;
+      }
       if (v === null) return doc[k] === null || doc[k] === undefined;
       return doc[k] === v;
     });
+
+  // Apply $set and $inc to a target doc, mirroring the driver.
+  const applyUpdate = (target: any, update: any) => {
+    if (update.$set) Object.assign(target, update.$set);
+    if (update.$inc)
+      for (const [k, n] of Object.entries(update.$inc))
+        target[k] = (target[k] ?? 0) + (n as number);
+  };
 
   const collection = vi.fn((name: string) => ({
     findOne: vi.fn(async (filter: any) => col(name).find((d) => matches(d, filter)) ?? null),
@@ -35,18 +52,21 @@ export function makeFakeDb() {
       const arr = col(name);
       const i = arr.findIndex((d) => matches(d, filter));
       if (i === -1) return null;
-      Object.assign(arr[i], update.$set ?? {});
+      applyUpdate(arr[i], update);
       return arr[i];
     }),
     updateOne: vi.fn(async (filter: any, update: any, opts: any = {}) => {
       const arr = col(name);
       const i = arr.findIndex((d) => matches(d, filter));
       if (i === -1) {
-        if (opts.upsert)
-          arr.push({ ...filter, ...(update.$set ?? {}), ...(update.$setOnInsert ?? {}) });
+        if (opts.upsert) {
+          const doc = { ...filter, ...(update.$setOnInsert ?? {}) };
+          applyUpdate(doc, update);
+          arr.push(doc);
+        }
         return { matchedCount: 0, upsertedCount: opts.upsert ? 1 : 0 };
       }
-      Object.assign(arr[i], update.$set ?? {});
+      applyUpdate(arr[i], update);
       return { matchedCount: 1, upsertedCount: 0 };
     }),
     updateMany: vi.fn(async (filter: any, update: any) => {
