@@ -90,13 +90,13 @@ async function initial(
     now + AUTH_STATE_TTL_MS
   );
 
-  // 4. Need an authenticated human. Reuse the app's existing Google sign-in.
+  // 4. Need an authenticated human. Send them to the bespoke connector
+  // sign-in screen (it reuses the app's Google sign-in under the hood).
   const session = await auth();
   if (!session?.user?.id) {
-    const callbackUrl = `/api/mcp/oauth/authorize?mcp_auth=${nonce}`;
-    const loginUrl = new URL('/', getIssuerUrl(req));
-    loginUrl.searchParams.set('callbackUrl', callbackUrl);
-    return NextResponse.redirect(loginUrl.toString(), 302);
+    const connectUrl = new URL('/mcp/connect', getIssuerUrl(req));
+    connectUrl.searchParams.set('mcp_auth', nonce);
+    return NextResponse.redirect(connectUrl.toString(), 302);
   }
   // Already authenticated: use the doc we just inserted — no read-back (arch-004).
   return postLoginWithState(req, nonce, doc, session.user.id, issuer, now);
@@ -114,9 +114,9 @@ async function postLogin(
   }
   const session = await auth();
   if (!session?.user?.id) {
-    const loginUrl = new URL('/', getIssuerUrl(req));
-    loginUrl.searchParams.set('callbackUrl', `/api/mcp/oauth/authorize?mcp_auth=${nonce}`);
-    return NextResponse.redirect(loginUrl.toString(), 302);
+    const connectUrl = new URL('/mcp/connect', getIssuerUrl(req));
+    connectUrl.searchParams.set('mcp_auth', nonce);
+    return NextResponse.redirect(connectUrl.toString(), 302);
   }
   return postLoginWithState(req, nonce, state, session.user.id, issuer, now);
 }

@@ -32,27 +32,30 @@ own slot comments on the draft PR when a phase lands.
 
 ## Next up
 
-**▶ ACTIVE TASK (2026-05-31) — bespoke connector sign-in screen (UX fix).** During live manual
-testing, the OAuth authorize flow's login leg dumps the user on the **full marketing landing page**
-(`/`) as the "sign in" step — janky; no production connector does that. It functions (login →
-consent → connected) but looks broken. **Build a focused, minimal connector sign-in screen.**
+**✅ DONE (2026-05-31) — bespoke connector sign-in screen (UX fix).** Replaced the marketing-homepage
+login leg with a focused, agent-agnostic sign-in screen. Done in this worktree, `npm run check` green
+(1603 tests).
 
-- **Current behavior:** `src/app/api/mcp/oauth/authorize/route.ts` `initial()` — when `await auth()`
-  finds no session, it redirects to `/?callbackUrl=<encoded /api/mcp/oauth/authorize?mcp_auth=NONCE>`.
-  `/` is `src/app/page.tsx` (marketing) whose `src/components/SignInButton.tsx` honors `callbackUrl`
-  (`signIn('google', { redirectTo: callbackUrl })`). After Google auth → back to the authorize
-  continuation → approval gate → `/mcp/consent` (the consent screen already IS a clean focused page).
-- **Proposed fix:** add a minimal server-rendered page (e.g. `src/app/mcp/connect/page.tsx`, mirror the
-  `src/app/mcp/consent/page.tsx` pattern) showing "Sign in to connect **<client name>** to Weekly Eats"
-  - a Google sign-in button (`redirectTo` = the authorize continuation). Change the authorize no-session
-    redirect to point at that page (carrying `mcp_auth=NONCE`) instead of `/`. Optionally read the client
-    name from the `mcpAuthStates` doc via the nonce (like the consent page does via `peekAuthState`).
-    Client-side `signIn` needs `"use client"`, OR use a server action / a form that posts to the app's
-    sign-in. Brainstorm the cleanest shape (route name, client-name display, session-already-exists case)
-    then `writing-plans` → `subagent-driven-development`. **UX only — not security; the flow works.**
-- **Mid-test gate to resolve in parallel:** confirm `zwrose@gmail.com` is **approved in `weekly-eats-develop`**
-  (the preview DB). If sign-in bounces back to Claude with `access_denied` instead of showing consent,
-  that account isn't approved there (it's created `pending` on first preview login).
+- **What shipped:**
+  - `src/app/mcp/connect/page.tsx` — new server-rendered page mirroring the `/mcp/consent` card. Peeks
+    the `mcpAuthStates` doc via the nonce (`peekAuthState`) → `getClient` for the registered client name.
+    Title: **"Connect &lt;client name&gt; to Weekly Eats"** (dynamic — falls back to "Connect to Weekly
+    Eats" when the DCR client registered no name; never hardcodes "Claude"). Google sign-in is a **server
+    action** (`signIn('google', { redirectTo: /api/mcp/oauth/authorize?mcp_auth=<nonce> })`) via a `<form>`
+    carrying the nonce in a hidden input — no `"use client"` needed, matches the consent page's form pattern.
+    An expired/missing nonce renders a **friendly on-screen "Connection link expired"** message (no bounce
+    to `/`).
+  - `src/components/GoogleIcon.tsx` — extracted the Google "G" SVG (was inline in `SignInButton`); now used
+    by both `SignInButton` and the connect page (DRY).
+  - `src/app/api/mcp/oauth/authorize/route.ts` — **both** no-session redirects (`initial()` + `postLogin()`)
+    now point at `/mcp/connect?mcp_auth=<nonce>` instead of `/?callbackUrl=...`.
+  - Tests: `src/app/mcp/connect/__tests__/page.test.tsx` (client-name render + nonce in form, generic-title
+    fallback, expired-nonce friendly error short-circuits `getClient`); authorize route test updated for the
+    new connect redirect + a new post-login-leg-no-session → `/mcp/connect` case.
+- **Mid-test gate still open:** confirm `zwrose@gmail.com` is **approved in `weekly-eats-develop`** (the
+  preview DB). If sign-in bounces back to Claude with `access_denied` instead of showing consent, that
+  account isn't approved there (created `pending` on first preview login).
+- **Next:** verify the new screen live in the preview (Chrome), then resume manual test plan Sections B–E.
 
 **Phase-2 state at this point (all pushed; HEAD `bd3dc20`, `feat/mcp` 0-behind / 84-ahead of main):**
 Phase 2 OAuth AS **built + reviewed + green** (`npm run check`: 1599 tests). **Synced with main** (Next 16

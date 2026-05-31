@@ -93,15 +93,13 @@ describe('GET /authorize', () => {
     expect(loc.searchParams.get('error')).toBe('invalid_request');
   });
 
-  it('no session → 302 to /?callbackUrl=<authorize?mcp_auth=...>', async () => {
+  it('no session → 302 to /mcp/connect?mcp_auth=<nonce>', async () => {
     auth.mockResolvedValue(null);
     const res = await GET(authorizeReq({ ...valid }));
     expect(res.status).toBe(302);
     const loc = new URL(res.headers.get('location')!);
-    expect(loc.pathname).toBe('/');
-    const cb = loc.searchParams.get('callbackUrl')!;
-    expect(cb).toContain('/api/mcp/oauth/authorize');
-    expect(cb).toContain('mcp_auth=');
+    expect(loc.pathname).toBe('/mcp/connect');
+    expect(loc.searchParams.get('mcp_auth')).toBeTruthy();
     // a state row was persisted
     expect(fake.store.get('mcpAuthStates')!.length).toBe(1);
   });
@@ -151,5 +149,18 @@ describe('GET /authorize', () => {
     auth.mockResolvedValue({ user: { id: 'u1' } });
     const res = await GET(authorizeReq({ mcp_auth: 'bogus-nonce' }));
     expect(res.status).toBe(400);
+  });
+
+  it('post-login leg with a valid nonce but still no session → 302 back to /mcp/connect', async () => {
+    auth.mockResolvedValue(null);
+    // initial leg persists the state and redirects to the connect screen
+    const first = await GET(authorizeReq({ ...valid }));
+    const nonce = new URL(first.headers.get('location')!).searchParams.get('mcp_auth')!;
+    // the user returns to /authorize?mcp_auth=... but is still unauthenticated
+    const res = await GET(authorizeReq({ mcp_auth: nonce }));
+    expect(res.status).toBe(302);
+    const loc = new URL(res.headers.get('location')!);
+    expect(loc.pathname).toBe('/mcp/connect');
+    expect(loc.searchParams.get('mcp_auth')).toBe(nonce);
   });
 });
