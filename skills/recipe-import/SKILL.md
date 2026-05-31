@@ -42,6 +42,9 @@ skill does **not** fetch or parse files for you. Extract:
 
 If the user pasted text directly, work from that.
 
+Optionally, before doing the work, use `recipes_search` to check whether the user
+already has this recipe, and skip or confirm if so.
+
 ### 2. Parse each ingredient line
 
 For each line, separate it into **quantity**, **unit**, **ingredient name**, and
@@ -93,6 +96,26 @@ recipe; use multiple lists with `title`s when the source groups ingredients (e.g
 
     { "type": "foodItem", "id": "<foodItem _id>", "quantity": <number>, "unit": "<unit>", "prepInstructions": "<optional>" }
 
+A list wraps ingredients and may carry an optional `title`. The full `ingredients`
+value is an array of these lists, for example:
+
+    [
+      {
+        "title": "For the sauce",
+        "ingredients": [
+          { "type": "foodItem", "id": "664...a1", "quantity": 2, "unit": "cup", "prepInstructions": "crushed" }
+        ]
+      },
+      {
+        "title": "For the topping",
+        "ingredients": [
+          { "type": "foodItem", "id": "664...b2", "quantity": 0.5, "unit": "cup" }
+        ]
+      }
+    ]
+
+For a simple recipe, use a single list (with no `title`).
+
 Every `id` must be a real food item `_id` (matched or newly created). Never invent an
 id and never emit a free-text ingredient.
 
@@ -111,7 +134,7 @@ silently drop ingredients.
 
 ## Guardrails
 
-- **Confirm before writing.** Steps 4 is mandatory. No surprise saves.
+- **Confirm before writing.** Step 4 is mandatory. No surprise saves.
 - **No free-text ingredients.** If you can't match or create a food item for a line,
   raise it with the user rather than dropping or faking it.
 - **One emoji max**, and only if it genuinely fits; omit otherwise.
