@@ -181,7 +181,7 @@ describe('PantryPage - Server Paginated', () => {
     const { unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/no pantry items found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no pantry items yet/i)).toBeInTheDocument();
     });
 
     unmount();
@@ -277,7 +277,9 @@ describe('PantryPage - Server Paginated', () => {
     const { unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/pantry items \(2\)/i)).toBeInTheDocument();
+      // Title + accent count subline (replaces the old "Pantry Items (2)" header).
+      expect(screen.getByRole('heading', { name: /pantry/i })).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
     });
 
     unmount();
