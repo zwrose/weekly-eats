@@ -1,3 +1,21 @@
+import type { SxProps, Theme } from '@mui/material';
+
+// Theme-independent "Sign in with Google" button styling — fixed white surface
+// with dark text so it stays legible (and on-brand) in both light and dark
+// themes. A theme-derived hover (e.g. grey.100) washes out in dark mode because
+// grey.100 is light while the text color follows the theme to white.
+export const GOOGLE_BUTTON_SX: SxProps<Theme> = {
+  textTransform: 'none',
+  fontWeight: 500,
+  bgcolor: '#ffffff',
+  color: '#3c4043',
+  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+  '&:hover': {
+    bgcolor: '#f1f3f4',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+  },
+};
+
 interface GoogleIconProps {
   size?: number;
 }

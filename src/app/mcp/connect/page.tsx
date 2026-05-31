@@ -1,8 +1,9 @@
 import { Box, Button, Container, Paper, Typography } from '@mui/material';
+import Image from 'next/image';
 import { signIn } from '@/lib/auth';
 import { peekAuthState } from '@/lib/mcp/oauth/stores/auth-states';
 import { getClient } from '@/lib/mcp/oauth/stores/clients';
-import { GoogleIcon } from '@/components/GoogleIcon';
+import { GoogleIcon, GOOGLE_BUTTON_SX } from '@/components/GoogleIcon';
 
 // Server action: kick off Google sign-in, returning to the authorize
 // continuation (which re-enters /authorize with the same single-use nonce).
@@ -29,6 +30,9 @@ export default async function ConnectPage({
     return (
       <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 } }}>
         <Paper sx={{ p: { xs: 3, sm: 4 } }} elevation={2}>
+          <Box sx={{ mb: 2 }}>
+            <Image src="/icon0.svg" alt="Weekly Eats" width={40} height={40} priority />
+          </Box>
           <Typography variant="h5" component="h1" gutterBottom>
             Connection link expired
           </Typography>
@@ -48,33 +52,28 @@ export default async function ConnectPage({
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 } }}>
       <Paper sx={{ p: { xs: 3, sm: 4 } }} elevation={2}>
+        <Box sx={{ mb: 2 }}>
+          <Image src="/icon0.svg" alt="Weekly Eats" width={40} height={40} priority />
+        </Box>
         <Typography variant="h5" component="h1" gutterBottom>
           {title}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Sign in to continue connecting your Weekly Eats account.
         </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <form action={startGoogleSignIn}>
-            <input type="hidden" name="mcp_auth" value={nonce} />
-            <Button
-              type="submit"
-              variant="contained"
-              color="inherit"
-              size="large"
-              startIcon={<GoogleIcon />}
-              sx={{
-                textTransform: 'none',
-                bgcolor: 'background.paper',
-                color: 'text.primary',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                '&:hover': { bgcolor: 'grey.100' },
-              }}
-            >
-              Sign in with Google
-            </Button>
-          </form>
-        </Box>
+        <form action={startGoogleSignIn} style={{ width: '100%' }}>
+          <input type="hidden" name="mcp_auth" value={nonce} />
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            size="large"
+            startIcon={<GoogleIcon />}
+            sx={GOOGLE_BUTTON_SX}
+          >
+            Sign in with Google
+          </Button>
+        </form>
       </Paper>
     </Container>
   );
