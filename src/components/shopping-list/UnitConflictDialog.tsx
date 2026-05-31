@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { tokens } from '@/lib/design-tokens';
+import { Icon } from '@/components/ui/Icon';
 import QuantityInput from '@/components/food-item-inputs/QuantityInput';
 import { getUnitOptions, getUnitForm } from '@/lib/food-items-utils';
 
@@ -103,7 +104,7 @@ function Body({
         <Eyebrow>
           Unit conflict · {index + 1} of {total}
         </Eyebrow>
-        <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>
+        <Box sx={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>
           {conflict.foodItemName}
         </Box>
       </Box>
@@ -116,24 +117,34 @@ function Body({
               p: 1.5,
               mb: 2,
               borderRadius: `${tokens.radius.lg}px`,
-              bgcolor: tokens.state.successMuted,
-              border: `1px solid ${alpha(tokens.state.success, 0.4)}`,
+              bgcolor: alpha(accent, 0.14),
+              border: `1px solid ${alpha(accent, 0.2)}`,
               fontSize: 13,
               color: tokens.text.primary,
             }}
           >
             <Box
-              component="span"
               sx={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: tokens.state.success,
-                mr: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                mb: 0.75,
               }}
             >
-              Auto-converted
+              <Icon name="auto_fix_high" size={14} color={accent} />
+              <Box
+                component="span"
+                sx={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: accent,
+                }}
+              >
+                Suggested: {suggested}
+                {conflict.suggestedUnit ? ` ${getUnitForm(conflict.suggestedUnit, suggested)}` : ''}
+              </Box>
             </Box>
             {conflict.unitBreakdown?.map((entry, idx) => (
               <Box component="span" key={idx}>
@@ -279,6 +290,8 @@ export function UnitConflictDialog(props: UnitConflictDialogProps) {
         slotProps={{
           paper: {
             sx: {
+              width: { sm: 560 },
+              maxWidth: { sm: 560 },
               bgcolor: tokens.surface.raised,
               border: `1px solid ${tokens.border.strong}`,
               borderRadius: `${tokens.radius.xxxl}px`,
@@ -302,6 +315,7 @@ export function UnitConflictDialog(props: UnitConflictDialogProps) {
             bgcolor: tokens.surface.sheet,
             borderTopLeftRadius: tokens.radius.sheet,
             borderTopRightRadius: tokens.radius.sheet,
+            boxShadow: tokens.shadow.sheet,
             maxHeight: '92%',
           },
         },

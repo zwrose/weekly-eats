@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, Button, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { tokens } from '@/lib/design-tokens';
 
 export interface PendingInvite {
@@ -18,6 +19,7 @@ interface PendingInviteBannerProps {
 }
 
 export function PendingInviteBanner({ invite, onAccept, onDecline }: PendingInviteBannerProps) {
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -39,7 +41,7 @@ export function PendingInviteBanner({ invite, onAccept, onDecline }: PendingInvi
             display: 'block',
             fontSize: { xs: 11, md: 12 },
             fontWeight: 700,
-            letterSpacing: '0.08em',
+            letterSpacing: { xs: '0.08em', md: '0.10em' },
             textTransform: 'uppercase',
             color: tokens.state.warn,
             mb: 0.5,
@@ -75,9 +77,9 @@ export function PendingInviteBanner({ invite, onAccept, onDecline }: PendingInvi
             minHeight: 34,
             px: 2,
             borderRadius: '10px',
-            color: tokens.surface.base,
-            bgcolor: tokens.state.warn,
-            '&:hover': { bgcolor: tokens.state.warn, filter: 'brightness(0.92)' },
+            color: tokens.onAccent.shop,
+            bgcolor: theme.palette.primary.main,
+            '&:hover': { bgcolor: theme.palette.primary.main, filter: 'brightness(0.94)' },
           }}
         >
           Accept

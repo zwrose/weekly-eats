@@ -62,6 +62,8 @@ export function ImportFromPlansDialog({
       slotProps={{
         paper: {
           sx: {
+            width: { sm: 540 },
+            maxWidth: { sm: 540 },
             bgcolor: tokens.surface.raised,
             border: `1px solid ${tokens.border.strong}`,
             borderRadius: `${tokens.radius.xxxl}px`,
@@ -146,15 +148,25 @@ export function ImportFromPlansDialog({
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Box
                           sx={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: tokens.text.primary,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            minWidth: 0,
                           }}
                         >
-                          {plan.name}
+                          <Icon name="event_note" size={18} color={tokens.section.plans} />
+                          <Box
+                            sx={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: tokens.text.primary,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {plan.name}
+                          </Box>
                         </Box>
                         <Box sx={{ fontSize: 12, color: tokens.text.secondary }}>
                           {new Date(plan.startDate).toLocaleDateString()}

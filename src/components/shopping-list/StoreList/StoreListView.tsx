@@ -108,21 +108,33 @@ export function StoreListView({
         />
       ))}
 
-      {/* Desktop search bar */}
+      {/* Desktop search bar — single bordered field; the slotted control's own
+          TextField border/background/margin is neutralized so we don't render a
+          nested double-box. */}
       {search && isDesktop && (
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
+            gap: 1,
             height: 40,
             maxWidth: 360,
             mb: 2,
             px: 1.5,
             bgcolor: tokens.surface.elevated,
             border: `1px solid ${tokens.border.strong}`,
-            borderRadius: '12px',
+            borderRadius: `${tokens.radius.xl}px`,
+            // Flatten the inner search control into a borderless input.
+            '& > .MuiBox-root': { mb: 0, flex: 1, minWidth: 0 },
+            '& .MuiOutlinedInput-root': {
+              bgcolor: 'transparent',
+              p: 0,
+            },
+            '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+            '& .MuiOutlinedInput-input': { p: 0 },
           }}
         >
+          <Icon name="search" size={18} color={tokens.text.secondary} />
           {search}
         </Box>
       )}
@@ -178,6 +190,21 @@ export function StoreListView({
         </>
       ) : (
         <>
+          {/* Mobile section label */}
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: tokens.text.secondary,
+              margin: '6px 4px 8px',
+            }}
+          >
+            Your stores
+          </Typography>
+
           {/* Mobile cards */}
           {stores.map((store) => (
             <StoreCard

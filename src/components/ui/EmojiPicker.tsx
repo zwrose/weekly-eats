@@ -39,7 +39,7 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
   };
 
   const body = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: isDesktop ? '80vh' : '78vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: isDesktop ? '85vh' : '78vh' }}>
       <Box
         sx={{
           display: 'flex',
@@ -126,11 +126,11 @@ export function EmojiPicker({ open, onClose, onSelect, currentEmoji }: EmojiPick
           inputProps={{ 'aria-label': 'Search emoji' }}
           sx={{
             width: '100%',
-            height: 38,
+            height: 40,
             px: 1.5,
             bgcolor: tokens.surface.elevated,
             border: `1px solid ${tokens.border.strong}`,
-            borderRadius: `${tokens.radius.lg}px`,
+            borderRadius: `${tokens.radius.xl}px`,
             color: tokens.text.primary,
             fontSize: 13,
           }}

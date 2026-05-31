@@ -283,7 +283,8 @@ export default function ItemEditorDialog({
               flexDirection: 'column',
               // Mobile: full-screen sheet
               margin: { xs: 0, sm: 'auto' },
-              width: { xs: '100%' },
+              width: { xs: '100%', sm: 480 },
+              maxWidth: { sm: 480 },
               height: { xs: '100%', sm: 'auto' },
               maxHeight: { xs: '100%', sm: '90vh' },
             },
@@ -531,8 +532,30 @@ export default function ItemEditorDialog({
               )}
             </Box>
 
-            {/* Primary action: Add / Save */}
-            <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            {/* Cancel (ghost) + Primary action: Add / Save */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                width: { xs: '100%', sm: 'auto' },
+              }}
+            >
+              <Button
+                onClick={handleClose}
+                sx={{
+                  width: { xs: '100%', sm: 'auto' },
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  color: tokens.text.secondary,
+                  border: `1px solid ${tokens.border.subtle}`,
+                  borderRadius: `${tokens.radius.lg}px`,
+                  px: 2,
+                  '&:hover': { bgcolor: 'transparent', color: tokens.text.primary },
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 onClick={() => void handleSave()}
                 disabled={isSaveDisabled}

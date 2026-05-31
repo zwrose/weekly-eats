@@ -305,6 +305,8 @@ export function ShareStoreDialog(props: ShareStoreDialogProps) {
         slotProps={{
           paper: {
             sx: {
+              width: { sm: 540 },
+              maxWidth: { sm: 540 },
               bgcolor: tokens.surface.raised,
               border: `1px solid ${tokens.border.strong}`,
               borderRadius: `${tokens.radius.xxxl}px`,
