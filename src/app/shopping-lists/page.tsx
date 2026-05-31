@@ -11,13 +11,11 @@ import {
   Button,
   Dialog,
   DialogContent,
-  TextField,
   IconButton,
   Menu,
   MenuItem,
   ListItemIcon,
   List,
-  ListItem,
   ListItemText,
   Divider,
   Alert,
@@ -113,6 +111,7 @@ import {
 import { StoreEditorDialog } from '@/components/shopping-list/StoreEditorDialog';
 import { ImportFromPlansDialog } from '@/components/shopping-list/ImportFromPlansDialog';
 import { UnitConflictDialog } from '@/components/shopping-list/UnitConflictDialog';
+import { ShareStoreDialog } from '@/components/shopping-list/ShareStoreDialog';
 
 interface FoodItem {
   _id: string;
@@ -161,9 +160,6 @@ function ShoppingListsPageContent() {
   const shareDialog = useDialog();
   const leaveStoreConfirmDialog = useConfirmDialog();
   const pantryCheckDialog = useDialog();
-
-  // Auto-focus refs for dialog inputs
-  const shareEmailRef = useRef<HTMLInputElement>(null);
 
   // Notification state
   const [snackbar, setSnackbar] = useState<{
@@ -1692,87 +1688,18 @@ function ShoppingListsPageContent() {
       />
 
       {/* Share Store Dialog */}
-      <Dialog
+      <ShareStoreDialog
         open={shareDialog.open}
+        storeName={sharingStore?.name ?? ''}
+        invitations={sharingStore?.invitations ?? []}
+        email={shareEmail}
+        onEmailChange={setShareEmail}
+        onInvite={handleInviteUser}
+        onRemove={(userId) => {
+          if (sharingStore) handleRemoveUser(sharingStore._id, userId);
+        }}
         onClose={shareDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => shareEmailRef.current?.focus() }}
-      >
-        <DialogTitle onClose={shareDialog.closeDialog}>
-          Share &quot;{sharingStore?.name}&quot;
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Invite users by email. They&apos;ll be able to view and edit the shopping list.
-          </Typography>
-
-          {/* Invite Section */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <TextField
-              inputRef={shareEmailRef}
-              label="Email Address"
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && shareEmail.trim()) {
-                  handleInviteUser();
-                }
-              }}
-              size="small"
-              fullWidth
-              placeholder="user@example.com"
-            />
-            <Button
-              variant="contained"
-              onClick={handleInviteUser}
-              disabled={!shareEmail.trim()}
-              sx={{ minWidth: 100 }}
-            >
-              Invite
-            </Button>
-          </Box>
-
-          {/* Shared Users List */}
-          {sharingStore?.invitations && sharingStore.invitations.length > 0 && (
-            <>
-              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                Shared With:
-              </Typography>
-              <List>
-                {sharingStore.invitations
-                  .filter((inv) => inv.status === 'accepted' || inv.status === 'pending')
-                  .map((inv) => (
-                    <ListItem key={inv.userId}>
-                      <ListItemText
-                        primary={inv.userEmail}
-                        secondary={inv.status === 'pending' ? 'Pending' : 'Accepted'}
-                      />
-                      {inv.status === 'accepted' && (
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Remove user"
-                          onClick={() => handleRemoveUser(sharingStore._id, inv.userId)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      )}
-                    </ListItem>
-                  ))}
-              </List>
-            </>
-          )}
-
-          <DialogActions primaryButtonIndex={0}>
-            <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              Done
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Pantry Check Dialog */}
       <PantryCheckDialog
