@@ -20,7 +20,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Checkbox,
   Divider,
   Autocomplete,
   Alert,
@@ -116,6 +115,7 @@ import {
   type PantryCheckMatch,
 } from '@/components/shopping-list/PantryCheck/PantryCheckDialog';
 import { StoreEditorDialog } from '@/components/shopping-list/StoreEditorDialog';
+import { ImportFromPlansDialog } from '@/components/shopping-list/ImportFromPlansDialog';
 
 interface FoodItem {
   _id: string;
@@ -1665,87 +1665,18 @@ function ShoppingListsPageContent() {
       </Dialog>
 
       {/* Meal Plan Selection Dialog */}
-      <Dialog
+      <ImportFromPlansDialog
         open={mealPlanSelectionDialog.open}
+        plans={availableMealPlans}
+        selectedIds={selectedMealPlanIds}
+        onToggle={(id) =>
+          setSelectedMealPlanIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+          )
+        }
+        onImport={handleAddItemsFromMealPlans}
         onClose={mealPlanSelectionDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={mealPlanSelectionDialog.closeDialog}>Select Meal Plans</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Select one or more meal plans to add their items to your shopping list.
-          </Typography>
-
-          {availableMealPlans.length === 0 ? (
-            <Alert severity="info">
-              No meal plans available (must be within last 3 days or in the future).
-            </Alert>
-          ) : (
-            <List>
-              {availableMealPlans.map((mealPlan) => (
-                <ListItem
-                  key={mealPlan._id}
-                  onClick={() => {
-                    setSelectedMealPlanIds((prev) =>
-                      prev.includes(mealPlan._id)
-                        ? prev.filter((id) => id !== mealPlan._id)
-                        : [...prev, mealPlan._id]
-                    );
-                  }}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                  }}
-                >
-                  <Checkbox
-                    checked={selectedMealPlanIds.includes(mealPlan._id)}
-                    onClick={(event) => {
-                      // Prevent the parent ListItem onClick from firing too,
-                      // otherwise a checkbox click toggles twice (net no change).
-                      event.stopPropagation();
-                    }}
-                    onChange={() => {
-                      setSelectedMealPlanIds((prev) =>
-                        prev.includes(mealPlan._id)
-                          ? prev.filter((id) => id !== mealPlan._id)
-                          : [...prev, mealPlan._id]
-                      );
-                    }}
-                  />
-                  <ListItemText
-                    primary={mealPlan.name}
-                    secondary={new Date(mealPlan.startDate).toLocaleDateString()}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This will extract all food items from the selected meal plans (including from recipes)
-            and add them to your shopping list.
-          </Typography>
-
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={mealPlanSelectionDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddItemsFromMealPlans}
-              variant="contained"
-              disabled={selectedMealPlanIds.length === 0}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Add Items
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Unit Conflict Resolution Dialog */}
       <Dialog
