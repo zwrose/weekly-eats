@@ -11,6 +11,8 @@ export interface StoreListItem {
   emoji?: string;
   itemCount: number;
   shared?: boolean;
+  /** Count of accepted co-shoppers (excludes the owner). */
+  sharedCount?: number;
 }
 
 interface StoreCardProps {

@@ -24,7 +24,7 @@ interface StoreListViewProps {
   onDeclineInvite?: (storeId: string) => void;
 }
 
-const COLUMN_LABELS = ['', 'Name', 'To buy', 'Shared with', 'Last shop', ''];
+const COLUMN_LABELS = ['', 'Name', 'To buy', 'Shared with', ''];
 
 export function StoreListView({
   stores,

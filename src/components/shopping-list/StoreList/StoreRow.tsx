@@ -6,17 +6,16 @@ import { Icon } from '@/components/ui/Icon';
 import { tokens } from '@/lib/design-tokens';
 import type { StoreListItem } from './StoreCard';
 
-export const STORE_ROW_GRID = '60px 1fr 140px 180px 140px 90px';
+export const STORE_ROW_GRID = '60px 1fr 140px 180px 90px';
 
 interface StoreRowProps {
   store: StoreListItem;
   onSelect: (id: string) => void;
-  lastShop?: string;
   isLast?: boolean;
 }
 
 /** Desktop store table row — artboard §3.1. */
-export function StoreRow({ store, onSelect, lastShop, isLast }: StoreRowProps) {
+export function StoreRow({ store, onSelect, isLast }: StoreRowProps) {
   const theme = useTheme();
   const hasItems = store.itemCount > 0;
   return (
@@ -67,13 +66,24 @@ export function StoreRow({ store, onSelect, lastShop, isLast }: StoreRowProps) {
           {hasItems ? `${store.itemCount} items` : 'Empty'}
         </Typography>
         <Box sx={{ minWidth: 0, width: '100%' }}>
-          {store.shared && (
-            <Icon name="group" size={16} color={tokens.text.secondary} aria-label="Shared store" />
+          {store.shared ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+              <Icon
+                name="group"
+                size={16}
+                color={tokens.text.secondary}
+                aria-label="Shared store"
+              />
+              <Typography sx={{ fontSize: 13, color: tokens.text.secondary }} noWrap>
+                {store.sharedCount && store.sharedCount > 0
+                  ? `${store.sharedCount} ${store.sharedCount === 1 ? 'person' : 'people'}`
+                  : 'Shared'}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography sx={{ fontSize: 13, color: tokens.text.muted }}>Just you</Typography>
           )}
         </Box>
-        <Typography sx={{ fontSize: 12, color: tokens.text.secondary }}>
-          {lastShop ?? ''}
-        </Typography>
         <Box sx={{ justifySelf: 'end', display: 'flex' }}>
           <Icon name="chevron_right" size={18} color={tokens.text.secondary} />
         </Box>

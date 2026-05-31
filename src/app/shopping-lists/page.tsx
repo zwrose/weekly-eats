@@ -1431,6 +1431,8 @@ function ShoppingListsPageContent() {
                 emoji: store.emoji,
                 itemCount: store.shoppingList?.itemCount || 0,
                 shared: (store.invitations ?? []).some((inv) => inv.status === 'accepted'),
+                sharedCount: (store.invitations ?? []).filter((inv) => inv.status === 'accepted')
+                  .length,
               }))}
               onSelectStore={(id) => {
                 const store = stores.find((s) => s._id === id);
