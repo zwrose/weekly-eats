@@ -45,6 +45,7 @@ export function StoreSidebar({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
+        p: '20px 14px',
       }}
     >
       {/* Header */}
@@ -53,7 +54,7 @@ export function StoreSidebar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: '12px',
+          px: '4px',
           py: '10px',
         }}
       >
@@ -82,9 +83,7 @@ export function StoreSidebar({
       </Box>
 
       {/* Rows */}
-      <Box
-        sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: '8px', overflowY: 'auto' }}
-      >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, overflowY: 'auto' }}>
         {stores.map((store) => {
           const active = store._id === activeStoreId;
           return (

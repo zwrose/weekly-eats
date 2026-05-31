@@ -158,7 +158,16 @@ export function ShoppingListView({
   );
 
   const pane = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, flex: 1 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        minHeight: 0,
+        flex: 1,
+        padding: { xs: '14px 14px 100px', md: '24px 32px 110px' },
+      }}
+    >
       {/* Mobile back affordance */}
       {!isDesktop && (
         <ButtonBase
@@ -171,12 +180,12 @@ export function ShoppingListView({
             mb: 1.5,
             px: 0.5,
             py: 0.5,
-            color: tokens.text.secondary,
+            color: theme.palette.primary.main,
             fontSize: 14,
-            '&:hover': { color: tokens.text.primary },
+            '&:hover': { opacity: 0.85 },
           }}
         >
-          <Icon name="chevron_left" size={20} />
+          <Icon name="chevron_left" size={18} />
           Stores
         </ButtonBase>
       )}
@@ -192,9 +201,10 @@ export function ShoppingListView({
             noWrap
             sx={{
               fontFamily: 'var(--font-display)',
-              fontSize: 28,
+              fontSize: { xs: 22, md: 28 },
               fontWeight: 700,
               lineHeight: 1.1,
+              letterSpacing: { xs: '-0.02em', md: '-0.025em' },
               color: tokens.text.primary,
             }}
           >
@@ -285,13 +295,12 @@ export function ShoppingListView({
             display: 'grid',
             gridTemplateColumns: '280px 1fr',
             minHeight: 0,
+            position: 'relative',
           }}
         >
           {renderSidebar(false)}
-          <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, p: 2 }}>
-            {pane}
-            {finishBar}
-          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>{pane}</Box>
+          {finishBar}
         </Box>
         {finishConfirm}
       </>
@@ -300,7 +309,7 @@ export function ShoppingListView({
 
   return (
     <>
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
         {pane}
         {finishBar}
         {/* Sidebar kept rendered (off-screen) on mobile for selection parity and

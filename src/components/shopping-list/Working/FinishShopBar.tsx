@@ -19,10 +19,15 @@ export function FinishShopBar({ boughtCount, onFinish }: FinishShopBarProps) {
   return (
     <Box
       sx={{
+        position: 'absolute',
+        left: { xs: 0, md: 280 },
+        right: 0,
+        bottom: 0,
         bgcolor: tokens.surface.base,
         borderTop: `1px solid ${tokens.border.subtle}`,
-        px: 2,
-        py: 1,
+        px: { xs: '16px', md: '32px' },
+        pt: { xs: '12px', md: '14px' },
+        pb: '22px',
         display: 'flex',
         justifyContent: isMobile ? 'stretch' : 'flex-end',
       }}
@@ -41,8 +46,8 @@ export function FinishShopBar({ boughtCount, onFinish }: FinishShopBarProps) {
           bgcolor: theme.palette.primary.main,
           color: tokens.onAccent.shop,
           borderRadius: `${tokens.radius.xl}px`,
-          fontWeight: 600,
-          fontSize: 14,
+          fontWeight: 700,
+          fontSize: isMobile ? 15 : 14.5,
           letterSpacing: 0.1,
           '&:hover': {
             opacity: 0.9,
@@ -52,7 +57,7 @@ export function FinishShopBar({ boughtCount, onFinish }: FinishShopBarProps) {
           },
         }}
       >
-        <Icon name="done_all" size={20} />
+        <Icon name="done_all" size={18} />
         {`Finish shop · ${boughtCount} bought`}
       </ButtonBase>
     </Box>

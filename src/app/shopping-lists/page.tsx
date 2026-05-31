@@ -12,8 +12,6 @@ import {
   Dialog,
   DialogContent,
   IconButton,
-  List,
-  Divider,
   Alert,
   Snackbar,
 } from '@mui/material';
@@ -1289,30 +1287,69 @@ function ShoppingListsPageContent() {
           },
         }}
       >
-        <List sx={{ overflowX: 'hidden' }}>
-          <DndContext
-            sensors={dndSensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
-              strategy={verticalListSortingStrategy}
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+          onDragEnd={handleDragEnd}
+        >
+          {orderedShoppingItems.unchecked.length > 0 && (
+            <Box
+              sx={{
+                bgcolor: tokens.surface.raised,
+                border: `1px solid ${tokens.border.subtle}`,
+                borderRadius: { xs: '12px', md: '14px' },
+                overflow: 'hidden',
+                '& > div:not(:last-of-type)': {
+                  borderBottom: `1px solid ${tokens.border.subtle}`,
+                },
+              }}
             >
-              {orderedShoppingItems.unchecked.map((item) => (
-                <ShoppingItemRow
-                  key={item.foodItemId}
-                  item={item}
-                  onToggle={(id) => void handleToggleItemChecked(id)}
-                  onEdit={handleOpenEditItemEditor}
-                />
-              ))}
-            </SortableContext>
+              <SortableContext
+                items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedShoppingItems.unchecked.map((item) => (
+                  <ShoppingItemRow
+                    key={item.foodItemId}
+                    item={item}
+                    onToggle={(id) => void handleToggleItemChecked(id)}
+                    onEdit={handleOpenEditItemEditor}
+                  />
+                ))}
+              </SortableContext>
+            </Box>
+          )}
 
-            {orderedShoppingItems.checked.length > 0 && (
-              <>
-                {orderedShoppingItems.unchecked.length > 0 && <Divider />}
+          {orderedShoppingItems.checked.length > 0 && (
+            <>
+              <Box
+                sx={{
+                  mt: '10px',
+                  pt: '10px',
+                  px: '4px',
+                  borderTop: `1px solid ${tokens.border.subtle}`,
+                  fontSize: { xs: 10, md: 11 },
+                  fontWeight: 700,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: tokens.text.secondary,
+                }}
+              >
+                {`In cart · ${orderedShoppingItems.checked.length}`}
+              </Box>
+              <Box
+                sx={{
+                  mt: '10px',
+                  bgcolor: tokens.surface.sunken,
+                  border: `1px solid ${tokens.border.subtle}`,
+                  borderRadius: { xs: '12px', md: '14px' },
+                  overflow: 'hidden',
+                  '& > div:not(:last-of-type)': {
+                    borderBottom: `1px solid ${tokens.border.subtle}`,
+                  },
+                }}
+              >
                 {orderedShoppingItems.checked.map((item) => (
                   <ShoppingItemRow
                     key={item.foodItemId}
@@ -1321,10 +1358,10 @@ function ShoppingListsPageContent() {
                     onEdit={handleOpenEditItemEditor}
                   />
                 ))}
-              </>
-            )}
-          </DndContext>
-        </List>
+              </Box>
+            </>
+          )}
+        </DndContext>
       </Box>
     );
 

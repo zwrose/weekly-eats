@@ -35,12 +35,12 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
       sx={{
         display: 'flex',
         alignItems: 'center',
-        gap: 1,
-        px: 1,
-        py: 0.5,
+        gap: { xs: 1.5, md: 1.75 },
+        px: { xs: '14px', md: '18px' },
+        py: '12px',
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.6 : item.checked ? 0.55 : 1,
+        opacity: isDragging ? 0.6 : item.checked ? { xs: 0.6, md: 0.55 } : 1,
       }}
     >
       {/* Real checkbox input — visually hidden but accessible */}
@@ -78,7 +78,9 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
             position: 'absolute',
             inset: 0,
             borderRadius: `${tokens.radius.sm}px`,
-            border: item.checked ? 'none' : `1.5px solid ${tokens.border.strong}`,
+            border: item.checked
+              ? `1.5px solid ${theme.palette.primary.main}`
+              : `1.5px solid ${tokens.border.strong}`,
             bgcolor: item.checked ? theme.palette.primary.main : 'transparent',
             display: 'flex',
             alignItems: 'center',
@@ -100,6 +102,7 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
           minWidth: 0,
           display: 'flex',
           alignItems: 'baseline',
+          justifyContent: 'flex-start',
           gap: 1,
           textAlign: 'left',
           py: 0.25,
@@ -109,7 +112,7 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
           component="span"
           style={{ textDecoration: item.checked ? 'line-through' : 'none' }}
           sx={{
-            fontSize: 14.5,
+            fontSize: { xs: 14.5, md: 15 },
             fontWeight: 500,
             color: tokens.text.primary,
             whiteSpace: 'nowrap',
@@ -122,7 +125,7 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
         <Box
           component="span"
           sx={{
-            fontSize: 13,
+            fontSize: { xs: 11.5, md: 12.5 },
             color: tokens.text.muted,
             fontVariantNumeric: 'tabular-nums',
             whiteSpace: 'nowrap',
@@ -150,10 +153,11 @@ export function ShoppingItemRow({ item, onToggle, onEdit }: ShoppingItemRowProps
           display: 'flex',
           alignItems: 'center',
           flexShrink: 0,
+          ml: 'auto',
           '&:active': { cursor: 'grabbing' },
         }}
       >
-        <Icon name="drag_indicator" size={20} />
+        <Icon name="drag_indicator" size={18} />
       </Box>
     </Box>
   );
