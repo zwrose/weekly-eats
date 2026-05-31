@@ -55,6 +55,7 @@ describe('ConfirmDialog', () => {
     }));
     const user = userEvent.setup();
     const onConfirm = vi.fn();
+    const onCancel = vi.fn();
     render(
       <ConfirmDialog
         open
@@ -63,12 +64,14 @@ describe('ConfirmDialog', () => {
         confirmLabel="Remove"
         confirmColor="error"
         onConfirm={onConfirm}
-        onCancel={vi.fn()}
+        onCancel={onCancel}
       />
     );
     expect(screen.getByText('Remove pantry item')).toBeInTheDocument();
     expect(screen.getByText('Are you sure?')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
