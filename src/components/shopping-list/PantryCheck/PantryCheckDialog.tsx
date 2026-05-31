@@ -56,7 +56,7 @@ export function PantryCheckDialog({ open, matches, onApply, onClose }: PantryChe
       PaperProps={{
         sx: {
           width: 560,
-          borderRadius: tokens.radius.xxxl,
+          borderRadius: `${tokens.radius.xxxl}px`,
           boxShadow: tokens.shadow.modal,
         },
       }}

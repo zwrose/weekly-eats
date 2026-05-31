@@ -13,7 +13,7 @@ export function KeepSkipToggle({ value, onChange }: KeepSkipToggleProps) {
   const segmentBase = {
     px: '11px',
     py: '5px',
-    borderRadius: tokens.radius.pill,
+    borderRadius: `${tokens.radius.pill}px`,
     fontSize: 11,
     fontWeight: 700,
     letterSpacing: '0.06em',
@@ -26,7 +26,7 @@ export function KeepSkipToggle({ value, onChange }: KeepSkipToggleProps) {
         display: 'inline-flex',
         bgcolor: tokens.surface.elevated,
         border: `1px solid ${tokens.border.subtle}`,
-        borderRadius: tokens.radius.pill,
+        borderRadius: `${tokens.radius.pill}px`,
         p: '2px',
       }}
     >
