@@ -112,6 +112,10 @@ import ItemEditorDialog, {
   type ItemEditorDraft,
   type ItemEditorMode,
 } from '@/components/shopping-list/ItemEditorDialog';
+import {
+  PantryCheckDialog,
+  type PantryCheckMatch,
+} from '@/components/shopping-list/PantryCheck/PantryCheckDialog';
 
 interface FoodItem {
   _id: string;
@@ -231,16 +235,7 @@ function ShoppingListsPageContent() {
   const [pendingMergedItems, setPendingMergedItems] = useState<ShoppingListItem[]>([]);
 
   // Pantry check states
-  const [matchingPantryItems, setMatchingPantryItems] = useState<
-    Array<{
-      foodItemId: string;
-      name: string;
-      currentQuantity: number;
-      unit: string;
-      checked: boolean;
-      newQuantity: number;
-    }>
-  >([]);
+  const [matchingPantryItems, setMatchingPantryItems] = useState<PantryCheckMatch[]>([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
 
   // Purchase history states
@@ -1182,17 +1177,18 @@ function ShoppingListsPageContent() {
       // Load food items and pantry items in parallel
       const [pantryItems] = await Promise.all([fetchPantryItems(), loadFoodItems()]);
 
-      // Find shopping list items that are in pantry
-      const matches = shoppingListItems
+      // Find shopping list items that are in pantry; shape as PantryCheckMatch[]
+      const matches: PantryCheckMatch[] = shoppingListItems
         .filter((item) => pantryItems.some((p) => p.foodItemId === item.foodItemId))
-        .map((item) => ({
-          foodItemId: item.foodItemId,
-          name: item.name,
-          currentQuantity: item.quantity,
-          unit: item.unit,
-          checked: false,
-          newQuantity: item.quantity,
-        }));
+        .map((item) => {
+          const unitPart =
+            item.unit && item.unit !== 'each' ? ` ${getUnitForm(item.unit, item.quantity)}` : '';
+          return {
+            foodItemId: item.foodItemId,
+            name: item.name,
+            listLabel: `${item.quantity}${unitPart} on list`,
+          };
+        });
 
       setMatchingPantryItems(matches);
 
@@ -1206,45 +1202,14 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handlePantryItemCheck = (foodItemId: string, checked: boolean) => {
-    setMatchingPantryItems((prev) =>
-      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, checked } : item))
-    );
-  };
-
-  const handlePantryItemQuantityChange = (foodItemId: string, newQuantity: number) => {
-    setMatchingPantryItems((prev) =>
-      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, newQuantity } : item))
-    );
-  };
-
-  const handleApplyPantryCheck = async () => {
+  const handleApplyPantryCheck = async (decisions: Record<string, 'keep' | 'skip'>) => {
     if (!selectedStore) return;
 
     try {
-      // Apply changes from pantry check
-      const updatedItems = shoppingListItems
-        .map((item) => {
-          const match = matchingPantryItems.find((m) => m.foodItemId === item.foodItemId);
-          if (match) {
-            // If checked off or quantity is 0, remove it (will be filtered out below)
-            if (match.checked || match.newQuantity <= 0) {
-              return null;
-            }
-            // Update quantity if changed
-            if (match.newQuantity !== item.quantity) {
-              const foodItem = foodItems.find((f) => f._id === item.foodItemId);
-              const newName = foodItem
-                ? match.newQuantity === 1
-                  ? foodItem.singularName
-                  : foodItem.pluralName
-                : item.name;
-              return { ...item, quantity: match.newQuantity, name: newName };
-            }
-          }
-          return item;
-        })
-        .filter((item): item is ShoppingListItem => item !== null);
+      // Drop items whose decision is 'skip'; keep all others unchanged
+      const updatedItems = shoppingListItems.filter(
+        (item) => decisions[item.foodItemId] !== 'skip'
+      );
 
       setShoppingListItems(updatedItems);
 
@@ -1259,17 +1224,9 @@ function ShoppingListsPageContent() {
       setMatchingPantryItems([]);
 
       const removedCount = shoppingListItems.length - updatedItems.length;
-      const changedCount = matchingPantryItems.filter(
-        (m) => !m.checked && m.newQuantity !== m.currentQuantity
-      ).length;
 
-      if (removedCount > 0 || changedCount > 0) {
-        showSnackbar(
-          `Pantry check complete! ${
-            removedCount > 0 ? `Removed ${removedCount} item(s). ` : ''
-          }${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ''}`,
-          'success'
-        );
+      if (removedCount > 0) {
+        showSnackbar(`Pantry check complete! Removed ${removedCount} item(s).`, 'success');
       } else {
         showSnackbar('No changes made', 'info');
       }
@@ -2113,129 +2070,12 @@ function ShoppingListsPageContent() {
       </Dialog>
 
       {/* Pantry Check Dialog */}
-      <Dialog
+      <PantryCheckDialog
         open={pantryCheckDialog.open}
+        matches={matchingPantryItems}
+        onApply={handleApplyPantryCheck}
         onClose={pantryCheckDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={pantryCheckDialog.closeDialog}>Pantry Check</DialogTitle>
-        <DialogContent>
-          {matchingPantryItems.length === 0 ? (
-            <>
-              <Alert severity="info">
-                No items found in pantry. Add items to your pantry to use this feature.
-              </Alert>
-              <DialogActions primaryButtonIndex={0}>
-                <Button
-                  onClick={pantryCheckDialog.closeDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Close
-                </Button>
-              </DialogActions>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                These shopping list items are in your pantry. Check them off to remove from the
-                list, or adjust quantities as needed.
-              </Typography>
-              <List>
-                {matchingPantryItems.map((item, index) => (
-                  <Box key={item.foodItemId}>
-                    <ListItem
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
-                        py: 2,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          width: '100%',
-                          mb: 1,
-                        }}
-                      >
-                        <Checkbox
-                          checked={item.checked}
-                          onChange={(e) => handlePantryItemCheck(item.foodItemId, e.target.checked)}
-                          sx={{ mr: 1 }}
-                        />
-                        <ListItemText
-                          primary={item.name}
-                          secondary={`Current: ${item.currentQuantity} ${
-                            item.unit && item.unit !== 'each'
-                              ? getUnitForm(item.unit, item.currentQuantity)
-                              : ''
-                          }`}
-                          sx={{
-                            textDecoration: item.checked ? 'line-through' : 'none',
-                            opacity: item.checked ? 0.6 : 1,
-                          }}
-                        />
-                      </Box>
-                      {!item.checked && (
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            gap: 1,
-                            ml: 6,
-                            alignItems: 'flex-start',
-                          }}
-                        >
-                          <QuantityInput
-                            label="New Quantity"
-                            value={item.newQuantity}
-                            onChange={(newQuantity) =>
-                              handlePantryItemQuantityChange(item.foodItemId, newQuantity)
-                            }
-                            size="small"
-                            sx={{ width: 150 }}
-                          />
-                          <TextField
-                            label="Unit"
-                            size="small"
-                            value={
-                              item.unit && item.unit !== 'each'
-                                ? getUnitForm(item.unit, item.newQuantity)
-                                : ''
-                            }
-                            disabled
-                            sx={{ width: 120 }}
-                          />
-                        </Box>
-                      )}
-                    </ListItem>
-                    {index < matchingPantryItems.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </List>
-            </>
-          )}
-          {matchingPantryItems.length > 0 && (
-            <DialogActions primaryButtonIndex={1}>
-              <Button
-                onClick={pantryCheckDialog.closeDialog}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleApplyPantryCheck}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Apply Changes
-              </Button>
-            </DialogActions>
-          )}
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Emoji Picker Dialog */}
       <EmojiPicker
