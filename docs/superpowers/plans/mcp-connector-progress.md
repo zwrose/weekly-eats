@@ -96,6 +96,17 @@ type`); covered instead by verify-token unit tests + the register smoke test.
 Dated entries for things decided during design/review that affect implementation but
 aren't worth a spec rewrite.
 
+- **2026-05-30 — Synced with `main`: Next.js 16 + MUI v9 + uuid-override removal (merge `9b9b0f6`).**
+  Pulled in #148 (Next 15→16 + ESLint flat-config; `lint` script → `eslint .`), #149 (MUI 7→9), #150
+  (drop dead uuid override). Only `package.json`/`package-lock.json` conflicted; `next.config.ts`
+  (my `/.well-known` rewrites vs main's Next-16 edits) **auto-merged**, `eslint.config.mjs` identical.
+  Resolved by taking main's package baseline + re-adding the two MCP deps (`mcp-handler@^1.1.0`,
+  `@modelcontextprotocol/sdk@1.26.0` — exact), `npm install` (no ERESOLVE; mcp-handler peers `next>=13`).
+  **One source-fallout fix** (`cc0f1aa`): MUI v9 tightened `Stack` typing — `justifyContent` is no longer
+  a direct prop, moved to `sx` on the consent page. `npm run check` green (**1599 tests**, lint 0, build OK).
+  Carryover: Next 16 deprecates the `middleware.ts` convention in favor of `proxy.ts` (warning only, not a
+  break; affects `main` too) — a future migration, out of scope for this sync. `feat/mcp` now 0 behind main.
+
 - **2026-05-30 — Phase 2 open questions resolved + §6.4 carryover closed.**
   (a) **Login leg:** reuses the app's existing landing-page Google sign-in via a relative `callbackUrl` — NOT a programmatic `signIn()` call. No second identity system. The AS `/authorize` redirects the user to the landing page with a `callbackUrl` pointing back into the OAuth flow; Auth.js v5 handles the Google round-trip transparently.
   (b) **OAuth wire error constants:** resolved as `MCP_OAUTH_ERRORS` — a dedicated group in `src/lib/errors.ts` holding RFC-literal values (e.g. `invalid_client`, `invalid_grant`, `rate_limited`). This is a documented exemption to the no-hardcoded-strings rule; the RFC requires these exact strings on the wire.
