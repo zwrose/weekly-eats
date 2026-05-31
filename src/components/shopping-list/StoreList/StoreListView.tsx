@@ -22,11 +22,9 @@ interface StoreListViewProps {
   pendingInvitations?: PendingInvite[];
   onAcceptInvite?: (storeId: string) => void;
   onDeclineInvite?: (storeId: string) => void;
-  /** Per-store owner/member action controls, keyed by store id. */
-  renderStoreActions?: (store: StoreListItem) => ReactNode;
 }
 
-const COLUMN_LABELS = ['', 'Store', 'List', 'Shared', 'Last shop', ''];
+const COLUMN_LABELS = ['', 'Name', 'To buy', 'Shared with', 'Last shop', ''];
 
 export function StoreListView({
   stores,
@@ -38,11 +36,11 @@ export function StoreListView({
   pendingInvitations,
   onAcceptInvite,
   onDeclineInvite,
-  renderStoreActions,
 }: StoreListViewProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const isEmpty = stores.length === 0;
+  const totalItems = stores.reduce((sum, store) => sum + store.itemCount, 0);
 
   return (
     <Box>
@@ -68,10 +66,21 @@ export function StoreListView({
               lineHeight: 1.1,
             }}
           >
-            Shopping Lists
+            Shopping
           </Typography>
           <Typography sx={{ fontSize: { xs: 12, md: 13 }, color: tokens.text.secondary, mt: 0.5 }}>
-            {stores.length} {stores.length === 1 ? 'store' : 'stores'}
+            <Box component="span" sx={{ color: theme.palette.primary.main, fontWeight: 600 }}>
+              {stores.length}
+            </Box>{' '}
+            {stores.length === 1 ? 'store' : 'stores'} ·{' '}
+            <Box component="span" sx={{ color: theme.palette.primary.main, fontWeight: 600 }}>
+              {totalItems}
+            </Box>{' '}
+            items to buy
+            <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>
+              {' '}
+              across all
+            </Box>
           </Typography>
         </Box>
         <Button
@@ -169,6 +178,7 @@ export function StoreListView({
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
                     color: tokens.text.secondary,
+                    textAlign: i === COLUMN_LABELS.length - 1 ? 'right' : 'left',
                   }}
                 >
                   {label}
@@ -181,7 +191,6 @@ export function StoreListView({
                 store={store}
                 onSelect={onSelectStore}
                 isLast={i === stores.length - 1}
-                actions={renderStoreActions?.(store)}
               />
             ))}
           </Box>
@@ -207,12 +216,7 @@ export function StoreListView({
 
           {/* Mobile cards */}
           {stores.map((store) => (
-            <StoreCard
-              key={store._id}
-              store={store}
-              onSelect={onSelectStore}
-              actions={renderStoreActions?.(store)}
-            />
+            <StoreCard key={store._id} store={store} onSelect={onSelectStore} />
           ))}
 
           {pagination}

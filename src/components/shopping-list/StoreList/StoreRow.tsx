@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { Box, ButtonBase, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
@@ -14,12 +13,10 @@ interface StoreRowProps {
   onSelect: (id: string) => void;
   lastShop?: string;
   isLast?: boolean;
-  /** Optional trailing actions (owner controls). When omitted, a chevron is shown. */
-  actions?: ReactNode;
 }
 
 /** Desktop store table row — artboard §3.1. */
-export function StoreRow({ store, onSelect, lastShop, isLast, actions }: StoreRowProps) {
+export function StoreRow({ store, onSelect, lastShop, isLast }: StoreRowProps) {
   const theme = useTheme();
   const hasItems = store.itemCount > 0;
   return (
@@ -77,27 +74,10 @@ export function StoreRow({ store, onSelect, lastShop, isLast, actions }: StoreRo
         <Typography sx={{ fontSize: 12, color: tokens.text.secondary }}>
           {lastShop ?? ''}
         </Typography>
-        {!actions && (
-          <Box sx={{ justifySelf: 'end', display: 'flex' }}>
-            <Icon name="chevron_right" size={18} color={tokens.text.secondary} />
-          </Box>
-        )}
-      </ButtonBase>
-      {actions && (
-        <Box
-          sx={{
-            position: 'absolute',
-            right: 22,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            gap: 0.5,
-            alignItems: 'center',
-          }}
-        >
-          {actions}
+        <Box sx={{ justifySelf: 'end', display: 'flex' }}>
+          <Icon name="chevron_right" size={18} color={tokens.text.secondary} />
         </Box>
-      )}
+      </ButtonBase>
     </Box>
   );
 }

@@ -11,7 +11,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  IconButton,
   Alert,
   Snackbar,
 } from '@mui/material';
@@ -26,14 +25,6 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import {
-  ShoppingCart,
-  Edit,
-  Delete,
-  Share,
-  Close as CloseIcon,
-  History,
-} from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
   StoreWithShoppingList,
@@ -488,11 +479,6 @@ function ShoppingListsPageContent() {
       showSnackbar('Failed to load latest shopping list', 'error');
       setShoppingListItems([]);
     }
-  };
-
-  const handleStartShopping = async (store: StoreWithShoppingList) => {
-    // No separate Shop Mode anymore: open the same unified list.
-    await handleViewList(store);
   };
 
   // Restore selected store and mode from URL when dialog is open
@@ -1486,84 +1472,6 @@ function ShoppingListsPageContent() {
               onDeclineInvite={(storeId) => {
                 const inv = pendingInvitations.find((i) => i.storeId === storeId);
                 if (inv) handleRejectInvitation(inv.storeId, inv.invitation.userId);
-              }}
-              renderStoreActions={(listItem) => {
-                const store = stores.find((s) => s._id === listItem._id);
-                if (!store) return null;
-                return (
-                  <>
-                    <IconButton
-                      size="small"
-                      color="success"
-                      title="Start Shopping"
-                      disabled={!store.shoppingList?.itemCount}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartShopping(store);
-                      }}
-                    >
-                      <ShoppingCart fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      title="Purchase History"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenHistory(store);
-                      }}
-                    >
-                      <History fontSize="small" />
-                    </IconButton>
-                    {isStoreOwner(store) ? (
-                      <>
-                        <IconButton
-                          size="small"
-                          title="Share Store"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenShareDialog(store);
-                          }}
-                        >
-                          <Share fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          title="Edit Store"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditStore(store);
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Delete Store"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedStore(store);
-                            deleteConfirmDialog.openDialog();
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <IconButton
-                        size="small"
-                        color="warning"
-                        title="Leave Store"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLeaveStore(store);
-                        }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </>
-                );
               }}
             />
           )}

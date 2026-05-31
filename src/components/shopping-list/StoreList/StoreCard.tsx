@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { Box, ButtonBase, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Icon } from '@/components/ui/Icon';
@@ -17,12 +16,10 @@ export interface StoreListItem {
 interface StoreCardProps {
   store: StoreListItem;
   onSelect: (id: string) => void;
-  /** Optional trailing actions (owner controls). When omitted, a chevron is shown. */
-  actions?: ReactNode;
 }
 
 /** Mobile store card — artboard §3.1. */
-export function StoreCard({ store, onSelect, actions }: StoreCardProps) {
+export function StoreCard({ store, onSelect }: StoreCardProps) {
   const theme = useTheme();
   const hasItems = store.itemCount > 0;
   return (
@@ -99,28 +96,13 @@ export function StoreCard({ store, onSelect, actions }: StoreCardProps) {
             {hasItems ? `${store.itemCount} to buy` : 'List empty'}
           </Typography>
         </Box>
-        {!actions && (
-          <Box
-            component="span"
-            sx={{ fontSize: 14, color: tokens.text.secondary, flexShrink: 0, lineHeight: 1 }}
-          >
-            ›
-          </Box>
-        )}
-      </ButtonBase>
-      {actions && (
         <Box
-          sx={{
-            display: 'flex',
-            gap: 0.5,
-            justifyContent: 'flex-end',
-            px: '14px',
-            pb: '10px',
-          }}
+          component="span"
+          sx={{ fontSize: 14, color: tokens.text.secondary, flexShrink: 0, lineHeight: 1 }}
         >
-          {actions}
+          ›
         </Box>
-      )}
+      </ButtonBase>
     </Box>
   );
 }

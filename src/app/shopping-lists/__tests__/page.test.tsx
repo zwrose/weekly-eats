@@ -166,7 +166,7 @@ describe('ShoppingListsPage', () => {
     render(<ShoppingListsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Shopping Lists')).toBeInTheDocument();
+      expect(screen.getByText('Shopping')).toBeInTheDocument();
     });
   });
 
@@ -463,175 +463,7 @@ describe('ShoppingListsPage', () => {
     });
   });
 
-  it('clicking edit button does not open shopping list dialog', async () => {
-    const user = userEvent.setup();
-    const mockStores = [
-      {
-        _id: 'store-1',
-        userId: 'user-123',
-        name: 'Target',
-        emoji: '🎯',
-        invitations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shoppingList: {
-          _id: 'list-1',
-          storeId: 'store-1',
-          userId: 'user-123',
-          itemCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    ];
-
-    mockFetchStores.mockResolvedValue(mockStores);
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-    });
-
-    // Find edit button by testId and click it
-    const editIcons = screen.getAllByTestId('EditIcon');
-    await user.click(editIcons[0].closest('button')!);
-
-    // Edit Store dialog should open (seeded with the store's name)
-    await waitFor(() => {
-      expect(screen.getByText('Edit store')).toBeInTheDocument();
-      expect(screen.getByLabelText(/name/i)).toHaveValue('Target');
-    });
-  });
-
-  it('clicking delete button does not open shopping list dialog', async () => {
-    const user = userEvent.setup();
-    const mockStores = [
-      {
-        _id: 'store-1',
-        userId: 'user-123',
-        name: 'Target',
-        emoji: '🎯',
-        invitations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shoppingList: {
-          _id: 'list-1',
-          storeId: 'store-1',
-          userId: 'user-123',
-          itemCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    ];
-
-    mockFetchStores.mockResolvedValue(mockStores);
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-    });
-
-    // Find delete button by testId and click it
-    const deleteIcons = screen.getAllByTestId('DeleteIcon');
-    await user.click(deleteIcons[0].closest('button')!);
-
-    // Delete confirmation dialog should open
-    await waitFor(() => {
-      expect(screen.getByText('Delete Store')).toBeInTheDocument();
-    });
-  });
-
-  it('shows start shopping button when store has items', async () => {
-    const mockStores = [
-      {
-        _id: 'store-1',
-        userId: 'user-123',
-        name: 'Target',
-        emoji: '🎯',
-        invitations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shoppingList: {
-          _id: 'list-1',
-          storeId: 'store-1',
-          userId: 'user-123',
-          itemCount: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    ];
-
-    mockFetchStores.mockResolvedValue(mockStores);
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-    });
-
-    // Find start shopping buttons (there are multiple: desktop and mobile, including header icon)
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    // Filter to find only the green/success colored ones (start shopping buttons)
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
-    expect(startShoppingButtons.length).toBeGreaterThan(0);
-
-    // Buttons should be enabled
-    startShoppingButtons.forEach((button) => {
-      expect(button).not.toBeDisabled();
-    });
-  });
-
-  it('start shopping button is disabled when store has no items', async () => {
-    const mockStores = [
-      {
-        _id: 'store-1',
-        userId: 'user-123',
-        name: 'Target',
-        emoji: '🎯',
-        invitations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shoppingList: {
-          _id: 'list-1',
-          storeId: 'store-1',
-          userId: 'user-123',
-          itemCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    ];
-
-    mockFetchStores.mockResolvedValue(mockStores);
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-    });
-
-    // Find start shopping buttons (filter by success color class)
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
-    expect(startShoppingButtons.length).toBeGreaterThan(0);
-
-    // All buttons should be disabled
-    startShoppingButtons.forEach((button) => {
-      expect(button).toBeDisabled();
-    });
-  });
-
-  it('clicking start shopping button opens dialog in shop mode', async () => {
+  it('clicking a store row opens the unified shopping list', async () => {
     const user = userEvent.setup();
     const mockStores = [
       {
@@ -672,13 +504,10 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    // Find start shopping button by testId and click it
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
-    await user.click(startShoppingButtons[0]!);
+    // Clicking the store row opens the unified list (there are no per-row
+    // action buttons anymore — the row itself is the only affordance).
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
 
     // Wait for dialog to open (unified list)
     await waitFor(
@@ -741,12 +570,8 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    const cartIcons = screen.getAllByTestId('ShoppingCartIcon');
-    const startShoppingButtons = cartIcons
-      .map((icon) => icon.closest('button'))
-      .filter((button) => button && button.classList.contains('MuiIconButton-colorSuccess'));
-
-    await user.click(startShoppingButtons[0]!);
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
 
     await waitFor(
       () => {
@@ -970,7 +795,7 @@ describe('ShoppingListsPage', () => {
 
     // Component should render successfully with new features
     await waitFor(() => {
-      expect(screen.getByText('Shopping Lists')).toBeInTheDocument();
+      expect(screen.getByText('Shopping')).toBeInTheDocument();
     });
   });
 
@@ -1060,9 +885,17 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    // Click the share button (title="Share Store")
-    const shareButtons = screen.getAllByTitle('Share Store');
-    await user.click(shareButtons[0]);
+    // Sharing now lives inside the store's actions menu: open the store, open
+    // the overflow menu, then choose "Share store".
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /store actions/i }));
+    await user.click(await screen.findByText('Share store'));
 
     await waitFor(() => {
       const emailInput = screen.getByLabelText(/email address/i);
@@ -1129,41 +962,7 @@ describe('ShoppingListsPage', () => {
     });
   });
 
-  it('shows purchase history buttons on store cards', async () => {
-    const mockStores = [
-      {
-        _id: 'store-1',
-        userId: 'user-123',
-        name: 'Target',
-        emoji: '🎯',
-        invitations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shoppingList: {
-          _id: 'list-1',
-          storeId: 'store-1',
-          userId: 'user-123',
-          itemCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    ];
-
-    mockFetchStores.mockResolvedValue(mockStores);
-
-    render(<ShoppingListsPage />);
-
-    await waitFor(() => {
-      expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
-    });
-
-    // History icon buttons should be present (desktop + mobile renders)
-    const historyButtons = screen.getAllByTitle('Purchase History');
-    expect(historyButtons.length).toBeGreaterThan(0);
-  });
-
-  it('opens history dialog when clicking purchase history button', async () => {
+  it('opens history dialog from the in-store actions menu', async () => {
     const user = userEvent.setup();
     const mockStores = [
       {
@@ -1178,15 +977,38 @@ describe('ShoppingListsPage', () => {
           _id: 'list-1',
           storeId: 'store-1',
           userId: 'user-123',
-          itemCount: 0,
+          itemCount: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       },
     ];
 
+    const shoppingListWithItems = {
+      _id: 'list-1',
+      storeId: 'store-1',
+      userId: 'user-123',
+      items: [{ foodItemId: 'f1', name: 'Milk', quantity: 1, unit: 'gallon', checked: false }],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     mockFetchStores.mockResolvedValue(mockStores);
+    mockFetchShoppingList.mockResolvedValue(shoppingListWithItems as any);
     mockFetchPurchaseHistory.mockResolvedValue([]);
+
+    mockFetch.mockImplementation((url) => {
+      if (url === '/api/food-items?limit=1000') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => [],
+      } as Response);
+    });
 
     render(<ShoppingListsPage />);
 
@@ -1194,8 +1016,16 @@ describe('ShoppingListsPage', () => {
       expect(screen.queryAllByText('Target').length).toBeGreaterThan(0);
     });
 
-    const historyButtons = screen.getAllByTitle('Purchase History');
-    await user.click(historyButtons[0]);
+    // Open the store, then reach purchase history via the actions menu.
+    const storeName = screen.queryAllByText('Target')[0];
+    await user.click(storeName);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /store actions/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /store actions/i }));
+    await user.click(await screen.findByText('Purchase history'));
 
     await waitFor(() => {
       expect(mockFetchPurchaseHistory).toHaveBeenCalledWith('store-1');
