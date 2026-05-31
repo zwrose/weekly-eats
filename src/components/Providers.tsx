@@ -4,20 +4,11 @@ import { SessionProvider } from 'next-auth/react';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProviderWrapper } from '../lib/theme-context';
 import { ThemeColorMeta } from './ThemeColorMeta';
-import type { ThemeMode } from '../lib/user-settings';
 
-export default function Providers({
-  children,
-  initialMode,
-  initialIsDark = false,
-}: {
-  children: React.ReactNode;
-  initialMode?: ThemeMode;
-  initialIsDark?: boolean;
-}) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProviderWrapper initialMode={initialMode} initialIsDark={initialIsDark}>
+      <ThemeProviderWrapper>
         <CssBaseline />
         <ThemeColorMeta />
         {children}

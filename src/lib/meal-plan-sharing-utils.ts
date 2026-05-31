@@ -2,6 +2,8 @@ export interface SharedUser {
   userId: string;
   email: string;
   name?: string;
+  /** Sharing state for meal-plan invitees you sent (omitted by other consumers). */
+  status?: 'pending' | 'accepted';
 }
 
 export interface PendingMealPlanInvitation {

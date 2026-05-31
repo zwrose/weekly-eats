@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Box,
-  Typography,
-  ListItemButton,
-  ListItemText,
-  Collapse,
-  CircularProgress,
-  Chip,
-  Paper,
-} from '@mui/material';
-import { ExpandMore, ExpandLess, CalendarMonth, FolderOpen } from '@mui/icons-material';
+import { Box, Typography, Collapse, CircularProgress } from '@mui/material';
+import { ExpandMore, ExpandLess, FolderOpen } from '@mui/icons-material';
+import { Icon } from '@/components/ui/Icon';
+import { tokens } from '@/lib/design-tokens';
 import type { MealPlanWithTemplate } from '@/types/meal-plan';
 
 interface MonthSummary {
@@ -46,7 +39,78 @@ function getLastDayOfMonth(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 }
 
-const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
+// Pill badge for plan/month counts
+function CountBadge({ count }: { count: number }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1,
+        px: 1,
+        py: '3px',
+        borderRadius: `${tokens.radius.pill}px`,
+        bgcolor: `${tokens.section.plans}22`,
+        color: tokens.section.plans,
+        border: `1px solid ${tokens.section.plans}44`,
+        minWidth: 22,
+        textAlign: 'center',
+      }}
+    >
+      {count}
+    </Box>
+  );
+}
+
+// Accent-tinted square icon container
+function AccentIconBox({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        width: 28,
+        height: 28,
+        borderRadius: `${tokens.radius.sm}px`,
+        bgcolor: `${tokens.section.plans}1a`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        color: tokens.section.plans,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+// Shared row sx for clickable accordion rows
+const rowSx = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 1.5,
+  px: 2,
+  py: 1.25,
+  cursor: 'pointer',
+  borderRadius: `${tokens.radius.xl}px`,
+  bgcolor: tokens.surface.raised,
+  border: `1px solid ${tokens.border.subtle}`,
+  mb: 1,
+  transition: 'background-color 0.15s ease, border-color 0.15s ease',
+  '&:hover': {
+    bgcolor: tokens.surface.elevated,
+    borderColor: tokens.border.strong,
+  },
+};
+
+// Plan row sx — adds the section ring for current plan look
+const planRowSx = {
+  ...rowSx,
+  border: `1px solid ${tokens.section.plans}55`,
+  boxShadow: tokens.shadow.card,
+};
+
+const MealPlanBrowserComponent = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
   const [summary, setSummary] = useState<MonthSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedYear, setExpandedYear] = useState<number | null>(null);
@@ -118,14 +182,14 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-        <CircularProgress size={24} />
+        <CircularProgress size={24} sx={{ color: tokens.section.plans }} />
       </Box>
     );
   }
 
   if (summary.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+      <Typography variant="body2" sx={{ color: tokens.text.secondary, py: 2, textAlign: 'center' }}>
         No meal plan history
       </Typography>
     );
@@ -142,23 +206,6 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
     .map(Number)
     .sort((a, b) => b - a);
 
-  // Shared card sx for mobile — matches the Recent Meal Plans card style
-  const mobileCardSx = {
-    p: 3,
-    mb: 2,
-    cursor: 'pointer',
-    boxShadow: 2,
-    border: '1px solid',
-    borderColor: 'divider',
-    borderRadius: 2,
-    '&:hover': {
-      backgroundColor: 'action.hover',
-      transform: 'translateY(-2px)',
-      boxShadow: 4,
-    },
-    transition: 'all 0.2s ease-in-out',
-  };
-
   return (
     <Box>
       {years.map((year) => {
@@ -167,41 +214,29 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
 
         return (
           <React.Fragment key={year}>
-            {/* Year row — card on mobile */}
-            <Paper
-              onClick={() => handleYearClick(year)}
-              elevation={0}
-              sx={{
-                ...mobileCardSx,
-                display: { xs: 'flex', md: 'none' },
-                alignItems: 'center',
-                gap: 1,
-              }}
-            >
-              <FolderOpen sx={{ fontSize: 24, color: 'text.secondary' }} />
-              <Typography variant="h6" sx={{ fontWeight: 'medium', flex: 1 }}>
+            {/* Year row */}
+            <Box onClick={() => handleYearClick(year)} sx={rowSx} role="button" tabIndex={0}>
+              <FolderOpen sx={{ fontSize: 18, color: tokens.text.secondary, flexShrink: 0 }} />
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: tokens.text.primary,
+                  flex: 1,
+                }}
+              >
                 {year}
               </Typography>
-              <Chip label={yearPlanCount} size="small" variant="outlined" sx={{ mr: 1 }} />
-              {isYearExpanded ? <ExpandLess color="action" /> : <ExpandMore color="action" />}
-            </Paper>
-            {/* Year row — list item on desktop */}
-            <ListItemButton
-              onClick={() => handleYearClick(year)}
-              sx={{ display: { xs: 'none', md: 'flex' }, minHeight: 40, py: 0.5 }}
-            >
-              <FolderOpen sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} />
-              <ListItemText
-                primary={String(year)}
-                slotProps={{
-                  primary: { sx: { fontWeight: 600 } },
-                }}
-              />
-              <Chip label={yearPlanCount} size="small" variant="outlined" sx={{ mr: 1 }} />
-              {isYearExpanded ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
+              <CountBadge count={yearPlanCount} />
+              {isYearExpanded ? (
+                <ExpandLess sx={{ fontSize: 18, color: tokens.text.muted }} />
+              ) : (
+                <ExpandMore sx={{ fontSize: 18, color: tokens.text.muted }} />
+              )}
+            </Box>
+
             <Collapse in={isYearExpanded} timeout="auto" unmountOnExit>
-              <Box sx={{ pl: { xs: 0, md: 0 } }}>
+              <Box sx={{ pl: 2 }}>
                 {byYear[year].map((item) => {
                   const key = `${item.year}-${item.month}`;
                   const isExpanded = expandedMonth === key;
@@ -210,77 +245,63 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
 
                   return (
                     <React.Fragment key={key}>
-                      {/* Month row — card on mobile, list item on desktop */}
-                      <Paper
+                      {/* Month row */}
+                      <Box
                         onClick={() => handleMonthClick(item.year, item.month)}
-                        elevation={0}
-                        sx={{
-                          ...mobileCardSx,
-                          ml: { xs: 2, md: 0 },
-                          mr: { xs: 0, md: 0 },
-                          display: { xs: 'flex', md: 'none' },
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
+                        sx={rowSx}
+                        role="button"
+                        tabIndex={0}
                       >
-                        <CalendarMonth sx={{ fontSize: 24, color: 'text.secondary' }} />
-                        <Typography variant="h6" sx={{ fontWeight: 'medium', flex: 1 }}>
+                        <AccentIconBox>
+                          <Icon name="calendar_month" size={16} aria-label="calendar" />
+                        </AccentIconBox>
+                        <Typography
+                          sx={{
+                            fontWeight: 500,
+                            fontSize: 13,
+                            color: tokens.text.primary,
+                            flex: 1,
+                          }}
+                        >
                           {monthNames[item.month - 1]}
                         </Typography>
-                        <Chip label={item.count} size="small" variant="outlined" sx={{ mr: 1 }} />
-                        {isExpanded ? <ExpandLess color="action" /> : <ExpandMore color="action" />}
-                      </Paper>
-
-                      <ListItemButton
-                        onClick={() => handleMonthClick(item.year, item.month)}
-                        sx={{ display: { xs: 'none', md: 'flex' }, pl: 3, minHeight: 40, py: 0.5 }}
-                      >
-                        <CalendarMonth sx={{ mr: 1.5, fontSize: 18, color: 'text.secondary' }} />
-                        <ListItemText primary={monthNames[item.month - 1]} />
-                        <Chip label={item.count} size="small" variant="outlined" sx={{ mr: 1 }} />
-                        {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                      </ListItemButton>
+                        <CountBadge count={item.count} />
+                        {isExpanded ? (
+                          <ExpandLess sx={{ fontSize: 16, color: tokens.text.muted }} />
+                        ) : (
+                          <ExpandMore sx={{ fontSize: 16, color: tokens.text.muted }} />
+                        )}
+                      </Box>
 
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         {isLoadingPlans ? (
                           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-                            <CircularProgress size={20} />
+                            <CircularProgress size={20} sx={{ color: tokens.section.plans }} />
                           </Box>
                         ) : (
-                          <Box>
+                          <Box sx={{ pl: 2 }}>
                             {plans.map((plan: MealPlanWithTemplate) => (
-                              <React.Fragment key={plan._id}>
-                                {/* Plan row — card on mobile, list item on desktop */}
-                                <Paper
-                                  onClick={() => onPlanSelect(plan)}
-                                  elevation={0}
+                              <Box
+                                key={plan._id}
+                                onClick={() => onPlanSelect(plan)}
+                                sx={planRowSx}
+                                role="button"
+                                tabIndex={0}
+                              >
+                                <AccentIconBox>
+                                  <Icon name="calendar_month" size={16} aria-label="calendar" />
+                                </AccentIconBox>
+                                <Typography
                                   sx={{
-                                    ...mobileCardSx,
-                                    ml: { xs: 4, md: 0 },
-                                    mr: { xs: 0, md: 0 },
-                                    display: { xs: 'flex', md: 'none' },
-                                    alignItems: 'center',
-                                    gap: 1,
+                                    fontWeight: 500,
+                                    fontSize: 13,
+                                    color: tokens.text.primary,
+                                    flex: 1,
                                   }}
                                 >
-                                  <CalendarMonth sx={{ fontSize: 24, color: 'text.secondary' }} />
-                                  <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                                    {plan.name}
-                                  </Typography>
-                                </Paper>
-
-                                <ListItemButton
-                                  onClick={() => onPlanSelect(plan)}
-                                  sx={{
-                                    display: { xs: 'none', md: 'flex' },
-                                    pl: 6,
-                                    minHeight: 40,
-                                    py: 0.5,
-                                  }}
-                                >
-                                  <ListItemText primary={plan.name} />
-                                </ListItemButton>
-                              </React.Fragment>
+                                  {plan.name}
+                                </Typography>
+                              </Box>
                             ))}
                           </Box>
                         )}
@@ -297,5 +318,8 @@ const MealPlanBrowser = React.memo<MealPlanBrowserProps>(({ onPlanSelect }) => {
   );
 });
 
-MealPlanBrowser.displayName = 'MealPlanBrowser';
-export default MealPlanBrowser;
+MealPlanBrowserComponent.displayName = 'MealPlanBrowser';
+
+// Named export for future imports — keeps default export for back-compat.
+export { MealPlanBrowserComponent as MealPlanBrowser };
+export default MealPlanBrowserComponent;

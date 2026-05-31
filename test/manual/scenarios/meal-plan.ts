@@ -60,7 +60,11 @@ const DAYS_OF_WEEK: DayOfWeek[] = [
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'staples'];
 
-const PLACEHOLDER_RECIPE_ID = 'placeholder-recipe-1';
+// Must be a valid 24-char hex string: when no recipesRef is supplied, this id lands in
+// MealItem.id, and the meal-plans list (route.ts) + detail ([id]/route.ts) call
+// ObjectId.createFromHexString(id) with no isValid guard — a non-hex value throws → HTTP 500.
+// It won't resolve to a real recipe (name falls back), but it won't crash the routes.
+const PLACEHOLDER_RECIPE_ID = '000000000000000000000001';
 
 /** Return a YYYY-MM-DD string from a Date */
 function toDateStr(d: Date): string {

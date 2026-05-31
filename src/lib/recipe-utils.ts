@@ -32,6 +32,22 @@ export const fetchGlobalRecipes = async (
   return Array.isArray(json) ? json : json.data || [];
 };
 
+export const fetchRecipeEmojiMap = async (): Promise<Record<string, string>> => {
+  const response = await fetch('/api/recipes?limit=1000');
+  if (!response.ok) {
+    throw new Error('Failed to fetch recipes');
+  }
+  const json = await response.json();
+  const list: Recipe[] = Array.isArray(json) ? json : json.data || [];
+  const map: Record<string, string> = {};
+  for (const recipe of list) {
+    if (recipe?._id && recipe?.emoji) {
+      map[recipe._id] = recipe.emoji;
+    }
+  }
+  return map;
+};
+
 export const fetchRecipe = async (id: string): Promise<Recipe> => {
   const response = await fetch(`/api/recipes/${id}`);
   if (!response.ok) {

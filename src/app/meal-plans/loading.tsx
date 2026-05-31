@@ -1,46 +1,93 @@
-import { Container, Box, Skeleton, Paper } from '@mui/material';
+import { Container, Box, Skeleton } from '@mui/material';
+import { tokens } from '@/lib/design-tokens';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 
 export default function MealPlansLoading() {
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="xl">
-        <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-          {/* Page header */}
+      <Container maxWidth="md">
+        <Box sx={{ py: { xs: 1.5, md: 3 } }}>
+          {/* Header row: title + icon buttons + "New plan" button */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: 'center',
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
+              gap: 1.5,
+              mb: { xs: 2.5, md: 3.5 },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Skeleton variant="circular" width={40} height={40} />
-              <Skeleton variant="text" width={180} height={48} />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Skeleton variant="rounded" width={160} height={36} />
-              <Skeleton variant="rounded" width={40} height={36} />
-              <Skeleton variant="rounded" width={40} height={36} />
+            <Skeleton
+              variant="text"
+              width={160}
+              height={42}
+              sx={{ bgcolor: tokens.surface.elevated }}
+            />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Skeleton
+                variant="circular"
+                width={36}
+                height={36}
+                sx={{ bgcolor: tokens.surface.elevated }}
+              />
+              <Skeleton
+                variant="circular"
+                width={36}
+                height={36}
+                sx={{ bgcolor: tokens.surface.elevated }}
+              />
+              <Skeleton
+                variant="rounded"
+                width={104}
+                height={36}
+                sx={{ bgcolor: tokens.surface.elevated }}
+              />
             </Box>
           </Box>
 
-          {/* Search + content */}
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <Skeleton variant="rounded" height={56} sx={{ mb: 3 }} />
-            {[...Array(3)].map((_, i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Skeleton variant="circular" width={32} height={32} />
-                <Box sx={{ flex: 1 }}>
-                  <Skeleton variant="text" width="55%" height={24} />
-                  <Skeleton variant="text" width="30%" height={18} />
-                </Box>
-              </Box>
+          {/* Current section */}
+          <Box sx={{ mb: 4 }}>
+            <Skeleton
+              variant="text"
+              width={72}
+              height={16}
+              sx={{ mb: 1, bgcolor: tokens.surface.elevated }}
+            />
+            {[...Array(2)].map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rounded"
+                height={52}
+                sx={{
+                  mb: 1,
+                  borderRadius: `${tokens.radius.lg}px`,
+                  bgcolor: tokens.surface.raised,
+                }}
+              />
             ))}
-          </Paper>
+          </Box>
+
+          {/* Past section */}
+          <Box sx={{ mb: 4 }}>
+            <Skeleton
+              variant="text"
+              width={48}
+              height={16}
+              sx={{ mb: 1, bgcolor: tokens.surface.elevated }}
+            />
+            {[...Array(3)].map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rounded"
+                height={52}
+                sx={{
+                  mb: 1,
+                  borderRadius: `${tokens.radius.lg}px`,
+                  bgcolor: tokens.surface.raised,
+                }}
+              />
+            ))}
+          </Box>
         </Box>
       </Container>
     </AuthenticatedLayout>

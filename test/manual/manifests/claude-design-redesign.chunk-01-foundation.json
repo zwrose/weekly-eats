@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "branch": "claude-design-redesign",
+  "slot": "chunk-01-foundation",
+  "createdAt": "2026-05-28T20:00:00.000Z",
+  "updatedAt": "2026-05-28T21:30:00.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline", "config": { "email": "zwrose@gmail.com" } },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": { "ensure": ["apple", "bread", "egg", "milk"], "globalCount": 6, "userCount": 3 },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "r",
+      "block": "recipes",
+      "config": { "count": 4, "isGlobal": false, "withUserData": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "p",
+      "block": "pantry",
+      "config": { "count": 5, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "s",
+      "block": "stores",
+      "config": { "count": 2, "withPositions": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "sl",
+      "block": "shopping-list",
+      "config": { "state": "partial", "itemCount": 5, "storeRef": "s", "foodItemsRef": "fi" },
+      "dependsOn": ["u", "s", "fi"]
+    },
+    {
+      "id": "ph",
+      "block": "purchase-history",
+      "config": { "count": 3, "storeRef": "s", "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi", "s"]
+    },
+    {
+      "id": "pend",
+      "block": "pending-approval-user",
+      "config": { "name": "Beta Gate Test (unapproved)" }
+    }
+  ],
+  "stepMappings": []
+}

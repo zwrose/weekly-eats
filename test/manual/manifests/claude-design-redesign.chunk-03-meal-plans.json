@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "branch": "claude-design-redesign",
+  "slot": "chunk-03-meal-plans",
+  "createdAt": "2026-05-29T04:39:56.000Z",
+  "updatedAt": "2026-05-29T04:39:56.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline", "config": { "email": "zwrose@gmail.com" } },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": {
+        "ensure": [
+          "apple",
+          "bread",
+          "egg",
+          "milk",
+          "chicken thighs",
+          "rice",
+          "romaine",
+          "olive oil"
+        ],
+        "globalCount": 4,
+        "userCount": 2
+      },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "r",
+      "block": "recipes",
+      "config": { "count": 4, "isGlobal": false, "withUserData": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    }
+  ],
+  "stepMappings": []
+}

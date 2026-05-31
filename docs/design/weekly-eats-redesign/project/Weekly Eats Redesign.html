@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; }
+  body { font-family: 'Outfit', system-ui, sans-serif; }
+  .ms { font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; user-select: none; }
+  .ab { width: 100%; height: 100%; overflow: hidden; position: relative; color: #e7e9ee; }
+  .ab * { box-sizing: border-box; }
+  .ab .scroll { overflow-y: auto; height: 100%; }
+  .ab .statusbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 4px; font-size: 13px; font-weight: 600; }
+  .ab .statusbar .icons { display: flex; gap: 6px; opacity: 0.85; font-size: 11px; }
+  .ab .bottomnav { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0 22px; background: #181b21; border-top: 1px solid rgba(255,255,255,0.07); color: #9097a6; }
+  .ab .bottomnav .b { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .ab .bottomnav .dot { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+  /* notes card chrome */
+  .notes {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #fef4a8; color: #5a4a2a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 24px 26px; line-height: 1.5; font-size: 14px;
+    box-sizing: border-box;
+  }
+  .notes h3 { font-family: 'Bricolage Grotesque', system-ui, sans-serif; margin: 0 0 12px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: #3d2f15; }
+  .notes h4 { margin: 14px 0 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b5826; }
+  .notes ul { margin: 4px 0 0; padding-left: 18px; }
+  .notes li { margin-bottom: 4px; }
+  .notes p { margin: 0 0 8px; }
+  .notes code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; }
+  .notes b { color: #3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-v4.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-b3-spec.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-mp-mobile.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-n1-final.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-b3-desktop.jsx?v=1779844198278"></script>
+<script type="text/babel" src="artboards-mp-desktop.jsx?v=1779844198278"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const {
+    V4,
+    F1Default, F2QtyOpen, F3UnitOpen, F4SearchActive,
+    F5Empty, F6Skipped, F7Invalid, F8CancelConfirm, F9RemoveGroup,
+    MobileIndex, MobileCreate, MobileTemplate, MobileSharing, MobileHistory,
+    DesktopPlanFinal,
+    D1Default, D2QtyPopover, D3UnitPopover, D4Search, D5FullBackdrop, D6Empty, D7Skipped, D8Invalid, D9CancelConfirm, D10RemoveGroup,
+    DesktopIndex, DesktopCreate, DesktopTemplate, DesktopSharing, DesktopHistory,
+  } = window;
+
+  function Notes({ children }) {
+    return <div className="notes">{children}</div>;
+  }
+
+  const M = { w: 390, h: 844 };
+  const Mtall = { w: 390, h: 1700 };
+  const D = { w: 1440, h: 900 };
+  const Dtall = { w: 1440, h: 1100 };
+
+  function App() {
+    return (
+      <DesignCanvas>
+
+        {/* ─────────── 1. MOBILE · PLAN VIEW ─────────── */}
+        <DCSection
+          id="m-plan"
+          title="1 · Mobile — plan view"
+          subtitle="The week-detail page. Dark mode, day cards, hide-empty-meals chips, today halo. Staples live as a collapsed bar with grouped expand.">
+          <DCArtboard id="m-plan-v4" label="Plan view" width={Mtall.w} height={Mtall.h} style={{ background:'#0f1115' }}>
+            <V4 />
+          </DCArtboard>
+          <DCArtboard id="m-plan-notes" label="Notes" width={Mtall.w} height={Mtall.h}>
+            <Notes>
+              <h3>Anchors</h3>
+              <ul>
+                <li>Day-by-day stack; only enabled + planned meals render.</li>
+                <li>Today gets the soft blue halo + TODAY pill.</li>
+                <li>Empty meal types appear as <i>+ Breakfast / + Lunch</i> dashed chips in the day-card footer (not full rows).</li>
+                <li>Recipe lines: emoji + name in section blue; ×qty when ≠ 1; "leftovers" note when present.</li>
+                <li>Ingredient groups indent under a labeled title row.</li>
+                <li>Staples: collapsed accent bar showing <code>Group (count) · Group (count) · …</code> with a pencil for the staples editor.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        {/* ─────────── 2. MOBILE · EDIT FLOW ─────────── */}
+        <DCSection
+          id="m-edit"
+          title="2 · Mobile — edit flow"
+          subtitle="Full-screen editor. Tap any meal row to open. Numpad qty, unit picker, sticky combined search, flat group sections.">
+          <DCArtboard id="f1" label="① Default"             width={M.w} height={M.h} style={{ background:'#0f1115' }}><F1Default /></DCArtboard>
+          <DCArtboard id="f2" label="② Qty numpad"          width={M.w} height={M.h} style={{ background:'#0f1115' }}><F2QtyOpen /></DCArtboard>
+          <DCArtboard id="f3" label="③ Unit picker"          width={M.w} height={M.h} style={{ background:'#0f1115' }}><F3UnitOpen /></DCArtboard>
+          <DCArtboard id="f4" label="④ Search active"        width={M.w} height={M.h} style={{ background:'#0f1115' }}><F4SearchActive /></DCArtboard>
+          <DCArtboard id="f5" label="⑤ Empty meal + group"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><F5Empty /></DCArtboard>
+          <DCArtboard id="f6" label="⑥ Skipped + reason"     width={M.w} height={M.h} style={{ background:'#0f1115' }}><F6Skipped /></DCArtboard>
+          <DCArtboard id="f7" label="⑦ Validation errors"    width={M.w} height={M.h} style={{ background:'#0f1115' }}><F7Invalid /></DCArtboard>
+          <DCArtboard id="f8" label="⑧ Dirty cancel confirm" width={M.w} height={M.h} style={{ background:'#0f1115' }}><F8CancelConfirm /></DCArtboard>
+          <DCArtboard id="f9" label="⑨ Remove group confirm" width={M.w} height={M.h} style={{ background:'#0f1115' }}><F9RemoveGroup /></DCArtboard>
+          <DCArtboard id="m-edit-notes" label="Notes" width={M.w} height={M.h}>
+            <Notes>
+              <h3>Eight locked decisions</h3>
+              <ul>
+                <li><b>1 · Validation</b> — Done disabled + inline warn borders. No banner. (Frame ⑦.)</li>
+                <li><b>2 · Cancel</b> — confirm dialog only when dirty. (Frame ⑧.)</li>
+                <li><b>3 · Notes</b> — dropped. No UI.</li>
+                <li><b>4 · Recipe ×qty</b> — chip reads <code>[× 2]</code>, no outside label.</li>
+                <li><b>5 · Skip</b> — always available; toggling on with items prompts "Skip will clear N items".</li>
+                <li><b>6 · Empty</b> — helper text "No items in this group" + dashed Add button. Empty meal body uses the sticky search hint.</li>
+                <li><b>7 · Remove group</b> — ✕ in header → confirm dialog. (Frame ⑨.)</li>
+                <li><b>8 · Groups</b> — flat section headers, no nesting box. Same rhythm at 3 items or 13.</li>
+              </ul>
+              <h4>Implementation mapping</h4>
+              <ul>
+                <li><code>MealPlanViewDialog.tsx</code> — delete the edit branch; row onClick opens <code>MealEditSheet</code>.</li>
+                <li>New <code>MealEditSheet</code> — wraps existing <code>MealEditor</code> per meal.</li>
+                <li><code>QuantityInput</code> → numpad bottom sheet (reuses <code>useQuantityInput</code>).</li>
+                <li><code>UnitSelector</code> → grouped unit picker (reuses <code>getUnitOptions</code>/<code>getUnitForm</code>).</li>
+                <li><code>AddFoodItemDialog</code> → 2-step bottom sheet.</li>
+                <li><code>?edit=true</code> URL state goes away.</li>
+                <li>Server: zero changes — PUT already takes a full <code>items[]</code>.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        {/* ─────────── 3. MOBILE · OTHER SURFACES ─────────── */}
+        <DCSection
+          id="m-other"
+          title="3 · Mobile — index / create / template / sharing / history"
+          subtitle="Bottom sheets for transient flows, pushed screens for settings + history.">
+          <DCArtboard id="m-idx"    label="Index"             width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileIndex /></DCArtboard>
+          <DCArtboard id="m-create" label="New plan sheet"    width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileCreate /></DCArtboard>
+          <DCArtboard id="m-tmpl"   label="Template settings" width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileTemplate /></DCArtboard>
+          <DCArtboard id="m-share"  label="Sharing sheet"     width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileSharing /></DCArtboard>
+          <DCArtboard id="m-hist"   label="History"           width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileHistory /></DCArtboard>
+          <DCArtboard id="m-other-notes" label="Notes" width={M.w} height={M.h}>
+            <Notes>
+              <h3>Five surfaces</h3>
+              <ul>
+                <li><b>Index</b> — header with ⚙ + people-icon (accent dot when invites pending) + "+ New". Sections: Current / Shared with you / Past · last 6 weeks → "View older →".</li>
+                <li><b>New plan</b> — bottom sheet. Start-date chips + overlap check. <b>No owner selection</b> — creation is always for you.</li>
+                <li><b>Template</b> — pushed screen. Week-start chips, B/L/D toggles, staples grouped row → opens staples editor.</li>
+                <li><b>Sharing</b> — bottom sheet. Pending invitations at top, invite-by-email, shared-with list.</li>
+                <li><b>History</b> — pushed screen. Search input, plans grouped by month, "Load 12 more".</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        {/* ─────────── 4. DESKTOP · PLAN VIEW ─────────── */}
+        <DCSection
+          id="d-plan"
+          title="4 · Desktop — plan view"
+          subtitle="Today as a wide hero with B/L/D in three columns. The other six days run as a strip beneath. A 28px 'TODAY' sliver sits between Tue and Thu where today belongs in calendar order.">
+          <DCArtboard id="d-plan-final" label="Plan view" width={D.w} height={D.h} style={{ background:'#0f1115' }}>
+            <DesktopPlanFinal />
+          </DCArtboard>
+          <DCArtboard id="d-plan-notes" label="Notes" width={M.w + 60} height={D.h}>
+            <Notes>
+              <h3>Why this shape</h3>
+              <ul>
+                <li>Today gets the answer to "what am I eating today?" at the top — every visit.</li>
+                <li>The strip preserves week-context without cells going offscreen below the fold.</li>
+                <li>Past days dim to ~70% with a darker paper; future days stay full opacity. Today gets the accent halo.</li>
+                <li>The 28px TODAY sliver between Tue and Thu (with ↑ arrow on the hero-side) marks calendar position without taking a real cell of content.</li>
+                <li>Same staples bar + gear/share icon set as the index page.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        {/* ─────────── 5. DESKTOP · EDIT FLOW ─────────── */}
+        <DCSection
+          id="d-edit"
+          title="5 · Desktop — edit flow"
+          subtitle="Modal Dialog (900px) over the plan view. Qty/unit are inline Popovers anchored to the chip. Combined search pinned to the dialog footer.">
+          <DCArtboard id="d1" label="① Default"             width={D.w} height={D.h} style={{ background:'#0f1115' }}><D1Default /></DCArtboard>
+          <DCArtboard id="d2" label="② Qty popover"          width={D.w} height={D.h} style={{ background:'#0f1115' }}><D2QtyPopover /></DCArtboard>
+          <DCArtboard id="d3" label="③ Unit popover"         width={D.w} height={D.h} style={{ background:'#0f1115' }}><D3UnitPopover /></DCArtboard>
+          <DCArtboard id="d4" label="④ Search active"        width={D.w} height={D.h} style={{ background:'#0f1115' }}><D4Search /></DCArtboard>
+          <DCArtboard id="d5" label="⑤ Full backdrop variant" width={D.w} height={D.h} style={{ background:'#0f1115' }}><D5FullBackdrop /></DCArtboard>
+          <DCArtboard id="d6" label="⑥ Empty meal"           width={D.w} height={D.h} style={{ background:'#0f1115' }}><D6Empty /></DCArtboard>
+          <DCArtboard id="d7" label="⑦ Skipped + reason"     width={D.w} height={D.h} style={{ background:'#0f1115' }}><D7Skipped /></DCArtboard>
+          <DCArtboard id="d8" label="⑧ Validation errors"    width={D.w} height={D.h} style={{ background:'#0f1115' }}><D8Invalid /></DCArtboard>
+          <DCArtboard id="d9" label="⑨ Dirty cancel confirm" width={D.w} height={D.h} style={{ background:'#0f1115' }}><D9CancelConfirm /></DCArtboard>
+          <DCArtboard id="d10" label="⑩ Remove group confirm" width={D.w} height={D.h} style={{ background:'#0f1115' }}><D10RemoveGroup /></DCArtboard>
+          <DCArtboard id="d-edit-notes" label="Notes" width={M.w + 60} height={D.h}>
+            <Notes>
+              <h3>Desktop delta</h3>
+              <p>All 8 locked edit decisions hold. What changes:</p>
+              <ul>
+                <li><b>Container</b> — modal Dialog at 900px.</li>
+                <li><b>Qty</b> — popover anchored to the chip with the readout + preset pills.</li>
+                <li><b>Unit</b> — popover with the grouped picker.</li>
+                <li><b>Search</b> — combined search row at the dialog footer.</li>
+                <li><b>Actions</b> — Cancel + Save in the dialog header.</li>
+                <li><b>Backdrop</b> — dimmed plan view by default; frame ⑤ shows full-backdrop alternative.</li>
+              </ul>
+              <p>One responsive <code>MealEditSheet</code>; <code>Dialog</code> on desktop, full-screen on mobile.</p>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        {/* ─────────── 6. DESKTOP · OTHER SURFACES ─────────── */}
+        <DCSection
+          id="d-other"
+          title="6 · Desktop — index / create / template / sharing / history"
+          subtitle="Same surfaces as mobile, reflowed for the larger canvas.">
+          <DCArtboard id="d-idx"    label="Index"               width={D.w} height={D.h}    style={{ background:'#0f1115' }}><DesktopIndex /></DCArtboard>
+          <DCArtboard id="d-create" label="Create plan dialog"  width={D.w} height={D.h}    style={{ background:'#0f1115' }}><DesktopCreate /></DCArtboard>
+          <DCArtboard id="d-tmpl"   label="Template settings"   width={D.w} height={D.h}    style={{ background:'#0f1115' }}><DesktopTemplate /></DCArtboard>
+          <DCArtboard id="d-share"  label="Sharing dialog"      width={D.w} height={D.h}    style={{ background:'#0f1115' }}><DesktopSharing /></DCArtboard>
+          <DCArtboard id="d-hist"   label="History page"        width={D.w} height={Dtall.h} style={{ background:'#0f1115' }}><DesktopHistory /></DCArtboard>
+          <DCArtboard id="d-other-notes" label="Notes" width={M.w + 60} height={D.h}>
+            <Notes>
+              <h3>Decisions in this section</h3>
+              <ul>
+                <li><b>Invitations placement</b> — locked to <i>accent dot on the share (people) icon</i>. No global notification surface.</li>
+                <li><b>Share icon</b> — SVG of two stroked heads (uses <code>currentColor</code>) — replaces the previous ↗.</li>
+                <li><b>Create-plan</b> — owner-selection removed. Plans are always created for you. Template-start-day pre-selected.</li>
+                <li><b>History</b> — dedicated page via "View older →". Plans grouped by month, search up top, "Load 12 more" pagination.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

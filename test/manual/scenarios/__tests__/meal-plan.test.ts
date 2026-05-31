@@ -313,7 +313,9 @@ describe('mealPlan.apply — without recipesRef', () => {
     expect(items.length).toBeGreaterThan(0);
     const slotItems = items[0].items as Array<Record<string, unknown>>;
     expect(slotItems[0].type).toBe('recipe');
-    expect(slotItems[0].id).toMatch(/placeholder/);
+    // Placeholder id must be a valid 24-char hex string — the meal-plans list + detail routes
+    // call ObjectId.createFromHexString(id) with no isValid guard, so a non-hex value would 500.
+    expect(slotItems[0].id).toMatch(/^[0-9a-f]{24}$/);
   });
 });
 

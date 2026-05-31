@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "branch": "claude-design-redesign",
+  "slot": "chunk-05-shopping-lists",
+  "createdAt": "2026-05-30T21:45:00.000Z",
+  "updatedAt": "2026-05-30T21:45:00.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline", "config": { "email": "zwrose@gmail.com" } },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": {
+        "ensure": [
+          "sourdough loaf",
+          "oat milk",
+          "greek yogurt",
+          "cherry tomatoes",
+          "baby spinach",
+          "sharp cheddar",
+          "ground coffee",
+          "kosher salt"
+        ]
+      },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "st",
+      "block": "stores",
+      "config": { "count": 2, "withPositions": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "sl",
+      "block": "shopping-list",
+      "config": { "state": "partial", "itemCount": 6, "storeRef": "st", "foodItemsRef": "fi" },
+      "dependsOn": ["u", "st", "fi"]
+    },
+    {
+      "id": "pan",
+      "block": "pantry",
+      "config": { "count": 4, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "ph",
+      "block": "purchase-history",
+      "config": { "count": 3, "storeRef": "st", "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi", "st"]
+    }
+  ],
+  "stepMappings": []
+}

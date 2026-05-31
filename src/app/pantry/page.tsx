@@ -7,20 +7,13 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Paper,
-  Alert,
   Button,
   Dialog,
   DialogContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
+  Pagination as MuiPagination,
+  Snackbar,
+  Alert,
 } from '@mui/material';
-import { Pagination as MuiPagination } from '@mui/material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import { PantryItemWithFoodItem, CreatePantryItemRequest } from '../../types/pantry';
 import { createPantryItem, deletePantryItem } from '../../lib/pantry-utils';
@@ -28,13 +21,12 @@ import { useFoodItems, useDialog, useConfirmDialog } from '@/lib/hooks';
 import { useServerPagination } from '@/lib/hooks/use-server-pagination';
 import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
 import { responsiveDialogStyle } from '@/lib/theme';
+import { tokens } from '@/lib/design-tokens';
 import SearchBar from '@/components/optimized/SearchBar';
-import Kitchen from '@mui/icons-material/Kitchen';
-import Add from '@mui/icons-material/Add';
-import Delete from '@mui/icons-material/Delete';
-import { DialogActions, DialogTitle } from '@/components/ui';
+import { DialogActions, DialogTitle, ConfirmDialog } from '@/components/ui';
 import FoodItemAutocomplete from '@/components/food-item-inputs/FoodItemAutocomplete';
 import { SearchOption } from '@/lib/hooks/use-food-item-selector';
+import { PantryListView } from '@/components/pantry/PantryListView';
 
 export default function PantryPage() {
   const { status } = useSession();
@@ -42,6 +34,11 @@ export default function PantryPage() {
     foodItemId: '',
   });
   const [selectedFoodItem, setSelectedFoodItem] = useState<SearchOption | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'error' | 'info' | 'success';
+  }>({ open: false, message: '', severity: 'info' });
 
   // Ref for Add button to focus after selection
   const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -55,6 +52,11 @@ export default function PantryPage() {
 
   // Search
   const { searchTerm, debouncedSearchTerm, setSearchTerm } = useDebouncedSearch();
+
+  const showSnackbar = (message: string, severity: 'error' | 'info' | 'success' = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
+  const handleCloseSnackbar = () => setSnackbar((s) => ({ ...s, open: false }));
 
   // Compute filterKey for useServerPagination
   const filterKey = useMemo(
@@ -103,7 +105,7 @@ export default function PantryPage() {
       refetch();
     } catch (error) {
       console.error('Error creating pantry item:', error);
-      alert('Failed to create pantry item');
+      showSnackbar('Failed to add pantry item', 'error');
     }
   };
 
@@ -115,7 +117,7 @@ export default function PantryPage() {
       refetch();
     } catch (error) {
       console.error('Error deleting pantry item:', error);
-      alert('Failed to delete pantry item');
+      showSnackbar('Failed to remove pantry item', 'error');
     }
   };
 
@@ -123,7 +125,7 @@ export default function PantryPage() {
   if (status === 'loading') {
     return (
       <AuthenticatedLayout>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
+        <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
@@ -132,164 +134,64 @@ export default function PantryPage() {
     );
   }
 
+  const viewItems = loading
+    ? []
+    : pantryItems.map((item) => ({ _id: item._id, name: item.foodItem.pluralName }));
+
+  const emptyMessage = loading ? (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <CircularProgress />
+    </Box>
+  ) : (
+    <Box
+      sx={{
+        bgcolor: tokens.surface.raised,
+        border: `1px solid ${tokens.border.subtle}`,
+        borderRadius: `${tokens.radius.xl}px`,
+        py: 4,
+        px: 3,
+        textAlign: 'center',
+        color: tokens.text.secondary,
+        fontSize: 14,
+      }}
+    >
+      {searchTerm
+        ? 'No pantry items match your search'
+        : 'No pantry items yet. Add your first item to get started.'}
+    </Box>
+  );
+
   return (
     <AuthenticatedLayout>
-      <Container maxWidth="xl" sx={{ py: { xs: 0.5, md: 1 } }}>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: { xs: 2, sm: 0 },
-            mb: { xs: 2, md: 4 },
+      <Container maxWidth="md" sx={{ py: { xs: 0.5, md: 1 } }}>
+        <PantryListView
+          items={viewItems}
+          total={total}
+          onAddItem={createDialog.openDialog}
+          onDeleteItem={(id) => {
+            const item = pantryItems.find((p) => p._id === id);
+            if (item) deleteConfirmDialog.openDialog(item);
           }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Kitchen sx={{ fontSize: 40, color: '#9c27b0' }} />
-            <Typography variant="h3" component="h1" sx={{ color: '#9c27b0' }}>
-              Pantry Items ({total})
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={createDialog.openDialog}
-            sx={{
-              bgcolor: '#9c27b0',
-              color: '#fff',
-              '&:hover': { bgcolor: '#7b1fa2' },
-              minWidth: { xs: '100%', sm: 'auto' },
-            }}
-          >
-            Add Item
-          </Button>
-        </Box>
-
-        <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search your pantry..."
-          />
-
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <>
-              {pantryItems.length > 0 ? (
-                <>
-                  {/* Desktop Table View */}
-                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell
-                              sx={{
-                                width: '70%',
-                                fontWeight: 'bold',
-                                wordWrap: 'break-word',
-                              }}
-                            >
-                              Food Item
-                            </TableCell>
-                            <TableCell
-                              align="center"
-                              sx={{
-                                width: '30%',
-                                fontWeight: 'bold',
-                                wordWrap: 'break-word',
-                              }}
-                            >
-                              Delete
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {pantryItems.map((item) => (
-                            <TableRow
-                              key={item._id}
-                              sx={{
-                                '&:hover': { backgroundColor: 'action.hover' },
-                              }}
-                            >
-                              <TableCell sx={{ wordWrap: 'break-word' }}>
-                                <Typography variant="body1">{item.foodItem.pluralName}</Typography>
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                                <IconButton
-                                  color="error"
-                                  size="small"
-                                  onClick={() => deleteConfirmDialog.openDialog(item)}
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-
-                  {/* Mobile Card View */}
-                  <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                    {pantryItems.map((item) => (
-                      <Paper
-                        key={item._id}
-                        sx={{
-                          p: 3,
-                          mb: 2,
-                          boxShadow: 2,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          '&:hover': {
-                            backgroundColor: 'action.hover',
-                            transform: 'translateY(-2px)',
-                            boxShadow: 4,
-                          },
-                          transition: 'all 0.2s ease-in-out',
-                        }}
-                      >
-                        <Typography variant="subtitle1">{item.foodItem.pluralName}</Typography>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => deleteConfirmDialog.openDialog(item)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Paper>
-                    ))}
-                  </Box>
-
-                  {totalPages > 1 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                      <MuiPagination
-                        count={totalPages}
-                        page={page}
-                        onChange={(_e, value) => setPage(value)}
-                      />
-                    </Box>
-                  )}
-                </>
-              ) : (
-                <Alert severity="info">
-                  {searchTerm
-                    ? 'No pantry items match your search criteria'
-                    : 'No pantry items found. Add your first item to get started!'}
-                </Alert>
-              )}
-            </>
-          )}
-        </Paper>
+          search={
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search your pantry..."
+            />
+          }
+          pagination={
+            totalPages > 1 ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <MuiPagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_e, value) => setPage(value)}
+                />
+              </Box>
+            ) : undefined
+          }
+          emptyMessage={emptyMessage}
+        />
 
         {/* Add Pantry Item Dialog */}
         <Dialog
@@ -298,9 +200,34 @@ export default function PantryPage() {
           maxWidth="xs"
           fullWidth
           sx={responsiveDialogStyle}
+          slotProps={{
+            paper: {
+              sx: {
+                // Edge-to-edge full-screen on phones (responsiveDialogStyle sets width/height
+                // 100% on xs, but maxWidth="xs" would otherwise cap width on >444px phones).
+                maxWidth: { xs: '100%', sm: 460 },
+                bgcolor: tokens.surface.raised,
+                border: `1px solid ${tokens.border.strong}`,
+                borderRadius: { sm: `${tokens.radius.xxxl}px` },
+              },
+            },
+          }}
         >
-          <DialogTitle onClose={createDialog.closeDialog}>Add Pantry Item</DialogTitle>
+          <DialogTitle onClose={createDialog.closeDialog}>Add pantry item</DialogTitle>
           <DialogContent>
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: tokens.text.secondary,
+                mb: 1,
+                mt: 1,
+              }}
+            >
+              Food item
+            </Typography>
             <FoodItemAutocomplete
               allowRecipes={false}
               excludeIds={pantryItems.map((item) => item.foodItem._id)}
@@ -350,32 +277,39 @@ export default function PantryPage() {
               onClick={handleCreateItem}
               disabled={!newItem.foodItemId}
               variant="contained"
+              sx={{ color: tokens.onAccent.pantry }}
             >
               Add
             </Button>
           </DialogActions>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog
+        {/* Remove Confirmation */}
+        <ConfirmDialog
           open={deleteConfirmDialog.open}
-          onClose={deleteConfirmDialog.closeDialog}
-          maxWidth="xs"
-          fullWidth
-          sx={responsiveDialogStyle}
+          title="Remove pantry item"
+          body={
+            <>
+              Are you sure you want to remove <b>{deleteConfirmDialog.data?.foodItem.name}</b> from
+              your pantry?
+            </>
+          }
+          confirmLabel="Remove"
+          confirmColor="error"
+          onConfirm={handleDeleteItem}
+          onCancel={deleteConfirmDialog.cancel}
+        />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <DialogTitle onClose={deleteConfirmDialog.closeDialog}>Remove Pantry Item</DialogTitle>
-          <DialogContent>
-            Are you sure you want to remove {deleteConfirmDialog.data?.foodItem.name} from your
-            pantry?
-          </DialogContent>
-          <DialogActions primaryButtonIndex={1}>
-            <Button onClick={deleteConfirmDialog.cancel}>Cancel</Button>
-            <Button onClick={handleDeleteItem} color="error" variant="contained">
-              Remove
-            </Button>
-          </DialogActions>
-        </Dialog>
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled">
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </AuthenticatedLayout>
   );

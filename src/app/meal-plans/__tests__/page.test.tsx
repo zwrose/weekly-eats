@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup, configure } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SessionProvider } from 'next-auth/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../../../vitest.setup';
 
-// MealPlansPage tests go through multiple async state transitions
-// (fetchMealPlan resolve → setSelectedMealPlan → setEditMode → re-render)
+// Index page goes through async state transitions (loadData → setState → re-render)
 // which can exceed the default 1000ms waitFor timeout under CPU contention.
 configure({ asyncUtilTimeout: 3000 });
 
-// Mock next-auth
+// next-auth
 vi.mock('next-auth/react', async () => {
   const actual = await vi.importActual('next-auth/react');
   return {
@@ -20,39 +20,36 @@ vi.mock('next-auth/react', async () => {
   };
 });
 
-// Mock the meal plan utilities
-const mockDeleteMealPlan = vi.fn();
-const mockUpdateMealPlan = vi.fn();
+// next/navigation — the index now navigates to /meal-plans/<id>.
+const push = vi.fn();
+const replace = vi.fn();
+let searchParamsMap = new URLSearchParams('');
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, replace, back: vi.fn() }),
+  useSearchParams: () => searchParamsMap,
+}));
+
+// Meal plan utilities. fetchMealPlans dispatches by params:
+//  - { minEndDate } → current/shared plans
+//  - { startDate, endDate } → past (last 6 weeks) plans
 const mockFetchMealPlans = vi.fn();
-const mockFetchMealPlan = vi.fn();
 const mockFetchMealPlanTemplate = vi.fn();
 
 vi.mock('../../../lib/meal-plan-utils', () => ({
-  fetchMealPlans: (...args: any[]) => mockFetchMealPlans(...args),
-  fetchMealPlan: (id: string) => mockFetchMealPlan(id),
+  fetchMealPlans: (...args: unknown[]) => mockFetchMealPlans(...args),
   createMealPlan: vi.fn(),
-  deleteMealPlan: (id: string) => mockDeleteMealPlan(id),
   fetchMealPlanTemplate: () => mockFetchMealPlanTemplate(),
   updateMealPlanTemplate: vi.fn(),
-  updateMealPlan: (id: string, data: any) => mockUpdateMealPlan(id, data),
   DEFAULT_TEMPLATE: {
     startDay: 'saturday' as const,
-    meals: {
-      breakfast: true,
-      lunch: true,
-      dinner: true,
-      staples: false,
-    },
+    meals: { breakfast: true, lunch: true, dinner: true, staples: false },
     weeklyStaples: [],
   },
   checkMealPlanOverlap: vi.fn(() => ({ isOverlapping: false, conflict: null })),
-  findNextAvailableMealPlanStartDate: vi.fn(() => ({
-    startDate: '2024-01-06',
-    skipped: false,
-  })),
+  findNextAvailableMealPlanStartDate: vi.fn(() => ({ startDate: '2024-01-06', skipped: false })),
 }));
 
-// Mock meal plan sharing utilities
+// Sharing utilities
 vi.mock('../../../lib/meal-plan-sharing-utils', () => ({
   inviteUserToMealPlanSharing: vi.fn().mockResolvedValue(undefined),
   respondToMealPlanSharingInvitation: vi.fn().mockResolvedValue(undefined),
@@ -62,889 +59,232 @@ vi.mock('../../../lib/meal-plan-sharing-utils', () => ({
   fetchMealPlanOwners: vi.fn().mockResolvedValue([]),
 }));
 
-// Mock hooks
+// Dialog hooks
 vi.mock('@/lib/hooks', () => ({
-  useDialog: vi.fn(() => ({
-    open: false,
-    openDialog: vi.fn(),
-    closeDialog: vi.fn(),
-  })),
+  useDialog: vi.fn(() => ({ open: false, openDialog: vi.fn(), closeDialog: vi.fn() })),
   useConfirmDialog: vi.fn(() => ({
-    open: false,
-    openDialog: vi.fn(),
-    closeDialog: vi.fn(),
-  })),
-  usePersistentDialog: vi.fn(() => ({
     open: false,
     data: null,
     openDialog: vi.fn(),
     closeDialog: vi.fn(),
-    removeDialogData: vi.fn(),
   })),
 }));
 
-// Mock components that might have issues
+// Heavy / unrelated child components
 vi.mock('../../../components/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
-
-vi.mock('../../../components/MealEditor', () => ({
-  default: () => <div data-testid="meal-editor">Meal Editor</div>,
 }));
 
 vi.mock('../../../components/AddFoodItemDialog', () => ({
   default: () => <div>Add Food Item Dialog</div>,
 }));
 
+vi.mock('@/components/meal-plans/MealEditorDialog', () => ({
+  MealEditorDialog: () => <div data-testid="meal-editor-dialog">Meal Editor Dialog</div>,
+}));
+
+// MealPlanBrowser is the "View older →" reveal target — stub it so we can assert
+// it is collapsed (absent) by default and mounts on click.
 vi.mock('../../../components/MealPlanBrowser', () => ({
-  default: ({ onPlanSelect }: { onPlanSelect: (plan: any) => void }) => (
-    <div data-testid="meal-plan-browser">Meal Plan Browser</div>
-  ),
+  default: () => <div data-testid="meal-plan-browser">Meal Plan Browser</div>,
 }));
 
 // Import after mocks
 import MealPlansPage from '../page';
 
-const mockFetch = vi.fn();
+const currentPlan = {
+  _id: 'p1',
+  name: 'Week of Jan 6, 2024',
+  userId: 'user-123',
+  startDate: '2024-01-06',
+  endDate: '2024-01-12',
+  items: [],
+  template: {
+    startDay: 'saturday' as const,
+    meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+    weeklyStaples: [],
+  },
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
+};
 
-describe('MealPlansPage - Delete Functionality', () => {
-  const mockMealPlan = {
-    _id: 'meal-plan-123',
-    name: 'Week of Jan 6, 2024',
-    userId: 'user-123',
-    startDate: '2024-01-06',
-    items: [
-      {
-        _id: 'item-1',
-        mealPlanId: 'meal-plan-123',
-        dayOfWeek: 'saturday' as const,
-        mealType: 'breakfast' as const,
-        items: [],
-      },
-    ],
-    template: {
-      startDay: 'saturday' as const,
-      meals: {
-        breakfast: true,
-        lunch: true,
-        dinner: true,
-        staples: false,
-      },
-      weeklyStaples: [],
-    },
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-  };
+const pastPlan = {
+  _id: 'past1',
+  name: 'Week of last month',
+  userId: 'user-123',
+  startDate: '2024-05-01',
+  endDate: '2024-05-07',
+  items: [],
+  template: {
+    startDay: 'saturday' as const,
+    meals: { breakfast: true, lunch: true, dinner: true, staples: false },
+    weeklyStaples: [],
+  },
+  createdAt: new Date('2024-05-01'),
+  updatedAt: new Date('2024-05-01'),
+};
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
-    mockFetchMealPlan.mockResolvedValue(mockMealPlan);
-    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
-
-    // Mock global fetch for user settings
-    vi.stubGlobal('fetch', mockFetch);
-    mockFetch.mockImplementation((url) => {
-      if (url === '/api/user/settings') {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              settings: {
-                themeMode: 'system',
-                mealPlanSharing: { invitations: [] },
-                defaultMealPlanOwner: undefined,
-              },
-            }),
-        } as Response);
+function setFetchMealPlansDispatch(opts?: { current?: unknown[]; past?: unknown[] }) {
+  mockFetchMealPlans.mockImplementation(
+    (params?: { minEndDate?: string; startDate?: string; endDate?: string }) => {
+      // Past window read uses startDate + endDate.
+      if (params?.startDate && params?.endDate) {
+        return Promise.resolve(opts?.past ?? []);
       }
-      return Promise.reject(new Error('Not mocked'));
-    });
-  });
+      return Promise.resolve(opts?.current ?? []);
+    }
+  );
+}
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    cleanup();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  searchParamsMap = new URLSearchParams('');
+  setFetchMealPlansDispatch({ current: [currentPlan], past: [] });
+  mockFetchMealPlanTemplate.mockResolvedValue(currentPlan.template);
 
-  it('shows delete button in edit mode', async () => {
+  // /api/user/settings is the only real network read on the index — serve it via MSW
+  // (fetchMealPlans is module-mocked above, so it never hits the network).
+  server.use(
+    http.get('/api/user/settings', () =>
+      HttpResponse.json({ settings: { themeMode: 'system', mealPlanSharing: { invitations: [] } } })
+    )
+  );
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+describe('MealPlansPage - index navigation', () => {
+  it('clicking a current plan row navigates to its detail route', async () => {
     const user = userEvent.setup();
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<MealPlansPage />);
+    render(<MealPlansPage />);
 
     await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
+      expect(screen.getByText('Week of Jan 6, 2024')).toBeInTheDocument();
     });
 
-    unmount();
+    await user.click(screen.getByText('Week of Jan 6, 2024'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/meal-plans/p1'));
   });
 
-  it('opens confirmation dialog when delete button is clicked', async () => {
+  it('renders the "Your plans" header', async () => {
+    render(<MealPlansPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /your plans/i })).toBeInTheDocument();
+    });
+  });
+
+  it('the Template settings button navigates to the template route', async () => {
     const user = userEvent.setup();
-    const mockCloseDialog = vi.fn();
-    const mockOpenConfirmDialog = vi.fn();
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn(),
-    }));
-
-    const mockConfirmDialog = vi.fn(() => ({
-      open: false,
-      openDialog: mockOpenConfirmDialog,
-      closeDialog: vi.fn(),
-    }));
-
-    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
-    });
-
-    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
-    // Click the first delete button (the one in the edit dialog)
-    await user.click(deleteButtons[0]);
-
-    expect(mockOpenConfirmDialog).toHaveBeenCalled();
-    unmount();
+    render(<MealPlansPage />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /template settings/i })).toBeInTheDocument()
+    );
+    await user.click(screen.getByRole('button', { name: /template settings/i }));
+    expect(push).toHaveBeenCalledWith('/meal-plans/template');
   });
+});
 
-  it('calls deleteMealPlan when deletion is confirmed', async () => {
-    const user = userEvent.setup();
-    const mockOpenConfirmDialog = vi.fn();
-    const mockCloseDialog = vi.fn();
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: mockCloseDialog,
-      removeDialogData: vi.fn(),
-    }));
-
-    const mockConfirmDialog = vi.fn(() => ({
-      open: false,
-      openDialog: mockOpenConfirmDialog,
-      closeDialog: vi.fn(),
-      data: null,
-    }));
-
-    const { useDialog, useConfirmDialog, usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-    (useConfirmDialog as any).mockImplementation(mockConfirmDialog);
-
-    mockDeleteMealPlan.mockResolvedValue(undefined);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    // Wait for the page to load and show delete button in edit dialog
-    await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
-    });
-
-    // Click the delete button in the edit dialog to open confirmation
-    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
-    await user.click(deleteButtons[0]);
-
-    // Confirm the confirmation dialog opened
-    expect(mockOpenConfirmDialog).toHaveBeenCalled();
-
-    unmount();
-  });
-
-  it('delete button styled as error button in edit mode', async () => {
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    const { unmount } = render(<MealPlansPage />);
+describe('MealPlansPage - Past (last 6 weeks)', () => {
+  it('renders the Past section + past plan name from the date-range read', async () => {
+    setFetchMealPlansDispatch({ current: [currentPlan], past: [pastPlan] });
+    render(<MealPlansPage />);
 
     await waitFor(() => {
-      const deleteButtons = screen.queryAllByRole('button', { name: /delete/i });
-      expect(deleteButtons.length).toBeGreaterThan(0);
-      // Check the first delete button (the one in the edit dialog) has error styling
-      expect(deleteButtons[0]?.className).toMatch(/MuiButton.*Error/);
+      expect(screen.getByText(/Past · last 6 weeks/i)).toBeInTheDocument();
+      expect(screen.getByText('Week of last month')).toBeInTheDocument();
     });
 
-    unmount();
-  });
-
-  it('displays meal plan items with populated names in view mode', async () => {
-    const mealPlanWithItems = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'breakfast' as const,
-          items: [
-            { type: 'foodItem' as const, id: 'food-1', name: 'apples', quantity: 2, unit: 'piece' },
-          ],
-        },
-        {
-          _id: 'item-staples',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'staples' as const,
-          items: [
-            {
-              type: 'foodItem' as const,
-              id: 'food-2',
-              name: 'bananas',
-              quantity: 5,
-              unit: 'piece',
-            },
-          ],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithItems]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithItems);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      // Check that food item names are displayed in view mode
-      expect(screen.queryByText(/apples/i)).toBeInTheDocument();
-      expect(screen.queryByText(/bananas/i)).toBeInTheDocument();
-    });
-
-    unmount();
-  });
-
-  it('displays ingredient group names in view mode', async () => {
-    const mealPlanWithGroups = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'lunch' as const,
-          items: [
-            {
-              type: 'ingredientGroup' as const,
-              id: 'group-1',
-              name: 'Salad Ingredients',
-              ingredients: [
-                {
-                  title: 'Fresh Salad',
-                  ingredients: [
-                    {
-                      type: 'foodItem' as const,
-                      id: 'food-1',
-                      name: 'tomatoes',
-                      quantity: 3,
-                      unit: 'piece',
-                    },
-                    {
-                      type: 'foodItem' as const,
-                      id: 'food-2',
-                      name: 'cucumber',
-                      quantity: 1,
-                      unit: 'piece',
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithGroups]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithGroups);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      // Check that ingredient group title and items are displayed
-      expect(screen.queryByText(/fresh salad/i)).toBeInTheDocument();
-      expect(screen.queryByText(/tomatoes/i)).toBeInTheDocument();
-      expect(screen.queryByText(/cucumber/i)).toBeInTheDocument();
-    });
-
-    unmount();
-  });
-
-  it('shows Unknown for items with missing names (regression test)', async () => {
-    const mealPlanWithMissingNames = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'breakfast' as const,
-          items: [
-            // Item with empty name - should have been populated by API but wasn't
-            { type: 'foodItem' as const, id: 'food-deleted', name: '', quantity: 2, unit: 'piece' },
-            // Item without name field at all
-            { type: 'foodItem' as const, id: 'food-old', quantity: 1, unit: 'cup' },
-          ],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithMissingNames]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithMissingNames);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      // Test passes if component renders without crashing with missing names
-      // Empty string names will render as "• " (bullet with nothing)
-      // This is expected behavior that indicates the API should have populated names
-      // Name appears in both list and dialog, so use getAllByText
-      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
-
-      // If this test starts failing because items don't render or show "Unknown",
-      // that means we've improved the frontend to handle missing names - which is good!
-    });
-
-    unmount();
-  });
-
-  it('displays recipe names in view mode without showing selector boxes', async () => {
-    const mealPlanWithRecipe = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'dinner' as const,
-          items: [{ type: 'recipe' as const, id: 'r1', name: 'Pasta', quantity: 1 }],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithRecipe]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithRecipe);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      // Should show recipe name as text, not an input field
-      expect(screen.getByText(/pasta/i)).toBeInTheDocument();
-      // Should NOT show the autocomplete/selector
-      expect(screen.queryByLabelText(/food item or recipe/i)).not.toBeInTheDocument();
-    });
-
-    unmount();
-  });
-
-  it('allows editing weekly staples in edit mode', async () => {
-    const mealPlanWithStaples = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-staples',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'staples' as const,
-          items: [
-            { type: 'foodItem' as const, id: 'f1', name: 'Milk', quantity: 1, unit: 'gallon' },
-          ],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' }, // In edit mode
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithStaples]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithStaples);
-
-    const { unmount } = render(<MealPlansPage />);
-
-    await waitFor(() => {
-      // Should show the meal plan dialog is open
-      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
-    });
-
-    // Should show Weekly Staples section (may need to wait for dynamic import)
-    await waitFor(() => {
-      expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
-    });
-    // Should show editable description
+    // The past read uses the date-range params, not minEndDate.
     expect(
-      screen.getByText(/add, edit, or remove staples for this specific meal plan/i)
-    ).toBeInTheDocument();
-    // Should show the MealEditor component for staples
-    const mealEditors = screen.getAllByTestId('meal-editor');
-    // Should have at least one MealEditor (for staples + for the meal days)
-    expect(mealEditors.length).toBeGreaterThan(0);
-
-    unmount();
+      mockFetchMealPlans.mock.calls.some(
+        ([p]) => p && typeof p.startDate === 'string' && typeof p.endDate === 'string'
+      )
+    ).toBe(true);
   });
 
-  it('shows empty staples section in edit mode when no staples exist', async () => {
-    const mealPlanNoStaples = {
-      ...mockMealPlan,
-      items: [
-        // Has meal items but no staples
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'breakfast' as const,
-          items: [
-            { type: 'foodItem' as const, id: 'f1', name: 'apple', quantity: 1, unit: 'piece' },
-          ],
-        },
-      ],
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanNoStaples]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanNoStaples);
-
-    const { unmount } = render(<MealPlansPage />);
+  it('omits the Past section when there are no past plans', async () => {
+    setFetchMealPlansDispatch({ current: [currentPlan], past: [] });
+    render(<MealPlansPage />);
 
     await waitFor(() => {
-      // Should show the meal plan dialog is open
-      expect(screen.getAllByText(mockMealPlan.name).length).toBeGreaterThan(0);
+      expect(screen.getByText('Week of Jan 6, 2024')).toBeInTheDocument();
     });
-
-    // Should show Weekly Staples section even when empty (may need to wait for dynamic import)
-    await waitFor(() => {
-      expect(screen.getByText('Weekly Staples')).toBeInTheDocument();
-    });
-    // Should show editable MealEditor for staples
-    const mealEditors = screen.getAllByTestId('meal-editor');
-    // Should have at least one MealEditor (for staples + for the meal days)
-    expect(mealEditors.length).toBeGreaterThan(0);
-
-    unmount();
+    expect(screen.queryByText(/Past · last 6 weeks/i)).not.toBeInTheDocument();
   });
 
-  it('displays skipped meals with reason in view mode', async () => {
-    const mealPlanWithSkippedMeal = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'breakfast' as const,
-          items: [],
-          skipped: true,
-          skipReason: 'Out for brunch',
-        },
-      ],
-      template: {
-        startDay: 'saturday' as const,
-        meals: {
-          breakfast: true,
-          lunch: false,
-          dinner: false,
-          staples: false,
-        },
-        weeklyStaples: [],
-      },
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanWithSkippedMeal]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanWithSkippedMeal);
-
-    const { unmount } = render(<MealPlansPage />);
+  it('does not list a plan in both Current and Past (the past-window read overlaps current plans)', async () => {
+    // The server's past-window query returns plans that merely *started* in the last
+    // 6 weeks — including a still-current plan. It must not appear in both sections.
+    setFetchMealPlansDispatch({ current: [currentPlan], past: [currentPlan] });
+    render(<MealPlansPage />);
 
     await waitFor(() => {
-      // Should show the "Skipped: reason" text in view mode
-      expect(screen.getByText(/Skipped: Out for brunch/i)).toBeInTheDocument();
+      expect(screen.getByText('Week of Jan 6, 2024')).toBeInTheDocument();
     });
+    // Shown once (Current only), and the Past section is omitted entirely.
+    expect(screen.getAllByText('Week of Jan 6, 2024')).toHaveLength(1);
+    expect(screen.queryByText(/Past · last 6 weeks/i)).not.toBeInTheDocument();
+  });
+});
 
-    unmount();
+describe('MealPlansPage - legacy deep-link redirect', () => {
+  it('redirects ?viewMealPlan=…&viewMealPlan_mealPlanId=p1 to /meal-plans/p1', async () => {
+    searchParamsMap = new URLSearchParams('viewMealPlan=1&viewMealPlan_mealPlanId=p1');
+    render(<MealPlansPage />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/meal-plans/p1');
+    });
   });
 
-  it('shows skip controls and reason in edit mode for a skipped meal', async () => {
-    const mealPlanSkipped = {
-      ...mockMealPlan,
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-123',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'breakfast' as const,
-          items: [],
-          skipped: true,
-          skipReason: 'Leftovers',
-        },
-      ],
-      template: {
-        startDay: 'saturday' as const,
-        meals: {
-          breakfast: true,
-          lunch: false,
-          dinner: false,
-          staples: false,
-        },
-        weeklyStaples: [],
-      },
-    };
-
-    const mockPersistentDialog = vi.fn(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-123', editMode: 'true' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(mockPersistentDialog);
-
-    mockFetchMealPlans.mockResolvedValue([mealPlanSkipped]);
-    mockFetchMealPlan.mockResolvedValue(mealPlanSkipped);
-
-    const { unmount } = render(<MealPlansPage />);
+  it('redirects to /meal-plans when the legacy id is missing', async () => {
+    searchParamsMap = new URLSearchParams('viewMealPlan=1');
+    render(<MealPlansPage />);
 
     await waitFor(() => {
-      // Edit dialog is open with our meal plan
-      expect(screen.getAllByText(mealPlanSkipped.name).length).toBeGreaterThan(0);
+      expect(replace).toHaveBeenCalledWith('/meal-plans');
     });
+  });
+});
 
-    // Skip checkbox label and reason should be visible (may render after dialog opens)
+describe('MealPlansPage - View older reveal', () => {
+  it('hides MealPlanBrowser by default and reveals it on click', async () => {
+    const user = userEvent.setup();
+    render(<MealPlansPage />);
+
     await waitFor(() => {
-      const skipLabels = screen.getAllByText(/Skip this meal/i);
-      expect(skipLabels.length).toBeGreaterThan(0);
-      expect(screen.getByDisplayValue('Leftovers')).toBeInTheDocument();
+      expect(screen.getByText('Week of Jan 6, 2024')).toBeInTheDocument();
     });
 
-    unmount();
+    // Collapsed by default.
+    expect(screen.queryByTestId('meal-plan-browser')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /view older/i }));
+
+    expect(screen.getByTestId('meal-plan-browser')).toBeInTheDocument();
   });
 });
 
 describe('MealPlansPage - Auto-focus', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    vi.stubGlobal('fetch', mockFetch);
-    mockFetch.mockImplementation((url) => {
-      if (url === '/api/user/settings') {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              settings: {
-                themeMode: 'system',
-                mealPlanSharing: { invitations: [] },
-                defaultMealPlanOwner: undefined,
-              },
-            }),
-        } as Response);
-      }
-      return Promise.reject(new Error('Not mocked'));
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    cleanup();
-  });
-
   it('auto-focuses Email Address field when share meal plans dialog opens', async () => {
-    const { useDialog, usePersistentDialog, useConfirmDialog } = await import('@/lib/hooks');
-    // Reset all hook implementations to ensure clean state
-    (usePersistentDialog as any).mockImplementation(() => ({
-      open: false,
-      data: null,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-    (useConfirmDialog as any).mockImplementation(() => ({
-      open: false,
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-    }));
-    // useDialog is called 3 times per render: createDialog, templateDialog, shareDialog
-    // Use counter-based mock so it survives React re-renders
+    const { useDialog } = await import('@/lib/hooks');
+    // useDialog is called: createDialog, shareDialog (template editing moved to its own route).
+    // shareDialog is the 2nd call — open it.
     let callCount = 0;
-    (useDialog as any).mockImplementation(() => {
-      const index = callCount % 3;
+    (useDialog as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      const index = callCount % 2;
       callCount++;
-      if (index === 2) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() }; // shareDialog: open
+      if (index === 1) return { open: true, openDialog: vi.fn(), closeDialog: vi.fn() };
       return { open: false, openDialog: vi.fn(), closeDialog: vi.fn() };
     });
 
-    const { unmount } = render(<MealPlansPage />);
+    render(<MealPlansPage />);
 
     await waitFor(() => {
       const emailInput = screen.getByLabelText(/email address/i);
       expect(emailInput).toHaveFocus();
     });
-
-    unmount();
-  });
-});
-
-describe('MealPlansPage - View Mode Quantity Display', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Mock global fetch for user settings
-    vi.stubGlobal('fetch', mockFetch);
-    mockFetch.mockImplementation((url) => {
-      if (url === '/api/user/settings') {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              settings: {
-                themeMode: 'system',
-                mealPlanSharing: { invitations: [] },
-                defaultMealPlanOwner: undefined,
-              },
-            }),
-        } as Response);
-      }
-      return Promise.reject(new Error('Not mocked'));
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    cleanup();
-  });
-
-  it('shows recipe quantity as (3x) without units in view mode', async () => {
-    const mockMealPlan = {
-      _id: 'meal-plan-qty-1',
-      name: 'Week of Jan 24, 2026',
-      userId: 'user-123',
-      startDate: '2026-01-24',
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-qty-1',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'dinner' as const,
-          items: [
-            {
-              type: 'recipe' as const,
-              id: 'r1',
-              name: 'Diced Carrots',
-              quantity: 3,
-              // Old/bad data may have a unit, but UI should not show it for recipes.
-              unit: 'cup',
-            },
-          ],
-        },
-      ],
-      template: {
-        startDay: 'saturday' as const,
-        meals: {
-          breakfast: false,
-          lunch: false,
-          dinner: true,
-          staples: false,
-        },
-        weeklyStaples: [],
-      },
-      createdAt: new Date('2026-01-01'),
-      updatedAt: new Date('2026-01-01'),
-    };
-
-    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
-    mockFetchMealPlan.mockResolvedValue(mockMealPlan);
-    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-qty-1' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    render(<MealPlansPage />);
-
-    // Find the specific line that includes both the recipe name and the quantity suffix.
-    const recipeMatches = await screen.findAllByText((_, node) => {
-      const text = node?.textContent ?? '';
-      return text.includes('Diced Carrots') && text.includes('(3x)');
-    });
-
-    // Prefer the Typography line itself (avoid matching large container nodes).
-    const recipeLine =
-      recipeMatches.find((node) => {
-        const el = node as HTMLElement;
-        return el.tagName.toLowerCase() === 'p' && el.className.includes('MuiTypography-root');
-      }) ?? recipeMatches[0];
-
-    expect(recipeLine).toBeInTheDocument();
-    expect(recipeLine.textContent).not.toMatch(/cup/i);
-  });
-
-  it('still shows food item quantity with units in view mode', async () => {
-    const mockMealPlan = {
-      _id: 'meal-plan-qty-2',
-      name: 'Week of Jan 24, 2026',
-      userId: 'user-123',
-      startDate: '2026-01-24',
-      items: [
-        {
-          _id: 'item-1',
-          mealPlanId: 'meal-plan-qty-2',
-          dayOfWeek: 'saturday' as const,
-          mealType: 'dinner' as const,
-          items: [
-            {
-              type: 'foodItem' as const,
-              id: 'f1',
-              name: 'Onion',
-              quantity: 2,
-              unit: 'cup',
-            },
-          ],
-        },
-      ],
-      template: {
-        startDay: 'saturday' as const,
-        meals: {
-          breakfast: false,
-          lunch: false,
-          dinner: true,
-          staples: false,
-        },
-        weeklyStaples: [],
-      },
-      createdAt: new Date('2026-01-01'),
-      updatedAt: new Date('2026-01-01'),
-    };
-
-    mockFetchMealPlans.mockResolvedValue([mockMealPlan]);
-    mockFetchMealPlan.mockResolvedValue(mockMealPlan);
-    mockFetchMealPlanTemplate.mockResolvedValue(mockMealPlan.template);
-
-    const { usePersistentDialog } = await import('@/lib/hooks');
-    (usePersistentDialog as any).mockImplementation(() => ({
-      open: true,
-      data: { mealPlanId: 'meal-plan-qty-2' },
-      openDialog: vi.fn(),
-      closeDialog: vi.fn(),
-      removeDialogData: vi.fn(),
-    }));
-
-    render(<MealPlansPage />);
-
-    const foodItemMatches = await screen.findAllByText((_, node) => {
-      const text = node?.textContent ?? '';
-      return text.includes('Onion') && text.includes('(2') && text.toLowerCase().includes('cup');
-    });
-
-    const foodItemLine =
-      foodItemMatches.find((node) => {
-        const el = node as HTMLElement;
-        return el.tagName.toLowerCase() === 'p' && el.className.includes('MuiTypography-root');
-      }) ?? foodItemMatches[0];
-
-    expect(foodItemLine).toBeInTheDocument();
   });
 });

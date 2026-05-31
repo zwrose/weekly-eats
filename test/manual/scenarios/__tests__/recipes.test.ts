@@ -158,7 +158,10 @@ describe('recipes.apply — basic', () => {
     const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
     const ingredientLists = doc.ingredients as Array<{ ingredients: Array<{ id: string }> }>;
     const firstIngredient = ingredientLists[0].ingredients[0];
-    expect(firstIngredient.id).toMatch(/placeholder/);
+    // Placeholder ids must be valid 24-char hex strings — the recipe-detail route calls
+    // ObjectId.createFromHexString(id) (no isValid guard), so a non-hex value would 500.
+    expect(typeof firstIngredient.id).toBe('string');
+    expect(ObjectId.isValid(firstIngredient.id)).toBe(true);
   });
 
   it('uses food item IDs from foodItemsRef when provided', async () => {
@@ -172,8 +175,24 @@ describe('recipes.apply — basic', () => {
     const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
     const ingredientLists = doc.ingredients as Array<{ ingredients: Array<{ id: unknown }> }>;
     const firstIngredient = ingredientLists[0].ingredients[0];
-    // Should be one of the real ObjectId values
-    expect(firstIngredient.id).toBeInstanceOf(ObjectId);
+    // Stored as a hex STRING (how the app persists ingredient ids), not a raw ObjectId —
+    // the recipe-detail route does ObjectId.createFromHexString(id), which throws on an ObjectId.
+    expect(typeof firstIngredient.id).toBe('string');
+    expect(ObjectId.isValid(firstIngredient.id as string)).toBe(true);
+  });
+
+  it('marks the ingredient list standalone (matches how the app persists flat lists)', async () => {
+    const { db, insertOne } = mockDb();
+    const ctx = mockCtx(db);
+    const cfg = recipes.validate({ count: 1, isGlobal: false });
+
+    await recipes.apply(cfg, ctx);
+
+    const doc = insertOne.mock.calls[0][0] as Record<string, unknown>;
+    const ingredientLists = doc.ingredients as Array<{ isStandalone?: boolean }>;
+    // Without isStandalone:true the editor treats the untitled list as an invalid GROUP —
+    // red error border + Save disabled. Real app recipes persist this flag on flat lists.
+    expect(ingredientLists[0].isStandalone).toBe(true);
   });
 
   it('produces a non-empty summary string', async () => {
@@ -216,6 +235,27 @@ describe('recipes.apply — withUserData', () => {
     expect(userData._seedScenarioId).toBe('r');
     expect(userData.userId).toBe('u1');
     expect(typeof userData.recipeId).toBe('string');
+  });
+
+  it('seeds a rating (1-5) and non-empty tags on each recipeUserData doc', async () => {
+    const { db, insertOne } = mockDb();
+    const ctx = mockCtx(db);
+    const cfg = recipes.validate({ count: 1, isGlobal: false, withUserData: true });
+
+    await recipes.apply(cfg, ctx);
+
+    // Second insertOne call is the recipeUserData doc (first is the recipe itself).
+    const userData = insertOne.mock.calls[1][0] as Record<string, unknown>;
+    const rating = userData.rating as number;
+    const tags = userData.tags as string[];
+    // The UI reads `rating`/`tags` straight off this doc — without them the list stars/tags
+    // and the rating/tags filters have nothing to render or filter on.
+    expect(Number.isInteger(rating)).toBe(true);
+    expect(rating).toBeGreaterThanOrEqual(1);
+    expect(rating).toBeLessThanOrEqual(5);
+    expect(Array.isArray(tags)).toBe(true);
+    expect(tags.length).toBeGreaterThan(0);
+    expect(tags.every((t) => typeof t === 'string' && t.length > 0)).toBe(true);
   });
 
   it('does NOT insert into recipeUserData when withUserData=false', async () => {

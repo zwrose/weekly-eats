@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "branch": "claude-design-redesign",
+  "slot": "chunk-06-pantry",
+  "createdAt": "2026-05-31T15:30:00.000Z",
+  "updatedAt": "2026-05-31T15:30:00.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline", "config": { "email": "zwrose@gmail.com" } },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": {
+        "ensure": [
+          "all-purpose flour",
+          "olive oil",
+          "kosher salt",
+          "black pepper",
+          "garlic",
+          "yellow onions",
+          "canned chickpeas",
+          "soy sauce"
+        ]
+      },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "pan",
+      "block": "pantry",
+      "config": { "count": 8, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    }
+  ],
+  "stepMappings": []
+}

@@ -1,130 +1,172 @@
 import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { tokens } from './design-tokens';
 
-// Define your theme options
-const createThemeOptions = (mode: 'light' | 'dark'): ThemeOptions => ({
+const display = 'var(--font-display), "Bricolage Grotesque", system-ui, sans-serif';
+const body = 'var(--font-body), "Outfit", system-ui, sans-serif';
+
+// Single dark theme for now. Re-adding light later means reintroducing a mode param here and
+// branching the token references — the builder shape is intentionally kept as one focused factory.
+const createThemeOptions = (): ThemeOptions => ({
   palette: {
-    mode,
-    primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
-      contrastText: '#ffffff',
-    },
-    secondary: {
-      main: '#dc004e',
-      light: '#ff5983',
-      dark: '#9a0036',
-      contrastText: '#ffffff',
-    },
-    background: {
-      default: mode === 'light' ? '#f5f5f5' : '#121212',
-      paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
-    },
+    mode: 'dark',
+    primary: { main: tokens.section.plans, contrastText: tokens.surface.base },
+    secondary: { main: tokens.accentUtility, contrastText: tokens.surface.base },
+    background: { default: tokens.surface.base, paper: tokens.surface.raised },
     text: {
-      primary: mode === 'light' ? '#212121' : '#ffffff',
-      secondary: mode === 'light' ? '#757575' : '#b0b0b0',
+      primary: tokens.text.primary,
+      secondary: tokens.text.secondary,
+      disabled: tokens.text.muted,
     },
+    divider: tokens.border.subtle,
+    success: { main: tokens.state.success },
+    error: { main: tokens.state.danger },
+    warning: { main: tokens.state.warn },
+    section: { ...tokens.section },
+    mealColor: { ...tokens.meal },
+    accentUtility: tokens.accentUtility,
   },
   typography: {
-    fontFamily: '"Figtree", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '2.5rem',
+    fontFamily: body,
+    fontWeightRegular: 400,
+    fontWeightMedium: 500,
+    fontWeightBold: 700,
+    h1: { fontFamily: display, fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em' },
+    h2: { fontFamily: display, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' },
+    h3: { fontFamily: display, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em' },
+    h4: { fontFamily: display, fontSize: '15px', fontWeight: 700, letterSpacing: '-0.01em' },
+    body1: { fontFamily: body, fontSize: '14px', fontWeight: 500 },
+    body2: { fontFamily: body, fontSize: '13px', fontWeight: 500 },
+    button: { fontFamily: body, fontSize: '14px', fontWeight: 600, textTransform: 'none' },
+    displayXl: {
+      fontFamily: display,
+      fontSize: '32px',
       fontWeight: 700,
-      lineHeight: 1.2,
+      letterSpacing: '-0.025em',
+      fontVariantNumeric: 'tabular-nums',
     },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 600,
-      lineHeight: 1.3,
+    displayLg: {
+      fontFamily: display,
+      fontSize: '30px',
+      fontWeight: 700,
+      letterSpacing: '-0.02em',
+      fontVariantNumeric: 'tabular-nums',
     },
-    h3: {
-      fontSize: '1.75rem',
-      fontWeight: 600,
-      lineHeight: 1.3,
+    displayMd: {
+      fontFamily: display,
+      fontSize: '24px',
+      fontWeight: 700,
+      letterSpacing: '-0.02em',
+      fontVariantNumeric: 'tabular-nums',
     },
-    h4: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-      lineHeight: 1.4,
+    displaySm: { fontFamily: display, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em' },
+    displayXs: { fontFamily: display, fontSize: '15px', fontWeight: 700, letterSpacing: '-0.01em' },
+    bodyLg: { fontFamily: body, fontSize: '14px', fontWeight: 500 },
+    bodyMd: { fontFamily: body, fontSize: '13px', fontWeight: 500 },
+    bodySm: { fontFamily: body, fontSize: '12px', fontWeight: 400 },
+    bodyXs: { fontFamily: body, fontSize: '11px', fontWeight: 400 },
+    labelMd: {
+      fontFamily: body,
+      fontSize: '11px',
+      fontWeight: 700,
+      letterSpacing: '0.14em',
+      textTransform: 'uppercase',
     },
-    h5: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
-      lineHeight: 1.4,
+    labelSm: {
+      fontFamily: body,
+      fontSize: '10px',
+      fontWeight: 700,
+      letterSpacing: '0.16em',
+      textTransform: 'uppercase',
     },
-    h6: {
-      fontSize: '1rem',
-      fontWeight: 500,
-      lineHeight: 1.4,
-    },
-    body1: {
-      fontSize: '1rem',
-      lineHeight: 1.6,
-      fontWeight: 400,
-    },
-    body2: {
-      fontSize: '0.875rem',
-      lineHeight: 1.5,
-      fontWeight: 400,
-    },
-    button: {
-      textTransform: 'none',
-      fontWeight: 500,
+    labelXs: {
+      fontFamily: body,
+      fontSize: '9px',
+      fontWeight: 700,
+      letterSpacing: '0.16em',
+      textTransform: 'uppercase',
     },
   },
-  shape: {
-    borderRadius: 8,
-  },
+  shape: { borderRadius: tokens.radius.md },
   spacing: 8,
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        // tabular-nums app-wide so counts/quantities align (design-system.md). The custom
+        // display*/label* variants also set it, but components still use standard MUI variants
+        // until the per-surface chunks migrate them — applying it on body makes it effective now.
+        body: {
+          backgroundColor: tokens.surface.base,
+          color: tokens.text.primary,
+          fontVariantNumeric: 'tabular-nums',
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '24px',
+          // Canonical button radius, system-wide (artboard spec = 10). Per-surface overrides
+          // that re-set this to radius.lg are now redundant and inherit from here.
+          borderRadius: tokens.radius.lg,
           textTransform: 'none',
-          fontWeight: 500,
+          fontWeight: 600,
           boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          },
+          '&:hover': { boxShadow: 'none' },
         },
-        contained: {
-          '&:hover': {
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          },
+        // Text buttons (Cancel / Done / back, etc.) are flush iOS-style text actions. MUI's
+        // default text-variant hover paints a translucent rounded rect; when the button sits
+        // in a rounded popover/dialog corner (overflow:hidden) that rect bleeds into the corner
+        // and clips flat — reads as a rendering artifact. Use a contained opacity dim instead:
+        // no background box means nothing to clip, on any surface.
+        text: {
+          '&:hover': { backgroundColor: 'transparent', opacity: 0.65 },
         },
       },
+      // MUI v9 removed the composite `containedPrimary` styleOverrides slot (split into
+      // separate `contained` + `colorPrimary` classes). Target the same filled-accent
+      // buttons — text color against the accent fill — via the variants API instead.
+      variants: [
+        {
+          props: { variant: 'contained', color: 'primary' },
+          style: { color: tokens.surface.base },
+        },
+      ],
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: mode === 'light' ? '0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.3)',
-          borderRadius: 12,
-        },
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          boxShadow: mode === 'light' ? '0 1px 3px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.3)',
+          backgroundColor: tokens.surface.raised,
+          backgroundImage: 'none',
+          borderRadius: tokens.radius.xxl,
+          border: `1px solid ${tokens.border.subtle}`,
+          boxShadow: 'none',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
+        root: { backgroundImage: 'none', backgroundColor: tokens.surface.raised },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
         root: {
+          backgroundColor: tokens.surface.raised,
           backgroundImage: 'none',
+          boxShadow: 'none',
+          borderBottom: `1px solid ${tokens.border.subtle}`,
         },
       },
     },
+    // NOTE: MuiTypography styleOverrides for the custom variants (displayXl etc.) are NOT
+    // valid override slots under MUI v7 types. The custom typography variants above already
+    // set fontVariantNumeric: 'tabular-nums', so the component override was redundant — dropped.
   },
 });
 
-// Create and export themes
-export const lightTheme = createTheme(createThemeOptions('light'));
-export const darkTheme = createTheme(createThemeOptions('dark'));
+export const darkTheme = createTheme(createThemeOptions());
 
-// Reusable responsive dialog styling for full-screen mobile experience
+// Reusable responsive dialog styling for full-screen mobile experience.
+// PRESERVED — 16 consumers import this from theme.ts; do not remove.
 export const responsiveDialogStyle = {
   '& .MuiDialog-paper': {
     margin: { xs: 0, sm: 'auto', md: 'auto', lg: 'auto', xl: 'auto' },

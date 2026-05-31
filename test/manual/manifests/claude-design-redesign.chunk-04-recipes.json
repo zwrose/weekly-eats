@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "branch": "claude-design-redesign",
+  "slot": "chunk-04-recipes",
+  "createdAt": "2026-05-30T00:00:00.000Z",
+  "updatedAt": "2026-05-30T00:00:00.000Z",
+  "scenarios": [
+    { "id": "u", "block": "user-baseline", "config": { "email": "zwrose@gmail.com" } },
+    {
+      "id": "fi",
+      "block": "food-items",
+      "config": {
+        "ensure": [
+          "apple",
+          "bread",
+          "egg",
+          "milk",
+          "chicken thighs",
+          "rice",
+          "romaine",
+          "olive oil",
+          "garlic",
+          "lemon"
+        ],
+        "globalCount": 4,
+        "userCount": 2
+      },
+      "dependsOn": ["u"]
+    },
+    {
+      "id": "r",
+      "block": "recipes",
+      "config": { "count": 6, "isGlobal": false, "withUserData": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    },
+    {
+      "id": "rg",
+      "block": "recipes",
+      "config": { "count": 3, "isGlobal": true, "withUserData": true, "foodItemsRef": "fi" },
+      "dependsOn": ["u", "fi"]
+    }
+  ],
+  "stepMappings": []
+}

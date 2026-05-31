@@ -8,30 +8,11 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Paper,
   Button,
   Dialog,
   DialogContent,
-  TextField,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  List,
-  ListItem,
-  ListItemText,
-  Checkbox,
-  Divider,
-  Autocomplete,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Snackbar,
-  Chip,
 } from '@mui/material';
 import {
   DndContext,
@@ -42,30 +23,8 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import {
-  ShoppingCart,
-  Add,
-  DragIndicator,
-  Edit,
-  Delete,
-  Share,
-  Check,
-  Close as CloseIcon,
-  PersonAdd,
-  Kitchen,
-  MoreVert,
-  Refresh,
-  DoneAll,
-  History,
-} from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
 import {
   StoreWithShoppingList,
@@ -95,7 +54,6 @@ import {
   type ActiveUser,
 } from '@/lib/hooks';
 import dynamic from 'next/dynamic';
-const EmojiPicker = dynamic(() => import('../../components/EmojiPicker'), { ssr: false });
 const StoreHistoryDialog = dynamic(
   () => import('../../components/shopping-list/StoreHistoryDialog'),
   { ssr: false }
@@ -103,9 +61,13 @@ const StoreHistoryDialog = dynamic(
 import { DialogTitle } from '../../components/ui/DialogTitle';
 import { DialogActions } from '../../components/ui/DialogActions';
 import { responsiveDialogStyle } from '@/lib/theme';
+import { tokens } from '@/lib/design-tokens';
 import SearchBar from '@/components/optimized/SearchBar';
 import Pagination from '@/components/optimized/Pagination';
-import { getUnitOptions, getUnitForm } from '../../lib/food-items-utils';
+import { StoreListView } from '@/components/shopping-list/StoreList/StoreListView';
+import { ShoppingListView } from '@/components/shopping-list/Working/ShoppingListView';
+import { ShoppingItemRow } from '@/components/shopping-list/Working/ShoppingItemRow';
+import { getUnitForm } from '../../lib/food-items-utils';
 import { MealPlanWithTemplate } from '../../types/meal-plan';
 import { fetchMealPlans } from '../../lib/meal-plan-utils';
 import {
@@ -120,13 +82,19 @@ import {
   insertItemAtPosition,
   insertItemsWithPositions,
 } from '../../lib/shopping-list-position-utils';
-import { CalendarMonth } from '@mui/icons-material';
 import { fetchPantryItems } from '../../lib/pantry-utils';
-import QuantityInput from '../../components/food-item-inputs/QuantityInput';
 import ItemEditorDialog, {
   type ItemEditorDraft,
   type ItemEditorMode,
 } from '@/components/shopping-list/ItemEditorDialog';
+import {
+  PantryCheckDialog,
+  type PantryCheckMatch,
+} from '@/components/shopping-list/PantryCheck/PantryCheckDialog';
+import { StoreEditorDialog } from '@/components/shopping-list/StoreEditorDialog';
+import { ImportFromPlansDialog } from '@/components/shopping-list/ImportFromPlansDialog';
+import { UnitConflictDialog } from '@/components/shopping-list/UnitConflictDialog';
+import { ShareStoreDialog } from '@/components/shopping-list/ShareStoreDialog';
 
 interface FoodItem {
   _id: string;
@@ -170,16 +138,11 @@ function ShoppingListsPageContent() {
   const editStoreDialog = useDialog();
   const viewListDialog = usePersistentDialog('shoppingList');
   const deleteConfirmDialog = useConfirmDialog();
-  const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
   const unitConflictDialog = useDialog();
   const shareDialog = useDialog();
   const leaveStoreConfirmDialog = useConfirmDialog();
   const pantryCheckDialog = useDialog();
-
-  // Auto-focus refs for dialog inputs
-  const storeNameRef = useRef<HTMLInputElement>(null);
-  const shareEmailRef = useRef<HTMLInputElement>(null);
 
   // Notification state
   const [snackbar, setSnackbar] = useState<{
@@ -216,8 +179,6 @@ function ShoppingListsPageContent() {
   };
 
   // Form states
-  const [newStoreName, setNewStoreName] = useState('');
-  const [newStoreEmoji, setNewStoreEmoji] = useState('🏪');
   const [editingStore, setEditingStore] = useState<StoreWithShoppingList | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [sharingStore, setSharingStore] = useState<StoreWithShoppingList | null>(null);
@@ -227,7 +188,6 @@ function ShoppingListsPageContent() {
 
   // Scroll container for shopping list items
   const listContainerRef = useRef<HTMLDivElement | null>(null);
-  const [listActionsAnchorEl, setListActionsAnchorEl] = useState<null | HTMLElement>(null);
   const [itemEditorMode, setItemEditorMode] = useState<ItemEditorMode>('add');
   const [itemEditorOpen, setItemEditorOpen] = useState(false);
   const [itemEditorInitialDraft, setItemEditorInitialDraft] = useState<ItemEditorDraft | null>(
@@ -246,16 +206,7 @@ function ShoppingListsPageContent() {
   const [pendingMergedItems, setPendingMergedItems] = useState<ShoppingListItem[]>([]);
 
   // Pantry check states
-  const [matchingPantryItems, setMatchingPantryItems] = useState<
-    Array<{
-      foodItemId: string;
-      name: string;
-      currentQuantity: number;
-      unit: string;
-      checked: boolean;
-      newQuantity: number;
-    }>
-  >([]);
+  const [matchingPantryItems, setMatchingPantryItems] = useState<PantryCheckMatch[]>([]);
   const [loadingPantryCheck, setLoadingPantryCheck] = useState(false);
 
   // Purchase history states
@@ -267,7 +218,9 @@ function ShoppingListsPageContent() {
   // Shopping Sync SSE connection
   const shoppingSync = useShoppingSync({
     storeId: selectedStore?._id || null,
-    enabled: viewListDialog.open,
+    // Sync runs whenever a store is selected (incl. the always-mounted desktop
+    // pane), not just when a modal is open — the working view is no longer modal.
+    enabled: selectedStore !== null,
     presenceUser: session?.user?.email
       ? {
           email: session.user.email,
@@ -354,25 +307,17 @@ function ShoppingListsPageContent() {
 
   useEffect(() => {
     if (!viewListDialog.open) {
-      setListActionsAnchorEl(null);
+      // No store selected in the URL → leave the working view, return to the
+      // store index, and let useShoppingSync disable (enabled = selectedStore).
+      setSelectedStore(null);
     }
   }, [viewListDialog.open]);
 
-  const handleOpenListActionsMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setListActionsAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseListActionsMenu = () => {
-    setListActionsAnchorEl(null);
-  };
-
-  const handleCreateStore = async () => {
-    if (!newStoreName.trim()) return;
+  const handleCreateStore = async (data: { name: string; emoji?: string }) => {
+    if (!data.name.trim()) return;
 
     try {
-      await createStore({ name: newStoreName.trim(), emoji: newStoreEmoji });
-      setNewStoreName('');
-      setNewStoreEmoji('🏪');
+      await createStore({ name: data.name.trim(), emoji: data.emoji });
       createStoreDialog.closeDialog();
       loadData();
     } catch (error) {
@@ -383,21 +328,17 @@ function ShoppingListsPageContent() {
 
   const handleEditStore = (store: StoreWithShoppingList) => {
     setEditingStore(store);
-    setNewStoreName(store.name);
-    setNewStoreEmoji(store.emoji || '🏪');
     editStoreDialog.openDialog();
   };
 
-  const handleUpdateStore = async () => {
-    if (!editingStore || !newStoreName.trim()) return;
+  const handleUpdateStore = async (data: { name: string; emoji?: string }) => {
+    if (!editingStore || !data.name.trim()) return;
 
     try {
       await updateStore(editingStore._id, {
-        name: newStoreName.trim(),
-        emoji: newStoreEmoji,
+        name: data.name.trim(),
+        emoji: data.emoji,
       });
-      setNewStoreName('');
-      setNewStoreEmoji('🏪');
       setEditingStore(null);
       editStoreDialog.closeDialog();
       loadData();
@@ -540,11 +481,6 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handleStartShopping = async (store: StoreWithShoppingList) => {
-    // No separate Shop Mode anymore: open the same unified list.
-    await handleViewList(store);
-  };
-
   // Restore selected store and mode from URL when dialog is open
   useEffect(() => {
     if (!viewListDialog.open) return;
@@ -572,10 +508,6 @@ function ShoppingListsPageContent() {
 
     void loadLatestList();
   }, [viewListDialog.open, viewListDialog.data, stores]);
-
-  const handleEmojiSelect = (emoji: string) => {
-    setNewStoreEmoji(emoji);
-  };
 
   const handleOpenAddItemEditor = () => {
     setItemEditorMode('add');
@@ -1192,17 +1124,18 @@ function ShoppingListsPageContent() {
       // Load food items and pantry items in parallel
       const [pantryItems] = await Promise.all([fetchPantryItems(), loadFoodItems()]);
 
-      // Find shopping list items that are in pantry
-      const matches = shoppingListItems
+      // Find shopping list items that are in pantry; shape as PantryCheckMatch[]
+      const matches: PantryCheckMatch[] = shoppingListItems
         .filter((item) => pantryItems.some((p) => p.foodItemId === item.foodItemId))
-        .map((item) => ({
-          foodItemId: item.foodItemId,
-          name: item.name,
-          currentQuantity: item.quantity,
-          unit: item.unit,
-          checked: false,
-          newQuantity: item.quantity,
-        }));
+        .map((item) => {
+          const unitPart =
+            item.unit && item.unit !== 'each' ? ` ${getUnitForm(item.unit, item.quantity)}` : '';
+          return {
+            foodItemId: item.foodItemId,
+            name: item.name,
+            listLabel: `${item.quantity}${unitPart} on list`,
+          };
+        });
 
       setMatchingPantryItems(matches);
 
@@ -1216,45 +1149,14 @@ function ShoppingListsPageContent() {
     }
   };
 
-  const handlePantryItemCheck = (foodItemId: string, checked: boolean) => {
-    setMatchingPantryItems((prev) =>
-      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, checked } : item))
-    );
-  };
-
-  const handlePantryItemQuantityChange = (foodItemId: string, newQuantity: number) => {
-    setMatchingPantryItems((prev) =>
-      prev.map((item) => (item.foodItemId === foodItemId ? { ...item, newQuantity } : item))
-    );
-  };
-
-  const handleApplyPantryCheck = async () => {
+  const handleApplyPantryCheck = async (decisions: Record<string, 'keep' | 'skip'>) => {
     if (!selectedStore) return;
 
     try {
-      // Apply changes from pantry check
-      const updatedItems = shoppingListItems
-        .map((item) => {
-          const match = matchingPantryItems.find((m) => m.foodItemId === item.foodItemId);
-          if (match) {
-            // If checked off or quantity is 0, remove it (will be filtered out below)
-            if (match.checked || match.newQuantity <= 0) {
-              return null;
-            }
-            // Update quantity if changed
-            if (match.newQuantity !== item.quantity) {
-              const foodItem = foodItems.find((f) => f._id === item.foodItemId);
-              const newName = foodItem
-                ? match.newQuantity === 1
-                  ? foodItem.singularName
-                  : foodItem.pluralName
-                : item.name;
-              return { ...item, quantity: match.newQuantity, name: newName };
-            }
-          }
-          return item;
-        })
-        .filter((item): item is ShoppingListItem => item !== null);
+      // Drop items whose decision is 'skip'; keep all others unchanged
+      const updatedItems = shoppingListItems.filter(
+        (item) => decisions[item.foodItemId] !== 'skip'
+      );
 
       setShoppingListItems(updatedItems);
 
@@ -1269,17 +1171,9 @@ function ShoppingListsPageContent() {
       setMatchingPantryItems([]);
 
       const removedCount = shoppingListItems.length - updatedItems.length;
-      const changedCount = matchingPantryItems.filter(
-        (m) => !m.checked && m.newQuantity !== m.currentQuantity
-      ).length;
 
-      if (removedCount > 0 || changedCount > 0) {
-        showSnackbar(
-          `Pantry check complete! ${
-            removedCount > 0 ? `Removed ${removedCount} item(s). ` : ''
-          }${changedCount > 0 ? `Updated ${changedCount} quantity(ies).` : ''}`,
-          'success'
-        );
+      if (removedCount > 0) {
+        showSnackbar(`Pantry check complete! Removed ${removedCount} item(s).`, 'success');
       } else {
         showSnackbar('No changes made', 'info');
       }
@@ -1341,76 +1235,131 @@ function ShoppingListsPageContent() {
     return { unchecked, checked };
   }, [shoppingListItems]);
 
-  const SortableShoppingListRow = ({
-    item,
-    isLast,
-  }: {
-    item: ShoppingListItem;
-    isLast: boolean;
-  }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: item.foodItemId,
-    });
+  // ── Working-view list slot ───────────────────────────────────────────────
+  // Presence and the store actions menu are rendered inside ShoppingListView
+  // directly; the page passes action callbacks and keeps owning all state, sync,
+  // DnD, finish-shop, and the sub-dialogs (rendered below as siblings).
 
-    return (
-      <Box>
-        <ListItem
-          ref={setNodeRef}
-          disableGutters
-          secondaryAction={
-            <IconButton
-              edge="end"
-              aria-label="Reorder"
-              size="small"
-              {...attributes}
-              {...listeners}
-              sx={{ touchAction: 'none' }}
-            >
-              <DragIndicator fontSize="small" />
-            </IconButton>
-          }
-          sx={{
-            px: 1,
-            py: 0.25,
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.6 : 1,
-            width: '100%',
-            maxWidth: '100%',
-            overflowX: 'hidden',
-          }}
+  const workingListSlot =
+    shoppingListItems.length === 0 ? (
+      <Box
+        sx={{
+          mb: 2,
+          px: 2.5,
+          py: 3,
+          bgcolor: tokens.surface.raised,
+          border: `1px solid ${tokens.border.subtle}`,
+          borderRadius: `${tokens.radius.xl}px`,
+          color: tokens.text.secondary,
+          fontSize: 14,
+          textAlign: 'center',
+        }}
+      >
+        No items in this shopping list yet. Add an item to get started.
+      </Box>
+    ) : (
+      <Box
+        ref={listContainerRef}
+        sx={{
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          touchAction: 'pan-y',
+          overscrollBehaviorX: 'none',
+          '@media (pointer: fine) and (min-width:600px)': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: `${tokens.border.strong} transparent`,
+            '&::-webkit-scrollbar': { width: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: tokens.border.subtle,
+              borderRadius: 999,
+              border: '2px solid transparent',
+              backgroundClip: 'content-box',
+            },
+            '&:hover::-webkit-scrollbar-thumb': {
+              backgroundColor: tokens.border.strong,
+            },
+          },
+        }}
+      >
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+          onDragEnd={handleDragEnd}
         >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <Checkbox
-              checked={item.checked}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleToggleItemChecked(item.foodItemId);
+          {orderedShoppingItems.unchecked.length > 0 && (
+            <Box
+              sx={{
+                bgcolor: tokens.surface.raised,
+                border: `1px solid ${tokens.border.subtle}`,
+                borderRadius: { xs: '12px', md: '14px' },
+                overflow: 'hidden',
+                '& > div:not(:last-of-type)': {
+                  borderBottom: `1px solid ${tokens.border.subtle}`,
+                },
               }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primary={item.name}
-            secondary={`${item.quantity} ${
-              item.unit && item.unit !== 'each'
-                ? getUnitForm(item.unit, item.quantity)
-                : item.unit === 'each'
-                  ? 'each'
-                  : ''
-            }`}
-            onClick={() => handleOpenEditItemEditor(item)}
-            sx={{
-              cursor: 'pointer',
-              textDecoration: item.checked ? 'line-through' : 'none',
-              opacity: item.checked ? 0.6 : 1,
-              pr: 4,
-            }}
-          />
-        </ListItem>
-        {!isLast && <Divider />}
+            >
+              <SortableContext
+                items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedShoppingItems.unchecked.map((item) => (
+                  <ShoppingItemRow
+                    key={item.foodItemId}
+                    item={item}
+                    onToggle={(id) => void handleToggleItemChecked(id)}
+                    onEdit={handleOpenEditItemEditor}
+                  />
+                ))}
+              </SortableContext>
+            </Box>
+          )}
+
+          {orderedShoppingItems.checked.length > 0 && (
+            <>
+              <Box
+                sx={{
+                  mt: '10px',
+                  pt: '10px',
+                  px: '4px',
+                  borderTop: `1px solid ${tokens.border.subtle}`,
+                  fontSize: { xs: 10, md: 11 },
+                  fontWeight: 700,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: tokens.text.secondary,
+                }}
+              >
+                {`In cart · ${orderedShoppingItems.checked.length}`}
+              </Box>
+              <Box
+                sx={{
+                  mt: '10px',
+                  bgcolor: tokens.surface.sunken,
+                  border: `1px solid ${tokens.border.subtle}`,
+                  borderRadius: { xs: '12px', md: '14px' },
+                  overflow: 'hidden',
+                  '& > div:not(:last-of-type)': {
+                    borderBottom: `1px solid ${tokens.border.subtle}`,
+                  },
+                }}
+              >
+                {orderedShoppingItems.checked.map((item) => (
+                  <ShoppingItemRow
+                    key={item.foodItemId}
+                    item={item}
+                    onToggle={(id) => void handleToggleItemChecked(id)}
+                    onEdit={handleOpenEditItemEditor}
+                  />
+                ))}
+              </Box>
+            </>
+          )}
+        </DndContext>
       </Box>
     );
-  };
 
   // Show loading state while session is being fetched
   if (status === 'loading') {
@@ -1434,901 +1383,120 @@ function ShoppingListsPageContent() {
     <AuthenticatedLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: { xs: 0.5, md: 1 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ShoppingCart sx={{ fontSize: 40, color: '#2e7d32' }} />
-              <Typography variant="h3" component="h1" sx={{ color: '#2e7d32' }}>
-                Shopping Lists
-              </Typography>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={createStoreDialog.openDialog}
-              sx={{
-                bgcolor: '#2e7d32',
-                '&:hover': { bgcolor: '#1b5e20' },
-                width: { xs: '100%', sm: 'auto' },
+          ) : selectedStore ? (
+            <ShoppingListView
+              stores={stores.map((store) => ({
+                _id: store._id,
+                name: store.name,
+                emoji: store.emoji,
+                itemCount: store.shoppingList?.itemCount || 0,
+              }))}
+              activeStoreId={selectedStore._id}
+              items={shoppingListItems}
+              onSelectStore={(id) => {
+                const store = stores.find((s) => s._id === id);
+                if (store) void handleViewList(store);
               }}
-            >
-              Add Store
-            </Button>
-          </Box>
-
-          {/* Pending Invitations Section */}
-          {pendingInvitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-              >
-                <PersonAdd />
-                Pending Invitations ({pendingInvitations.length})
-              </Typography>
-              <List>
-                {pendingInvitations.map((inv) => (
-                  <Box key={inv.storeId}>
-                    <ListItem>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          flex: 1,
-                        }}
-                      >
-                        <Typography variant="h6">{inv.storeEmoji}</Typography>
-                        <ListItemText
-                          primary={inv.storeName}
-                          secondary={`Invited ${new Date(
-                            inv.invitation.invitedAt
-                          ).toLocaleDateString()}`}
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          color="success"
-                          size="small"
-                          title="Accept"
-                          onClick={() => handleAcceptInvitation(inv.storeId, inv.invitation.userId)}
-                        >
-                          <Check fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          title="Reject"
-                          onClick={() => handleRejectInvitation(inv.storeId, inv.invitation.userId)}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                    <Divider />
-                  </Box>
-                ))}
-              </List>
-            </Paper>
-          )}
-
-          <Paper sx={{ p: 3, mb: 4, maxWidth: 'md', mx: 'auto' }}>
-            <SearchBar
-              value={storePagination.searchTerm}
-              onChange={storePagination.setSearchTerm}
-              placeholder="Search stores..."
+              onToggleItem={(foodItemId) => void handleToggleItemChecked(foodItemId)}
+              onEditItem={handleOpenEditItemEditor}
+              onAddItem={handleOpenAddItemEditor}
+              onFinish={() => void handleClearCheckedItems()}
+              onBack={viewListDialog.closeDialog}
+              onReconnect={handleManualReconnect}
+              onAddStore={createStoreDialog.openDialog}
+              connectionState={shoppingSync.connectionState}
+              activeUsers={activeUsers}
+              onImport={() => void handleOpenMealPlanSelection()}
+              onPantryCheck={() => void handleOpenPantryCheck()}
+              onHistory={() => void handleOpenHistory(selectedStore)}
+              onShare={() => void handleOpenShareDialog(selectedStore)}
+              onRename={() => handleEditStore(selectedStore)}
+              onDelete={() => {
+                deleteConfirmDialog.openDialog();
+              }}
+              canLeave={!isStoreOwner(selectedStore)}
+              onLeave={() => handleLeaveStore(selectedStore)}
+              loadingPantryCheck={loadingPantryCheck}
+              listSlot={workingListSlot}
             />
-
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : storePagination.paginatedData.length === 0 ? (
-              <Alert severity="info">
-                {storePagination.searchTerm
-                  ? 'No stores match your search criteria'
-                  : 'No stores yet. Add your first store to create shopping lists.'}
-              </Alert>
-            ) : (
-              <>
-                {/* Desktop Table View */}
-                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell
-                            sx={{
-                              width: '50%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Store (click to view list)
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '20%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Items on Lists
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              width: '30%',
-                              fontWeight: 'bold',
-                              wordWrap: 'break-word',
-                            }}
-                          >
-                            Manage Store
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {storePagination.paginatedData.map((store) => (
-                          <TableRow
-                            key={store._id}
-                            onClick={() => handleViewList(store)}
-                            sx={{
-                              '&:hover': { backgroundColor: 'action.hover' },
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <TableCell sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1,
-                                }}
-                              >
-                                <Typography variant="h6">{store.emoji}</Typography>
-                                <Typography variant="body1">{store.name}</Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {store.shoppingList?.itemCount || 0}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  gap: 1,
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  title="Start Shopping"
-                                  disabled={!store.shoppingList?.itemCount}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartShopping(store);
-                                  }}
-                                >
-                                  <ShoppingCart fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  title="Purchase History"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenHistory(store);
-                                  }}
-                                >
-                                  <History fontSize="small" />
-                                </IconButton>
-
-                                {isStoreOwner(store) ? (
-                                  <>
-                                    <IconButton
-                                      size="small"
-                                      title="Share Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenShareDialog(store);
-                                      }}
-                                    >
-                                      <Share fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      title="Edit Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditStore(store);
-                                      }}
-                                    >
-                                      <Edit fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      title="Delete Store"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedStore(store);
-                                        deleteConfirmDialog.openDialog();
-                                      }}
-                                    >
-                                      <Delete fontSize="small" />
-                                    </IconButton>
-                                  </>
-                                ) : (
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    title="Leave Store"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleLeaveStore(store);
-                                    }}
-                                  >
-                                    <CloseIcon fontSize="small" />
-                                  </IconButton>
-                                )}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-
-                {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {storePagination.paginatedData.map((store) => (
-                    <Paper
-                      key={store._id}
-                      onClick={() => handleViewList(store)}
-                      sx={{
-                        p: 3,
-                        mb: 2,
-                        boxShadow: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                          transform: 'translateY(-2px)',
-                          boxShadow: 4,
-                        },
-                        transition: 'all 0.2s ease-in-out',
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          mb: 2,
-                        }}
-                      >
-                        <Typography variant="h4">{store.emoji}</Typography>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                            {store.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {store.shoppingList?.itemCount || 0} items
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          gap: 1,
-                          justifyContent: 'flex-end',
-                        }}
-                      >
-                        <IconButton
-                          size="small"
-                          color="success"
-                          title="Start Shopping"
-                          disabled={!store.shoppingList?.itemCount}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartShopping(store);
-                          }}
-                        >
-                          <ShoppingCart fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          title="Purchase History"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenHistory(store);
-                          }}
-                        >
-                          <History fontSize="small" />
-                        </IconButton>
-
-                        {isStoreOwner(store) ? (
-                          <>
-                            <IconButton
-                              size="small"
-                              title="Share Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenShareDialog(store);
-                              }}
-                            >
-                              <Share fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              title="Edit Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditStore(store);
-                              }}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              title="Delete Store"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedStore(store);
-                                deleteConfirmDialog.openDialog();
-                              }}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </>
-                        ) : (
-                          <IconButton
-                            size="small"
-                            color="warning"
-                            title="Leave Store"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLeaveStore(store);
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </Paper>
-                  ))}
-                </Box>
-
+          ) : (
+            <StoreListView
+              stores={storePagination.paginatedData.map((store) => ({
+                _id: store._id,
+                name: store.name,
+                emoji: store.emoji,
+                itemCount: store.shoppingList?.itemCount || 0,
+                shared: (store.invitations ?? []).some((inv) => inv.status === 'accepted'),
+                sharedCount: (store.invitations ?? []).filter((inv) => inv.status === 'accepted')
+                  .length,
+              }))}
+              onSelectStore={(id) => {
+                const store = stores.find((s) => s._id === id);
+                if (store) handleViewList(store);
+              }}
+              onAddStore={createStoreDialog.openDialog}
+              search={
+                <SearchBar
+                  value={storePagination.searchTerm}
+                  onChange={storePagination.setSearchTerm}
+                  placeholder="Search stores..."
+                />
+              }
+              emptyMessage={
+                <Alert severity="info">
+                  {storePagination.searchTerm
+                    ? 'No stores match your search criteria'
+                    : 'No stores yet. Add your first store to create shopping lists.'}
+                </Alert>
+              }
+              pagination={
                 <Pagination
                   count={storePagination.totalPages}
                   page={storePagination.currentPage}
                   onChange={storePagination.setCurrentPage}
                   show={storePagination.totalPages > 1}
                 />
-              </>
-            )}
-          </Paper>
+              }
+              pendingInvitations={pendingInvitations.map((inv) => ({
+                storeId: inv.storeId,
+                storeName: inv.storeName,
+                storeEmoji: inv.storeEmoji,
+                invitedAt: inv.invitation.invitedAt,
+              }))}
+              onAcceptInvite={(storeId) => {
+                const inv = pendingInvitations.find((i) => i.storeId === storeId);
+                if (inv) handleAcceptInvitation(inv.storeId, inv.invitation.userId);
+              }}
+              onDeclineInvite={(storeId) => {
+                const inv = pendingInvitations.find((i) => i.storeId === storeId);
+                if (inv) handleRejectInvitation(inv.storeId, inv.invitation.userId);
+              }}
+            />
+          )}
         </Box>
       </Container>
 
       {/* Create Store Dialog */}
-      <Dialog
+      <StoreEditorDialog
         open={createStoreDialog.open}
+        mode="create"
+        onSave={handleCreateStore}
         onClose={createStoreDialog.closeDialog}
-        sx={responsiveDialogStyle}
-        slotProps={{
-          transition: { onEntered: () => storeNameRef.current?.focus() },
-        }}
-      >
-        <DialogTitle onClose={createStoreDialog.closeDialog}>Add Store</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Store Icon
-              </Typography>
-              <Button
-                variant="outlined"
-                onClick={emojiPickerDialog.openDialog}
-                sx={{
-                  fontSize: '2rem',
-                  minWidth: 80,
-                  minHeight: 80,
-                }}
-              >
-                {newStoreEmoji}
-              </Button>
-            </Box>
-            <TextField
-              label="Store Name"
-              value={newStoreName}
-              onChange={(e) => setNewStoreName(e.target.value)}
-              fullWidth
-              inputRef={storeNameRef}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && newStoreName.trim()) {
-                  handleCreateStore();
-                }
-              }}
-            />
-          </Box>
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={createStoreDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateStore}
-              variant="contained"
-              disabled={!newStoreName.trim()}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Create Store
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Edit Store Dialog */}
-      <Dialog
+      <StoreEditorDialog
         open={editStoreDialog.open}
+        mode="edit"
+        initialName={editingStore?.name}
+        initialEmoji={editingStore?.emoji || '🏪'}
+        onSave={handleUpdateStore}
         onClose={editStoreDialog.closeDialog}
-        sx={responsiveDialogStyle}
-        slotProps={{
-          transition: { onEntered: () => storeNameRef.current?.focus() },
-        }}
-      >
-        <DialogTitle onClose={editStoreDialog.closeDialog}>Edit Store</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Store Icon
-              </Typography>
-              <Button
-                variant="outlined"
-                onClick={emojiPickerDialog.openDialog}
-                sx={{
-                  fontSize: '2rem',
-                  minWidth: 80,
-                  minHeight: 80,
-                }}
-              >
-                {newStoreEmoji}
-              </Button>
-            </Box>
-            <TextField
-              label="Store Name"
-              value={newStoreName}
-              onChange={(e) => setNewStoreName(e.target.value)}
-              fullWidth
-              inputRef={storeNameRef}
-            />
-          </Box>
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={editStoreDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateStore}
-              variant="contained"
-              disabled={!newStoreName.trim()}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Update Store
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
-
-      {/* View/Edit Shopping List Dialog */}
-      <Dialog
-        open={viewListDialog.open}
-        onClose={viewListDialog.closeDialog}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          ...responsiveDialogStyle,
-          '& .MuiDialog-paper': {
-            ...(() => {
-              const paper = (responsiveDialogStyle as Record<string, unknown>)[
-                '& .MuiDialog-paper'
-              ];
-              return paper && typeof paper === 'object' ? (paper as Record<string, unknown>) : {};
-            })(),
-            // Only full-height/flex on mobile. Desktop should size to content.
-            display: { xs: 'flex', sm: 'block' },
-            flexDirection: { xs: 'column' },
-          },
-        }}
-      >
-        <DialogTitle
-          onClose={viewListDialog.closeDialog}
-          actions={
-            <IconButton aria-label="More actions" onClick={handleOpenListActionsMenu} size="small">
-              <MoreVert />
-            </IconButton>
-          }
-        >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Single-line header: emoji + name (ellipsis) + live pill */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                flexWrap: 'nowrap',
-                minWidth: 0,
-              }}
-            >
-              <Typography variant="h4" sx={{ flex: '0 0 auto' }}>
-                {selectedStore?.emoji}
-              </Typography>
-              <Typography
-                variant="h6"
-                noWrap
-                sx={{
-                  flex: '1 1 auto',
-                  minWidth: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {selectedStore?.name}
-              </Typography>
-              <Box
-                role={shoppingSync.isConnected ? undefined : 'button'}
-                onClick={shoppingSync.isConnected ? undefined : handleManualReconnect}
-                sx={{
-                  flex: '0 0 auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1,
-                  py: 0.5,
-                  mr: 1,
-                  borderRadius: 1,
-                  bgcolor: shoppingSync.isConnected
-                    ? 'success.main'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'warning.main'
-                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.700' : 'grey.300'),
-                  color: shoppingSync.isConnected
-                    ? 'success.contrastText'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'warning.contrastText'
-                      : (theme) => (theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800'),
-                  fontSize: '0.7rem',
-                  whiteSpace: 'nowrap',
-                  cursor: shoppingSync.isConnected ? 'default' : 'pointer',
-                  userSelect: 'none',
-                }}
-                title={
-                  shoppingSync.isConnected
-                    ? 'Live'
-                    : shoppingSync.connectionState === 'connecting'
-                      ? 'Reconnecting…'
-                      : 'Offline (tap to reconnect)'
-                }
-              >
-                {shoppingSync.isConnected ? (
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: 'success.contrastText',
-                    }}
-                  />
-                ) : (
-                  <Refresh sx={{ fontSize: 14 }} />
-                )}
-                {shoppingSync.isConnected
-                  ? 'Live'
-                  : shoppingSync.connectionState === 'connecting'
-                    ? 'Reconnecting'
-                    : 'Offline'}
-              </Box>
-            </Box>
-
-            {/* Secondary line can wrap: active viewers */}
-            {activeUsers.length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  Also viewing:
-                </Typography>
-                {activeUsers.map((user, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      px: 1,
-                      py: 0.5,
-                      borderRadius: 1,
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {user.name}
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
-        </DialogTitle>
-        <Menu
-          anchorEl={listActionsAnchorEl}
-          open={Boolean(listActionsAnchorEl)}
-          onClose={handleCloseListActionsMenu}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <MenuItem
-            onClick={() => {
-              handleCloseListActionsMenu();
-              void handleOpenMealPlanSelection();
-            }}
-          >
-            <ListItemIcon>
-              <CalendarMonth fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Add items from meal plans</ListItemText>
-          </MenuItem>
-          <MenuItem
-            disabled={loadingPantryCheck}
-            onClick={() => {
-              handleCloseListActionsMenu();
-              void handleOpenPantryCheck();
-            }}
-          >
-            <ListItemIcon>
-              {loadingPantryCheck ? <CircularProgress size={16} /> : <Kitchen fontSize="small" />}
-            </ListItemIcon>
-            <ListItemText>Pantry check</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              handleCloseListActionsMenu();
-              if (selectedStore) {
-                void handleOpenHistory(selectedStore);
-              }
-            }}
-          >
-            <ListItemIcon>
-              <History fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Purchase history</ListItemText>
-          </MenuItem>
-        </Menu>
-        <DialogContent
-          sx={{
-            overflowX: 'hidden',
-            // Only stretch on mobile. Desktop should size naturally.
-            flex: { xs: 1, sm: 'initial' },
-            minHeight: { xs: 0 },
-            display: { xs: 'flex', sm: 'block' },
-            flexDirection: { xs: 'column' },
-          }}
-        >
-          <Box
-            sx={{
-              mt: 0,
-              display: { xs: 'flex', sm: 'block' },
-              flexDirection: { xs: 'column' },
-              minHeight: { xs: 0 },
-              flex: { xs: 1, sm: 'initial' },
-            }}
-          >
-            {shoppingListItems.length === 0 ? (
-              <>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  No items in this shopping list yet. Add an item to get started.
-                </Alert>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={handleOpenAddItemEditor}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Add item
-                  </Button>
-                </Box>
-              </>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    mb: 2,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ flex: '1 1 auto', minWidth: 0 }}
-                  >
-                    Tap an item to edit it.
-                  </Typography>
-                  {orderedShoppingItems.checked.length > 0 && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="success"
-                      startIcon={<DoneAll />}
-                      onClick={() => void handleClearCheckedItems()}
-                      sx={{ flex: '0 0 auto' }}
-                    >
-                      Finish Shop
-                    </Button>
-                  )}
-                  <IconButton aria-label="Add item" onClick={handleOpenAddItemEditor} size="small">
-                    <Add />
-                  </IconButton>
-                </Box>
-                <Box
-                  ref={listContainerRef}
-                  sx={{
-                    // Mobile: fill the dialog so no dead space.
-                    // Desktop: keep the prior bounded list height.
-                    flex: { xs: 1, sm: 'initial' },
-                    minHeight: { xs: 0 },
-                    // On desktop, use a fixed list region so the dialog doesn't
-                    // keep growing as items are added; the list itself scrolls.
-                    height: { sm: '60vh' },
-                    maxHeight: { xs: 'none', sm: '60vh' },
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    touchAction: 'pan-y',
-                    overscrollBehaviorX: 'none',
-                    // Desktop-only: sleeker scrollbars. Mobile keeps native look.
-                    // Note: include (pointer:fine) to avoid clobbering MUI's own
-                    // sm breakpoint media query merge (which is also min-width:600px).
-                    '@media (pointer: fine) and (min-width:600px)': {
-                      scrollbarWidth: 'thin', // Firefox
-                      scrollbarColor: (theme) =>
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(255,255,255,0.5) transparent'
-                          : 'rgba(0,0,0,0.35) transparent',
-                      '&::-webkit-scrollbar': {
-                        width: 6,
-                      },
-                      '&::-webkit-scrollbar-track': {
-                        background: 'transparent',
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255,255,255,0.35)'
-                            : 'rgba(0,0,0,0.25)',
-                        borderRadius: 999,
-                        border: '2px solid transparent',
-                        backgroundClip: 'content-box',
-                      },
-                      '&:hover::-webkit-scrollbar-thumb': {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255,255,255,0.5)'
-                            : 'rgba(0,0,0,0.4)',
-                      },
-                    },
-                  }}
-                >
-                  <List sx={{ overflowX: 'hidden' }}>
-                    <DndContext
-                      sensors={dndSensors}
-                      collisionDetection={closestCenter}
-                      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={orderedShoppingItems.unchecked.map((i) => i.foodItemId)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {orderedShoppingItems.unchecked.map((item, index) => (
-                          <SortableShoppingListRow
-                            key={item.foodItemId}
-                            item={item}
-                            isLast={
-                              index === orderedShoppingItems.unchecked.length - 1 &&
-                              orderedShoppingItems.checked.length === 0
-                            }
-                          />
-                        ))}
-                      </SortableContext>
-
-                      {orderedShoppingItems.checked.length > 0 && (
-                        <>
-                          {orderedShoppingItems.unchecked.length > 0 && <Divider />}
-                          {orderedShoppingItems.checked.map((item, index) => (
-                            <Box key={item.foodItemId}>
-                              <ListItem
-                                disableGutters
-                                secondaryAction={
-                                  <IconButton
-                                    edge="end"
-                                    aria-label="Reorder (disabled)"
-                                    size="small"
-                                    disabled
-                                  >
-                                    <DragIndicator fontSize="small" />
-                                  </IconButton>
-                                }
-                                sx={{ px: 1, py: 0.25 }}
-                              >
-                                <ListItemIcon sx={{ minWidth: 40 }}>
-                                  <Checkbox
-                                    checked={item.checked}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void handleToggleItemChecked(item.foodItemId);
-                                    }}
-                                  />
-                                </ListItemIcon>
-                                <ListItemText
-                                  primary={item.name}
-                                  secondary={`${item.quantity} ${
-                                    item.unit && item.unit !== 'each'
-                                      ? getUnitForm(item.unit, item.quantity)
-                                      : item.unit === 'each'
-                                        ? 'each'
-                                        : ''
-                                  }`}
-                                  onClick={() => handleOpenEditItemEditor(item)}
-                                  sx={{
-                                    cursor: 'pointer',
-                                    textDecoration: item.checked ? 'line-through' : 'none',
-                                    opacity: item.checked ? 0.6 : 1,
-                                    pr: 4,
-                                  }}
-                                />
-                              </ListItem>
-                              {index < orderedShoppingItems.checked.length - 1 && <Divider />}
-                            </Box>
-                          ))}
-                        </>
-                      )}
-                    </DndContext>
-                  </List>
-                </Box>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
+      />
 
       <ItemEditorDialog
         open={itemEditorOpen}
@@ -2384,436 +1552,55 @@ function ShoppingListsPageContent() {
       </Dialog>
 
       {/* Meal Plan Selection Dialog */}
-      <Dialog
+      <ImportFromPlansDialog
         open={mealPlanSelectionDialog.open}
+        plans={availableMealPlans}
+        selectedIds={selectedMealPlanIds}
+        onToggle={(id) =>
+          setSelectedMealPlanIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+          )
+        }
+        onImport={handleAddItemsFromMealPlans}
         onClose={mealPlanSelectionDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={mealPlanSelectionDialog.closeDialog}>Select Meal Plans</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Select one or more meal plans to add their items to your shopping list.
-          </Typography>
-
-          {availableMealPlans.length === 0 ? (
-            <Alert severity="info">
-              No meal plans available (must be within last 3 days or in the future).
-            </Alert>
-          ) : (
-            <List>
-              {availableMealPlans.map((mealPlan) => (
-                <ListItem
-                  key={mealPlan._id}
-                  onClick={() => {
-                    setSelectedMealPlanIds((prev) =>
-                      prev.includes(mealPlan._id)
-                        ? prev.filter((id) => id !== mealPlan._id)
-                        : [...prev, mealPlan._id]
-                    );
-                  }}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                  }}
-                >
-                  <Checkbox
-                    checked={selectedMealPlanIds.includes(mealPlan._id)}
-                    onClick={(event) => {
-                      // Prevent the parent ListItem onClick from firing too,
-                      // otherwise a checkbox click toggles twice (net no change).
-                      event.stopPropagation();
-                    }}
-                    onChange={() => {
-                      setSelectedMealPlanIds((prev) =>
-                        prev.includes(mealPlan._id)
-                          ? prev.filter((id) => id !== mealPlan._id)
-                          : [...prev, mealPlan._id]
-                      );
-                    }}
-                  />
-                  <ListItemText
-                    primary={mealPlan.name}
-                    secondary={new Date(mealPlan.startDate).toLocaleDateString()}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This will extract all food items from the selected meal plans (including from recipes)
-            and add them to your shopping list.
-          </Typography>
-
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={mealPlanSelectionDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddItemsFromMealPlans}
-              variant="contained"
-              disabled={selectedMealPlanIds.length === 0}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Add Items
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Unit Conflict Resolution Dialog */}
-      <Dialog
+      <UnitConflictDialog
         open={unitConflictDialog.open}
-        onClose={() => {}} // Prevent closing - must resolve conflicts
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle showCloseButton={false}>
-          Resolve Unit Conflict ({currentConflictIndex + 1} of {unitConflicts.length})
-        </DialogTitle>
-        <DialogContent>
-          {unitConflicts.length > 0 && (
-            <>
-              <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                {unitConflicts[currentConflictIndex]?.foodItemName}
-              </Typography>
-
-              {unitConflicts[currentConflictIndex]?.isAutoConverted ? (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <Chip label="Auto-converted" size="small" color="success" variant="outlined" />
-                    <Typography variant="body2">
-                      {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
-                        <span key={idx}>
-                          {idx > 0 && ' + '}
-                          {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
-                        </span>
-                      ))}
-                      {' = '}
-                      {Math.round(
-                        (unitConflicts[currentConflictIndex]?.suggestedQuantity ?? 0) * 100
-                      ) / 100}{' '}
-                      {unitConflicts[currentConflictIndex]?.suggestedUnit
-                        ? getUnitForm(
-                            unitConflicts[currentConflictIndex]!.suggestedUnit!,
-                            unitConflicts[currentConflictIndex]!.suggestedQuantity!
-                          )
-                        : ''}
-                    </Typography>
-                  </Box>
-                </Alert>
-              ) : (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  This item has different units that can&apos;t be auto-converted. Choose the
-                  quantity and unit for your list.
-                </Alert>
-              )}
-
-              <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                <Typography variant="caption" color="text.secondary" gutterBottom>
-                  Unit entries to combine:
-                </Typography>
-                <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                  {unitConflicts[currentConflictIndex]?.unitBreakdown?.map((entry, idx) => (
-                    <Typography
-                      key={idx}
-                      component="li"
-                      variant="body1"
-                      sx={{ fontWeight: 'medium' }}
-                    >
-                      {entry.quantity} {getUnitForm(entry.unit, entry.quantity)}
-                    </Typography>
-                  ))}
-                </Box>
-              </Paper>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {unitConflicts[currentConflictIndex]?.isAutoConverted
-                  ? 'Review the suggested combined value:'
-                  : 'Set the quantity and unit for your shopping list:'}
-              </Typography>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 2,
-                  mb: 3,
-                  alignItems: 'flex-start',
-                }}
-              >
-                <QuantityInput
-                  label="Quantity"
-                  value={getCurrentConflictResolution().quantity}
-                  onChange={handleConflictQuantityChange}
-                  size="small"
-                  sx={{ width: 150 }}
-                />
-                <Autocomplete
-                  options={getUnitOptions()}
-                  value={
-                    getUnitOptions().find(
-                      (option) => option.value === getCurrentConflictResolution().unit
-                    ) ?? null
-                  }
-                  onChange={(_, value) => {
-                    if (value) {
-                      handleConflictUnitChange(value.value);
-                    }
-                  }}
-                  getOptionLabel={(option) =>
-                    getUnitForm(option.value, getCurrentConflictResolution().quantity)
-                  }
-                  isOptionEqualToValue={(option, value) => option.value === value.value}
-                  renderInput={(params) => <TextField {...params} label="Unit" size="small" />}
-                  sx={{ flex: 1 }}
-                />
-              </Box>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 2,
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Button onClick={handlePreviousConflict} disabled={currentConflictIndex === 0}>
-                  ← Previous
-                </Button>
-                <Button
-                  onClick={handleNextConflict}
-                  variant="contained"
-                  disabled={!isCurrentConflictResolved()}
-                >
-                  {currentConflictIndex < unitConflicts.length - 1 ? 'Next →' : 'Complete'}
-                </Button>
-              </Box>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        conflict={unitConflicts[currentConflictIndex] ?? null}
+        index={currentConflictIndex}
+        total={unitConflicts.length}
+        quantity={getCurrentConflictResolution().quantity}
+        unit={getCurrentConflictResolution().unit}
+        resolved={isCurrentConflictResolved()}
+        isLast={currentConflictIndex >= unitConflicts.length - 1}
+        onQuantityChange={handleConflictQuantityChange}
+        onUnitChange={handleConflictUnitChange}
+        onPrevious={handlePreviousConflict}
+        onNext={handleNextConflict}
+      />
 
       {/* Share Store Dialog */}
-      <Dialog
+      <ShareStoreDialog
         open={shareDialog.open}
-        onClose={shareDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-        slotProps={{
-          transition: { onEntered: () => shareEmailRef.current?.focus() },
+        storeName={sharingStore?.name ?? ''}
+        invitations={sharingStore?.invitations ?? []}
+        email={shareEmail}
+        onEmailChange={setShareEmail}
+        onInvite={handleInviteUser}
+        onRemove={(userId) => {
+          if (sharingStore) handleRemoveUser(sharingStore._id, userId);
         }}
-      >
-        <DialogTitle onClose={shareDialog.closeDialog}>
-          Share &quot;{sharingStore?.name}&quot;
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Invite users by email. They&apos;ll be able to view and edit the shopping list.
-          </Typography>
-
-          {/* Invite Section */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <TextField
-              inputRef={shareEmailRef}
-              label="Email Address"
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && shareEmail.trim()) {
-                  handleInviteUser();
-                }
-              }}
-              size="small"
-              fullWidth
-              placeholder="user@example.com"
-            />
-            <Button
-              variant="contained"
-              onClick={handleInviteUser}
-              disabled={!shareEmail.trim()}
-              sx={{ minWidth: 100 }}
-            >
-              Invite
-            </Button>
-          </Box>
-
-          {/* Shared Users List */}
-          {sharingStore?.invitations && sharingStore.invitations.length > 0 && (
-            <>
-              <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
-                Shared With:
-              </Typography>
-              <List>
-                {sharingStore.invitations
-                  .filter((inv) => inv.status === 'accepted' || inv.status === 'pending')
-                  .map((inv) => (
-                    <ListItem key={inv.userId}>
-                      <ListItemText
-                        primary={inv.userEmail}
-                        secondary={inv.status === 'pending' ? 'Pending' : 'Accepted'}
-                      />
-                      {inv.status === 'accepted' && (
-                        <IconButton
-                          size="small"
-                          color="error"
-                          title="Remove user"
-                          onClick={() => handleRemoveUser(sharingStore._id, inv.userId)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      )}
-                    </ListItem>
-                  ))}
-              </List>
-            </>
-          )}
-
-          <DialogActions primaryButtonIndex={0}>
-            <Button onClick={shareDialog.closeDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              Done
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+        onClose={shareDialog.closeDialog}
+      />
 
       {/* Pantry Check Dialog */}
-      <Dialog
+      <PantryCheckDialog
         open={pantryCheckDialog.open}
+        matches={matchingPantryItems}
+        onApply={handleApplyPantryCheck}
         onClose={pantryCheckDialog.closeDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={responsiveDialogStyle}
-      >
-        <DialogTitle onClose={pantryCheckDialog.closeDialog}>Pantry Check</DialogTitle>
-        <DialogContent>
-          {matchingPantryItems.length === 0 ? (
-            <>
-              <Alert severity="info">
-                No items found in pantry. Add items to your pantry to use this feature.
-              </Alert>
-              <DialogActions primaryButtonIndex={0}>
-                <Button
-                  onClick={pantryCheckDialog.closeDialog}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Close
-                </Button>
-              </DialogActions>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                These shopping list items are in your pantry. Check them off to remove from the
-                list, or adjust quantities as needed.
-              </Typography>
-              <List>
-                {matchingPantryItems.map((item, index) => (
-                  <Box key={item.foodItemId}>
-                    <ListItem
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
-                        py: 2,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          width: '100%',
-                          mb: 1,
-                        }}
-                      >
-                        <Checkbox
-                          checked={item.checked}
-                          onChange={(e) => handlePantryItemCheck(item.foodItemId, e.target.checked)}
-                          sx={{ mr: 1 }}
-                        />
-                        <ListItemText
-                          primary={item.name}
-                          secondary={`Current: ${item.currentQuantity} ${
-                            item.unit && item.unit !== 'each'
-                              ? getUnitForm(item.unit, item.currentQuantity)
-                              : ''
-                          }`}
-                          sx={{
-                            textDecoration: item.checked ? 'line-through' : 'none',
-                            opacity: item.checked ? 0.6 : 1,
-                          }}
-                        />
-                      </Box>
-                      {!item.checked && (
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            gap: 1,
-                            ml: 6,
-                            alignItems: 'flex-start',
-                          }}
-                        >
-                          <QuantityInput
-                            label="New Quantity"
-                            value={item.newQuantity}
-                            onChange={(newQuantity) =>
-                              handlePantryItemQuantityChange(item.foodItemId, newQuantity)
-                            }
-                            size="small"
-                            sx={{ width: 150 }}
-                          />
-                          <TextField
-                            label="Unit"
-                            size="small"
-                            value={
-                              item.unit && item.unit !== 'each'
-                                ? getUnitForm(item.unit, item.newQuantity)
-                                : ''
-                            }
-                            disabled
-                            sx={{ width: 120 }}
-                          />
-                        </Box>
-                      )}
-                    </ListItem>
-                    {index < matchingPantryItems.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </List>
-            </>
-          )}
-          {matchingPantryItems.length > 0 && (
-            <DialogActions primaryButtonIndex={1}>
-              <Button
-                onClick={pantryCheckDialog.closeDialog}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleApplyPantryCheck}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Apply Changes
-              </Button>
-            </DialogActions>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Emoji Picker Dialog */}
-      <EmojiPicker
-        open={emojiPickerDialog.open}
-        onClose={emojiPickerDialog.closeDialog}
-        onSelect={handleEmojiSelect}
-        currentEmoji={newStoreEmoji}
       />
 
       {/* Leave Store Confirmation Dialog */}

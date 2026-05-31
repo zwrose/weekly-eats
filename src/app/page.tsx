@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { Box, Typography, Container, Paper, ThemeProvider, Button } from '@mui/material';
 import SignInButton from '../components/SignInButton';
-import { lightTheme } from '../lib/theme';
+import { darkTheme } from '../lib/theme';
 import { Suspense } from 'react';
 import Image from 'next/image';
 
@@ -14,7 +14,7 @@ export default function Home() {
   // Show loading state while session is being fetched
   if (status === 'loading') {
     return (
-      <ThemeProvider theme={lightTheme}>
+      <ThemeProvider theme={darkTheme}>
         <Box
           sx={{
             minHeight: '100vh',
@@ -44,7 +44,7 @@ export default function Home() {
   }
 
   return (
-    <ThemeProvider theme={lightTheme}>
+    <ThemeProvider theme={darkTheme}>
       <Box
         sx={{
           minHeight: '100vh',

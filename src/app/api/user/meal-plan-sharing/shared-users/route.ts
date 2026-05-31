@@ -18,27 +18,31 @@ export async function GET() {
       _id: ObjectId.createFromHexString(session.user.id),
     });
 
-    const acceptedInvitations =
+    // Include both accepted invitees and those still pending, so the share UI can show a
+    // "pending" state for people you've invited who haven't accepted yet.
+    const relevantInvitations: { userId: string; status: 'pending' | 'accepted' }[] =
       currentUser?.settings?.mealPlanSharing?.invitations?.filter(
-        (inv: { status: string }) => inv.status === 'accepted'
+        (inv: { status: string }) => inv.status === 'accepted' || inv.status === 'pending'
       ) || [];
 
-    // Get user info for each accepted invitation
-    const sharedUserIds = acceptedInvitations.map((inv: { userId: string }) => inv.userId);
+    const sharedUserIds = relevantInvitations.map((inv) => inv.userId);
 
     if (sharedUserIds.length === 0) {
       return NextResponse.json([]);
     }
 
+    const statusByUserId = new Map(relevantInvitations.map((inv) => [inv.userId, inv.status]));
+
     const sharedUsersData = await usersCollection
       .find({ _id: { $in: sharedUserIds.map((id: string) => ObjectId.createFromHexString(id)) } })
       .toArray();
 
-    // Return user info for each shared user
+    // Return user info + sharing status for each shared user.
     const sharedUsers = sharedUsersData.map((user) => ({
       userId: user._id.toString(),
       email: user.email,
       name: user.name,
+      status: statusByUserId.get(user._id.toString()),
     }));
 
     return NextResponse.json(sharedUsers);

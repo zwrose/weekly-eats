@@ -19,6 +19,9 @@ const eslintConfig = [
       "**/*.cjs",
       "scripts/**",
       ".claude/**",
+      // Vendored design-reference artboards (JSX mockups, not app code). Mirrors
+      // tsconfig's `exclude: ["docs"]` — these are not part of the build or lint surface.
+      "docs/**",
     ],
   },
   ...nextCoreWebVitals,

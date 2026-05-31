@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Recipes (re-themed)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f0eee9; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; user-select:none; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx?v=1779760690106"></script>
+<script type="text/babel" src="artboards-recipes.jsx?v=1779760690106"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const { MobileList, MobileListTagsOpen, MobileListFiltered, MobileView, MobileEdit, MobileSharing, MobileEmojiPicker, DesktopList, DesktopListTagsOpen, DesktopView, DesktopEdit, DesktopSharing, DesktopEmojiPicker } = window;
+  const M = { w:390, h:844 };
+  const D = { w:1440, h:900 };
+
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="m-recipes" title="Mobile · recipes"
+          subtitle="List, view, edit. Re-themed only — no new features.">
+          <DCArtboard id="m-list" label="List"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileList /></DCArtboard>
+          <DCArtboard id="m-list-tags" label="List · tags sheet" width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileListTagsOpen /></DCArtboard>
+          <DCArtboard id="m-list-filtered" label="List · filtered" width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileListFiltered /></DCArtboard>
+          <DCArtboard id="m-view" label="View"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileView /></DCArtboard>
+          <DCArtboard id="m-edit" label="Edit"  width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileEdit /></DCArtboard>
+          <DCArtboard id="m-share" label="Sharing sheet" width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileSharing /></DCArtboard>
+          <DCArtboard id="m-emoji" label="Emoji picker" width={M.w} height={M.h} style={{ background:'#0f1115' }}><MobileEmojiPicker /></DCArtboard>
+          <DCArtboard id="m-notes" label="Notes" width={460} height={M.h}>
+            <Notes>
+              <h3>Mobile · what changed</h3>
+              <ul>
+                <li><b>List</b> — replaces today's MUI Paper-card list. Header keeps the same affordances (people icon with invite-dot, + New). Filter bar is one slim row of pill chips + a search input.</li>
+                <li><b>View</b> — full-screen page (not a dialog). Title + emoji + stars + access chip up top; ingredients then instructions stacked.</li>
+                <li><b>Instructions</b> — rendered as plain markdown in a card, like today. Sectioned/numbered steps are a future enhancement once recipe authors expect it.</li>
+                <li><b>Edit</b> — same fields as today (<code>RecipeEditorDialog</code>) reflowed for the page shell. Top: emoji + title + access + rating + tags. Bottom: ingredients + instructions stacked. Delete pinned to the bottom.</li>
+              </ul>
+              <h4>Section accent · amber</h4>
+              <p>The current app gives each top-level section its own color. Carrying that through: every Recipes surface uses an amber accent (<code>#e8a86b</code>) instead of the shared blue. Plans / Shop / Pantry would each get their own.</p>
+              <p>This only shifts <code>accent.base</code> + <code>accent.muted</code>. Meal-section colors (B/L/D) stay scoped to meal-plan surfaces.</p>
+              <h4>Proposed section palette (dark mode)</h4>
+              <ul>
+                <li><b>Plans</b> — <code>#7aa7ff</code> cool blue (current)</li>
+                <li><b>Shop</b> — <code>#6fcf97</code> green, slightly bolder than lunch's mint</li>
+                <li><b>Recipes</b> — <code>#e8a86b</code> warm amber (applied here)</li>
+                <li><b>Pantry</b> — <code>#c79bff</code> lavender, slightly bolder than staples</li>
+              </ul>
+              <h4>Ingredient groups (recipes)</h4>
+              <p>For recipes, groups are <b>all-or-nothing</b> — if any list has a title, every list must (unlike meal plans, where groups can mix with loose items). Save is blocked when a recipe has a mix of titled and untitled lists.</p>
+              <h4>Prep instructions</h4>
+              <p>Each ingredient row has a <code>+ prep instructions</code> affordance when empty. Tap to reveal an inline prep field below the row (mirrors today's <code>IngredientInput</code> expand/collapse). In view mode, prep renders as italic dim text after the name (e.g. <i>garlic, minced</i>).</p>
+              <h4>Sharing + emoji picker</h4>
+              <ul>
+                <li><b>Sharing sheet</b> — different from meal-plan sharing: per-invitee toggles for <b>Tags</b> and <b>Ratings</b>. Pending invites at top, "What to share" checkboxes, invite-by-email, shared-with list (each shows what they're getting).</li>
+                <li><b>Emoji picker</b> — bottom sheet on mobile, dialog on desktop. Search + grouped emoji ("Used in recipes" first, then mains / sides / drinks). Current selection highlighted.</li>
+              </ul>
+              <h4>No new features</h4>
+              <ul>
+                <li>No servings scaler. No step-by-step cook mode. No timers. No wake-lock. All future considerations.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="d-recipes" title="Desktop · recipes"
+          subtitle="Same surfaces, reflowed.">
+          <DCArtboard id="d-list" label="List"  width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopList /></DCArtboard>
+          <DCArtboard id="d-list-tags" label="List · tags dropdown" width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopListTagsOpen /></DCArtboard>
+          <DCArtboard id="d-view" label="View"  width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopView /></DCArtboard>
+          <DCArtboard id="d-edit" label="Edit"  width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopEdit /></DCArtboard>
+          <DCArtboard id="d-share" label="Sharing dialog" width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopSharing /></DCArtboard>
+          <DCArtboard id="d-emoji" label="Emoji picker" width={D.w} height={D.h} style={{ background:'#0f1115' }}><DesktopEmojiPicker /></DCArtboard>
+          <DCArtboard id="d-notes" label="Notes" width={460} height={D.h}>
+            <Notes>
+              <h3>Desktop · what changed</h3>
+              <ul>
+                <li><b>List</b> — same table that lives in the current desktop view, re-themed. Tags/Rating/Updated columns retained.</li>
+                <li><b>View</b> — now a <b>full page</b> rather than a contained 980px modal. Bigger emoji + title block at the top, ingredients on the left at a comfortable width, instructions on the right with a 720px reading column. Edit button in the header still routes to the editor.</li>
+                <li><b>Edit</b> — taller modal (full window minus 80px) so the Delete button at the bottom no longer clips. Ingredient groups are first-class: each one is a card with a title input and inline ingredient rows. <code>+ Group</code> in the section header adds another.</li>
+                <li><b>Prep instructions</b> — every ingredient row has a <code>+ prep instructions</code> affordance; when set, prep renders as an inline italic field below the qty/unit row, with its own ✕ to clear.</li>
+              </ul>
+              <h4>Mapping vs main</h4>
+              <ul>
+                <li><code>RecipeViewDialog</code> stays as the container; the inner View/Edit branches re-styled.</li>
+                <li><code>RecipeFilterBar</code> visuals updated; same controls (search, tag multi-select, rating multi-select, sort).</li>
+                <li><code>RecipeStarRating</code> uses the warn-color stars from tokens.</li>
+                <li><code>RecipeIngredients</code> rows use the qty + unit chip pattern from meal-plan editor.</li>
+                <li><code>AccessLevel</code> chip simplified to a status pill.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

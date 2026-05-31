@@ -1,57 +1,28 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { Session } from 'next-auth';
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Container,
   Typography,
   Box,
   CircularProgress,
-  Paper,
   Button,
-  Dialog,
-  DialogContent,
-  DialogContentText,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Alert,
-  Chip,
   Snackbar,
-  Badge,
+  IconButton,
 } from '@mui/material';
-import {
-  Restaurant,
-  Add,
-  RestaurantMenu,
-  Share,
-  Star,
-  ArrowUpward,
-  ArrowDownward,
-} from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import AuthenticatedLayout from '../../components/AuthenticatedLayout';
-import { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from '../../types/recipe';
-import { fetchRecipe, createRecipe, updateRecipe, deleteRecipe } from '../../lib/recipe-utils';
-import dynamic from 'next/dynamic';
-const EmojiPicker = dynamic(() => import('../../components/EmojiPicker'), { ssr: false });
-const RecipeViewDialog = dynamic(() => import('@/components/RecipeViewDialog'), { ssr: false });
-const RecipeEditorDialog = dynamic(() => import('@/components/RecipeEditorDialog'), { ssr: false });
-const RecipeSharingSection = dynamic(() => import('@/components/RecipeSharingSection'), {
-  ssr: false,
-});
-import { RecipeIngredientList } from '../../types/recipe';
-import { fetchFoodItems } from '../../lib/food-items-utils';
-import { useDialog, useConfirmDialog, usePersistentDialog } from '@/lib/hooks';
 import { useServerPagination } from '@/lib/hooks/use-server-pagination';
 import { useDebouncedSearch } from '@/lib/hooks/use-debounced-search';
-import RecipeFilterBar from '@/components/RecipeFilterBar';
-import { responsiveDialogStyle } from '@/lib/theme';
 import Pagination from '@/components/optimized/Pagination';
-import { DialogActions, DialogTitle } from '@/components/ui';
+import { RecipeFilterBar } from '@/components/recipes/RecipeFilterBar';
+import { RecipeCardMobile, RecipeTableRow } from '@/components/recipes/RecipeRow';
+import { Icon } from '@/components/ui/Icon';
+import { tokens } from '@/lib/design-tokens';
+import dynamic from 'next/dynamic';
 import {
   inviteUserToRecipeSharing,
   respondToRecipeSharingInvitation,
@@ -61,16 +32,19 @@ import {
   PendingRecipeInvitation,
   SharedUser,
 } from '@/lib/recipe-sharing-utils';
-import {
-  fetchRecipeUserData,
-  fetchRecipeUserDataBatch,
-  updateRecipeTags,
-  updateRecipeRating,
-  deleteRecipeRating,
-  fetchUserTags,
-} from '@/lib/recipe-user-data-utils';
-
+import { fetchRecipeUserDataBatch, fetchUserTags } from '@/lib/recipe-user-data-utils';
 import { RecipeUserDataResponse } from '@/types/recipe-user-data';
+import { Recipe } from '@/types/recipe';
+
+// ── Dynamically imported heavy components ──
+const RecipeSharingDialog = dynamic(
+  () => import('@/components/recipes/RecipeSharingDialog').then((m) => m.RecipeSharingDialog),
+  { ssr: false }
+);
+const RecipeEditor = dynamic(
+  () => import('@/components/recipes/RecipeEditor').then((m) => m.RecipeEditor),
+  { ssr: false }
+);
 
 // ── Extended recipe type with server-computed accessLevel ──
 
@@ -78,71 +52,12 @@ interface RecipeWithAccessLevel extends Recipe {
   accessLevel: 'private' | 'shared-by-you' | 'shared-by-others';
 }
 
-// ── Module-level sx constants (hoisted to avoid per-render allocations) ──
+// ── Module-level sx constants ──
 
-const tableRowHoverSx = {
-  cursor: 'pointer',
-  '&:hover': { backgroundColor: 'action.hover' },
-} as const;
-
-const recipeTitleFlexSx = {
+const centeredLoadingSx = {
   display: 'flex',
-  alignItems: 'center',
-  gap: 1,
-} as const;
-
-const recipeIconSmallSx = { fontSize: 24, color: 'text.secondary' } as const;
-const recipeIconLargeSx = { fontSize: 32, color: 'text.secondary' } as const;
-
-const tagContainerDesktopSx = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 0.5,
   justifyContent: 'center',
-} as const;
-
-const tagContainerMobileSx = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 0.5,
-  mb: 1,
-} as const;
-
-const chipDesktopSx = { fontSize: '0.7rem', height: 20 } as const;
-const chipMobileSx = { fontSize: '0.75rem' } as const;
-
-const ratingDesktopSx = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 0.25,
-} as const;
-
-const ratingMobileSx = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 0.5,
-} as const;
-
-const mobileCardSx = {
-  p: 3,
-  mb: 2,
-  cursor: 'pointer',
-  '&:hover': {
-    backgroundColor: 'action.hover',
-    transform: 'translateY(-2px)',
-    boxShadow: 4,
-  },
-  transition: 'all 0.2s ease-in-out',
-  boxShadow: 2,
-  border: '1px solid',
-  borderColor: 'divider',
-  borderRadius: 2,
-} as const;
-
-const mobileCardTitleSx = {
-  display: 'flex',
-  alignItems: 'flex-start',
+  py: 4,
 } as const;
 
 const paginationContainerSx = {
@@ -151,21 +66,46 @@ const paginationContainerSx = {
   mt: 2,
 } as const;
 
-const centeredLoadingSx = {
-  display: 'flex',
-  justifyContent: 'center',
-  py: 4,
-} as const;
+// ── DotBadge — pending-invite alert dot (danger color, matches today's Badge) ──
 
-const tableHeaderCellSx = (width: string) =>
-  ({
-    width,
-    fontWeight: 'bold',
-    wordWrap: 'break-word',
-  }) as const;
+function DotBadge({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        bgcolor: tokens.section.recipes,
+        border: `2px solid ${tokens.surface.base}`,
+        pointerEvents: 'none',
+      }}
+    />
+  );
+}
+
+// ── Main content (needs useSearchParams → must be inside Suspense) ──
 
 function RecipesPageContent() {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ── Old deep-link redirect ──
+  useEffect(() => {
+    const viewRecipe = searchParams.get('viewRecipe');
+    if (viewRecipe === 'true') {
+      const recipeId = searchParams.get('viewRecipe_recipeId');
+      if (recipeId) {
+        router.replace(`/recipes/${recipeId}`);
+      } else {
+        router.replace('/recipes');
+      }
+    }
+  }, [searchParams, router]);
 
   // ── Filter state ──
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -219,22 +159,15 @@ function RecipesPageContent() {
     sortOrder,
     setPage,
     setSort,
-    refetch,
   } = useServerPagination<RecipeWithAccessLevel>({ fetchFn: fetchRecipes, filterKey });
 
-  // ── Dialogs ──
-  const createDialog = useDialog();
-  const viewDialog = usePersistentDialog('viewRecipe');
-  const deleteConfirmDialog = useConfirmDialog();
-  const emojiPickerDialog = useDialog();
-  const shareDialog = useDialog();
+  // ── Create takeover state ──
+  const [creating, setCreating] = useState(false);
 
-  // ── Selected recipe state ──
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [selectedAccessLevel, setSelectedAccessLevel] = useState<
-    RecipeWithAccessLevel['accessLevel'] | undefined
-  >(undefined);
-  const [recipeUserData, setRecipeUserData] = useState<RecipeUserDataResponse | null>(null);
+  // ── Share dialog state ──
+  const [shareOpen, setShareOpen] = useState(false);
+
+  // ── Batch user-data (for list tags/ratings) ──
   const [recipesUserData, setRecipesUserData] = useState<Map<string, RecipeUserDataResponse>>(
     new Map()
   );
@@ -261,57 +194,7 @@ function RecipesPageContent() {
 
   const userId = session?.user?.id;
 
-  // ── New/edit recipe state ──
-  const [newRecipe, setNewRecipe] = useState<CreateRecipeRequest>({
-    title: '',
-    emoji: '',
-    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
-    instructions: '',
-    isGlobal: true,
-  });
-  const [editingRecipe, setEditingRecipe] = useState<UpdateRecipeRequest>({
-    title: '',
-    emoji: '',
-    ingredients: [{ title: '', ingredients: [], isStandalone: true }],
-    instructions: '',
-    isGlobal: false,
-  });
-  const [editMode, setEditMode] = useState(false);
-
-  // ── Food items state ──
-  const [foodItems, setFoodItems] = useState<{
-    [key: string]: { singularName: string; pluralName: string };
-  }>({});
-  const [foodItemsList, setFoodItemsList] = useState<
-    Array<{
-      _id: string;
-      name: string;
-      singularName: string;
-      pluralName: string;
-      unit: string;
-    }>
-  >([]);
-
   // ── Load supporting data ──
-  const loadFoodItems = async () => {
-    try {
-      const items = await fetchFoodItems();
-      const itemsMap: {
-        [key: string]: { singularName: string; pluralName: string };
-      } = {};
-      items.forEach((item) => {
-        itemsMap[item._id] = {
-          singularName: item.singularName,
-          pluralName: item.pluralName,
-        };
-      });
-      setFoodItems(itemsMap);
-      setFoodItemsList(items);
-    } catch (error) {
-      console.error('Error loading food items:', error);
-    }
-  };
-
   const loadSharingData = useCallback(async () => {
     try {
       const [pendingInvites, sharedUsers] = await Promise.all([
@@ -354,218 +237,30 @@ function RecipesPageContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      loadFoodItems();
       loadSharingData();
       loadAvailableTags();
     }
   }, [status, loadSharingData, loadAvailableTags]);
 
-  // ── Food item added handler ──
-  const handleFoodItemAdded = async (newFoodItem: {
-    name: string;
-    singularName: string;
-    pluralName: string;
-    unit: string;
-    isGlobal: boolean;
-  }) => {
-    const foodItemWithId = {
-      _id: `temp-${Date.now()}`,
-      ...newFoodItem,
-    };
-    setFoodItems((prev) => ({
-      ...prev,
-      [foodItemWithId._id]: {
-        singularName: newFoodItem.singularName,
-        pluralName: newFoodItem.pluralName,
-      },
-    }));
-    setFoodItemsList((prev) => [...prev, foodItemWithId]);
-  };
-
-  // ── Ingredient name helper ──
-  const getIngredientName = (ingredient: {
-    type: 'foodItem' | 'recipe';
-    id: string;
-    quantity: number;
-    name?: string;
-  }): string => {
-    // Prefer server-resolved name (populated by GET /api/recipes/[id])
-    if (ingredient.name) return ingredient.name;
-
-    // Fallback to client-side lookup for draft/unsaved recipes
-    if (ingredient.type === 'foodItem') {
-      const foodItem = foodItems[ingredient.id];
-      if (!foodItem) return 'Unknown food item';
-      return ingredient.quantity === 1 ? foodItem.singularName : foodItem.pluralName;
-    } else {
-      const recipe = recipes.find((r) => r._id === ingredient.id);
-      return recipe ? recipe.title : 'Unknown recipe';
-    }
-  };
-
-  // ── CRUD handlers ──
-  const handleCreateRecipe = async () => {
-    try {
-      const filteredRecipe = {
-        ...newRecipe,
-        ingredients: filterBlankIngredients(newRecipe.ingredients),
-      };
-      await createRecipe(filteredRecipe);
-      createDialog.closeDialog();
-      setNewRecipe({
-        title: '',
-        emoji: '',
-        ingredients: [{ title: '', ingredients: [], isStandalone: true }],
-        instructions: '',
-        isGlobal: true,
-      });
-      refetch();
-    } catch (error) {
-      console.error('Error creating recipe:', error);
-    }
-  };
-
-  const handleViewRecipe = useCallback(
-    async (recipe: Recipe) => {
-      try {
-        const fullRecipe = await fetchRecipe(recipe._id!);
-        setSelectedRecipe(fullRecipe);
-        if ('accessLevel' in recipe) {
-          setSelectedAccessLevel((recipe as RecipeWithAccessLevel).accessLevel);
-        }
-        viewDialog.openDialog({ recipeId: recipe._id! });
-        try {
-          const userData = await fetchRecipeUserData(recipe._id!);
-          setRecipeUserData(userData);
-        } catch (error) {
-          console.error('Error loading recipe user data:', error);
-          setRecipeUserData({ tags: [], rating: undefined });
-        }
-      } catch (error) {
-        console.error('Error loading recipe details:', error);
-      }
-    },
-    [viewDialog]
-  );
-
-  // Handle persistent dialog data
-  useEffect(() => {
-    if (viewDialog.open && viewDialog.data?.recipeId && !selectedRecipe) {
-      const recipe = recipes.find((r) => r._id === viewDialog.data?.recipeId);
-      if (recipe) {
-        handleViewRecipe(recipe);
-      }
-    }
-
-    if (viewDialog.open && viewDialog.data?.editMode === 'true' && selectedRecipe && !editMode) {
-      setEditMode(true);
-      setEditingRecipe({
-        title: selectedRecipe.title,
-        emoji: selectedRecipe.emoji || '',
-        ingredients: selectedRecipe.ingredients,
-        instructions: selectedRecipe.instructions,
-        isGlobal: selectedRecipe.isGlobal,
-      });
-    }
-  }, [viewDialog.open, viewDialog.data, selectedRecipe, recipes, editMode, handleViewRecipe]);
-
-  const handleEditRecipe = async () => {
-    if (!selectedRecipe?._id) return;
-
-    setEditingRecipe({
-      title: selectedRecipe.title,
-      emoji: selectedRecipe.emoji || '',
-      ingredients: selectedRecipe.ingredients,
-      instructions: selectedRecipe.instructions,
-      isGlobal: selectedRecipe.isGlobal,
-    });
-    setEditMode(true);
-    viewDialog.openDialog({
-      recipeId: selectedRecipe._id!,
-      editMode: 'true',
-    });
-
-    try {
-      const userData = await fetchRecipeUserData(selectedRecipe._id);
-      setRecipeUserData(userData);
-    } catch (error) {
-      console.error('Error loading recipe user data:', error);
-      setRecipeUserData({ tags: [], rating: undefined });
-    }
-  };
-
-  const handleUpdateRecipe = async () => {
-    if (!selectedRecipe?._id) return;
-
-    try {
-      const filteredRecipe = {
-        ...editingRecipe,
-        ingredients: filterBlankIngredients(editingRecipe.ingredients || []),
-      };
-      await updateRecipe(selectedRecipe._id, filteredRecipe);
-      const updatedRecipe = await fetchRecipe(selectedRecipe._id);
-      setSelectedRecipe(updatedRecipe);
-      refetch();
-      setEditMode(false);
-      viewDialog.openDialog({ recipeId: selectedRecipe._id });
-    } catch (error) {
-      console.error('Error updating recipe:', error);
-    }
-  };
-
-  const handleDeleteRecipe = async () => {
-    if (!selectedRecipe?._id) return;
-
-    try {
-      await deleteRecipe(selectedRecipe._id);
-      deleteConfirmDialog.closeDialog();
-      viewDialog.closeDialog();
-      setSelectedRecipe(null);
-      setEditMode(false);
-      refetch();
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
-    }
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    if (editMode) {
-      setEditingRecipe({ ...editingRecipe, emoji });
-    } else {
-      setNewRecipe({ ...newRecipe, emoji });
-    }
-  };
-
-  const filterBlankIngredients = (ingredients: RecipeIngredientList[]) => {
-    return ingredients.map((list) => ({
-      ...list,
-      ingredients: list.ingredients.filter(
-        (ingredient) => ingredient.id && ingredient.id.trim() !== ''
-      ),
-    }));
-  };
-
-  const handleIngredientsChange = (ingredients: RecipeIngredientList[]) => {
-    if (editMode) {
-      setEditingRecipe({ ...editingRecipe, ingredients });
-    } else {
-      setNewRecipe({ ...newRecipe, ingredients });
-    }
-  };
-
   // ── Sharing handlers ──
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   const handleInviteUser = async () => {
     if (!shareEmail.trim()) return;
     if (!shareTags && !shareRatings) {
       showSnackbar('Please select at least one sharing type (tags or ratings)', 'error');
       return;
     }
-
     try {
       const sharingTypes: ('tags' | 'ratings')[] = [];
       if (shareTags) sharingTypes.push('tags');
       if (shareRatings) sharingTypes.push('ratings');
-
       await inviteUserToRecipeSharing(shareEmail.trim(), sharingTypes);
       setShareEmail('');
       showSnackbar(`Invitation sent to ${shareEmail}`, 'success');
@@ -576,9 +271,9 @@ function RecipesPageContent() {
     }
   };
 
-  const handleAcceptRecipeInvitation = async (userId: string) => {
+  const handleAcceptRecipeInvitation = async (inviteUserId: string) => {
     try {
-      await respondToRecipeSharingInvitation(userId, 'accept');
+      await respondToRecipeSharingInvitation(inviteUserId, 'accept');
       showSnackbar('Invitation accepted', 'success');
       loadSharingData();
     } catch (error) {
@@ -587,9 +282,9 @@ function RecipesPageContent() {
     }
   };
 
-  const handleRejectRecipeInvitation = async (userId: string) => {
+  const handleRejectRecipeInvitation = async (inviteUserId: string) => {
     try {
-      await respondToRecipeSharingInvitation(userId, 'reject');
+      await respondToRecipeSharingInvitation(inviteUserId, 'reject');
       showSnackbar('Invitation rejected', 'success');
       loadSharingData();
     } catch (error) {
@@ -598,9 +293,9 @@ function RecipesPageContent() {
     }
   };
 
-  const handleRemoveRecipeUser = async (userId: string) => {
+  const handleRemoveRecipeUser = async (removeUserId: string) => {
     try {
-      await removeUserFromRecipeSharing(userId);
+      await removeUserFromRecipeSharing(removeUserId);
       showSnackbar('User removed from sharing', 'success');
       loadSharingData();
     } catch (error) {
@@ -609,98 +304,12 @@ function RecipesPageContent() {
     }
   };
 
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  // ── Recipe user data handlers ──
-  const handleTagsChange = async (tags: string[]) => {
-    if (!selectedRecipe?._id) return;
-    try {
-      await updateRecipeTags(selectedRecipe._id, tags);
-      setRecipeUserData((prev) => (prev ? { ...prev, tags } : { tags, rating: undefined }));
-      setRecipesUserData((prev) => {
-        const newMap = new Map(prev);
-        const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
-        newMap.set(selectedRecipe._id!, { ...currentData, tags });
-        return newMap;
-      });
-    } catch (error) {
-      console.error('Error updating tags:', error);
-      showSnackbar('Failed to update tags', 'error');
-    }
-  };
-
-  const handleRatingChange = async (rating: number | undefined) => {
-    if (!selectedRecipe?._id) return;
-    try {
-      if (rating === undefined) {
-        await deleteRecipeRating(selectedRecipe._id);
-        setRecipeUserData((prev) =>
-          prev ? { ...prev, rating: undefined } : { tags: [], rating: undefined }
-        );
-        setRecipesUserData((prev) => {
-          const newMap = new Map(prev);
-          const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
-          newMap.set(selectedRecipe._id!, { ...currentData, rating: undefined });
-          return newMap;
-        });
-      } else {
-        await updateRecipeRating(selectedRecipe._id, rating);
-        setRecipeUserData((prev) => (prev ? { ...prev, rating } : { tags: [], rating }));
-        setRecipesUserData((prev) => {
-          const newMap = new Map(prev);
-          const currentData = newMap.get(selectedRecipe._id!) || { tags: [], rating: undefined };
-          newMap.set(selectedRecipe._id!, { ...currentData, rating });
-          return newMap;
-        });
-      }
-    } catch (error) {
-      console.error('Error updating rating:', error);
-      showSnackbar('Failed to update rating', 'error');
-    }
-  };
-
-  const handleCloseViewDialog = () => {
-    viewDialog.closeDialog();
-    setSelectedRecipe(null);
-    setSelectedAccessLevel(undefined);
-    setEditMode(false);
-  };
-
-  const hasValidIngredients = (ingredients: RecipeIngredientList[]) => {
-    const totalIngredients = ingredients.reduce(
-      (total, group) => total + (group.ingredients?.length || 0),
-      0
-    );
-    if (totalIngredients === 0) return false;
-    return ingredients.every(
-      (group) => group.isStandalone || (group.title && group.title.trim() !== '')
-    );
-  };
-
-  const canEditRecipe = (recipe: Recipe) => {
-    return recipe.createdBy === (session?.user as Session['user'])?.id;
-  };
-
-  // ── Sort handlers ──
+  // ── Sort handler ──
   const handleSortChange = (newSortBy: string, newSortOrder: 'asc' | 'desc') => {
     setSort(newSortBy, newSortOrder);
   };
 
-  const handleColumnSort = (column: string) => {
-    if (sortBy === column) {
-      setSort(column, sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSort(column, column === 'title' ? 'asc' : 'desc');
-    }
-  };
-
-  // ── Render ──
+  // ── Auth guards ──
   if (status === 'loading') {
     return (
       <AuthenticatedLayout>
@@ -717,82 +326,108 @@ function RecipesPageContent() {
     return null;
   }
 
+  // ── Create takeover: render RecipeEditor full-page in place of list ──
+  if (creating) {
+    return (
+      <AuthenticatedLayout>
+        <RecipeEditor
+          mode="create"
+          availableTags={availableTags}
+          onSaved={(r) => {
+            setCreating(false);
+            router.push(`/recipes/${r._id}`);
+          }}
+          onClose={() => setCreating(false)}
+        />
+      </AuthenticatedLayout>
+    );
+  }
+
   return (
     <AuthenticatedLayout>
       <Container maxWidth="xl">
-        <Box sx={{ py: { xs: 0.5, md: 1 } }}>
+        <Box sx={{ py: { xs: 1, md: 2 } }}>
+          {/* ── Header ── */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
+              flexDirection: 'row',
               justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: { xs: 2, sm: 0 },
-              mb: { xs: 2, md: 4 },
+              alignItems: 'center',
+              gap: 2,
+              mb: { xs: 2, md: 3 },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Restaurant sx={{ fontSize: 40, color: '#ed6c02' }} />
-              <Typography variant="h3" component="h1" sx={{ color: '#ed6c02' }}>
-                Recipes
+            <Box>
+              <Typography
+                variant="h3"
+                component="h1"
+                sx={{
+                  fontFamily: "'Bricolage Grotesque', sans-serif",
+                  color: tokens.text.primary,
+                  fontWeight: 700,
+                  fontSize: { xs: 24, md: 30 },
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.1,
+                }}
+              >
+                Your recipes
+              </Typography>
+              <Typography variant="body2" sx={{ color: tokens.text.secondary, mt: 0.5 }}>
+                <Box component="span" sx={{ color: tokens.section.recipes, fontWeight: 600 }}>
+                  {total}
+                </Box>{' '}
+                {total === 1 ? 'recipe' : 'recipes'}
               </Typography>
             </Box>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2,
-                alignItems: 'center',
-                width: { xs: '100%', sm: 'auto' },
-              }}
-            >
+
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              {/* Sharing button with dot badge */}
+              <Box sx={{ position: 'relative' }}>
+                <IconButton
+                  onClick={() => setShareOpen(true)}
+                  aria-label="Share recipes"
+                  sx={{
+                    color: tokens.text.secondary,
+                    border: `1px solid ${tokens.border.subtle}`,
+                    borderRadius: `${tokens.radius.lg}px`,
+                    p: 1,
+                    '&:hover': {
+                      bgcolor: tokens.surface.elevated,
+                      color: tokens.text.primary,
+                    },
+                  }}
+                >
+                  <Icon name="group" sx={{ fontSize: 20 }} />
+                </IconButton>
+                <DotBadge show={pendingRecipeInvitations.length > 0} />
+              </Box>
+
+              {/* + New recipe */}
               <Button
                 variant="contained"
                 startIcon={<Add />}
-                onClick={() => createDialog.openDialog()}
+                onClick={() => setCreating(true)}
                 sx={{
-                  bgcolor: '#ed6c02',
-                  '&:hover': { bgcolor: '#e65100' },
-                  flexGrow: 1,
+                  bgcolor: tokens.section.recipes,
+                  color: '#0c1118',
+                  fontWeight: 700,
+                  borderRadius: `${tokens.radius.lg}px`,
+                  '&:hover': { bgcolor: '#d4944f' },
                 }}
               >
-                Add New Recipe
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => shareDialog.openDialog()}
-                sx={{
-                  borderColor: '#ed6c02',
-                  color: '#ed6c02',
-                  '&:hover': { borderColor: '#e65100' },
-                  minWidth: 'auto',
-                  p: 1,
-                }}
-              >
-                <Badge badgeContent={pendingRecipeInvitations?.length || 0} color="error">
-                  <Share />
-                </Badge>
+                <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>
+                  New
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>
+                  New recipe
+                </Box>
               </Button>
             </Box>
           </Box>
 
-          <RecipeSharingSection
-            pendingInvitations={pendingRecipeInvitations}
-            onAcceptInvitation={handleAcceptRecipeInvitation}
-            onRejectInvitation={handleRejectRecipeInvitation}
-            shareDialogOpen={shareDialog.open}
-            onShareDialogClose={shareDialog.closeDialog}
-            shareEmail={shareEmail}
-            onShareEmailChange={setShareEmail}
-            shareTags={shareTags}
-            onShareTagsChange={setShareTags}
-            shareRatings={shareRatings}
-            onShareRatingsChange={setShareRatings}
-            onInviteUser={handleInviteUser}
-            sharedUsers={sharedRecipeUsers}
-            onRemoveUser={handleRemoveRecipeUser}
-          />
-
-          <Paper sx={{ p: 3, mb: 4 }}>
+          {/* ── Filter bar ── */}
+          <Box sx={{ mb: 2 }}>
             <RecipeFilterBar
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -807,329 +442,131 @@ function RecipesPageContent() {
               hasActiveFilters={hasActiveFilters}
               onClearFilters={handleClearFilters}
             />
+          </Box>
 
-            {loading ? (
-              <Box sx={centeredLoadingSx}>
-                <CircularProgress />
-              </Box>
-            ) : recipes.length > 0 ? (
-              <>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {total} recipe{total !== 1 ? 's' : ''} found
-                </Typography>
-
-                {/* Desktop Table View */}
-                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell
-                            sx={{
-                              ...tableHeaderCellSx('45%'),
-                              cursor: 'pointer',
-                              userSelect: 'none',
-                            }}
-                            onClick={() => handleColumnSort('title')}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              Recipe
-                              {sortBy === 'title' &&
-                                (sortOrder === 'asc' ? (
-                                  <ArrowUpward sx={{ fontSize: 16 }} />
-                                ) : (
-                                  <ArrowDownward sx={{ fontSize: 16 }} />
-                                ))}
-                            </Box>
-                          </TableCell>
-                          <TableCell align="center" sx={tableHeaderCellSx('15%')}>
-                            Tags
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              ...tableHeaderCellSx('15%'),
-                              cursor: 'pointer',
-                              userSelect: 'none',
-                            }}
-                            onClick={() => handleColumnSort('rating')}
-                          >
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 0.5,
-                              }}
-                            >
-                              Rating
-                              {sortBy === 'rating' &&
-                                (sortOrder === 'asc' ? (
-                                  <ArrowUpward sx={{ fontSize: 16 }} />
-                                ) : (
-                                  <ArrowDownward sx={{ fontSize: 16 }} />
-                                ))}
-                            </Box>
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{
-                              ...tableHeaderCellSx('25%'),
-                              cursor: 'pointer',
-                              userSelect: 'none',
-                            }}
-                            onClick={() => handleColumnSort('updatedAt')}
-                          >
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 0.5,
-                              }}
-                            >
-                              Updated
-                              {sortBy === 'updatedAt' &&
-                                (sortOrder === 'asc' ? (
-                                  <ArrowUpward sx={{ fontSize: 16 }} />
-                                ) : (
-                                  <ArrowDownward sx={{ fontSize: 16 }} />
-                                ))}
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {recipes.map((recipe) => {
-                          const userData = recipesUserData.get(recipe._id || '');
-                          const allTags = [
-                            ...new Set([
-                              ...(userData?.tags || []),
-                              ...(userData?.sharedTags || []),
-                            ]),
-                          ];
-                          const rating = userData?.rating;
-
-                          return (
-                            <TableRow
-                              key={recipe._id}
-                              onClick={() => handleViewRecipe(recipe)}
-                              sx={tableRowHoverSx}
-                            >
-                              <TableCell sx={{ wordWrap: 'break-word' }}>
-                                <Box sx={recipeTitleFlexSx}>
-                                  {recipe.emoji ? (
-                                    <Typography variant="h6">{recipe.emoji}</Typography>
-                                  ) : (
-                                    <RestaurantMenu sx={recipeIconSmallSx} />
-                                  )}
-                                  <Typography variant="body1">{recipe.title}</Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                                {allTags.length === 0 ? (
-                                  <Typography variant="body2" color="text.secondary">
-                                    —
-                                  </Typography>
-                                ) : (
-                                  <Box sx={tagContainerDesktopSx}>
-                                    {allTags.slice(0, 3).map((tag) => (
-                                      <Chip key={tag} label={tag} size="small" sx={chipDesktopSx} />
-                                    ))}
-                                    {allTags.length > 3 && (
-                                      <Chip
-                                        label={`+${allTags.length - 3}`}
-                                        size="small"
-                                        sx={chipDesktopSx}
-                                      />
-                                    )}
-                                  </Box>
-                                )}
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                                {!rating ? (
-                                  <Typography variant="body2" color="text.secondary">
-                                    —
-                                  </Typography>
-                                ) : (
-                                  <Box sx={ratingDesktopSx}>
-                                    <Star sx={{ fontSize: 16, color: 'warning.main' }} />
-                                    <Typography variant="body2">{rating}</Typography>
-                                  </Box>
-                                )}
-                              </TableCell>
-                              <TableCell align="center" sx={{ wordWrap: 'break-word' }}>
-                                {new Date(recipe.updatedAt).toLocaleDateString()}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-
-                {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {recipes.map((recipe) => {
-                    const userData = recipesUserData.get(recipe._id || '');
-                    const allTags = [
-                      ...new Set([...(userData?.tags || []), ...(userData?.sharedTags || [])]),
-                    ];
-                    const rating = userData?.rating;
-
-                    return (
-                      <Paper
-                        key={recipe._id}
-                        onClick={() => handleViewRecipe(recipe)}
-                        sx={mobileCardSx}
+          {/* ── List / loading / empty ── */}
+          {loading ? (
+            <Box sx={centeredLoadingSx}>
+              <CircularProgress />
+            </Box>
+          ) : recipes.length > 0 ? (
+            <>
+              {/* Desktop table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Box
+                  sx={{
+                    bgcolor: tokens.surface.raised,
+                    border: `1px solid ${tokens.border.subtle}`,
+                    borderRadius: `${tokens.radius.xxl}px`,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Column headers */}
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 240px 100px 110px',
+                      gap: `${tokens.space.md}px`,
+                      px: `${tokens.space.lg}px`,
+                      py: `${tokens.space.md}px`,
+                      borderBottom: `1px solid ${tokens.border.subtle}`,
+                    }}
+                  >
+                    {['Recipe', 'Tags', 'Rating', 'Updated'].map((label) => (
+                      <Box
+                        key={label}
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.16em',
+                          textTransform: 'uppercase',
+                          color: tokens.text.secondary,
+                        }}
                       >
-                        <Box sx={mobileCardTitleSx}>
-                          <Box sx={{ mr: 1.5, flexShrink: 0 }}>
-                            {recipe.emoji ? (
-                              <Typography variant="h4">{recipe.emoji}</Typography>
-                            ) : (
-                              <RestaurantMenu sx={recipeIconLargeSx} />
-                            )}
-                          </Box>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                              {recipe.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {new Date(recipe.updatedAt).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        {(allTags.length > 0 || rating) && (
-                          <Box sx={{ mt: 1, width: '100%' }}>
-                            {allTags.length > 0 && (
-                              <Box sx={tagContainerMobileSx}>
-                                {allTags.slice(0, 5).map((tag) => (
-                                  <Chip key={tag} label={tag} size="small" sx={chipMobileSx} />
-                                ))}
-                                {allTags.length > 5 && (
-                                  <Chip
-                                    label={`+${allTags.length - 5}`}
-                                    size="small"
-                                    sx={chipMobileSx}
-                                  />
-                                )}
-                              </Box>
-                            )}
-                            {rating && (
-                              <Box sx={ratingMobileSx}>
-                                <Star sx={{ fontSize: 18, color: 'warning.main' }} />
-                                <Typography variant="body2">{rating}/5</Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-                      </Paper>
+                        {label}
+                      </Box>
+                    ))}
+                  </Box>
+                  {recipes.map((recipe) => {
+                    const userData = recipesUserData.get(recipe._id ?? '');
+                    const allTags = [
+                      ...new Set([...(userData?.tags ?? []), ...(userData?.sharedTags ?? [])]),
+                    ];
+                    return (
+                      <RecipeTableRow
+                        key={recipe._id}
+                        recipe={recipe}
+                        tags={allTags}
+                        rating={userData?.rating}
+                        onOpen={() => router.push(`/recipes/${recipe._id}`)}
+                      />
                     );
                   })}
                 </Box>
+              </Box>
 
-                {totalPages > 1 && (
-                  <Box sx={paginationContainerSx}>
-                    <Pagination count={totalPages} page={page} onChange={setPage} />
-                  </Box>
-                )}
-              </>
-            ) : (
-              <Alert severity="info">
-                {debouncedSearchTerm || selectedTags.length > 0 || selectedRatings.length > 0
-                  ? 'No recipes match your filters'
-                  : 'No recipes found'}
-              </Alert>
-            )}
-          </Paper>
+              {/* Mobile cards */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                {recipes.map((recipe) => {
+                  const userData = recipesUserData.get(recipe._id ?? '');
+                  const allTags = [
+                    ...new Set([...(userData?.tags ?? []), ...(userData?.sharedTags ?? [])]),
+                  ];
+                  return (
+                    <RecipeCardMobile
+                      key={recipe._id}
+                      recipe={recipe}
+                      tags={allTags}
+                      rating={userData?.rating}
+                      onOpen={() => router.push(`/recipes/${recipe._id}`)}
+                    />
+                  );
+                })}
+              </Box>
+
+              {totalPages > 1 && (
+                <Box sx={paginationContainerSx}>
+                  <Pagination count={totalPages} page={page} onChange={setPage} />
+                </Box>
+              )}
+            </>
+          ) : (
+            <Alert severity="info">
+              {hasActiveFilters ? 'No recipes match your filters' : 'No recipes found'}
+            </Alert>
+          )}
         </Box>
-
-        {/* Create Recipe Dialog */}
-        <RecipeEditorDialog
-          open={createDialog.open}
-          onClose={() => createDialog.closeDialog()}
-          recipe={newRecipe}
-          onRecipeChange={setNewRecipe}
-          onSubmit={handleCreateRecipe}
-          onEmojiPickerOpen={() => emojiPickerDialog.openDialog()}
-          onIngredientsChange={(ingredients) => setNewRecipe({ ...newRecipe, ingredients })}
-          foodItemsList={foodItemsList}
-          onFoodItemAdded={handleFoodItemAdded}
-          hasValidIngredients={hasValidIngredients}
-        />
-
-        {/* View/Edit Recipe Dialog */}
-        <RecipeViewDialog
-          open={viewDialog.open}
-          onClose={handleCloseViewDialog}
-          selectedRecipe={selectedRecipe}
-          editMode={editMode}
-          editingRecipe={editingRecipe}
-          onEditingRecipeChange={setEditingRecipe}
-          canEditRecipe={canEditRecipe}
-          onEditRecipe={handleEditRecipe}
-          onUpdateRecipe={handleUpdateRecipe}
-          onDeleteConfirm={() => deleteConfirmDialog.openDialog()}
-          onCancelEdit={() => {
-            setEditMode(false);
-            viewDialog.removeDialogData('editMode');
-          }}
-          onEmojiPickerOpen={() => emojiPickerDialog.openDialog()}
-          recipeUserData={recipeUserData}
-          onTagsChange={handleTagsChange}
-          onRatingChange={handleRatingChange}
-          onIngredientsChange={handleIngredientsChange}
-          foodItemsList={foodItemsList}
-          onFoodItemAdded={handleFoodItemAdded}
-          hasValidIngredients={hasValidIngredients}
-          getIngredientName={getIngredientName}
-          accessLevel={selectedAccessLevel}
-        />
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteConfirmDialog.open}
-          onClose={() => deleteConfirmDialog.closeDialog()}
-          sx={responsiveDialogStyle}
-        >
-          <DialogTitle onClose={() => deleteConfirmDialog.closeDialog()}>Delete Recipe</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to delete &quot;{selectedRecipe?.title}
-              &quot;? This action cannot be undone.
-            </DialogContentText>
-
-            <DialogActions primaryButtonIndex={1}>
-              <Button onClick={() => deleteConfirmDialog.closeDialog()}>Cancel</Button>
-              <Button onClick={handleDeleteRecipe} color="error" variant="contained">
-                Delete
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        </Dialog>
-
-        {/* Emoji Picker */}
-        <EmojiPicker
-          open={emojiPickerDialog.open}
-          onClose={() => emojiPickerDialog.closeDialog()}
-          onSelect={handleEmojiSelect}
-          currentEmoji={selectedRecipe?.emoji || newRecipe.emoji}
-        />
-
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
       </Container>
+
+      {/* ── Sharing dialog ── */}
+      <RecipeSharingDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        pendingInvitations={pendingRecipeInvitations}
+        onAcceptInvitation={handleAcceptRecipeInvitation}
+        onRejectInvitation={handleRejectRecipeInvitation}
+        shareTags={shareTags}
+        onShareTagsChange={setShareTags}
+        shareRatings={shareRatings}
+        onShareRatingsChange={setShareRatings}
+        shareEmail={shareEmail}
+        onShareEmailChange={setShareEmail}
+        onInviteUser={handleInviteUser}
+        sharedUsers={sharedRecipeUsers}
+        onRemoveUser={handleRemoveRecipeUser}
+      />
+
+      {/* ── Snackbar ── */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AuthenticatedLayout>
   );
 }

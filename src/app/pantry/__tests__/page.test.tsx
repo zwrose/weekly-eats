@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // Mock next-auth
 vi.mock('next-auth/react', async () => {
@@ -79,7 +80,20 @@ vi.mock('../../../components/AuthenticatedLayout', () => ({
 }));
 
 vi.mock('@/components/food-item-inputs/FoodItemAutocomplete', () => ({
-  default: () => <div data-testid="food-item-autocomplete" />,
+  // Expose onChange so add-flow tests can select a food item (enabling the Add button).
+  default: ({ onChange }: { onChange?: (item: { _id: string; type: string }) => void }) => (
+    <button
+      data-testid="mock-select-food"
+      onClick={() => onChange?.({ _id: 'f1', type: 'foodItem' })}
+    >
+      mock select food
+    </button>
+  ),
+}));
+
+vi.mock('@/lib/pantry-utils', () => ({
+  createPantryItem: vi.fn(),
+  deletePantryItem: vi.fn(),
 }));
 
 import PantryPage from '../page';
@@ -181,7 +195,7 @@ describe('PantryPage - Server Paginated', () => {
     const { unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/no pantry items found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no pantry items yet/i)).toBeInTheDocument();
     });
 
     unmount();
@@ -277,7 +291,51 @@ describe('PantryPage - Server Paginated', () => {
     const { unmount } = render(<PantryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/pantry items \(2\)/i)).toBeInTheDocument();
+      // Title + accent count subline (replaces the old "Pantry Items (2)" header).
+      expect(screen.getByRole('heading', { name: /pantry/i })).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    unmount();
+  });
+
+  it('shows an error snackbar when adding an item fails', async () => {
+    const user = userEvent.setup();
+    const { useDialog } = await import('@/lib/hooks');
+    (useDialog as any).mockReturnValue({ open: true, openDialog: vi.fn(), closeDialog: vi.fn() });
+    const { createPantryItem } = await import('@/lib/pantry-utils');
+    (createPantryItem as any).mockRejectedValueOnce(new Error('boom'));
+
+    const { unmount } = render(<PantryPage />);
+    // Select a food item (enables the Add button), then submit.
+    await user.click(await screen.findByTestId('mock-select-food'));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to add pantry item/i)).toBeInTheDocument();
+    });
+
+    unmount();
+  });
+
+  it('shows an error snackbar when removing an item fails', async () => {
+    const user = userEvent.setup();
+    const { useConfirmDialog } = await import('@/lib/hooks');
+    (useConfirmDialog as any).mockReturnValue({
+      open: true,
+      data: pantryItem1,
+      openDialog: vi.fn(),
+      closeDialog: vi.fn(),
+      cancel: vi.fn(),
+    });
+    const { deletePantryItem } = await import('@/lib/pantry-utils');
+    (deletePantryItem as any).mockRejectedValueOnce(new Error('boom'));
+
+    const { unmount } = render(<PantryPage />);
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to remove pantry item/i)).toBeInTheDocument();
     });
 
     unmount();

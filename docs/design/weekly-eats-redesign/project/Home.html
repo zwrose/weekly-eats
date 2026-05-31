@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Weekly Eats — Home / marketing landing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#f0eee9; }
+  body { font-family:'Outfit', system-ui, sans-serif; }
+  .ms { font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; user-select:none; }
+  .notes { width:100%; height:100%; overflow:hidden; background:#fef4a8; color:#5a4a2a; font-family:-apple-system, system-ui, sans-serif; padding:24px 26px; line-height:1.5; font-size:14px; box-sizing:border-box; }
+  .notes h3 { font-family:'Bricolage Grotesque', system-ui, sans-serif; margin:0 0 12px; font-size:17px; font-weight:700; color:#3d2f15; }
+  .notes h4 { margin:14px 0 4px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#6b5826; }
+  .notes ul { margin:4px 0 0; padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes p { margin:0 0 8px; }
+  .notes code { font-family:ui-monospace, monospace; font-size:12px; background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:3px; }
+  .notes b { color:#3d2f15; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="nav-chrome.jsx?v=1779844381966"></script>
+<script type="text/babel" src="artboards-home.jsx?v=1779844381966"></script>
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const { HomeDesktop, HomeMobile } = window;
+  function Notes({ children }) { return <div className="notes">{children}</div>; }
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="home" title="Home / marketing landing" subtitle="Signed-out users only. Mirrors src/app/page.tsx structure (hero, features, how-it-works, audience, CTA) in the dark design system.">
+          <DCArtboard id="d-home" label="Desktop"   width={1440} height={3200} style={{ background:'#0b0d11' }}><HomeDesktop /></DCArtboard>
+          <DCArtboard id="m-home" label="Mobile"    width={390}  height={3900} style={{ background:'#0b0d11' }}><HomeMobile /></DCArtboard>
+          <DCArtboard id="home-notes" label="Notes" width={460}  height={3200}>
+            <Notes>
+              <h3>What's on the page</h3>
+              <ul>
+                <li><b>Marketing nav</b> — sticky, blurred bg. Different from in-app TopNav: anchor-link items (Features / How it works / Who it's for) + Sign in button. App icon uses the <b>squircled</b> BM-α since the marketing surface wants the contained mark, not the in-app logomark.</li>
+                <li><b>Hero</b> — keeps the existing photo from main but darkens it with a strong gradient overlay so the headline + body read cleanly. "Limited beta" badge with a green pulsing dot. Two CTAs (Get started, See how it works) and a small disclosure about the approval flow.</li>
+                <li><b>Features (3)</b> — Smart plans (blue) · Live shopping lists (green) · Pantry-aware (lavender). Each card has a 3px accent stripe at the top + a colored icon tile, so the section accents are doing visible work to communicate the four-part product.</li>
+                <li><b>How it works (4)</b> — One step per section accent: Plan (blue) · Generate (amber) · Share (green) · Shop (lavender). Big numerals overflow the top edge of each card for visual rhythm.</li>
+                <li><b>Built for real life (2)</b> — Busy families + Roommates &amp; partners. Compressed copy compared to main; same intent.</li>
+                <li><b>Final CTA</b> — Centered card with a soft multi-color halo at the top combining all four section accents. Single sign-in button. Calls out the approval flow again so expectations are set.</li>
+                <li><b>Footer</b> — Minimal: icon + wordmark + copyright + 3 boilerplate links.</li>
+              </ul>
+
+              <h4>What changed vs. main</h4>
+              <ul>
+                <li><b>Dark mode</b>. The current landing forces a light theme via <code>ThemeProvider</code>. The redesign matches the in-app dark aesthetic — more cohesive once a user signs in.</li>
+                <li><b>Section colors as the through-line</b>. Main's landing is essentially monochrome with one MUI primary. Here, the four section accents (Plans / Shop / Recipes / Pantry) tell the visual story of what the product <i>is</i> across every section. The features map 1:1 to top-level app sections.</li>
+                <li><b>Copy polish</b> on a few lines. Tagline kept verbatim. Body lines tightened where main had typos ("streamling") or slightly soft phrasing.</li>
+                <li><b>"See how it works" CTA</b> moved from a sibling-button to a true secondary anchor next to the primary, matching modern landing patterns.</li>
+                <li><b>Limited-beta badge</b> moved up into the hero (was a small caption below the CTAs). It's an important expectation to set early.</li>
+              </ul>
+
+              <h4>Out of scope</h4>
+              <ul>
+                <li>No product screenshot in the hero (yet). The photo carries the affective work; the features section communicates the surfaces. Could revisit with a real screenshot of a meal plan + shopping list once the dark UI ships.</li>
+                <li>No pricing — none planned.</li>
+                <li>No testimonials — beta scale doesn't warrant them yet.</li>
+              </ul>
+            </Notes>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
