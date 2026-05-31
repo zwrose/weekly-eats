@@ -77,10 +77,6 @@ import {
   type ActiveUser,
 } from '@/lib/hooks';
 import dynamic from 'next/dynamic';
-const EmojiPicker = dynamic(
-  () => import('@/components/ui/EmojiPicker').then((m) => m.EmojiPicker),
-  { ssr: false }
-);
 const StoreHistoryDialog = dynamic(
   () => import('../../components/shopping-list/StoreHistoryDialog'),
   { ssr: false }
@@ -119,6 +115,7 @@ import {
   PantryCheckDialog,
   type PantryCheckMatch,
 } from '@/components/shopping-list/PantryCheck/PantryCheckDialog';
+import { StoreEditorDialog } from '@/components/shopping-list/StoreEditorDialog';
 
 interface FoodItem {
   _id: string;
@@ -162,7 +159,6 @@ function ShoppingListsPageContent() {
   const editStoreDialog = useDialog();
   const viewListDialog = usePersistentDialog('shoppingList');
   const deleteConfirmDialog = useConfirmDialog();
-  const emojiPickerDialog = useDialog();
   const mealPlanSelectionDialog = useDialog();
   const unitConflictDialog = useDialog();
   const shareDialog = useDialog();
@@ -170,7 +166,6 @@ function ShoppingListsPageContent() {
   const pantryCheckDialog = useDialog();
 
   // Auto-focus refs for dialog inputs
-  const storeNameRef = useRef<HTMLInputElement>(null);
   const shareEmailRef = useRef<HTMLInputElement>(null);
 
   // Notification state
@@ -208,8 +203,6 @@ function ShoppingListsPageContent() {
   };
 
   // Form states
-  const [newStoreName, setNewStoreName] = useState('');
-  const [newStoreEmoji, setNewStoreEmoji] = useState('🏪');
   const [editingStore, setEditingStore] = useState<StoreWithShoppingList | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [sharingStore, setSharingStore] = useState<StoreWithShoppingList | null>(null);
@@ -354,13 +347,11 @@ function ShoppingListsPageContent() {
     setListActionsAnchorEl(null);
   };
 
-  const handleCreateStore = async () => {
-    if (!newStoreName.trim()) return;
+  const handleCreateStore = async (data: { name: string; emoji?: string }) => {
+    if (!data.name.trim()) return;
 
     try {
-      await createStore({ name: newStoreName.trim(), emoji: newStoreEmoji });
-      setNewStoreName('');
-      setNewStoreEmoji('🏪');
+      await createStore({ name: data.name.trim(), emoji: data.emoji });
       createStoreDialog.closeDialog();
       loadData();
     } catch (error) {
@@ -371,21 +362,17 @@ function ShoppingListsPageContent() {
 
   const handleEditStore = (store: StoreWithShoppingList) => {
     setEditingStore(store);
-    setNewStoreName(store.name);
-    setNewStoreEmoji(store.emoji || '🏪');
     editStoreDialog.openDialog();
   };
 
-  const handleUpdateStore = async () => {
-    if (!editingStore || !newStoreName.trim()) return;
+  const handleUpdateStore = async (data: { name: string; emoji?: string }) => {
+    if (!editingStore || !data.name.trim()) return;
 
     try {
       await updateStore(editingStore._id, {
-        name: newStoreName.trim(),
-        emoji: newStoreEmoji,
+        name: data.name.trim(),
+        emoji: data.emoji,
       });
-      setNewStoreName('');
-      setNewStoreEmoji('🏪');
       setEditingStore(null);
       editStoreDialog.closeDialog();
       loadData();
@@ -560,10 +547,6 @@ function ShoppingListsPageContent() {
 
     void loadLatestList();
   }, [viewListDialog.open, viewListDialog.data, stores]);
-
-  const handleEmojiSelect = (emoji: string) => {
-    setNewStoreEmoji(emoji);
-  };
 
   const handleOpenAddItemEditor = () => {
     setItemEditorMode('add');
@@ -1565,115 +1548,22 @@ function ShoppingListsPageContent() {
       </Container>
 
       {/* Create Store Dialog */}
-      <Dialog
+      <StoreEditorDialog
         open={createStoreDialog.open}
+        mode="create"
+        onSave={handleCreateStore}
         onClose={createStoreDialog.closeDialog}
-        sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
-      >
-        <DialogTitle onClose={createStoreDialog.closeDialog}>Add Store</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Store Icon
-              </Typography>
-              <Button
-                variant="outlined"
-                onClick={emojiPickerDialog.openDialog}
-                sx={{
-                  fontSize: '2rem',
-                  minWidth: 80,
-                  minHeight: 80,
-                }}
-              >
-                {newStoreEmoji}
-              </Button>
-            </Box>
-            <TextField
-              label="Store Name"
-              value={newStoreName}
-              onChange={(e) => setNewStoreName(e.target.value)}
-              fullWidth
-              inputRef={storeNameRef}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && newStoreName.trim()) {
-                  handleCreateStore();
-                }
-              }}
-            />
-          </Box>
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={createStoreDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateStore}
-              variant="contained"
-              disabled={!newStoreName.trim()}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Create Store
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Edit Store Dialog */}
-      <Dialog
+      <StoreEditorDialog
         open={editStoreDialog.open}
+        mode="edit"
+        initialName={editingStore?.name}
+        initialEmoji={editingStore?.emoji || '🏪'}
+        onSave={handleUpdateStore}
         onClose={editStoreDialog.closeDialog}
-        sx={responsiveDialogStyle}
-        TransitionProps={{ onEntered: () => storeNameRef.current?.focus() }}
-      >
-        <DialogTitle onClose={editStoreDialog.closeDialog}>Edit Store</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Store Icon
-              </Typography>
-              <Button
-                variant="outlined"
-                onClick={emojiPickerDialog.openDialog}
-                sx={{
-                  fontSize: '2rem',
-                  minWidth: 80,
-                  minHeight: 80,
-                }}
-              >
-                {newStoreEmoji}
-              </Button>
-            </Box>
-            <TextField
-              label="Store Name"
-              value={newStoreName}
-              onChange={(e) => setNewStoreName(e.target.value)}
-              fullWidth
-              inputRef={storeNameRef}
-            />
-          </Box>
-          <DialogActions primaryButtonIndex={1}>
-            <Button
-              onClick={editStoreDialog.closeDialog}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateStore}
-              variant="contained"
-              disabled={!newStoreName.trim()}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              Update Store
-            </Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
+      />
 
       {/* Working-list overflow actions menu (anchored from ShoppingListView actionsSlot) */}
       <Menu
@@ -2078,14 +1968,6 @@ function ShoppingListsPageContent() {
         matches={matchingPantryItems}
         onApply={handleApplyPantryCheck}
         onClose={pantryCheckDialog.closeDialog}
-      />
-
-      {/* Emoji Picker Dialog */}
-      <EmojiPicker
-        open={emojiPickerDialog.open}
-        onClose={emojiPickerDialog.closeDialog}
-        onSelect={handleEmojiSelect}
-        currentEmoji={newStoreEmoji}
       />
 
       {/* Leave Store Confirmation Dialog */}

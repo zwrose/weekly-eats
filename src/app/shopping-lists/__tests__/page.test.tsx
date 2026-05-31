@@ -497,9 +497,10 @@ describe('ShoppingListsPage', () => {
     const editIcons = screen.getAllByTestId('EditIcon');
     await user.click(editIcons[0].closest('button')!);
 
-    // Edit Store dialog should open
+    // Edit Store dialog should open (seeded with the store's name)
     await waitFor(() => {
-      expect(screen.getByText('Edit Store')).toBeInTheDocument();
+      expect(screen.getByText('Edit store')).toBeInTheDocument();
+      expect(screen.getByLabelText(/name/i)).toHaveValue('Target');
     });
   });
 
