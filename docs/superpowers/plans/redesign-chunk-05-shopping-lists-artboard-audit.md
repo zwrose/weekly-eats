@@ -87,3 +87,12 @@ All three CLOSE batches landed + verified live (chrome-devtools-mcp, authenticat
 4. Desktop 26px presence-pill list-header variant + connecting-dot pulse animation not built (single 20px pill both breakpoints) — low value.
 
 **→ Gate #2 done. Next: `review-code --base redesign-chunk-04`.**
+
+---
+
+## Post-review fixes (manual-gate live pass, 2026-05-30)
+
+Found while driving the seeded data on `:3235` (chrome-devtools-mcp), after review-code:
+
+- **`d42248d`** — **PantryCheckDialog/KeepSkipToggle `borderRadius`**: bare `borderRadius: tokens.radius.xxxl` in `sx` is multiplied by `theme.shape.borderRadius` (8) → the dialog paper rendered at **128px** instead of 16. Fixed to the `` `${px}px` `` string form (measured 16px after). Class of bug unit tests can't see; the live pass caught it.
+- **`af8d58d`** — **Desktop Import/Pantry placement + overflow icon** (user spot-check): (1) per artboard §3.2 the **desktop** list header carries Import-from-plans + Pantry-check as **dedicated ghost buttons**, not in the ⋯ menu — the overflow now omits them on desktop (`StoreActionsMenu includeImportPantry={isMobile}`) and keeps all six in the **mobile** menu. (2) Overflow icon **`more_vert` → `more_horiz`** to match the prior redesigned chunks (PlanDetail/RecipeDetail/RecipeEditor) — a deliberate **overrule of the artboard's `more_vert`** for app-wide consistency. Verified both breakpoints live.
